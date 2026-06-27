@@ -1,0 +1,264 @@
+openapi: 3.1.0
+info:
+  title: Homies — Auth & Identity API
+  version: 1.0.0
+  contact:
+    name: Homies API
+    email: api@homies.dev
+  description: |
+    Identity & Access bounded context (GENERIC subdomain).
+    Тонка обгортка над автентифікацією. Видає JWT з ролями;
+    інші модулі валідують підпис токена ЛОКАЛЬНО (публічним ключем)
+    і НЕ звертаються сюди на кожен запит.
+
+    Примітка про реалізацію: для MVP-моноліту це власна JWT-реалізація
+    (простіше в експлуатації, нижчий burn). Якщо згодом захочеш Keycloak —
+    login/refresh делегуються його OIDC-ендпойнтам, а тут лишаються
+    /me + тонкий профіль. Контракт ззовні майже не змінюється.
+servers:
+  - url: https://api.homies.dev/v1
+    description: Production (illustrative)
+  - url: http://localhost:8000/v1
+    description: Local (docker-compose)
+tags:
+  - name: auth
+    description: Реєстрація, логін, токени, сесії
+  - name: profile
+    description: Профіль поточного користувача
+
+paths:
+  /auth/register:
+    post:
+      tags: [auth]
+      summary: Зареєструвати нового користувача (роль client за замовчуванням)
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Користувача створено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '409':
+          description: Email вже зайнятий
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Помилка валідації
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Увійти, отримати access + refresh токени
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Успішний вхід
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '401':
+          description: Невірні облікові дані
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: Оновити access-токен за refresh-токеном (з ротацією)
+      operationId: refreshToken
+      description: |
+        Видає НОВУ пару токенів і інвалідовує попередній refresh
+        (refresh token rotation — захист від крадіжки токена).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Нова пара токенів (старий refresh інвалідовано)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '401':
+          description: Refresh-токен недійсний або відкликаний
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Вийти (відкликати поточний refresh-токен / сесію)
+      operationId: logout
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '204':
+          description: Сесію завершено
+        '401':
+          description: Не автентифіковано
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /auth/me:
+    get:
+      tags: [profile]
+      summary: Профіль поточного користувача (з токена)
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Поточний користувач
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Не автентифіковано
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT access-токен. Claims: sub (userId), roles, exp, iat.
+        Модулі валідують підпис і строк дії локально, без звернення до auth.
+
+  schemas:
+    Role:
+      type: string
+      enum: [client, worker, manager, admin]
+      description: Роль користувача в системі
+
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: Зберігається лише як хеш (Argon2id)
+        displayName:
+          type: string
+          maxLength: 120
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+
+    TokenPair:
+      type: object
+      required: [accessToken, refreshToken, tokenType, expiresIn]
+      properties:
+        accessToken:
+          type: string
+          description: Короткоживучий JWT (напр. 15 хв)
+        refreshToken:
+          type: string
+          description: Довгоживучий токен (напр. 30 днів), ротується при кожному refresh
+        tokenType:
+          type: string
+          const: Bearer
+        expiresIn:
+          type: integer
+          description: Час життя access-токена в секундах
+          example: 900
+
+    User:
+      type: object
+      required: [id, email, roles, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
+        createdAt:
+          type: string
+          format: date-time
+
+    Problem:
+      type: object
+      description: RFC 7807 Problem Details — єдиний формат помилок усієї платформи
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          example: "https://api.homies.dev/problems/email-taken"
+        title:
+          type: string
+          example: "Email вже зайнятий"
+        status:
+          type: integer
+          example: 409
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri

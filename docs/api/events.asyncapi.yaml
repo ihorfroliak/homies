@@ -1,0 +1,630 @@
+asyncapi: 3.0.0
+info:
+  title: Homies — Domain Events
+  version: 1.0.0
+  contact:
+    name: Homies API
+    email: api@homies.dev
+  description: |
+    Каталог доменних подій платформи Homies (AsyncAPI 3.0) — "нервова система".
+    Це події, які платформа ПУБЛІКУЄ, коли в домені щось стається
+    (об'єкт опубліковано, бронь підтверджено, оплата пройшла).
+
+    Перспектива документа — сама платформа Homies. `action: send` означає,
+    що платформа публікує подію в канал. Споживачі (сервіс Notifications,
+    платформа даних, інші модулі) приймають їх — у кожного буде свій
+    AsyncAPI з `action: receive`.
+
+    Реалізація на старті (модульний моноліт): події публікуються через
+    Postgres outbox-патерн у легку шину (NATS/Redis). Усередині моноліту
+    частина реакцій — це прямі виклики; назовні (Notifications, аналітика)
+    це справжні асинхронні споживачі. Kafka додається на етапі платформи
+    даних (Фаза 2).
+
+    Кожна подія має конверт (envelope) у стилі CloudEvents:
+    eventId, eventType, occurredAt, version + корисне навантаження `data`.
+    Гроші — цілим числом у найменших одиницях (грошах), як у REST-контрактах.
+
+defaultContentType: application/json
+
+servers:
+  bus:
+    host: localhost:4222
+    protocol: nats
+    description: Локальна шина подій (NATS). У проді — Kafka/MSK (Фаза 2).
+
+channels:
+  identityEvents:
+    address: homies.identity.v1
+    description: Події контексту Identity & Access
+    messages:
+      UserRegistered:
+        $ref: '#/components/messages/UserRegistered'
+
+  listingEvents:
+    address: homies.listing.v1
+    description: Події контексту Listings
+    messages:
+      ListingPublished:
+        $ref: '#/components/messages/ListingPublished'
+      ListingUpdated:
+        $ref: '#/components/messages/ListingUpdated'
+      ListingUnpublished:
+        $ref: '#/components/messages/ListingUnpublished'
+
+  bookingEvents:
+    address: homies.booking.v1
+    description: Події життєвого циклу бронювання
+    messages:
+      BookingRequested:
+        $ref: '#/components/messages/BookingRequested'
+      BookingConfirmed:
+        $ref: '#/components/messages/BookingConfirmed'
+      BookingRejected:
+        $ref: '#/components/messages/BookingRejected'
+      BookingCancelled:
+        $ref: '#/components/messages/BookingCancelled'
+      BookingCheckedIn:
+        $ref: '#/components/messages/BookingCheckedIn'
+      BookingCompleted:
+        $ref: '#/components/messages/BookingCompleted'
+      BookingExpired:
+        $ref: '#/components/messages/BookingExpired'
+
+  paymentEvents:
+    address: homies.payment.v1
+    description: Події контексту Payments
+    messages:
+      PaymentSucceeded:
+        $ref: '#/components/messages/PaymentSucceeded'
+      PaymentFailed:
+        $ref: '#/components/messages/PaymentFailed'
+      PaymentRefunded:
+        $ref: '#/components/messages/PaymentRefunded'
+      PayoutSent:
+        $ref: '#/components/messages/PayoutSent'
+
+  reviewEvents:
+    address: homies.review.v1
+    description: Події контексту Reviews
+    messages:
+      ReviewSubmitted:
+        $ref: '#/components/messages/ReviewSubmitted'
+
+operations:
+  publishIdentityEvents:
+    action: send
+    channel:
+      $ref: '#/channels/identityEvents'
+    summary: Публікація подій про користувачів
+    messages:
+      - $ref: '#/channels/identityEvents/messages/UserRegistered'
+
+  publishListingEvents:
+    action: send
+    channel:
+      $ref: '#/channels/listingEvents'
+    summary: Публікація подій про об'єкти (Search індексує, аналітика рахує)
+    messages:
+      - $ref: '#/channels/listingEvents/messages/ListingPublished'
+      - $ref: '#/channels/listingEvents/messages/ListingUpdated'
+      - $ref: '#/channels/listingEvents/messages/ListingUnpublished'
+
+  publishBookingEvents:
+    action: send
+    channel:
+      $ref: '#/channels/bookingEvents'
+    summary: Публікація подій бронювання (Notifications, Operations, Reviews, аналітика)
+    messages:
+      - $ref: '#/channels/bookingEvents/messages/BookingRequested'
+      - $ref: '#/channels/bookingEvents/messages/BookingConfirmed'
+      - $ref: '#/channels/bookingEvents/messages/BookingRejected'
+      - $ref: '#/channels/bookingEvents/messages/BookingCancelled'
+      - $ref: '#/channels/bookingEvents/messages/BookingCheckedIn'
+      - $ref: '#/channels/bookingEvents/messages/BookingCompleted'
+      - $ref: '#/channels/bookingEvents/messages/BookingExpired'
+
+  publishPaymentEvents:
+    action: send
+    channel:
+      $ref: '#/channels/paymentEvents'
+    summary: Публікація подій оплат (Booking підтверджує, Notifications сповіщає)
+    messages:
+      - $ref: '#/channels/paymentEvents/messages/PaymentSucceeded'
+      - $ref: '#/channels/paymentEvents/messages/PaymentFailed'
+      - $ref: '#/channels/paymentEvents/messages/PaymentRefunded'
+      - $ref: '#/channels/paymentEvents/messages/PayoutSent'
+
+  publishReviewEvents:
+    action: send
+    channel:
+      $ref: '#/channels/reviewEvents'
+    summary: Публікація подій відгуків (оновлення рейтингу, сповіщення)
+    messages:
+      - $ref: '#/channels/reviewEvents/messages/ReviewSubmitted'
+
+components:
+  messages:
+    UserRegistered:
+      name: UserRegistered
+      title: Користувача зареєстровано
+      summary: Новий користувач створив акаунт
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/UserRegisteredPayload'
+
+    ListingPublished:
+      name: ListingPublished
+      title: Об'єкт опубліковано
+      summary: Власник опублікував об'єкт; Search має його проіндексувати
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/ListingPublishedPayload'
+
+    ListingUpdated:
+      name: ListingUpdated
+      title: Об'єкт оновлено
+      summary: Дані об'єкта змінились; Search має оновити індекс
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/ListingUpdatedPayload'
+
+    ListingUnpublished:
+      name: ListingUnpublished
+      title: Об'єкт знято з публікації
+      summary: Об'єкт прибрано з пошуку
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/ListingUnpublishedPayload'
+
+    BookingRequested:
+      name: BookingRequested
+      title: Бронювання створено
+      summary: Гість створив запит на бронь (стан Requested)
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/BookingRequestedPayload'
+
+    BookingConfirmed:
+      name: BookingConfirmed
+      title: Бронювання підтверджено
+      summary: Дати заброньовано; час сповістити гостя й записати конверсію
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/BookingConfirmedPayload'
+
+    BookingRejected:
+      name: BookingRejected
+      title: Бронювання відхилено
+      summary: Власник відхилив запит
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/BookingRejectedPayload'
+
+    BookingCancelled:
+      name: BookingCancelled
+      title: Бронювання скасовано
+      summary: Бронь скасовано; можливе повернення коштів
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/BookingCancelledPayload'
+
+    BookingCheckedIn:
+      name: BookingCheckedIn
+      title: Гість заселився
+      summary: Початок стею
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/BookingCheckedInPayload'
+
+    BookingCompleted:
+      name: BookingCompleted
+      title: Бронювання завершено
+      summary: Гість виселився; тригер прибирання, запиту відгуку, обліку доходу
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/BookingCompletedPayload'
+
+    BookingExpired:
+      name: BookingExpired
+      title: Бронювання протерміновано
+      summary: Вийшов час на оплату; дати звільнено
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/BookingExpiredPayload'
+
+    PaymentSucceeded:
+      name: PaymentSucceeded
+      title: Оплата успішна
+      summary: Платіж пройшов; Booking має підтвердити бронь
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/PaymentSucceededPayload'
+
+    PaymentFailed:
+      name: PaymentFailed
+      title: Оплата невдала
+      summary: Платіж не пройшов
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/PaymentFailedPayload'
+
+    PaymentRefunded:
+      name: PaymentRefunded
+      title: Кошти повернено
+      summary: Виконано повернення коштів гостю
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/PaymentRefundedPayload'
+
+    PayoutSent:
+      name: PayoutSent
+      title: Виплату власнику відправлено
+      summary: Власник отримав свою частку
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/PayoutSentPayload'
+
+    ReviewSubmitted:
+      name: ReviewSubmitted
+      title: Відгук залишено
+      summary: Гість оцінив стей; оновити рейтинг об'єкта
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/ReviewSubmittedPayload'
+
+  schemas:
+    EventEnvelope:
+      type: object
+      description: Спільний конверт усіх подій (стиль CloudEvents)
+      required: [eventId, eventType, occurredAt, version]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: Унікальний id події — для ідемпотентного споживання
+        eventType:
+          type: string
+          description: Тип події, напр. "booking.confirmed"
+        occurredAt:
+          type: string
+          format: date-time
+          description: Коли подія сталася (ISO-8601, UTC)
+        version:
+          type: string
+          description: Версія схеми події
+          examples: ["1.0"]
+
+    UserRegisteredPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [userId, email]
+              properties:
+                userId:
+                  type: string
+                  format: uuid
+                email:
+                  type: string
+                  format: email
+                roles:
+                  type: array
+                  items:
+                    type: string
+
+    ListingPublishedPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [listingId, ownerId]
+              properties:
+                listingId:
+                  type: string
+                  format: uuid
+                ownerId:
+                  type: string
+                  format: uuid
+                city:
+                  type: string
+
+    ListingUpdatedPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [listingId]
+              properties:
+                listingId:
+                  type: string
+                  format: uuid
+                changedFields:
+                  type: array
+                  description: Перелік змінених полів
+                  items:
+                    type: string
+
+    ListingUnpublishedPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [listingId]
+              properties:
+                listingId:
+                  type: string
+                  format: uuid
+                reason:
+                  type: string
+
+    BookingRequestedPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [bookingId, listingId, guestId, checkIn, checkOut]
+              properties:
+                bookingId:
+                  type: string
+                  format: uuid
+                listingId:
+                  type: string
+                  format: uuid
+                guestId:
+                  type: string
+                  format: uuid
+                checkIn:
+                  type: string
+                  format: date
+                checkOut:
+                  type: string
+                  format: date
+                guests:
+                  type: integer
+                  minimum: 1
+
+    BookingConfirmedPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [bookingId, listingId, guestId, checkIn, checkOut]
+              properties:
+                bookingId:
+                  type: string
+                  format: uuid
+                listingId:
+                  type: string
+                  format: uuid
+                guestId:
+                  type: string
+                  format: uuid
+                checkIn:
+                  type: string
+                  format: date
+                checkOut:
+                  type: string
+                  format: date
+                amount:
+                  type: integer
+                  description: Сума у найменших одиницях (грошах)
+                currency:
+                  type: string
+                  examples: ["PLN"]
+
+    BookingRejectedPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [bookingId]
+              properties:
+                bookingId:
+                  type: string
+                  format: uuid
+                reason:
+                  type: string
+
+    BookingCancelledPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [bookingId, cancelledBy]
+              properties:
+                bookingId:
+                  type: string
+                  format: uuid
+                cancelledBy:
+                  type: string
+                  enum: [guest, owner, system]
+                reason:
+                  type: string
+
+    BookingCheckedInPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [bookingId]
+              properties:
+                bookingId:
+                  type: string
+                  format: uuid
+
+    BookingCompletedPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [bookingId, listingId, guestId]
+              properties:
+                bookingId:
+                  type: string
+                  format: uuid
+                listingId:
+                  type: string
+                  format: uuid
+                guestId:
+                  type: string
+                  format: uuid
+                checkOut:
+                  type: string
+                  format: date
+
+    BookingExpiredPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [bookingId]
+              properties:
+                bookingId:
+                  type: string
+                  format: uuid
+
+    PaymentSucceededPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [paymentId, bookingId, amount, currency]
+              properties:
+                paymentId:
+                  type: string
+                  format: uuid
+                bookingId:
+                  type: string
+                  format: uuid
+                amount:
+                  type: integer
+                  description: Сума у найменших одиницях (грошах)
+                currency:
+                  type: string
+                  examples: ["PLN"]
+
+    PaymentFailedPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [paymentId, bookingId]
+              properties:
+                paymentId:
+                  type: string
+                  format: uuid
+                bookingId:
+                  type: string
+                  format: uuid
+                reason:
+                  type: string
+
+    PaymentRefundedPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [paymentId, bookingId, amount, currency]
+              properties:
+                paymentId:
+                  type: string
+                  format: uuid
+                bookingId:
+                  type: string
+                  format: uuid
+                amount:
+                  type: integer
+                  description: Сума у найменших одиницях (грошах)
+                currency:
+                  type: string
+                  examples: ["PLN"]
+
+    PayoutSentPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [payoutId, ownerId, amount, currency]
+              properties:
+                payoutId:
+                  type: string
+                  format: uuid
+                ownerId:
+                  type: string
+                  format: uuid
+                amount:
+                  type: integer
+                  description: Сума у найменших одиницях (грошах)
+                currency:
+                  type: string
+                  examples: ["PLN"]
+
+    ReviewSubmittedPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [reviewId, listingId, bookingId, rating]
+              properties:
+                reviewId:
+                  type: string
+                  format: uuid
+                listingId:
+                  type: string
+                  format: uuid
+                bookingId:
+                  type: string
+                  format: uuid
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5

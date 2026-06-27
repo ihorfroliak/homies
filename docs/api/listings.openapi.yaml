@@ -1,0 +1,561 @@
+openapi: 3.1.0
+info:
+  title: Homies — Listings API
+  version: 1.0.0
+  contact:
+    name: Homies API
+    email: api@homies.dev
+  description: |
+    Listings bounded context (CORE).
+    Write-model + канонічний read об'єкта за id + список об'єктів власника (бек-офіс).
+
+    ВАЖЛИВО: публічний пошук тут НЕ живе — це окремий read-model
+    (Search / Meilisearch), CQRS-lite. Listings лише публікує події
+    (ListingPublished/Updated), а Search будує з них пошуковий індекс.
+
+    availabilityPolicy = "години роботи" (намір власника, змінюється рідко).
+    ФАКТ зайнятості (журнал реальних броней) живе в Booking → AvailabilityCalendar.
+servers:
+  - url: https://api.homies.dev/v1
+    description: Production (illustrative)
+  - url: http://localhost:8000/v1
+    description: Local (docker-compose)
+tags:
+  - name: listings
+    description: CRUD об'єктів, публікація
+  - name: photos
+    description: Фото об'єкта
+
+paths:
+  /listings:
+    post:
+      tags: [listings]
+      summary: Створити об'єкт (у статусі draft)
+      operationId: createListing
+      security:
+        - bearerAuth: []
+      description: Доступно ролям manager/admin (власник/керуючий). Об'єкт створюється як draft.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateListingRequest'
+      responses:
+        '201':
+          description: Створено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    get:
+      tags: [listings]
+      summary: Список об'єктів власника (бек-офіс)
+      operationId: listOwnerListings
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ListingStatus'
+      responses:
+        '200':
+          description: Сторінка об'єктів
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Page'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Listing'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /listings/{listingId}:
+    parameters:
+      - $ref: '#/components/parameters/ListingId'
+    get:
+      tags: [listings]
+      summary: Отримати об'єкт за id (канонічний read)
+      operationId: getListing
+      responses:
+        '200':
+          description: Об'єкт
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [listings]
+      summary: Оновити об'єкт (часткове оновлення)
+      operationId: updateListing
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateListingRequest'
+      responses:
+        '200':
+          description: Оновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [listings]
+      summary: Видалити (soft delete) об'єкт
+      operationId: deleteListing
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Видалено
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /listings/{listingId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/ListingId'
+    post:
+      tags: [listings]
+      summary: Опублікувати об'єкт
+      operationId: publishListing
+      security:
+        - bearerAuth: []
+      description: |
+        ІНВАРІАНТ ПУБЛІКАЦІЇ: не можна published без
+        (1) валідної address з гео-координатами,
+        (2) щонайменше 1 фото,
+        (3) посилання на PricingPolicy.
+        Якщо хоч одна умова не виконана → 409 з переліком 'missing'.
+        Успіх публікує подію ListingPublished (див. AsyncAPI) → Search індексує об'єкт.
+      responses:
+        '200':
+          description: Опубліковано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '409':
+          description: Порушено інваріант публікації (бракує даних)
+          content:
+            application/problem+json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Problem'
+                  - type: object
+                    properties:
+                      missing:
+                        type: array
+                        description: Чого бракує для публікації
+                        items:
+                          type: string
+                          enum: [address, photos, pricingPolicy]
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /listings/{listingId}/unpublish:
+    parameters:
+      - $ref: '#/components/parameters/ListingId'
+    post:
+      tags: [listings]
+      summary: Зняти з публікації
+      operationId: unpublishListing
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Знято з публікації
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /listings/{listingId}/photos:
+    parameters:
+      - $ref: '#/components/parameters/ListingId'
+    post:
+      tags: [photos]
+      summary: Додати фото (метадані; сам файл вантажиться в об'єктне сховище окремо)
+      operationId: addPhoto
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddPhotoRequest'
+      responses:
+        '201':
+          description: Фото додано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Photo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /listings/{listingId}/photos/{photoId}:
+    parameters:
+      - $ref: '#/components/parameters/ListingId'
+      - name: photoId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [photos]
+      summary: Видалити фото
+      operationId: deletePhoto
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Видалено
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ListingId:
+      name: listingId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+  responses:
+    Unauthorized:
+      description: Не автентифіковано
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: Недостатньо прав
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Не знайдено
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ValidationError:
+      description: Помилка валідації
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+  schemas:
+    ListingStatus:
+      type: string
+      enum: [draft, published, unpublished]
+
+    PropertyType:
+      type: string
+      enum: [apartment, house, room, studio]
+
+    GeoPoint:
+      type: object
+      required: [lat, lng]
+      properties:
+        lat:
+          type: number
+          minimum: -90
+          maximum: 90
+        lng:
+          type: number
+          minimum: -180
+          maximum: 180
+
+    Address:
+      type: object
+      required: [street, city, postalCode, country]
+      properties:
+        street:
+          type: string
+        city:
+          type: string
+        postalCode:
+          type: string
+        country:
+          type: string
+          description: ISO 3166-1 alpha-2
+          example: PL
+        geo:
+          $ref: '#/components/schemas/GeoPoint'
+
+    AvailabilityPolicy:
+      type: object
+      description: |
+        "Години роботи" об'єкта — намір власника. НЕ факт зайнятості.
+        Факт (які дати реально заброньовано) живе в Booking → AvailabilityCalendar.
+      properties:
+        minStay:
+          type: integer
+          minimum: 1
+          description: Мінімум ночей
+        maxStay:
+          type: integer
+          minimum: 1
+          description: Максимум ночей
+        availableFrom:
+          type: string
+          format: date
+        blockedPeriods:
+          type: array
+          description: Періоди, які власник свідомо закрив
+          items:
+            type: object
+            required: [from, to]
+            properties:
+              from:
+                type: string
+                format: date
+              to:
+                type: string
+                format: date
+
+    RoomConfig:
+      type: object
+      properties:
+        bedrooms:
+          type: integer
+          minimum: 0
+        bathrooms:
+          type: integer
+          minimum: 0
+        maxGuests:
+          type: integer
+          minimum: 1
+
+    Photo:
+      type: object
+      required: [id, url]
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+        caption:
+          type: string
+        sortOrder:
+          type: integer
+
+    Listing:
+      type: object
+      required: [id, ownerId, title, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        ownerId:
+          type: string
+          format: uuid
+          description: Посилання на User з Identity (лише id, не копія користувача)
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        propertyType:
+          $ref: '#/components/schemas/PropertyType'
+        address:
+          $ref: '#/components/schemas/Address'
+        roomConfig:
+          $ref: '#/components/schemas/RoomConfig'
+        amenities:
+          type: array
+          items:
+            type: string
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Photo'
+        houseRules:
+          type: string
+        availabilityPolicy:
+          $ref: '#/components/schemas/AvailabilityPolicy'
+        pricingPolicyRef:
+          type: string
+          format: uuid
+          description: Посилання на PricingPolicy у модулі Pricing
+        status:
+          $ref: '#/components/schemas/ListingStatus'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateListingRequest:
+      type: object
+      required: [title, propertyType]
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        propertyType:
+          $ref: '#/components/schemas/PropertyType'
+        address:
+          $ref: '#/components/schemas/Address'
+        roomConfig:
+          $ref: '#/components/schemas/RoomConfig'
+        amenities:
+          type: array
+          items:
+            type: string
+        houseRules:
+          type: string
+        availabilityPolicy:
+          $ref: '#/components/schemas/AvailabilityPolicy'
+
+    UpdateListingRequest:
+      type: object
+      description: Часткове оновлення (усі поля опційні)
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        propertyType:
+          $ref: '#/components/schemas/PropertyType'
+        address:
+          $ref: '#/components/schemas/Address'
+        roomConfig:
+          $ref: '#/components/schemas/RoomConfig'
+        amenities:
+          type: array
+          items:
+            type: string
+        houseRules:
+          type: string
+        availabilityPolicy:
+          $ref: '#/components/schemas/AvailabilityPolicy'
+        pricingPolicyRef:
+          type: string
+          format: uuid
+
+    AddPhotoRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+        caption:
+          type: string
+        sortOrder:
+          type: integer
+
+    Page:
+      type: object
+      description: Метадані пагінації (items додаються в конкретній відповіді)
+      required: [total, limit, offset]
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    Problem:
+      type: object
+      description: RFC 7807 Problem Details
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri

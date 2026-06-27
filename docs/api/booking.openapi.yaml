@@ -1,0 +1,567 @@
+openapi: 3.1.0
+info:
+  title: Homies — Booking API
+  version: 1.0.0
+  contact:
+    name: Homies API
+    email: api@homies.dev
+  description: |
+    Booking bounded context (CORE).
+    Володіє ФАКТОМ зайнятості (AvailabilityCalendar) — "журнал бронювань".
+    Політику доступності ("години роботи") володіє Listings.
+
+    ЗАЛІЗНИЙ ІНВАРІАНТ: жодних накладань броней у станах Confirmed/CheckedIn.
+    Перевіряється двічі: при створенні (POST /bookings) і при підтвердженні
+    (POST /bookings/{id}/confirm) — фінальний рубіж проти race condition.
+    Реалізація: транзакція + унікальне виключення на діапазон дат (PostgreSQL
+    exclusion constraint на daterange) АБО optimistic locking.
+
+    Ціна заморожується знімком (priceSnapshot) на момент створення —
+    береться з Pricing (quoteId). Booking не рахує ціну сам.
+servers:
+  - url: https://api.homies.dev/v1
+    description: Production (illustrative)
+  - url: http://localhost:8000/v1
+    description: Local (docker-compose)
+tags:
+  - name: bookings
+    description: Життєвий цикл бронювання
+  - name: availability
+    description: Календар зайнятості (журнал фактів)
+
+paths:
+  /bookings:
+    post:
+      tags: [bookings]
+      summary: Створити бронювання (стан Requested)
+      operationId: createBooking
+      security:
+        - bearerAuth: []
+      description: |
+        Створює бронь у стані Requested і тимчасово тримає дати.
+        Перевіряє:
+          (1) накладання з бронями Confirmed/CheckedIn → 409 conflict=overlap;
+          (2) відповідність політиці об'єкта (minStay/maxStay/availableFrom/blocked) → 409.
+        Idempotency-Key захищає від подвійного створення при повторі запиту.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+      responses:
+        '201':
+          description: Бронь створено (Requested)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '409':
+          description: Дати недоступні (накладання або порушення політики)
+          content:
+            application/problem+json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Problem'
+                  - type: object
+                    properties:
+                      conflict:
+                        type: string
+                        enum:
+                          - overlap
+                          - policy_min_stay
+                          - policy_max_stay
+                          - policy_unavailable
+                          - policy_blocked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    get:
+      tags: [bookings]
+      summary: Список бронювань (гість — свої; manager — по своїх об'єктах)
+      operationId: listBookings
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: listingId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: state
+          in: query
+          schema:
+            $ref: '#/components/schemas/BookingState'
+      responses:
+        '200':
+          description: Сторінка бронювань
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Page'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Booking'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /bookings/{bookingId}:
+    parameters:
+      - $ref: '#/components/parameters/BookingId'
+    get:
+      tags: [bookings]
+      summary: Отримати бронювання
+      operationId: getBooking
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Бронювання
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /bookings/{bookingId}/confirm:
+    parameters:
+      - $ref: '#/components/parameters/BookingId'
+    post:
+      tags: [bookings]
+      summary: Підтвердити бронь (Requested → Confirmed)
+      operationId: confirmBooking
+      security:
+        - bearerAuth: []
+      description: |
+        Зазвичай ініціюється подією PaymentSucceeded з модуля Payments.
+        ПОВТОРНО перевіряє накладання (фінальний рубіж проти подвійного
+        бронювання, бо між Requested і Confirmed хтось міг встигнути) → 409.
+        Лочить дати в AvailabilityCalendar.
+      responses:
+        '200':
+          description: Підтверджено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /bookings/{bookingId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/BookingId'
+    post:
+      tags: [bookings]
+      summary: Скасувати бронь
+      operationId: cancelBooking
+      security:
+        - bearerAuth: []
+      description: Дозволено зі станів Requested/Confirmed (до check-in). Звільняє дати в календарі.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelRequest'
+      responses:
+        '200':
+          description: Скасовано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /bookings/{bookingId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/BookingId'
+    post:
+      tags: [bookings]
+      summary: Відхилити бронь власником (Requested → Rejected)
+      operationId: rejectBooking
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Відхилено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /bookings/{bookingId}/check-in:
+    parameters:
+      - $ref: '#/components/parameters/BookingId'
+    post:
+      tags: [bookings]
+      summary: Заселення (Confirmed → CheckedIn)
+      operationId: checkInBooking
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Заселено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /bookings/{bookingId}/check-out:
+    parameters:
+      - $ref: '#/components/parameters/BookingId'
+    post:
+      tags: [bookings]
+      summary: Виселення (CheckedIn → Completed)
+      operationId: checkOutBooking
+      security:
+        - bearerAuth: []
+      description: |
+        Завершує стей. Публікує BookingCompleted → тригерить Operations
+        (задача на прибирання) і Reviews (запит на відгук).
+      responses:
+        '200':
+          description: Завершено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /listings/{listingId}/availability:
+    parameters:
+      - $ref: '#/components/parameters/ListingId'
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+    get:
+      tags: [availability]
+      summary: Календар зайнятості об'єкта (журнал фактів) за період
+      operationId: getAvailability
+      description: |
+        Цей ендпойнт належить модулю BOOKING, хоча шлях вкладений під listings —
+        бо він повертає ФАКТ зайнятості, а не політику. Це і є розщеплення
+        "політика (Listings) vs факт (Booking)" зроблене конкретно.
+        Повертає реально зайняті діапазони (підтверджені броні) +
+        закриті власником періоди (дзеркало політики, для зручності UI).
+      responses:
+        '200':
+          description: Зайнятість за період
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    BookingId:
+      name: bookingId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ListingId:
+      name: listingId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Унікальний ключ запиту; повтор з тим самим ключем не створює дубль
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+
+  responses:
+    Unauthorized:
+      description: Не автентифіковано
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: Недостатньо прав
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Не знайдено
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ValidationError:
+      description: Помилка валідації
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: Недопустимий перехід стану або накладання дат
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+  schemas:
+    BookingState:
+      type: string
+      description: |
+        Машина станів:
+        Requested → Confirmed → CheckedIn → Completed
+        Requested → Rejected | Cancelled | Expired
+        Confirmed → Cancelled
+      enum:
+        - Requested
+        - Confirmed
+        - CheckedIn
+        - Completed
+        - Cancelled
+        - Rejected
+        - Expired
+
+    Stay:
+      type: object
+      required: [checkIn, checkOut]
+      properties:
+        checkIn:
+          type: string
+          format: date
+        checkOut:
+          type: string
+          format: date
+
+    PriceSnapshot:
+      type: object
+      description: Заморожена ціна на момент створення броні (з Pricing /quotes)
+      required: [amount, currency]
+      properties:
+        quoteId:
+          type: string
+          format: uuid
+        amount:
+          type: integer
+          description: >-
+            Сума в найменших одиницях валюти (грошах): 350000 = 3500.00 PLN.
+            Цілим числом — щоб уникнути похибок дробових чисел у грошах (як у Stripe).
+          example: 350000
+        currency:
+          type: string
+          description: Код валюти, ISO 4217
+          example: PLN
+
+    Booking:
+      type: object
+      required: [id, listingId, guestId, stay, guests, state, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        listingId:
+          type: string
+          format: uuid
+        guestId:
+          type: string
+          format: uuid
+          description: Посилання на User (у ролі Guest)
+        stay:
+          $ref: '#/components/schemas/Stay'
+        guests:
+          type: integer
+          minimum: 1
+        state:
+          $ref: '#/components/schemas/BookingState'
+        priceSnapshot:
+          $ref: '#/components/schemas/PriceSnapshot'
+        paymentRef:
+          type: string
+          description: Посилання на Payment у модулі Payments
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateBookingRequest:
+      type: object
+      required: [listingId, checkIn, checkOut, guests]
+      properties:
+        listingId:
+          type: string
+          format: uuid
+        checkIn:
+          type: string
+          format: date
+        checkOut:
+          type: string
+          format: date
+        guests:
+          type: integer
+          minimum: 1
+        quoteId:
+          type: string
+          format: uuid
+          description: Котирування з Pricing (фіксує ціну на час оформлення)
+
+    CancelRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+
+    OccupiedRange:
+      type: object
+      required: [from, to]
+      properties:
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        bookingState:
+          $ref: '#/components/schemas/BookingState'
+
+    BlockedRange:
+      type: object
+      required: [from, to]
+      properties:
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+
+    AvailabilityResponse:
+      type: object
+      required: [listingId, from, to, occupied, blocked]
+      properties:
+        listingId:
+          type: string
+          format: uuid
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        occupied:
+          type: array
+          description: Реально зайняті діапазони (підтверджені броні)
+          items:
+            $ref: '#/components/schemas/OccupiedRange'
+        blocked:
+          type: array
+          description: Закриті власником періоди (дзеркало політики)
+          items:
+            $ref: '#/components/schemas/BlockedRange'
+
+    Page:
+      type: object
+      description: Метадані пагінації (items додаються в конкретній відповіді)
+      required: [total, limit, offset]
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    Problem:
+      type: object
+      description: RFC 7807 Problem Details
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri

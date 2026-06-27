@@ -1,0 +1,13 @@
+# Політика лінтингу OpenAPI-контрактів Homies.
+#
+# Базуємось на офіційному наборі правил Spectral для OpenAPI (spectral:oas) —
+# це індустрійний стандарт перевірки якості API-специфікацій.
+# Свідомо послаблюємо одне опініоноване правило (рішення команди, не недогляд).
+extends: ["spectral:oas"]
+
+rules:
+  # operation-description вимагає окремий 'description' на КОЖНОМУ ендпойнті
+  # додатково до 'summary'. Для простих операцій (GET за id, списки) короткого
+  # summary достатньо; складні ендпойнти (publish, confirm, cancel, availability)
+  # розгорнутий опис мають. Тому це правило вимикаємо.
+  operation-description: off
