@@ -1,0 +1,312 @@
+openapi: 3.1.0
+info:
+  title: Homies Listings API
+  version: 0.1.0
+  description: >
+    Property listings: publication and management by landlords/managers,
+    geo-search and browsing by clients. Monetary amounts are integers in
+    minor units (grosz) with an ISO 4217 currency code — see ADR-0002.
+  contact:
+    name: Homies
+servers:
+  - url: https://api.homies.example/v1
+    description: Production (placeholder)
+  - url: http://localhost:8000/v1
+    description: Local development
+tags:
+  - name: listings
+paths:
+  /listings:
+    get:
+      operationId: searchListings
+      tags: [listings]
+      summary: Search listings with filters and geo-radius
+      description: Public search over published listings; geo-radius filtering uses PostGIS, text/facets go through the search index.
+      parameters:
+        - name: city
+          in: query
+          schema:
+            type: string
+        - name: lat
+          in: query
+          schema:
+            type: number
+        - name: lon
+          in: query
+          schema:
+            type: number
+        - name: radius_m
+          in: query
+          description: Radius in meters around (lat, lon)
+          schema:
+            type: integer
+            maximum: 50000
+        - name: term
+          in: query
+          schema:
+            $ref: '#/components/schemas/RentalTerm'
+        - name: price_min
+          in: query
+          description: Minor units (grosz)
+          schema:
+            type: integer
+        - name: price_max
+          in: query
+          description: Minor units (grosz)
+          schema:
+            type: integer
+        - name: rooms_min
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated listing results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListingPage'
+    post:
+      operationId: createListing
+      tags: [listings]
+      summary: Create a listing (draft)
+      description: Creates a listing in draft status owned by the authenticated landlord or manager.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListingInput'
+      responses:
+        '201':
+          description: Listing created as draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /listings/{listingId}:
+    parameters:
+      - name: listingId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getListing
+      tags: [listings]
+      summary: Get a listing by id
+      description: Returns full listing detail; drafts are visible only to their owner or a manager.
+      responses:
+        '200':
+          description: Listing detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      operationId: updateListing
+      tags: [listings]
+      summary: Update listing fields (owner or manager only)
+      description: Partial update of listing attributes; published listings emit ListingUpdated on change.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListingInput'
+      responses:
+        '200':
+          description: Updated listing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /listings/{listingId}/publish:
+    post:
+      operationId: publishListing
+      tags: [listings]
+      summary: Publish a draft listing (emits ListingPublished event)
+      description: Transitions a draft to published, making it searchable and bookable.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Listing is now publicly visible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Listing is not in a publishable state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ValidationError:
+      description: Request failed validation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    RentalTerm:
+      type: string
+      description: Supported rental term granularity
+      enum: [daily, monthly, quarterly, yearly]
+    Money:
+      type: object
+      description: Integer minor units + ISO 4217 currency (ADR-0002)
+      required: [amount, currency]
+      properties:
+        amount:
+          type: integer
+          description: "e.g. 350000 = 3500.00 PLN"
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          examples: [PLN]
+    GeoPoint:
+      type: object
+      required: [lat, lon]
+      properties:
+        lat:
+          type: number
+        lon:
+          type: number
+    ListingInput:
+      type: object
+      required: [title, city, address, location, rooms, area_m2, prices]
+      properties:
+        title:
+          type: string
+          maxLength: 140
+        description:
+          type: string
+        city:
+          type: string
+        address:
+          type: string
+        location:
+          $ref: '#/components/schemas/GeoPoint'
+        rooms:
+          type: integer
+          minimum: 1
+        area_m2:
+          type: number
+        amenities:
+          type: array
+          items:
+            type: string
+        prices:
+          type: array
+          description: One price per offered rental term
+          items:
+            type: object
+            required: [term, price]
+            properties:
+              term:
+                $ref: '#/components/schemas/RentalTerm'
+              price:
+                $ref: '#/components/schemas/Money'
+    ListingStatus:
+      type: string
+      enum: [draft, published, archived]
+    Listing:
+      allOf:
+        - $ref: '#/components/schemas/ListingInput'
+        - type: object
+          required: [id, status, owner_id, created_at]
+          properties:
+            id:
+              type: string
+              format: uuid
+            status:
+              $ref: '#/components/schemas/ListingStatus'
+            owner_id:
+              type: string
+              format: uuid
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+    ListingPage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Listing'
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string

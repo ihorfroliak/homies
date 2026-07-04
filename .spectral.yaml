@@ -1,0 +1,13 @@
+# Spectral linting policy for API contracts (docs/api/*.openapi.yaml).
+# Rule overrides are engineering decisions and must carry a written
+# rationale — see ADR-0005.
+extends: ["spectral:oas"]
+rules:
+  # Rationale: servers list includes a production placeholder domain
+  # until the real domain is registered (Phase 1). Re-enable then.
+  oas3-server-trailing-slash: warn
+
+  # Enforced project conventions:
+  operation-operationId: error
+  operation-tags: error
+  oas3-valid-media-example: error

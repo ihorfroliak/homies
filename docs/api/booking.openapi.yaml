@@ -1,0 +1,315 @@
+openapi: 3.1.0
+info:
+  title: Homies Booking & Availability API
+  version: 0.1.0
+  description: >
+    Availability calendars and the booking lifecycle
+    (requested → confirmed → completed / cancelled).
+    Availability is split into policy (what the landlord offers) and
+    facts (confirmed bookings) — like opening hours vs. a reservations
+    journal. Booking creation requires an Idempotency-Key header so
+    retries never double-book. Money follows ADR-0002 (integer minor units).
+  contact:
+    name: Homies
+servers:
+  - url: https://api.homies.example/v1
+    description: Production (placeholder)
+  - url: http://localhost:8000/v1
+    description: Local development
+tags:
+  - name: availability
+  - name: bookings
+paths:
+  /listings/{listingId}/availability:
+    get:
+      operationId: getAvailability
+      tags: [availability]
+      summary: Get availability for a listing in a date range
+      description: Merges landlord availability policy with confirmed booking facts into a day-by-day calendar.
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Days with availability status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityCalendar'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /bookings:
+    post:
+      operationId: createBooking
+      tags: [bookings]
+      summary: Request a booking (emits BookingRequested event)
+      description: Creates a booking in requested status after an availability check; idempotent via the Idempotency-Key header.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: >
+            Client-generated UUID. Retrying with the same key returns the
+            original booking instead of creating a duplicate.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingRequest'
+      responses:
+        '201':
+          description: Booking requested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Dates no longer available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    get:
+      operationId: listMyBookings
+      tags: [bookings]
+      summary: List bookings of the authenticated user
+      description: Returns the caller's bookings (as tenant), optionally filtered by status.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/BookingStatus'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: Bookings page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, page, total]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Booking'
+                  page:
+                    type: integer
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /bookings/{bookingId}:
+    get:
+      operationId: getBooking
+      tags: [bookings]
+      summary: Get a booking by id (participant or manager only)
+      description: Accessible to the tenant, the listing owner, and managers.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Booking detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /bookings/{bookingId}/cancel:
+    post:
+      operationId: cancelBooking
+      tags: [bookings]
+      summary: Cancel a booking (emits BookingCancelled event)
+      description: Allowed for requested and confirmed bookings according to the cancellation policy; frees the calendar days.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Booking cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Booking is not cancellable in its current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ValidationError:
+      description: Request failed validation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Money:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount:
+          type: integer
+          description: Minor units (grosz), see ADR-0002
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+    BookingStatus:
+      type: string
+      enum: [requested, confirmed, completed, cancelled]
+    BookingRequest:
+      type: object
+      required: [listing_id, check_in, check_out]
+      properties:
+        listing_id:
+          type: string
+          format: uuid
+        check_in:
+          type: string
+          format: date
+        check_out:
+          type: string
+          format: date
+        guests:
+          type: integer
+          minimum: 1
+          default: 1
+        comment:
+          type: string
+    Booking:
+      type: object
+      required: [id, listing_id, tenant_id, status, check_in, check_out, total]
+      properties:
+        id:
+          type: string
+          format: uuid
+        listing_id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/BookingStatus'
+        check_in:
+          type: string
+          format: date
+        check_out:
+          type: string
+          format: date
+        guests:
+          type: integer
+        total:
+          $ref: '#/components/schemas/Money'
+        created_at:
+          type: string
+          format: date-time
+    AvailabilityCalendar:
+      type: object
+      required: [listing_id, days]
+      properties:
+        listing_id:
+          type: string
+          format: uuid
+        days:
+          type: array
+          items:
+            type: object
+            required: [date, status]
+            properties:
+              date:
+                type: string
+                format: date
+              status:
+                type: string
+                enum: [available, booked, blocked]
+              price:
+                $ref: '#/components/schemas/Money'
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string

@@ -1,0 +1,265 @@
+asyncapi: 3.0.0
+info:
+  title: Homies Domain Events
+  version: 0.1.0
+  description: >
+    Catalog of domain events published on the event bus (ADR-0004).
+    16 events across 5 channels. Events are past-tense facts, carry a
+    UUIDv7 event_id and occurred_at timestamp, and are consumed
+    idempotently. Money is integer minor units (ADR-0002).
+defaultContentType: application/json
+channels:
+  identity:
+    address: homies.identity
+    messages:
+      UserRegistered:
+        $ref: '#/components/messages/UserRegistered'
+      UserVerified:
+        $ref: '#/components/messages/UserVerified'
+  listings:
+    address: homies.listings
+    messages:
+      ListingPublished:
+        $ref: '#/components/messages/ListingPublished'
+      ListingUpdated:
+        $ref: '#/components/messages/ListingUpdated'
+      ListingArchived:
+        $ref: '#/components/messages/ListingArchived'
+  bookings:
+    address: homies.bookings
+    messages:
+      BookingRequested:
+        $ref: '#/components/messages/BookingRequested'
+      BookingConfirmed:
+        $ref: '#/components/messages/BookingConfirmed'
+      BookingCancelled:
+        $ref: '#/components/messages/BookingCancelled'
+      BookingCompleted:
+        $ref: '#/components/messages/BookingCompleted'
+  payments:
+    address: homies.payments
+    messages:
+      PaymentAuthorized:
+        $ref: '#/components/messages/PaymentAuthorized'
+      PaymentCaptured:
+        $ref: '#/components/messages/PaymentCaptured'
+      PaymentFailed:
+        $ref: '#/components/messages/PaymentFailed'
+      PayoutSent:
+        $ref: '#/components/messages/PayoutSent'
+  operations:
+    address: homies.operations
+    messages:
+      TaskCreated:
+        $ref: '#/components/messages/TaskCreated'
+      TaskCompleted:
+        $ref: '#/components/messages/TaskCompleted'
+      ReviewSubmitted:
+        $ref: '#/components/messages/ReviewSubmitted'
+operations:
+  publishIdentityEvents:
+    action: send
+    channel:
+      $ref: '#/channels/identity'
+  publishListingEvents:
+    action: send
+    channel:
+      $ref: '#/channels/listings'
+  publishBookingEvents:
+    action: send
+    channel:
+      $ref: '#/channels/bookings'
+  publishPaymentEvents:
+    action: send
+    channel:
+      $ref: '#/channels/payments'
+  publishOperationsEvents:
+    action: send
+    channel:
+      $ref: '#/channels/operations'
+components:
+  messages:
+    UserRegistered:
+      name: UserRegistered
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - type: object
+            required: [user_id, role]
+            properties:
+              user_id: { type: string, format: uuid }
+              role: { type: string, enum: [client, worker, manager, admin] }
+              email: { type: string, format: email }
+    UserVerified:
+      name: UserVerified
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - type: object
+            required: [user_id]
+            properties:
+              user_id: { type: string, format: uuid }
+    ListingPublished:
+      name: ListingPublished
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - type: object
+            required: [listing_id, owner_id, city]
+            properties:
+              listing_id: { type: string, format: uuid }
+              owner_id: { type: string, format: uuid }
+              city: { type: string }
+    ListingUpdated:
+      name: ListingUpdated
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - type: object
+            required: [listing_id]
+            properties:
+              listing_id: { type: string, format: uuid }
+              changed_fields:
+                type: array
+                items: { type: string }
+    ListingArchived:
+      name: ListingArchived
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - type: object
+            required: [listing_id]
+            properties:
+              listing_id: { type: string, format: uuid }
+    BookingRequested:
+      name: BookingRequested
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - $ref: '#/components/schemas/BookingEventBody'
+    BookingConfirmed:
+      name: BookingConfirmed
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - $ref: '#/components/schemas/BookingEventBody'
+    BookingCancelled:
+      name: BookingCancelled
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - $ref: '#/components/schemas/BookingEventBody'
+          - type: object
+            properties:
+              reason: { type: string }
+    BookingCompleted:
+      name: BookingCompleted
+      description: >
+        Fan-out example (ADR-0004): consumed independently by
+        Notifications (guest thank-you), Operations (cleaning task),
+        and Reviews (review invitation).
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - $ref: '#/components/schemas/BookingEventBody'
+    PaymentAuthorized:
+      name: PaymentAuthorized
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - $ref: '#/components/schemas/PaymentEventBody'
+    PaymentCaptured:
+      name: PaymentCaptured
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - $ref: '#/components/schemas/PaymentEventBody'
+    PaymentFailed:
+      name: PaymentFailed
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - $ref: '#/components/schemas/PaymentEventBody'
+          - type: object
+            properties:
+              failure_code: { type: string }
+    PayoutSent:
+      name: PayoutSent
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - type: object
+            required: [payout_id, owner_id, money]
+            properties:
+              payout_id: { type: string, format: uuid }
+              owner_id: { type: string, format: uuid }
+              money: { $ref: '#/components/schemas/Money' }
+    TaskCreated:
+      name: TaskCreated
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - $ref: '#/components/schemas/TaskEventBody'
+    TaskCompleted:
+      name: TaskCompleted
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - $ref: '#/components/schemas/TaskEventBody'
+    ReviewSubmitted:
+      name: ReviewSubmitted
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/EventEnvelope'
+          - type: object
+            required: [review_id, booking_id, rating]
+            properties:
+              review_id: { type: string, format: uuid }
+              booking_id: { type: string, format: uuid }
+              rating: { type: integer, minimum: 1, maximum: 5 }
+  schemas:
+    EventEnvelope:
+      type: object
+      required: [event_id, occurred_at, schema_version]
+      properties:
+        event_id:
+          type: string
+          format: uuid
+          description: UUIDv7 — consumers deduplicate on this
+        occurred_at:
+          type: string
+          format: date-time
+        schema_version:
+          type: integer
+          default: 1
+    Money:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount: { type: integer, description: Minor units (ADR-0002) }
+        currency: { type: string }
+    BookingEventBody:
+      type: object
+      required: [booking_id, listing_id, tenant_id]
+      properties:
+        booking_id: { type: string, format: uuid }
+        listing_id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        check_in: { type: string, format: date }
+        check_out: { type: string, format: date }
+        total: { $ref: '#/components/schemas/Money' }
+    PaymentEventBody:
+      type: object
+      required: [payment_id, booking_id, money]
+      properties:
+        payment_id: { type: string, format: uuid }
+        booking_id: { type: string, format: uuid }
+        money: { $ref: '#/components/schemas/Money' }
+    TaskEventBody:
+      type: object
+      required: [task_id, listing_id, kind]
+      properties:
+        task_id: { type: string, format: uuid }
+        listing_id: { type: string, format: uuid }
+        kind: { type: string, enum: [cleaning, maintenance, inspection, checkin] }
+        assignee_id: { type: string, format: uuid }
