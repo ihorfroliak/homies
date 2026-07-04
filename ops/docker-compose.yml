@@ -1,0 +1,66 @@
+name: homies
+
+services:
+  api:
+    build:
+      context: ../backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://homies:homies@db:5432/homies
+      REDIS_URL: redis://redis:6379/0
+      MEILI_URL: http://meilisearch:7700
+      MEILI_MASTER_KEY: dev-master-key
+      NATS_URL: nats://nats:4222
+      ENV: local
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      meilisearch:
+        condition: service_started
+      nats:
+        condition: service_started
+
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: homies
+      POSTGRES_PASSWORD: homies
+      POSTGRES_DB: homies
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U homies -d homies"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.8
+    environment:
+      MEILI_MASTER_KEY: dev-master-key
+      MEILI_NO_ANALYTICS: "true"
+    ports:
+      - "7700:7700"
+    volumes:
+      - meilidata:/meili_data
+
+  # Local stand-in for the event bus (Kafka/MSK in prod) — see ADR-0004.
+  nats:
+    image: nats:2.10-alpine
+    command: ["-js"]
+    ports:
+      - "4222:4222"
+
+volumes:
+  pgdata:
+  meilidata:

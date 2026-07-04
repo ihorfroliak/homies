@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend
+        working-directory: backend
+        run: pip install .[dev]
+      - name: Lint
+        working-directory: backend
+        run: ruff check app tests
+      - name: Test
+        working-directory: backend
+        run: pytest -q
+
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Lint OpenAPI contracts (Spectral)
+        run: npx --yes @stoplight/spectral-cli lint "docs/api/*.openapi.yaml" --ruleset .spectral.yaml
+      - name: Validate AsyncAPI catalog
+        run: npx --yes @asyncapi/cli validate docs/api/events.asyncapi.yaml

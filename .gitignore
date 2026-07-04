@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Node
+node_modules/
+.next/
+.expo/
+
+# Data & ML artifacts
+data/ml/models/
+data/ml/*.ipynb_checkpoints/
+*.duckdb
+mlruns/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!example.tfvars
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
