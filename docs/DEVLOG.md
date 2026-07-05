@@ -52,10 +52,39 @@ Marketing/повні Disputes — вниз/у V1), AI-first оргдизайн (
 80 ранжованих покращень. MVP переозначено: «петля виручки оператора»
 з 10 об'єктами.
 
-**Далі (за планом 07 §3):**
-- [ ] Юр-висновок агентської моделі + оферта host-у (#2, #3).
-- [ ] ADR-0007 (Stripe Connect), ADR-0008 (інтервальна доступність), синхронізація бізнес-пакета (#80).
-- [ ] Chat 03: auth + перший модуль (D4).
-- [ ] Створити GitHub-репозиторій `homies`, запушити, перевірити зелений CI.
+## 2026-07-05 (ніч) — D4 вертикальний зріз + D5 hardening (КОД)
+
+**D4 (backend/app):** модульний моноліт FastAPI+SQLAlchemy, 6 модулів —
+identity (register/login scrypt, JWT+refresh-ротація, RBAC guest/host/admin,
+host onboarding = симуляція Stripe Connect), listings (CRUD+publish+блокування),
+booking (Idempotency-Key, інтервальна доступність, ціна=ночі×ставка, cancel/
+complete, календар-проєкція), payments (PaymentProvider-шов Stripe Connect,
+webhook, refund, payout-оркестрація), ledger (подвійний облік, єдина точка
+руху грошей, reconciliation), admin (read-only видимість + audit). Гроші —
+цілі мінорні одиниці (ADR-0002), audit_log append-only. Документ:
+`docs/design/d4-vertical-slice.md`.
+
+**D5 hardening (реальні P0-фікси, не лише аудит):** (1) Postgres exclusion
+constraint проти подвійного бронювання (btree_gist, daterange &&), IntegrityError→409;
+(2) late-success auto-refund (webhook succeeds після cancel → capture+refund,
+escrow не зависає); (3) секрет на webhook (трастовий кордон; прод — Stripe-Signature);
+(4) ORM-guard append-only на ledger+audit; (5) escrow≥0 інваріант у payout +
+fix проводки з fee=0. Документ: `docs/design/d5-hardening.md` (9 deliverables:
+race register, fraud map, ledger spec, concurrency model, Stripe edge cases,
+інваріанти I1-I10, distributed failure, risk heatmap, P0 backlog).
+
+**Верифікація:** 12 pytest зелені (e2e booking→payment→payout→ledger, refund,
+void, RBAC, refresh-ротація, overlap, блокування, валідації, D5: webhook-401,
+late-refund, ledger immutability), ruff чистий. Живий смоук на docker+Postgres:
+подвійне бронювання→409, webhook-wrong-secret→401, повний цикл, recon ok=True,
+platform_revenue=15750 (15% з 105000), escrow=0.
+
+**Далі:**
+- [ ] Alembic-міграції (замінити create_all + винести exclusion constraint у міграцію).
+- [ ] P1 hardening: auto-void неоплачених (scheduler), rate limiting, PITR-бекапи, chargeback/clawback, щоденна звірка.
+- [ ] Юр-висновок агентської моделі + оферта host-у (strategy 07 #2,#3).
+- [ ] ADR-0007 (Stripe Connect), ADR-0008 (інтервальна доступність) — формалізувати як ADR.
+- [ ] Реальний Stripe Connect адаптер за PaymentProvider-швом.
+- [ ] GitHub remote + push + CI.
 - [ ] Chat 03: auth-модуль — схема БД, міграції (Alembic), реєстрація/логін/JWT.
 - [ ] GitHub Projects дошка з фазами.

@@ -30,7 +30,8 @@ services:
       POSTGRES_PASSWORD: homies
       POSTGRES_DB: homies
     ports:
-      - "5432:5432"
+      # 5433 on the host: 5432 is occupied by a legacy container on this machine
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
