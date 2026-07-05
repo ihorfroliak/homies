@@ -136,12 +136,24 @@ partial capture, disputes, payout) **не спостережено**. Answer: **
 Шлях до YES: дати test-ключі + прогнати sandbox-checklist (b1-stripe §5), без
 нового коду. Readiness ~40 → ~50.
 
-**Далі (за RELEASE.md):**
-- [ ] Дати Stripe test-ключі → sandbox-checklist → B1 PARTIALLY→YES.
-- [ ] Chargeback/`dispute.*` handler + clawback (refund-after-payout).
-- [ ] Юр-трек: agency-договір + T&C + KYC через Stripe (B3).
-- [ ] B2-решта: managed Postgres (авто-бекап+PITR+offsite).
-- [ ] Gate 2: auto-void, rate-limit, observability, MFA, secrets-mgmt.
-- [ ] GitHub remote + push + CI.
+## 2026-07-06 — OAT-01 Operational Acceptance Testing
+
+10 бізнес-сценаріїв з порожньої системи (`tests/test_oat_business.py`, всі
+відпрацювали). **Хребет** (S1 onboarding→bookable, S2 booking→confirmed+
+reconciled, S5 cancel→refund+availability, S9 financial closing) **PASS без
+ручного ремонту даних**; S4 фін-частина (complete→payout→recon=0) PASS.
+**Dead-end (404, доведена відсутність):** S3 check-in/ops, S6 support,
+S7 incident, S8 dispute; S10 founder ops-view. Money-visibility ✅.
+Answer: **PARTIALLY** — платформа тримає гроші/бронювання безпечно;
+check-in/клінінг/support/dispute/нотифікації в платформі **не існують** →
+на пілоті операції ручні off-platform (HeyHomie+засновник), як у D8-плані.
+Звіт: `docs/reviews/2026-07-06-oat-01-report.md` (матриця, gap-и, risk-
+register, Top-20 ROI). 26 тестів зелені.
+
+**Далі (за RELEASE.md, Top-6 P0 для пілота):**
+- [ ] **Нотифікації** (транзакційні: підтвердження/нагадування/check-in) — найвищий ROI, наступний цикл.
+- [ ] Check-in інструкції на бронюванні; auto-void неоплачених; turnover-задача (клінінг+фотозвіт); auto-complete за таймером; founder attention-в'ю.
+- [ ] Без коду: Stripe test-ключі → B1 YES; юр-трек B3; managed Postgres.
+- [ ] Gate 2: chargeback/clawback, rate-limit, observability, MFA, GitHub CI.
 - [ ] Chat 03: auth-модуль — схема БД, міграції (Alembic), реєстрація/логін/JWT.
 - [ ] GitHub Projects дошка з фазами.

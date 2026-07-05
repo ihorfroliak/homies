@@ -31,8 +31,12 @@
 - (Gate 2: auto-void, rate-limit, observability, MFA, chargeback/clawback.)
 
 ### 3. Одна наступна задача з найбільшим наближенням до prod?
-→ **Дати Stripe test-ключі і прогнати sandbox-checklist** (`docs/design/b1-stripe.md` §5).
-Це переводить B1 з PARTIALLY у YES без нового коду. Паралельно — юр-трек (B3).
+Дві дороги (OAT-01 показав, що money-хребет готовий, а операції — dead-end):
+- **Технічно для пілота (Top-6 P0, `docs/reviews/2026-07-06-oat-01-report.md`):**
+  транзакційні **нотифікації** — найвищий ROI (без них гість не знає стану броні).
+- **Без коду:** дати Stripe **test-ключі** (B1→YES) + юр-трек (B3).
+→ Рекомендація наступного циклу: **нотифікації** (закриває S2-gap, розблоковує
+  check-in-інструкції) — потім auto-void, turnover-задача, founder attention-в'ю.
 
 ---
 
@@ -41,6 +45,7 @@
 - 2026-07-05: W1 — Alembic-міграції (B6 закрито) + DB append-only тригери (B5 закрито, owner-proof). Readiness 22 → ~32.
 - 2026-07-05: D9 — виконаний DR-drill (backup+restore+фінансова звірка PASS двічі). B2-restore доведено; авто-розклад+offsite → managed Postgres. Answer: PARTIALLY. Readiness ~32 → ~40.
 - 2026-07-05: B1 — Stripe Connect адаптер (destination charges) + webhook (підпис/ідемпотентність/dispatch) + reconciliation. Доведено проти mock; sandbox pending keys. Answer: PARTIALLY. Readiness ~40 → ~50.
+- 2026-07-06: OAT-01 — 10 бізнес-сценаріїв з порожньої системи. Хребет (onboard→book→pay→cancel/refund→complete→payout→reconcile) PASS без ручного ремонту; операційний шар (check-in/клінінг/support/incident/dispute/нотифікації) = dead-end (404). Answer: PARTIALLY — платформа тримає гроші/бронювання, операції ручні off-platform. 26 тестів зелені.
 
 ## Робочий режим (постійний, без нових D-етапів)
 Build → Verify → Release Gate → Repeat. Кожен цикл: одна задача критичного
