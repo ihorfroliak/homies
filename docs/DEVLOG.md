@@ -99,11 +99,26 @@ platform_revenue=15750 (15% з 105000), escrow=0.
 - Startup-guard і міграція узгоджені; 12 pytest зелені, warfare без регресій,
   живий смоук чистий. Readiness 22 → ~32.
 
-**Далі (за RELEASE.md):**
-- [ ] **B2** pg_dump/PITR бекап + виконаний restore-тест (наступна задача, найвищий ROET).
-- [ ] **B1** реальний StripeConnectProvider за наявним швом + webhook-підпис.
+## 2026-07-05 (ніч-3) — D9 Disaster Recovery (виконаний drill)
+
+**B2-restore закрито доказом.** Скрипти `backend/scripts/backup/`
+(backup.sh: pg_dump→gzip→AES-256→sha256; restore.sh: checksum-verify→
+decrypt→pg_restore; verify_restore.py: фінансова звірка; dr_drill.sh).
+Виконаний drill проти живого Postgres: backup (90 КБ, шифрований) →
+restore **RTO 4s** → фінансова звірка PASS (grand_total=0, escrow=0,
+paid_without_payout=0, counts збіглись) → **accidental DROP TABLE
+journal_lines → restore → дані повернулись, звірка PASS**. Append-only
+тригери + exclusion constraint переживають restore. Runbook:
+`docs/runbooks/dr-database-recovery.md`. Звіт+оцінки:
+`docs/design/d9-disaster-recovery.md`. Answer: **PARTIALLY** (локальна
+катастрофа — виживає; тотальна втрата хоста — ні, offsite/авто-розклад
+відкриті → managed Postgres). Readiness ~32 → ~40.
+
+**Далі (за RELEASE.md, цикл Build→Verify→Gate):**
+- [ ] **B1** реальний StripeConnectProvider за наявним швом + webhook-підпис — **єдине, що лишилось кодом на критичному шляху**.
+- [ ] B2-решта: managed Postgres (авто-бекап+PITR+offsite з коробки) — вибір хостингу, не код.
 - [ ] Юр-трек паралельно: agency-договір + T&C + KYC через Stripe (B3).
 - [ ] Gate 2: auto-void, rate-limit, observability, MFA, chargeback.
-- [ ] GitHub remote + push + CI (перший реальний прогін).
+- [ ] GitHub remote + push + CI.
 - [ ] Chat 03: auth-модуль — схема БД, міграції (Alembic), реєстрація/логін/JWT.
 - [ ] GitHub Projects дошка з фазами.
