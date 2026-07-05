@@ -48,8 +48,20 @@ Non-negotiables:
 - Local dev: `make up` (compose: api, PostGIS, Redis, Meilisearch, NATS),
   `make test`, `make lint`. Backend: FastAPI, Python 3.12, `backend/`.
 
+## Working loop: Build → Verify → Release Gate → Build
+
+After every significant change, update [RELEASE.md](RELEASE.md) by answering
+three questions: (1) what can now be proven by evidence? (2) what still
+blocks the next release? (3) which single next task moves us closest to a
+safe production booking? This replaces open-ended review cycles and keeps
+work on the shortest path to the first real booking. Plan:
+[docs/RELEASE_PLAN.md](docs/RELEASE_PLAN.md).
+
 ## Current priority
 
-Operator-loop pilot (docs/strategy/07 §3): ADR-0007 (Stripe Connect),
-ADR-0008 (interval availability), Chat 03 — auth + first module.
-Everything else waits.
+Path to Gate 1 (first safe production booking), highest ROET first
+(docs/RELEASE_PLAN.md §5): backups+restore test (B2) → real Stripe Connect
+adapter behind the existing PaymentProvider seam (B1) → DB-REVOKE on ledger
+(B5). Legal (agency contract + T&C) runs in parallel from day one.
+Deferred to Gate 2 (not on the path to booking #1): auto-void, rate-limit,
+observability, MFA, chargeback flow. Everything else waits.

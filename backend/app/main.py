@@ -22,18 +22,23 @@ from app.modules.payments.router import router as payments_router
 
 
 def _apply_postgres_guards() -> None:
-    """DB-level double-booking guard (D5 invariant I1): an exclusion
-    constraint makes overlapping pending/confirmed bookings physically
-    impossible, regardless of application bugs. Postgres only; moves to
-    Alembic with the first migration."""
+    """Postgres-only DB-level guards for local/dev create_all. In shared and
+    production environments the identical guards ship via Alembic
+    (alembic/versions/*_initial_schema.py) — that migration is the source of
+    truth. Kept here so a create_all'd dev DB matches production behaviour.
+
+    - I1 (D5/D6): exclusion constraint => overlapping pending/confirmed
+      bookings are physically impossible.
+    - B5 (D7): append-only triggers on ledger/audit => even direct SQL from
+      an admin cannot tamper financial records (owner-proof, unlike REVOKE).
+    """
     if engine.dialect.name != "postgresql":
         return
     with engine.begin() as conn:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS btree_gist"))
-        exists = conn.execute(
+        if not conn.execute(
             text("SELECT 1 FROM pg_constraint WHERE conname = 'excl_booking_overlap'")
-        ).scalar()
-        if not exists:
+        ).scalar():
             conn.execute(
                 text(
                     "ALTER TABLE bookings ADD CONSTRAINT excl_booking_overlap "
@@ -43,6 +48,25 @@ def _apply_postgres_guards() -> None:
                     ") WHERE (status IN ('pending', 'confirmed'))"
                 )
             )
+        conn.execute(
+            text(
+                "CREATE OR REPLACE FUNCTION forbid_mutation() RETURNS trigger AS $$ "
+                "BEGIN RAISE EXCEPTION 'append-only table %: % is not permitted', "
+                "TG_TABLE_NAME, TG_OP; END; $$ LANGUAGE plpgsql"
+            )
+        )
+        for table in ("journal_entries", "journal_lines", "audit_log"):
+            if not conn.execute(
+                text("SELECT 1 FROM pg_trigger WHERE tgname = :n"),
+                {"n": f"{table}_append_only"},
+            ).scalar():
+                conn.execute(
+                    text(
+                        f"CREATE TRIGGER {table}_append_only "
+                        f"BEFORE UPDATE OR DELETE ON {table} "
+                        f"FOR EACH ROW EXECUTE FUNCTION forbid_mutation()"
+                    )
+                )
 
 
 @asynccontextmanager

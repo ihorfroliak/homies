@@ -1,11 +1,18 @@
-"""Live e2e smoke against the running docker stack."""
+"""Live e2e smoke against the running docker stack.
+
+Uses unique guest emails and Idempotency-Keys per run so repeated runs do
+not replay stale bookings (a fixed key returns the prior booking, whose
+completed status no longer blocks its dates — that is correct behaviour,
+just misleading in a smoke test)."""
 
 import datetime as dt
 import sys
+import uuid
 
 import httpx
 
 BASE = "http://localhost:8000/v1"
+RUN = uuid.uuid4().hex[:8]
 c = httpx.Client(base_url=BASE, timeout=20)
 
 
@@ -21,9 +28,10 @@ def login(email, password="password-123456"):
 
 
 register("host1@homies.example", "host")
-register("guest1@homies.example", "guest")
+guest_email = f"guest-{RUN}@homies.example"
+register(guest_email, "guest")
 H = login("host1@homies.example")
-G = login("guest1@homies.example")
+G = login(guest_email)
 A = login("admin@homies.example", "admin-live-password-1")
 
 r = c.post("/hosts/onboarding", json={"payout_iban": "PL61109010140000071219812874"}, headers=H)
@@ -49,19 +57,20 @@ co = (dt.date.today() + dt.timedelta(days=33)).isoformat()
 r = c.post(
     "/bookings",
     json={"listing_id": listing["id"], "check_in": ci, "check_out": co},
-    headers=G | {"Idempotency-Key": "live-smoke-0001"},
+    headers=G | {"Idempotency-Key": f"live-smoke-{RUN}"},
 )
 assert r.status_code == 201, r.text
 bk = r.json()
 print("BOOKING:", bk["status"], "total:", bk["total_amount"])
 
-# Race check at DB level: parallel-ish duplicate with другим guest
-register("guest2@homies.example", "guest")
-G2 = login("guest2@homies.example")
+# Race check at DB level: second guest, same listing+dates -> must be blocked
+guest2_email = f"guest2-{RUN}@homies.example"
+register(guest2_email, "guest")
+G2 = login(guest2_email)
 r = c.post(
     "/bookings",
     json={"listing_id": listing["id"], "check_in": ci, "check_out": co},
-    headers=G2 | {"Idempotency-Key": "live-smoke-0002"},
+    headers=G2 | {"Idempotency-Key": f"live-smoke-{RUN}-2"},
 )
 print("DOUBLE-BOOK ATTEMPT:", r.status_code)
 assert r.status_code == 409

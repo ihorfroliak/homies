@@ -79,12 +79,31 @@ late-refund, ledger immutability), ruff чистий. Живий смоук на
 подвійне бронювання→409, webhook-wrong-secret→401, повний цикл, recon ok=True,
 platform_revenue=15750 (15% з 105000), escrow=0.
 
-**Далі:**
-- [ ] Alembic-міграції (замінити create_all + винести exclusion constraint у міграцію).
-- [ ] P1 hardening: auto-void неоплачених (scheduler), rate limiting, PITR-бекапи, chargeback/clawback, щоденна звірка.
-- [ ] Юр-висновок агентської моделі + оферта host-у (strategy 07 #2,#3).
-- [ ] ADR-0007 (Stripe Connect), ADR-0008 (інтервальна доступність) — формалізувати як ADR.
-- [ ] Реальний Stripe Connect адаптер за PaymentProvider-швом.
-- [ ] GitHub remote + push + CI.
+## 2026-07-05 (ніч-2) — D7 board (NO-GO) + D8 release-loop + W1 execution
+
+**D7 Production Readiness Board:** evidence-only Go/No-Go → **NO-GO**
+(`docs/reviews/2026-07-05-d7-production-readiness-board.md`). Докази командами:
+провайдер = симуляція, нема бекапів/міграцій/observability/MFA/rate-limit,
+комплаєнс не збудований. Launch readiness 22/100.
+
+**D8 release optimizer + процес:** `docs/RELEASE_PLAN.md` (критичний шлях до
+першого безпечного бронювання; managed-модель коротшає шлях — контрольовані
+сторони; 3 гейти; топ-задачі за ROET). Впроваджено цикл **Build→Verify→Gate**:
+живий трекер `RELEASE.md` (3 питання) + правило в CLAUDE.md.
+
+**W1 виконано (код, не план):**
+- **B6 закрито:** Alembic (`backend/alembic/`) + перша міграція (вся схема +
+  exclusion constraint). Верифіковано: upgrade/downgrade/повтор зелені.
+- **B5 закрито owner-proof:** DB-тригери append-only на ledger+audit.
+  Доведено: прямий UPDATE/DELETE через psql відбито на рівні БД (не лише ORM).
+- Startup-guard і міграція узгоджені; 12 pytest зелені, warfare без регресій,
+  живий смоук чистий. Readiness 22 → ~32.
+
+**Далі (за RELEASE.md):**
+- [ ] **B2** pg_dump/PITR бекап + виконаний restore-тест (наступна задача, найвищий ROET).
+- [ ] **B1** реальний StripeConnectProvider за наявним швом + webhook-підпис.
+- [ ] Юр-трек паралельно: agency-договір + T&C + KYC через Stripe (B3).
+- [ ] Gate 2: auto-void, rate-limit, observability, MFA, chargeback.
+- [ ] GitHub remote + push + CI (перший реальний прогін).
 - [ ] Chat 03: auth-модуль — схема БД, міграції (Alembic), реєстрація/логін/JWT.
 - [ ] GitHub Projects дошка з фазами.
