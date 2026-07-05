@@ -14,6 +14,14 @@ class Settings(BaseSettings):
     # Simulated-webhook shared secret. The real Stripe adapter MUST verify
     # the Stripe-Signature header instead — never trust an unsigned webhook.
     webhook_secret: str = "dev-webhook-secret"
+
+    # Payments (B1). "simulation" keeps the deterministic in-process provider
+    # (default so tests and local dev need no Stripe account). "stripe" wires
+    # the real Stripe Connect adapter — requires the keys below (never
+    # hard-code real keys; set via env/secrets manager).
+    payment_provider: str = "simulation"  # simulation | stripe
+    stripe_api_key: str = ""  # sk_test_... / sk_live_...
+    stripe_webhook_secret: str = ""  # whsec_...
     access_token_ttl_seconds: int = 1800
     refresh_token_ttl_days: int = 30
 

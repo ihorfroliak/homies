@@ -17,7 +17,7 @@ from app.modules.booking.models import Booking  # noqa: F401
 from app.modules.identity.models import HostProfile, RefreshToken, User  # noqa: F401
 from app.modules.ledger.models import JournalEntry, JournalLine, LedgerAccount  # noqa: F401
 from app.modules.listings.models import HostBlock, Listing  # noqa: F401
-from app.modules.payments.models import Payment  # noqa: F401
+from app.modules.payments.models import Payment, WebhookEvent  # noqa: F401
 
 config = context.config
 

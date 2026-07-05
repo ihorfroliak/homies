@@ -123,6 +123,65 @@ def process_intent_succeeded(db: Session, intent_id: str) -> Payment:
     return payment
 
 
+def process_intent_failed(db: Session, intent_id: str) -> Payment | None:
+    """payment_intent.payment_failed: mark the payment failed and free the
+    dates. Idempotent; never touches the ledger (no money moved)."""
+    payment = db.scalar(select(Payment).where(Payment.provider_intent_id == intent_id))
+    if payment is None:
+        return None
+    if payment.status in ("failed", "refunded"):
+        return payment
+    if payment.status == "succeeded":
+        # A failure after success is contradictory — do not unwind money here;
+        # surface for reconciliation instead.
+        audit(
+            db, actor="system", action="payment.failed_after_success",
+            entity_type="payment", entity_id=payment.id, data={"intent_id": intent_id},
+        )
+        return payment
+    payment.status = "failed"
+    booking = db.get(Booking, payment.booking_id)
+    if booking is not None and booking.status == "pending":
+        booking.status = "payment_failed"
+    audit(
+        db, actor="system", action="payment.failed",
+        entity_type="payment", entity_id=payment.id, data={"intent_id": intent_id},
+    )
+    return payment
+
+
+def process_charge_refunded(db: Session, intent_id: str) -> Payment | None:
+    """charge.refunded from Stripe (e.g. an out-of-band or dispute refund).
+    Reconciles the ledger if we have not already recorded the refund.
+    Idempotent."""
+    payment = db.scalar(select(Payment).where(Payment.provider_intent_id == intent_id))
+    if payment is None or payment.status != "succeeded":
+        return payment
+    booking = db.get(Booking, payment.booking_id)
+    if booking is not None and booking.payout_status != "none":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Refund after payout needs clawback flow")
+    payment.status = "refunded"
+    ledger.post_entry(
+        db,
+        kind="refund",
+        lines=[
+            (ledger.BOOKING_ESCROW, payment.amount),
+            (ledger.PROVIDER_CASH, -payment.amount),
+        ],
+        currency=payment.currency,
+        booking_id=payment.booking_id,
+        payment_id=payment.id,
+        description=f"Stripe charge.refunded for booking {payment.booking_id}",
+    )
+    if booking is not None and booking.status in ("pending", "confirmed"):
+        booking.status = "cancelled"
+    audit(
+        db, actor="system", action="payment.refunded_via_stripe",
+        entity_type="payment", entity_id=payment.id, data={"intent_id": intent_id},
+    )
+    return payment
+
+
 def refund_booking(db: Session, booking: Booking, actor: str) -> Payment | None:
     """Full refund (D4 policy simplification). Reverses escrow."""
     payment = db.scalar(select(Payment).where(Payment.booking_id == booking.id))

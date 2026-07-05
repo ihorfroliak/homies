@@ -114,11 +114,34 @@ journal_lines → restore → дані повернулись, звірка PASS
 катастрофа — виживає; тотальна втрата хоста — ні, offsite/авто-розклад
 відкриті → managed Postgres). Readiness ~32 → ~40.
 
-**Далі (за RELEASE.md, цикл Build→Verify→Gate):**
-- [ ] **B1** реальний StripeConnectProvider за наявним швом + webhook-підпис — **єдине, що лишилось кодом на критичному шляху**.
-- [ ] B2-решта: managed Postgres (авто-бекап+PITR+offsite з коробки) — вибір хостингу, не код.
-- [ ] Юр-трек паралельно: agency-договір + T&C + KYC через Stripe (B3).
-- [ ] Gate 2: auto-void, rate-limit, observability, MFA, chargeback.
+## 2026-07-05 (ніч-4) — B1 Stripe Connect адаптер
+
+**Збудовано за наявним `PaymentProvider`-швом (0 змін домену/ledger):**
+`StripeConnectProvider` (destination charges + application_fee, ADR-0007),
+config-селектор (`payment_provider=simulation|stripe`, default simulation),
+Stripe-webhook `/v1/payments/webhook/stripe` (перевірка підпису→400, сира
+персистенція `webhook_events`, ідемпотентність за stripe_event_id, диспетч
+succeeded/failed/refunded у ledger), обробники process_intent_failed/
+process_charge_refunded, reconciliation-engine (payment↔ledger + Stripe-
+balance cross-check), admin `/payments/reconciliation`. Міграція оновлена
+(webhook_events). Stripe SDK 15.3.
+
+**Доведено (проти FakeStripe, без мережі):** bad-sig→400, дублікат event→
+1 capture (no double money), out-of-order/failed безпечно, 503 без stripe-
+провайдера. **16 pytest зелені, ruff чистий, warfare без регресій, live
+503 у simulation.** Звіт: `docs/design/b1-stripe.md`, ADR-0007.
+
+**Чесна межа:** реальних Stripe-ключів нема → sandbox (3DS/SCA, transfers,
+partial capture, disputes, payout) **не спостережено**. Answer: **PARTIALLY**.
+Шлях до YES: дати test-ключі + прогнати sandbox-checklist (b1-stripe §5), без
+нового коду. Readiness ~40 → ~50.
+
+**Далі (за RELEASE.md):**
+- [ ] Дати Stripe test-ключі → sandbox-checklist → B1 PARTIALLY→YES.
+- [ ] Chargeback/`dispute.*` handler + clawback (refund-after-payout).
+- [ ] Юр-трек: agency-договір + T&C + KYC через Stripe (B3).
+- [ ] B2-решта: managed Postgres (авто-бекап+PITR+offsite).
+- [ ] Gate 2: auto-void, rate-limit, observability, MFA, secrets-mgmt.
 - [ ] GitHub remote + push + CI.
 - [ ] Chat 03: auth-модуль — схема БД, міграції (Alembic), реєстрація/логін/JWT.
 - [ ] GitHub Projects дошка з фазами.

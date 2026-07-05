@@ -14,22 +14,25 @@
 - Ledger append-only, escrow≥0, reconciliation=0 під хаосом.
 - **B6 закрито:** Alembic-міграції зелені (upgrade/downgrade/повтор).
 - **B5 закрито owner-proof:** DB append-only тригери — прямий psql UPDATE/DELETE відбито.
-- **B2 restore ДОВЕДЕНО (D9):** виконаний drill — backup (AES-256+checksum)
-  → restore RTO 4s → фінансова звірка PASS; **accidental DROP TABLE →
-  restore → дані повернулись, звірка PASS**; guards переживають restore.
+- **B2 restore ДОВЕДЕНО (D9):** backup (AES-256+checksum) → restore RTO 4s
+  → фінансова звірка PASS; accidental DROP TABLE → restore → дані повернулись.
+- **B1 адаптер ЗБУДОВАНО:** `StripeConnectProvider` (destination charges) за
+  наявним швом + Stripe-webhook (підпис→400, сира персистенція, ідемпотентність
+  за event id, диспетч у ledger) + reconciliation-engine. Доведено проти
+  mock-Stripe: підпис, дублікат→1 capture, replay, ledger-звірка; **16 тестів
+  зелені, warfare без регресій, live 503 у simulation-режимі**.
 
 ### 2. Що ще блокує наступний реліз (Gate 1)?
-- **B1** реальний Stripe Connect (зараз симуляція) — критичний шлях, гроші.
-- **B2-решта** автоматичний розклад бекапів + offsite/PITR — закривається
-  **managed Postgres** (RDS/Supabase/Neon дають з коробки), не eng-код.
+- **B1-решта:** реальні Stripe **test-ключі** → спостерегти sandbox (3DS/SCA,
+  transfers, partial capture, disputes, payout events). Адаптер готовий; це
+  крок «дати ключі + прогнати checklist», не код.
+- **B2-решта:** авто-розклад бекапів + offsite/PITR → managed Postgres.
 - **B3** agency-договір + T&C + KYC через Stripe (юр-трек, паралельно).
-- (Gate 2, не блокує #1: auto-void, rate-limit, observability, MFA, chargeback.)
+- (Gate 2: auto-void, rate-limit, observability, MFA, chargeback/clawback.)
 
 ### 3. Одна наступна задача з найбільшим наближенням до prod?
-→ **B1 — реальний StripeConnectProvider** за наявним `PaymentProvider`-швом
-+ webhook-підпис. Це єдине, що лишилось на критичному шляху як **код**
-(B2-решта = вибір managed-хостингу, B3 = юр-трек паралельно). Без реального
-Stripe немає жодного реального бронювання.
+→ **Дати Stripe test-ключі і прогнати sandbox-checklist** (`docs/design/b1-stripe.md` §5).
+Це переводить B1 з PARTIALLY у YES без нового коду. Паралельно — юр-трек (B3).
 
 ---
 
@@ -37,6 +40,7 @@ Stripe немає жодного реального бронювання.
 - 2026-07-05: D7 board → **NO-GO** (симуляція платежів, нема бекапів/комплаєнсу/observability).
 - 2026-07-05: W1 — Alembic-міграції (B6 закрито) + DB append-only тригери (B5 закрито, owner-proof). Readiness 22 → ~32.
 - 2026-07-05: D9 — виконаний DR-drill (backup+restore+фінансова звірка PASS двічі). B2-restore доведено; авто-розклад+offsite → managed Postgres. Answer: PARTIALLY. Readiness ~32 → ~40.
+- 2026-07-05: B1 — Stripe Connect адаптер (destination charges) + webhook (підпис/ідемпотентність/dispatch) + reconciliation. Доведено проти mock; sandbox pending keys. Answer: PARTIALLY. Readiness ~40 → ~50.
 
 ## Робочий режим (постійний, без нових D-етапів)
 Build → Verify → Release Gate → Repeat. Кожен цикл: одна задача критичного

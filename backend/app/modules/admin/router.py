@@ -103,6 +103,18 @@ def ledger_reconciliation(db: Session = Depends(get_db)):
     return ledger.reconcile(db)
 
 
+@router.get("/payments/reconciliation")
+def payments_reconciliation(db: Session = Depends(get_db)):
+    """Payment<->ledger consistency + (when Stripe keys are present) a
+    Stripe-balance cross-check. Used as the daily reconciliation report."""
+    from app.modules.payments import reconciliation
+    from app.modules.payments.provider import provider
+
+    report = reconciliation.payment_ledger_consistency(db)
+    report["stripe"] = reconciliation.stripe_ledger_reconciliation(db, provider)
+    return report
+
+
 @router.get("/audit")
 def list_audit(limit: int = Query(100), offset: int = 0, db: Session = Depends(get_db)):
     limit, offset = _page(limit, offset)
