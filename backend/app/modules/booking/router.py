@@ -11,6 +11,7 @@ from app.core.security import get_current_user, require_role
 from app.modules.booking.availability import blocked_ranges, is_available
 from app.modules.booking.models import Booking
 from app.modules.booking.schemas import AvailabilityOut, BookingCreate, BookingOut, DayStatus
+from app.modules.events import service as events
 from app.modules.listings.models import Listing
 from app.modules.payments import service as payments_service
 from app.modules.payments.models import Payment
@@ -88,6 +89,12 @@ def create_booking(
         entity_id=booking.id,
         data={"total": total, "currency": listing.currency, "nights": nights},
     )
+    events.emit(
+        db, events.BOOKING_CREATED, correlation_id=booking.id,
+        payload={"listing_id": listing.id, "total": total, "currency": listing.currency,
+                 "check_in": body.check_in.isoformat(), "check_out": body.check_out.isoformat()},
+        dedup_key=f"{events.BOOKING_CREATED}:{booking.id}",
+    )
     db.commit()
     return _booking_out(booking, payment)
 
@@ -136,6 +143,11 @@ def cancel_booking(
     payment = payments_service.refund_booking(db, booking, actor=user.id)
     booking.status = "cancelled"
     audit(db, actor=user.id, action="booking.cancelled", entity_type="booking", entity_id=booking.id)
+    events.emit(
+        db, events.CANCELLATION_PROCESSED, correlation_id=booking.id,
+        payload={"by": user.role, "refunded": payment.status == "refunded" if payment else False},
+        dedup_key=f"{events.CANCELLATION_PROCESSED}:{booking.id}",
+    )
     db.commit()
     return _booking_out(booking, payment)
 
@@ -155,6 +167,55 @@ def complete_booking(
     db.commit()
     payment = db.scalar(select(Payment).where(Payment.booking_id == booking.id))
     return _booking_out(booking, payment)
+
+
+@router.post("/bookings/{booking_id}/checkin", response_model=BookingOut)
+def checkin(booking_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """Guest (or admin) marks arrival. Emits CheckInCompleted; operational
+    state advances. Requires a confirmed, checked-in-window booking."""
+    booking = db.get(Booking, booking_id)
+    if booking is None or (booking.guest_id != user.id and user.role != "admin"):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
+    if booking.status not in ("confirmed", "checked_in"):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Booking is not in a check-in state")
+    if booking.operational_state != "checked_in":
+        booking.operational_state = "checked_in"
+        events.emit(
+            db, events.CHECKIN_COMPLETED, correlation_id=booking.id,
+            payload={"guest_id": booking.guest_id},
+            dedup_key=f"{events.CHECKIN_COMPLETED}:{booking.id}",
+        )
+        audit(db, actor=user.id, action="booking.checked_in",
+              entity_type="booking", entity_id=booking.id)
+        db.commit()
+    payment = db.scalar(select(Payment).where(Payment.booking_id == booking.id))
+    return _booking_out(booking, payment)
+
+
+@router.get("/bookings/{booking_id}/state")
+def booking_state(booking_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """Single source of truth: lifecycle + financial + operational state +
+    the event timeline (founder can reconstruct history from events alone)."""
+    booking = db.get(Booking, booking_id)
+    if booking is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
+    listing = db.get(Listing, booking.listing_id)
+    is_party = user.id in (booking.guest_id, listing.host_id if listing else None)
+    if not is_party and user.role != "admin":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
+    payment = db.scalar(select(Payment).where(Payment.booking_id == booking.id))
+    return {
+        "booking_id": booking.id,
+        "lifecycle_state": booking.status,
+        "operational_state": booking.operational_state,
+        "financial": {
+            "total_amount": booking.total_amount,
+            "currency": booking.currency,
+            "payment_status": payment.status if payment else None,
+            "payout_status": booking.payout_status,
+        },
+        "timeline": events.booking_timeline(db, booking.id),
+    }
 
 
 @router.get("/listings/{listing_id}/availability", response_model=AvailabilityOut)

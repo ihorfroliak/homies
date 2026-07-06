@@ -150,10 +150,38 @@ check-in/клінінг/support/dispute/нотифікації в платфор
 Звіт: `docs/reviews/2026-07-06-oat-01-report.md` (матриця, gap-и, risk-
 register, Top-20 ROI). 26 тестів зелені.
 
-**Далі (за RELEASE.md, Top-6 P0 для пілота):**
-- [ ] **Нотифікації** (транзакційні: підтвердження/нагадування/check-in) — найвищий ROI, наступний цикл.
-- [ ] Check-in інструкції на бронюванні; auto-void неоплачених; turnover-задача (клінінг+фотозвіт); auto-complete за таймером; founder attention-в'ю.
+## 2026-07-06 — OAT-02 Operational Notification Layer
+
+**Збудовано (модуль `events/`, brutally-minimal, без event-bus):**
+`domain_events` (append-only DB-тригер, ідемпотентний за dedup_key,
+correlation_id=booking_id), `notifications` (routing guest/host/founder ×
+email/sms/in_app, log-based канали, best-effort), `incidents` (мін-хук S7/S8).
+7 подій (Created/Confirmed/CheckInAvailable/CheckInCompleted/Cancellation/
+Payout/IncidentOpened) emit-яться в тій самій транзакції, що й зміна стану.
+Нові ендпоінти: `POST /bookings/{id}/checkin`, `GET /bookings/{id}/state`
+(lifecycle+financial+operational+timeline), `GET /me/notifications`,
+`POST/GET /admin/incidents`, `GET /admin/founder-feed`,
+`GET /admin/notifications?status=failed` (dead-letter). `operational_state`
+на booking (none→checkin_available→checked_in→checked_out). Міграція+guard
+оновлені (domain_events у append-only список).
+
+**Доведено:** 8 OAT-02 сценаріїв (подія→нотифікація→стан), 4 acceptance-gate
+PASS (0 orphan, event-state consistency, S1/S2/S5 notif-paths, timeline
+reconstruction). **Warfare спіймав latent double-capture race** під 200
+concurrent webhook — виправлено root cause (`SELECT FOR UPDATE` на payment);
+тепер детерміновано 1 capture. 34 тести зелені, ruff чистий, reconciliation
+ok=True double_capture=[]. Docs: `docs/design/oat-02-architecture.md`,
+`docs/reviews/2026-07-06-oat-02-report.md`. Founder ops-visibility ❌→✅.
+
+**Далі (за RELEASE.md):**
+- [ ] **Реальна email-доставка** нотифікацій (провайдер за channel-абстракцією) + check-in інструкції (коди/ключі в payload) — наступний цикл.
+- [ ] Auto-void неоплачених (ghost-booking); turnover-задача; auto-complete таймер.
+- [ ] Support-модуль (S6), повні disputes (S8), curated attention-в'ю.
 - [ ] Без коду: Stripe test-ключі → B1 YES; юр-трек B3; managed Postgres.
 - [ ] Gate 2: chargeback/clawback, rate-limit, observability, MFA, GitHub CI.
+
+**Урок:** `create_all` не додає колонки до наявних таблиць — жива dev-БД
+розійшлась із моделлю (operational_state). Alembic — джерело істини схеми;
+dev-БД треба ресетити/мігрувати, не покладатись на create_all для змін.
 - [ ] Chat 03: auth-модуль — схема БД, міграції (Alembic), реєстрація/логін/JWT.
 - [ ] GitHub Projects дошка з фазами.

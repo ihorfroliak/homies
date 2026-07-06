@@ -156,7 +156,8 @@ def test_s10_founder_visibility_partial(client, admin_token):
     assert balances.status_code == 200            # ours / host / provider balances
     recon = client.get("/v1/admin/payments/reconciliation", headers=auth(admin_token))
     assert recon.status_code == 200               # pending / divergence
-    # NOT answerable: "which bookings require attention", "unresolved incidents"
-    assert client.get("/v1/admin/attention").status_code in (404, 405)
-    assert client.get("/v1/admin/incidents").status_code in (404, 405)
-    # GAP: no operational dashboard for attention/incidents; money view only.
+    # Incidents + founder feed now exist (OAT-02):
+    assert client.get("/v1/admin/incidents", headers=auth(admin_token)).status_code == 200
+    assert client.get("/v1/admin/founder-feed", headers=auth(admin_token)).status_code == 200
+    # STILL missing: a curated "which bookings require attention" view.
+    assert client.get("/v1/admin/attention", headers=auth(admin_token)).status_code in (404, 405)

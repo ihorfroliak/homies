@@ -99,6 +99,24 @@ def me(user: User = Depends(get_current_user)):
     return user
 
 
+@router.get("/me/notifications")
+def my_notifications(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """In-app notification feed for the logged-in user (guest or host)."""
+    from app.modules.events.models import Notification
+
+    rows = db.scalars(
+        select(Notification)
+        .where(Notification.recipient_user_id == user.id)
+        .order_by(Notification.created_at.desc())
+        .limit(50)
+    )
+    return [
+        {"type": n.event_type, "booking_id": n.correlation_id, "channel": n.channel,
+         "payload": n.payload, "status": n.status, "at": n.created_at.isoformat()}
+        for n in rows
+    ]
+
+
 @router.post("/hosts/onboarding", response_model=HostProfileOut)
 def host_onboarding(
     body: HostOnboardingRequest,

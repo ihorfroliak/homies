@@ -26,6 +26,8 @@ class Booking(Base):
     currency: Mapped[str] = mapped_column(String(3))
     # none -> paid (payout allocated and sent to host via ledger)
     payout_status: Mapped[str] = mapped_column(String(16), default="none", index=True)
+    # operational state (OAT-02): none -> checkin_available -> checked_in -> checked_out
+    operational_state: Mapped[str] = mapped_column(String(20), default="none")
     idempotency_key: Mapped[str] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

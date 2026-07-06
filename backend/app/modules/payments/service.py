@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.audit import audit
 from app.core.config import settings
 from app.modules.booking.models import Booking
+from app.modules.events import service as events
 from app.modules.ledger import service as ledger
 from app.modules.payments.models import Payment
 from app.modules.payments.provider import provider
@@ -41,8 +42,12 @@ def create_payment_for_booking(db: Session, booking: Booking, host_id: str) -> P
 
 
 def process_intent_succeeded(db: Session, intent_id: str) -> Payment:
-    """Webhook handler body. Idempotent: replayed events are no-ops."""
-    payment = db.scalar(select(Payment).where(Payment.provider_intent_id == intent_id))
+    """Webhook handler body. Idempotent AND concurrency-safe: the payment row
+    is locked FOR UPDATE so two simultaneous deliveries of the same event
+    serialize — the second sees 'succeeded' and no-ops (no double capture)."""
+    payment = db.scalar(
+        select(Payment).where(Payment.provider_intent_id == intent_id).with_for_update()
+    )
     if payment is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown payment intent")
     if payment.status == "succeeded":
@@ -100,6 +105,7 @@ def process_intent_succeeded(db: Session, intent_id: str) -> Payment:
 
     payment.status = "succeeded"
     booking.status = "confirmed"
+    booking.operational_state = "checkin_available"
     ledger.post_entry(
         db,
         kind="payment_captured",
@@ -119,6 +125,18 @@ def process_intent_succeeded(db: Session, intent_id: str) -> Payment:
         entity_type="payment",
         entity_id=payment.id,
         data={"intent_id": intent_id, "amount": payment.amount},
+    )
+    events.emit(
+        db, events.BOOKING_CONFIRMED, correlation_id=booking.id,
+        payload={"amount": payment.amount, "currency": payment.currency},
+        dedup_key=f"{events.BOOKING_CONFIRMED}:{booking.id}",
+    )
+    # Managed pilot: check-in instructions become available at confirmation
+    # (no scheduler yet; a T-24h timer is a later refinement).
+    events.emit(
+        db, events.CHECKIN_AVAILABLE, correlation_id=booking.id,
+        payload={"check_in": booking.check_in.isoformat()},
+        dedup_key=f"{events.CHECKIN_AVAILABLE}:{booking.id}",
     )
     return payment
 
@@ -283,6 +301,13 @@ def run_host_payout(db: Session, host_id: str, actor: str) -> dict:
             description=f"Payout to host {host_id} (simulated transfer)",
         )
         booking.payout_status = "paid"
+        if booking.operational_state in ("none", "checkin_available", "checked_in"):
+            booking.operational_state = "checked_out"
+        events.emit(
+            db, events.PAYOUT_EXECUTED, correlation_id=booking.id,
+            payload={"net": net, "fee": fee, "currency": booking.currency, "host_id": host_id},
+            dedup_key=f"{events.PAYOUT_EXECUTED}:{booking.id}",
+        )
         paid_total += net
         fee_total += fee
     # Invariant I5 (D5): escrow may never go negative. A violation means an

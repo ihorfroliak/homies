@@ -55,7 +55,7 @@ def _apply_postgres_guards() -> None:
                 "TG_TABLE_NAME, TG_OP; END; $$ LANGUAGE plpgsql"
             )
         )
-        for table in ("journal_entries", "journal_lines", "audit_log"):
+        for table in ("journal_entries", "journal_lines", "audit_log", "domain_events"):
             if not conn.execute(
                 text("SELECT 1 FROM pg_trigger WHERE tgname = :n"),
                 {"n": f"{table}_append_only"},
