@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import JSON, DateTime, String, event
+from sqlalchemy import JSON, DateTime, Integer, String, event
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -27,9 +27,11 @@ class DomainEvent(Base):
 
 
 class Notification(Base):
-    """One delivery attempt of one event to one recipient over one channel.
-    In-app notifications are simply the rows a user can read; email/sms in the
-    pilot are log-delivered (no external provider yet)."""
+    """Transactional outbox row (OAT-03). Written in the same DB transaction as
+    the event + business mutation, then delivered by the worker. Delivery
+    state machine: pending -> processing -> delivered | failed -> dead.
+    In-app notifications are the rows a user reads; email/sms go through the
+    provider abstraction."""
 
     __tablename__ = "notifications"
 
@@ -40,11 +42,17 @@ class Notification(Base):
     recipient_role: Mapped[str] = mapped_column(String(16))  # guest | host | founder
     recipient_user_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
     channel: Mapped[str] = mapped_column(String(16))  # email | sms | in_app
-    payload: Mapped[dict] = mapped_column(JSON, default=dict)
-    status: Mapped[str] = mapped_column(String(12), default="pending", index=True)  # sent|failed
-    error: Mapped[str] = mapped_column(String(255), default="")
+    template_id: Mapped[str] = mapped_column(String(48), default="")
+    locale: Mapped[str] = mapped_column(String(8), default="en")
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)  # template variables
+    # delivery state machine
+    status: Mapped[str] = mapped_column(String(12), default="pending", index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    next_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str] = mapped_column(String(255), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
-    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Incident(Base):

@@ -193,16 +193,22 @@ def upgrade() -> None:
     sa.Column('recipient_role', sa.String(length=16), nullable=False),
     sa.Column('recipient_user_id', sa.String(length=36), nullable=True),
     sa.Column('channel', sa.String(length=16), nullable=False),
+    sa.Column('template_id', sa.String(length=48), nullable=False),
+    sa.Column('locale', sa.String(length=8), nullable=False),
     sa.Column('payload', sa.JSON(), nullable=False),
     sa.Column('status', sa.String(length=12), nullable=False),
-    sa.Column('error', sa.String(length=255), nullable=False),
+    sa.Column('attempts', sa.Integer(), nullable=False),
+    sa.Column('next_attempt_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('claimed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('last_error', sa.String(length=255), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('sent_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('delivered_at', sa.DateTime(timezone=True), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_notifications_correlation_id'), 'notifications', ['correlation_id'], unique=False)
     op.create_index(op.f('ix_notifications_recipient_user_id'), 'notifications', ['recipient_user_id'], unique=False)
     op.create_index(op.f('ix_notifications_status'), 'notifications', ['status'], unique=False)
+    op.create_index(op.f('ix_notifications_next_attempt_at'), 'notifications', ['next_attempt_at'], unique=False)
     op.create_table('incidents',
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('booking_id', sa.String(length=36), nullable=False),
@@ -258,6 +264,7 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_incidents_status'), table_name='incidents')
     op.drop_index(op.f('ix_incidents_booking_id'), table_name='incidents')
     op.drop_table('incidents')
+    op.drop_index(op.f('ix_notifications_next_attempt_at'), table_name='notifications')
     op.drop_index(op.f('ix_notifications_status'), table_name='notifications')
     op.drop_index(op.f('ix_notifications_recipient_user_id'), table_name='notifications')
     op.drop_index(op.f('ix_notifications_correlation_id'), table_name='notifications')

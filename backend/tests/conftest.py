@@ -78,3 +78,28 @@ def fire_webhook(client, intent_id: str, secret: str = "dev-webhook-secret"):
         json={"intent_id": intent_id, "event": "payment_intent.succeeded"},
         headers={"X-Webhook-Secret": secret},
     )
+
+
+def drain_notifications(max_rounds: int = 20):
+    """Run the notification worker against the test DB until no notification is
+    due for delivery (all delivered/dead, or scheduled for the future).
+    Deterministic — the background worker is disabled in tests."""
+    from datetime import datetime, timezone
+
+    from sqlalchemy import func, select
+
+    from app.modules.events import worker
+    from app.modules.events.models import Notification
+
+    for _ in range(max_rounds):
+        with TestingSession() as db:
+            worker.run_once(db, batch=100)
+        with TestingSession() as db:
+            due = db.scalar(
+                select(func.count()).select_from(Notification).where(
+                    Notification.status.in_(("pending", "failed")),
+                    Notification.next_attempt_at <= datetime.now(timezone.utc),
+                )
+            )
+        if not due:
+            break

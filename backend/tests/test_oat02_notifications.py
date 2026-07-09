@@ -4,7 +4,7 @@ Empty system per test (conftest)."""
 
 from datetime import date, timedelta
 
-from tests.conftest import auth, fire_webhook, register_and_login
+from tests.conftest import auth, drain_notifications, fire_webhook, register_and_login
 
 CI = (date.today() + timedelta(days=25)).isoformat()
 CO = (date.today() + timedelta(days=28)).isoformat()
@@ -38,8 +38,12 @@ def test_booking_emits_event_and_notifies_guest(client, admin_token):
     bk = _book(client, guest, lid, "oat2-0001")
     state = client.get(f"/v1/bookings/{bk['id']}/state", headers=auth(guest)).json()
     assert "BookingCreated" in _types(state["timeline"])
+    # outbox: pending until the worker delivers
     notes = client.get("/v1/me/notifications", headers=auth(guest)).json()
-    assert any(n["type"] == "BookingCreated" and n["status"] == "sent" for n in notes)
+    assert any(n["type"] == "BookingCreated" and n["status"] == "pending" for n in notes)
+    drain_notifications()
+    notes = client.get("/v1/me/notifications", headers=auth(guest)).json()
+    assert any(n["type"] == "BookingCreated" and n["status"] == "delivered" for n in notes)
 
 
 # 2. confirmation -> BookingConfirmed + CheckInAvailable, operational state + all parties notified

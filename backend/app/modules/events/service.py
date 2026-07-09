@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.modules.events.models import DomainEvent, Notification
+from app.modules.events.templates import template_id_for
 
 log = logging.getLogger("homies.notifications")
 
@@ -39,24 +40,6 @@ ROUTING: dict[str, list[tuple[str, str]]] = {
     PAYOUT_EXECUTED: [("host", "email"), ("founder", "in_app")],
     INCIDENT_OPENED: [("founder", "in_app"), ("host", "email")],
 }
-
-
-def _deliver(notification: Notification) -> None:
-    """Best-effort delivery. Pilot channels are log-based and cannot fail;
-    the try/except guarantees a channel can never break the caller's txn."""
-    from datetime import datetime, timezone
-
-    try:
-        log.info(
-            "notify role=%s channel=%s type=%s booking=%s payload=%s",
-            notification.recipient_role, notification.channel, notification.event_type,
-            notification.correlation_id, notification.payload,
-        )
-        notification.status = "sent"
-        notification.sent_at = datetime.now(timezone.utc)
-    except Exception as exc:  # noqa: BLE001 — never propagate into money path
-        notification.status = "failed"
-        notification.error = str(exc)[:255]
 
 
 def _resolve_recipient(db: Session, role: str, booking_id: str) -> str | None:
@@ -85,15 +68,17 @@ def emit(db: Session, event_type: str, correlation_id: str, payload: dict, dedup
     )
     db.add(ev)
     db.flush()
+    # Transactional outbox (OAT-03): notifications are written PENDING in the
+    # SAME transaction as the event + business mutation. Delivery is the
+    # worker's job — business logic never publishes directly.
     for role, channel in ROUTING.get(event_type, []):
-        n = Notification(
+        db.add(Notification(
             event_id=ev.id, event_type=event_type, correlation_id=correlation_id,
             recipient_role=role, recipient_user_id=_resolve_recipient(db, role, correlation_id),
-            channel=channel, payload=payload,
-        )
-        db.add(n)
-        db.flush()
-        _deliver(n)
+            channel=channel, template_id=template_id_for(event_type), payload=payload,
+            status="pending",
+        ))
+    db.flush()
     return True
 
 

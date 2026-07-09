@@ -112,7 +112,9 @@ def my_notifications(user: User = Depends(get_current_user), db: Session = Depen
     )
     return [
         {"type": n.event_type, "booking_id": n.correlation_id, "channel": n.channel,
-         "payload": n.payload, "status": n.status, "at": n.created_at.isoformat()}
+         "payload": n.payload, "status": n.status, "attempts": n.attempts,
+         "at": n.created_at.isoformat(),
+         "delivered_at": n.delivered_at.isoformat() if n.delivered_at else None}
         for n in rows
     ]
 

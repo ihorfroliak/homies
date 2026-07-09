@@ -9,11 +9,13 @@ through domain events (post-D4). See docs/adr/0001-modular-monolith.md.
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.db import Base, engine
+from app.modules.events.worker import worker as notification_worker
 from app.modules.admin.router import router as admin_router
 from app.modules.booking.router import router as booking_router
 from app.modules.identity.router import router as identity_router
@@ -77,7 +79,10 @@ async def lifespan(app: FastAPI):
     if settings.env != "test":
         Base.metadata.create_all(engine)
         _apply_postgres_guards()
+        if settings.notification_worker_enabled:
+            notification_worker.start()
     yield
+    notification_worker.stop()
 
 
 app = FastAPI(
@@ -98,3 +103,8 @@ app.include_router(admin_router, prefix=API_V1)
 @app.get("/healthz", tags=["ops"])
 def healthz() -> dict:
     return {"status": "ok", "env": settings.env}
+
+
+@app.get("/metrics", tags=["ops"])
+def metrics() -> Response:
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)

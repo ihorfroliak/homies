@@ -173,15 +173,38 @@ concurrent webhook — виправлено root cause (`SELECT FOR UPDATE` на
 ok=True double_capture=[]. Docs: `docs/design/oat-02-architecture.md`,
 `docs/reviews/2026-07-06-oat-02-report.md`. Founder ops-visibility ❌→✅.
 
-**Далі (за RELEASE.md):**
-- [ ] **Реальна email-доставка** нотифікацій (провайдер за channel-абстракцією) + check-in інструкції (коди/ключі в payload) — наступний цикл.
-- [ ] Auto-void неоплачених (ghost-booking); turnover-задача; auto-complete таймер.
-- [ ] Support-модуль (S6), повні disputes (S8), curated attention-в'ю.
-- [ ] Без коду: Stripe test-ключі → B1 YES; юр-трек B3; managed Postgres.
-- [ ] Gate 2: chargeback/clawback, rate-limit, observability, MFA, GitHub CI.
-
 **Урок:** `create_all` не додає колонки до наявних таблиць — жива dev-БД
 розійшлась із моделлю (operational_state). Alembic — джерело істини схеми;
 dev-БД треба ресетити/мігрувати, не покладатись на create_all для змін.
+
+## 2026-07-09 — OAT-03 Reliable notification delivery (outbox + worker)
+
+**Збудовано:** notifications-таблиця стала **transactional outbox** (пишеться
+`status=pending` у тій самій транзакції, що подія+мутація). Delivery винесено
+з `emit()` у **background worker** (`events/worker.py`, потік у lifespan,
+вимкнений у тестах). State machine: pending→processing→delivered|failed→dead.
+Retry: exponential backoff+jitter, `max_attempts` конфіг, permanent→dead.
+`claim_batch` — `FOR UPDATE SKIP LOCKED` (дублі-воркери не беруть той самий
+рядок). Channel-абстракція: InApp/StubEmail/**SMTP**/StubSms (swap через
+`EMAIL_PROVIDER`). Templates (template_id+locale+variables, render не падає).
+Prometheus `/metrics` (delivered/failed/dead/retries/latency/queue_depth).
+Founder-аудит: `/admin/notifications` (status/attempts/last_error),
+`?status=dead` (dead-letter), `/admin/notifications/queue`.
+
+**Доведено:** 7 OAT-03 сценаріїв (timeout→retry→recovery, permanent→dead,
+worker-restart-reclaim, dup-event, delivery-fail-не-чіпає-гроші, rollback),
+6 acceptance-gate PASS. Live: worker авто-доставляє, черга→0,
+**duplicate-worker overlap=0** (SKIP LOCKED), /metrics віддає homies_*.
+Warfare без регресій, 41 тест зелений, ruff чистий. Docs:
+`docs/design/oat-03-outbox-and-delivery.md`, `docs/reviews/2026-07-09-oat-03-report.md`.
+Success-condition виконано: нічого не зникає — delivered АБО observable-as-dead.
+Readiness ~56 → ~62.
+
+**Далі (за RELEASE.md):**
+- [ ] **Реальний email-провайдер** (`EMAIL_PROVIDER=smtp`+creds / SendGrid) + check-in інструкції (коди/ключі в template payload) — наступний цикл.
+- [ ] Auto-void неоплачених (ghost-booking); turnover-задача; auto-complete таймер.
+- [ ] Support-модуль (S6), повні disputes (S8), curated attention-в'ю.
+- [ ] Без коду: Stripe test-ключі → B1 YES; юр-трек B3; managed Postgres.
+- [ ] Gate 2: chargeback/clawback, rate-limit, observability-стек, MFA, GitHub CI.
 - [ ] Chat 03: auth-модуль — схема БД, міграції (Alembic), реєстрація/логін/JWT.
 - [ ] GitHub Projects дошка з фазами.

@@ -176,15 +176,27 @@ def founder_feed(limit: int = Query(50), db: Session = Depends(get_db)):
 @router.get("/notifications")
 def list_notifications(status: str | None = None, limit: int = Query(100),
                        db: Session = Depends(get_db)):
-    """All notifications; filter status=failed for the dead-letter view."""
+    """Founder delivery audit (OAT-03): status, retry count, channel, last
+    error, timestamps. Filter status=dead (or failed) for the dead-letter view."""
     q = select(Notification).order_by(Notification.created_at.desc())
     if status:
         q = q.where(Notification.status == status)
     return [
         {"id": n.id, "type": n.event_type, "role": n.recipient_role, "channel": n.channel,
-         "status": n.status, "error": n.error, "booking_id": n.correlation_id}
+         "status": n.status, "attempts": n.attempts, "last_error": n.last_error,
+         "booking_id": n.correlation_id,
+         "created_at": n.created_at.isoformat(),
+         "delivered_at": n.delivered_at.isoformat() if n.delivered_at else None,
+         "next_attempt_at": n.next_attempt_at.isoformat() if n.next_attempt_at else None}
         for n in db.scalars(q.limit(min(limit, 200)))
     ]
+
+
+@router.get("/notifications/queue")
+def notification_queue(db: Session = Depends(get_db)):
+    """Queue depth by delivery state — founder observability without SQL."""
+    from app.modules.events import metrics
+    return metrics.refresh_queue_depth(db)
 
 
 @router.get("/audit")

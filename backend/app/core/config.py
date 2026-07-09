@@ -22,6 +22,20 @@ class Settings(BaseSettings):
     payment_provider: str = "simulation"  # simulation | stripe
     stripe_api_key: str = ""  # sk_test_... / sk_live_...
     stripe_webhook_secret: str = ""  # whsec_...
+
+    # Notification delivery (OAT-03: transactional outbox + worker)
+    notification_max_attempts: int = 5
+    notification_backoff_base_seconds: float = 2.0  # base * 2**attempt + jitter
+    notification_worker_interval_seconds: float = 1.0
+    notification_worker_batch: int = 20
+    notification_stale_processing_seconds: int = 60  # reclaim stuck PROCESSING
+    notification_worker_enabled: bool = True  # disabled in tests (deterministic)
+    email_provider: str = "stub"  # stub | smtp
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "noreply@homies.example"
     access_token_ttl_seconds: int = 1800
     refresh_token_ttl_days: int = 30
 
