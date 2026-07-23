@@ -22,7 +22,8 @@ One entry per completed micro-cycle. Newest last. Status legend: ✅ shipped ·
 | 15 | 2026-07-09 | **OAT-03** transactional outbox, worker, retry state machine, metrics | 41 | duplicate-worker SKIP LOCKED overlap=0; queue drains to zero | `b7ce97d` | n/a | — |
 | 16 | 2026-07-23 | Repo published to GitHub; salvaged early-draft ADRs preserved | 41 | — | `acba734` | ❌ then ✅ | — |
 | 17 | 2026-07-23 | **CI fix**: setuptools package discovery (`Multiple top-level packages`) | 41 | clean-venv CI chain reproduced before push | `ea35259` | ✅ | — |
-| 18 | 2026-07-23 | **AUDIT-01**: full system audit + project tracking docs + security probes | **53** | **12/12 IDOR/authz probes pass** | _this cycle_ | — | — |
+| 18 | 2026-07-23 | **AUDIT-01**: full system audit + project tracking docs + security probes | 53 | **12/12 IDOR/authz probes pass** | `638d06b` | ✅ | — |
+| 19 | 2026-07-23 | **MC-01 / SEC-01+SEC-02**: perimeter rate limiting (token bucket, central policies, proxy trust, per-policy failure semantics, metrics) + fail-fast secret validation | **84** | 31 new security tests; 12/12 probes still pass; production+default secrets refuse to start (verified e2e) | _this cycle_ | — | — |
 
 ## Notes
 

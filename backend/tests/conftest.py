@@ -23,6 +23,9 @@ TestingSession = sessionmaker(bind=engine, autoflush=False, expire_on_commit=Fal
 
 @pytest.fixture()
 def client():
+    from app.core.ratelimit import limiter
+
+    limiter.reset()  # SEC-01: buckets are process-global; isolate each test
     Base.metadata.create_all(engine)
 
     def override_get_db():

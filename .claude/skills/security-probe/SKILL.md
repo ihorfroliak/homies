@@ -49,8 +49,16 @@ role escalation via registration blocked · missing/malformed/forged tokens
 rejected · refresh-token-as-access rejected · webhook without secret cannot
 confirm a booking.
 
-## Known perimeter gaps (probes cannot fix these — features are missing)
+## Perimeter status
 
-**No rate limiting anywhere** · no MFA · no email verification · no account
-lockout · dev-default secrets fail open outside local. Treat every new public
-surface as amplifying these.
+**Closed (MC-01):** rate limiting (central token-bucket policies, per-IP plus
+per-account on login failures, proxy-trust aware, webhooks exempt) and
+fail-fast secret validation (production refuses to start on default/weak
+secrets). Design: `docs/design/sec-01-02-perimeter.md`.
+
+When adding a route, add its policy to `app/core/ratelimit.py` — never write an
+ad-hoc counter in a handler.
+
+**Still open:** no MFA · no email verification · no account lockout policy ·
+rate-limit counters are per-process (breaks if >1 instance). Treat every new
+public surface as amplifying these.

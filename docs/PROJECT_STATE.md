@@ -14,11 +14,12 @@ Gate 1 — first safe production booking.
 
 ## Current cycle
 
-**AUDIT-01 — full system audit (this cycle).** Audit only, no production
-implementation. Output: [full system audit](reviews/2026-07-23-full-system-audit.md).
+**MC-01 — SEC-01 rate limiting + SEC-02 fail-fast secrets — complete.**
+Design + implementation + 31 tests. Output:
+[perimeter design](design/sec-01-02-perimeter.md).
 
-**Next proposed cycle:** `SEC-01` rate limiting + `SEC-02` secret fail-fast —
-**awaiting founder approval**.
+**Next proposed cycle:** not started — awaiting approval. Recommendation in the
+report below (`FIN-01` real Stripe sandbox run, or `BK-01` auto-void).
 
 ## Completed cycles
 
@@ -32,7 +33,7 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 
 | Signal | Value |
 |---|---|
-| Tests | **53 passing** (unit, integration, business/OAT, security probes) |
+| Tests | **84 passing** (unit, integration, business/OAT, security probes, rate limiting, secret config) |
 | Lint | ruff clean (`app tests alembic scripts`) |
 | CI | ✅ green on `main` (backend + contracts) |
 | Warfare (manual) | all verdicts pass; 1 known gap (ghost booking) |
@@ -42,9 +43,11 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 
 ## Known issues (top, full list in the audit)
 
-- **SEC-01 (P0)** no rate limiting anywhere.
-- **SEC-02 (P0)** dev-default secrets fail open.
-- **FIN-01 (P0)** Stripe path never run against a real sandbox.
+- ~~SEC-01 (P0) no rate limiting~~ — **closed** in MC-01.
+- ~~SEC-02 (P0) dev-default secrets fail open~~ — **closed** in MC-01.
+- **FIN-01 (P0)** Stripe path never run against a real sandbox — **only remaining P0**.
+- **NEW (from MC-01):** rate-limit counters are per-process; deploying >1 instance
+  weakens every limit (D-14). Warfare harnesses must run with `RATE_LIMIT_ENABLED=false`.
 - **BK-01 (P1)** unpaid bookings block inventory forever (no auto-void).
 - **TD-01 (P1)** dual schema path (create_all locally, Alembic in prod).
 - **TST-01 (P1)** OpenAPI contracts drifted from implementation.
@@ -52,9 +55,10 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 
 ## Security risks
 
-Perimeter is the weak side: no rate limiting, no MFA, no email verification,
-secrets fail open. Object-level authorization is **verified sound** (12/12 IDOR
-probes). Product B (free listings) will multiply the attack surface and must not
+Perimeter partially closed: **rate limiting and secret fail-fast now exist**
+(MC-01). Still open: no MFA (SEC-05), no email verification (SEC-03), no account
+lockout policy beyond throttling (SEC-04). Object-level authorization is
+**verified sound** (12/12 IDOR probes). Product B (free listings) will multiply the attack surface and must not
 launch before rate limiting + moderation exist.
 
 ## Technical debt

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.audit import audit
 from app.core.config import settings
 from app.core.db import get_db
+from app.core.ratelimit import AUTH_LOGIN_ACCOUNT, limiter
 from app.core.security import (
     create_access_token,
     get_current_user,
@@ -69,8 +70,25 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
 
 @router.post("/auth/login", response_model=TokenPair)
 def login(body: LoginRequest, db: Session = Depends(get_db)):
+    # Layered with the per-IP limit applied in middleware (SEC-01). This bucket
+    # is keyed by the submitted address and spent only by FAILED attempts, so:
+    #   - a distributed attack on one account still hits a ceiling;
+    #   - a legitimate user with the right password never spends a token;
+    #   - the bucket refills continuously, so an attacker can add friction but
+    #     can never permanently lock someone out (no hard account lockout).
+    # The key uses the submitted address whether or not it exists, and the 429
+    # body is generic, so this cannot be used to enumerate accounts.
+    account_key = f"{AUTH_LOGIN_ACCOUNT.name}:account:{body.email.lower()}"
+    allowed, retry_after = limiter.peek(account_key, AUTH_LOGIN_ACCOUNT)
+    if not allowed:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Too many requests",
+            headers={"Retry-After": str(max(1, int(retry_after)))},
+        )
     user = db.scalar(select(User).where(User.email == body.email.lower()))
     if user is None or not verify_password(body.password, user.password_hash):
+        limiter.check(account_key, AUTH_LOGIN_ACCOUNT)  # only failures cost a token
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid credentials")
     return _issue_tokens(db, user)
 

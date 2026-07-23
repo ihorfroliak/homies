@@ -9,12 +9,14 @@ through domain events (post-D4). See docs/adr/0001-modular-monolith.md.
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy import text
 
-from app.core.config import settings
+from app.core.config import settings, validate_security_config
 from app.core.db import Base, engine
+from app.core.ratelimit import client_ip, limiter, resolve_policy
 from app.modules.events.worker import worker as notification_worker
 from app.modules.admin.router import router as admin_router
 from app.modules.booking.router import router as booking_router
@@ -73,6 +75,9 @@ def _apply_postgres_guards() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # SEC-02: refuse to start a production-like environment with weak or
+    # default secrets. No-op in local/test by design.
+    validate_security_config(settings)
     # D4: create_all for local/sandbox; Alembic owns schema from the first
     # deployment to a shared environment. Tests own their engine (conftest)
     # and must never touch the real database.
@@ -91,6 +96,25 @@ app = FastAPI(
     description="Managed hospitality platform — D4 vertical slice.",
     lifespan=lifespan,
 )
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    """Perimeter control (SEC-01). Runs before routing/auth so that
+    unauthenticated floods are rejected cheaply. It never grants access —
+    passing the limiter still leaves every authn/authz check in place."""
+    limiter.enabled = settings.rate_limit_enabled
+    policy = resolve_policy(request.method, request.url.path)
+    if policy is not None:
+        key = f"{policy.name}:ip:{client_ip(request, settings.trust_proxy_hops)}"
+        allowed, retry_after = limiter.check(key, policy)
+        if not allowed:
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Too many requests"},
+                headers={"Retry-After": str(max(1, int(retry_after)))},
+            )
+    return await call_next(request)
+
 
 API_V1 = "/v1"
 app.include_router(identity_router, prefix=API_V1)

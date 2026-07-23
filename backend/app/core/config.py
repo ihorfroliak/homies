@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     stripe_api_key: str = ""  # sk_test_... / sk_live_...
     stripe_webhook_secret: str = ""  # whsec_...
 
+    # Perimeter rate limiting (SEC-01)
+    rate_limit_enabled: bool = True
+    # How many reverse proxies sit in front of the app. 0 => X-Forwarded-For is
+    # NOT trusted and the socket peer is used. Only raise this when the
+    # deployment actually terminates through that many trusted proxies.
+    trust_proxy_hops: int = 0
+
     # Notification delivery (OAT-03: transactional outbox + worker)
     notification_max_attempts: int = 5
     notification_backoff_base_seconds: float = 2.0  # base * 2**attempt + jitter
@@ -45,3 +52,64 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+# --- SEC-02: fail-fast secret validation ------------------------------------
+# Environments where insecure defaults are acceptable *on purpose*. Anything
+# else is production-like and must supply real secrets.
+DEV_ENVIRONMENTS = frozenset({"local", "test", "ci"})
+
+# Values shipped in this repository or commonly pasted in. Any of these in a
+# production-like environment is a hard startup failure.
+KNOWN_INSECURE_VALUES = frozenset({
+    "dev-only-secret-change-me-0123456789abcdef",
+    "dev-webhook-secret",
+    "dev-backup-key-change-me",
+    "change-me-in-any-shared-environment",
+    "changeme", "change-me", "secret", "password", "test", "dev", "",
+})
+
+MIN_SECRET_LENGTH = 32
+
+
+class InsecureConfigurationError(RuntimeError):
+    """Raised at startup when a production-like environment has weak secrets.
+
+    Messages name the offending FIELD only — never the value — so a crash log
+    can never leak a secret.
+    """
+
+
+def validate_security_config(cfg: "Settings | None" = None) -> None:
+    """Single source of truth for security-critical configuration.
+
+    Called at startup. In dev/test environments it is a deliberate no-op so
+    local development and deterministic tests keep working.
+    """
+    cfg = cfg or settings
+    if cfg.env.lower() in DEV_ENVIRONMENTS:
+        return
+
+    problems: list[str] = []
+
+    def _check(field: str, value: str, *, min_length: int = MIN_SECRET_LENGTH) -> None:
+        if not value or not value.strip():
+            problems.append(f"{field} is empty")
+            return
+        if value.strip().lower() in KNOWN_INSECURE_VALUES:
+            problems.append(f"{field} uses a known insecure default")
+            return
+        if len(value) < min_length:
+            problems.append(f"{field} is shorter than {min_length} characters")
+
+    _check("JWT_SECRET", cfg.jwt_secret)
+    _check("WEBHOOK_SECRET", cfg.webhook_secret, min_length=16)
+
+    if cfg.payment_provider == "stripe":
+        _check("STRIPE_API_KEY", cfg.stripe_api_key, min_length=16)
+        _check("STRIPE_WEBHOOK_SECRET", cfg.stripe_webhook_secret, min_length=16)
+
+    if problems:
+        raise InsecureConfigurationError(
+            f"Refusing to start in env='{cfg.env}': " + "; ".join(problems)
+        )
