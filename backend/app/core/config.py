@@ -72,6 +72,40 @@ KNOWN_INSECURE_VALUES = frozenset({
 MIN_SECRET_LENGTH = 32
 
 
+# Only this environment may talk to Stripe with live credentials. Everything
+# else must use test mode — this is what stops live keys leaking into a laptop
+# and test keys silently running a "production" deployment on fake money.
+LIVE_PAYMENT_ENVIRONMENTS = frozenset({"production"})
+
+
+def stripe_key_mode(api_key: str) -> str:
+    """'test' | 'live' | 'unknown' — derived from the key prefix, never logged."""
+    if api_key.startswith("sk_test_") or api_key.startswith("rk_test_"):
+        return "test"
+    if api_key.startswith("sk_live_") or api_key.startswith("rk_live_"):
+        return "live"
+    return "unknown"
+
+
+def stripe_environment_problems(cfg: "Settings") -> list[str]:
+    """Explicit payment-environment model (FIN-01). Ambiguity is rejected:
+    the deployment environment and the Stripe key mode must agree."""
+    problems: list[str] = []
+    mode = stripe_key_mode(cfg.stripe_api_key)
+    env = cfg.env.lower()
+
+    if mode == "unknown":
+        problems.append("STRIPE_API_KEY is not a recognised Stripe secret key (sk_test_/sk_live_)")
+    elif env in LIVE_PAYMENT_ENVIRONMENTS and mode != "live":
+        problems.append(f"env='{cfg.env}' requires live Stripe keys but a {mode}-mode key is set")
+    elif env not in LIVE_PAYMENT_ENVIRONMENTS and mode == "live":
+        problems.append(f"live Stripe keys must never be used in env='{cfg.env}'")
+
+    if cfg.stripe_webhook_secret and not cfg.stripe_webhook_secret.startswith("whsec_"):
+        problems.append("STRIPE_WEBHOOK_SECRET is not a Stripe signing secret (whsec_...)")
+    return problems
+
+
 class InsecureConfigurationError(RuntimeError):
     """Raised at startup when a production-like environment has weak secrets.
 
@@ -87,10 +121,20 @@ def validate_security_config(cfg: "Settings | None" = None) -> None:
     local development and deterministic tests keep working.
     """
     cfg = cfg or settings
-    if cfg.env.lower() in DEV_ENVIRONMENTS:
-        return
-
     problems: list[str] = []
+
+    # Payment-environment agreement is checked in EVERY environment: a live
+    # Stripe key on a developer laptop is as dangerous as a test key in
+    # production, and the dev exemption below must not hide it.
+    if cfg.payment_provider == "stripe":
+        problems.extend(stripe_environment_problems(cfg))
+
+    if cfg.env.lower() in DEV_ENVIRONMENTS:
+        if problems:
+            raise InsecureConfigurationError(
+                f"Refusing to start in env='{cfg.env}': " + "; ".join(problems)
+            )
+        return
 
     def _check(field: str, value: str, *, min_length: int = MIN_SECRET_LENGTH) -> None:
         if not value or not value.strip():

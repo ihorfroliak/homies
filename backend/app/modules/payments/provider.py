@@ -10,11 +10,18 @@ ledger and booking engine never import Stripe types — Stripe is an external
 processor, not the accounting system (ADR-0007).
 """
 
+import json
 from dataclasses import dataclass
 from typing import Protocol
 from uuid import uuid4
 
 from app.core.config import settings
+
+
+class WebhookVerificationError(Exception):
+    """The caller could not be trusted: bad/missing signature, or a payload the
+    signature does not cover. Distinct from a failure *after* verification —
+    that must not be reported as a signature problem (see the router)."""
 
 
 @dataclass
@@ -105,11 +112,25 @@ class StripeConnectProvider:
         return refund["id"]
 
     def construct_event(self, payload: bytes, sig_header: str) -> dict:
-        """Verify the Stripe signature and return the event. Raises on an
-        invalid/missing signature or a tampered payload — the trust boundary."""
-        return self._stripe.Webhook.construct_event(
-            payload, sig_header, settings.stripe_webhook_secret
-        )
+        """Verify the Stripe signature and return the event — the trust boundary.
+
+        Raises WebhookVerificationError only when the sender cannot be trusted
+        (bad/missing signature, stale timestamp, unparseable payload). Any other
+        failure is deliberately allowed to propagate so it surfaces as a 5xx and
+        Stripe retries, instead of being mislabelled as a forged request.
+        """
+        try:
+            self._stripe.Webhook.construct_event(
+                payload, sig_header, settings.stripe_webhook_secret
+            )
+        except self._stripe.error.SignatureVerificationError as exc:
+            raise WebhookVerificationError("signature verification failed") from exc
+        except ValueError as exc:  # malformed JSON body
+            raise WebhookVerificationError("payload is not valid JSON") from exc
+        # Return the exact verified bytes as a plain dict. The SDK's Event
+        # object is not a plain mapping (dict(event) raises), and for the audit
+        # trail we want precisely what Stripe sent, not an SDK re-rendering.
+        return json.loads(payload)
 
 
 def build_provider() -> PaymentProvider:

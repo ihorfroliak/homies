@@ -10,7 +10,11 @@ from app.core.db import get_db
 from app.core.security import require_role
 from app.modules.payments import service
 from app.modules.payments.models import WebhookEvent
-from app.modules.payments.provider import StripeConnectProvider, provider
+from app.modules.payments.provider import (
+    StripeConnectProvider,
+    WebhookVerificationError,
+    provider,
+)
 
 router = APIRouter(tags=["payments"])
 
@@ -60,9 +64,13 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     payload = await request.body()
     sig = request.headers.get("Stripe-Signature", "")
     try:
-        event = provider.construct_event(payload, sig)  # raises on bad signature
-    except Exception:  # noqa: BLE001 — Stripe raises SignatureVerificationError/ValueError
+        event = provider.construct_event(payload, sig)
+    except WebhookVerificationError:
+        # Untrusted sender — a 400 tells Stripe not to retry, which is correct.
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid signature") from None
+    # Anything else (a trusted event we failed to process) intentionally
+    # propagates as a 5xx so Stripe retries and the real cause stays visible,
+    # instead of being mislabelled as a forged request.
 
     event_id = event["id"]
     existing = db.scalar(select(WebhookEvent).where(WebhookEvent.stripe_event_id == event_id))

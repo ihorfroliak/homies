@@ -15,18 +15,29 @@ from app.modules.payments.provider import StripeConnectProvider
 from tests.conftest import auth, register_and_login
 
 
+class _FakeSignatureVerificationError(Exception):
+    pass
+
+
+class _FakeErrors:
+    """Mirrors the shape the adapter relies on (stripe.error.*)."""
+
+    SignatureVerificationError = _FakeSignatureVerificationError
+
+
 class _FakeWebhook:
     @staticmethod
     def construct_event(payload, sig, secret):
         # Trust boundary: only "valid" signatures are accepted; anything else
         # (missing/tampered) raises, exactly like stripe.Webhook.
         if sig != "valid":
-            raise ValueError("Invalid signature")
+            raise _FakeSignatureVerificationError("Invalid signature")
         return json.loads(payload)
 
 
 class _FakeStripe:
     Webhook = _FakeWebhook
+    error = _FakeErrors
 
 
 @pytest.fixture()

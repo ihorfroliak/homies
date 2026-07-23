@@ -14,12 +14,15 @@ Gate 1 — first safe production booking.
 
 ## Current cycle
 
-**MC-01 — SEC-01 rate limiting + SEC-02 fail-fast secrets — complete.**
-Design + implementation + 31 tests. Output:
-[perimeter design](design/sec-01-02-perimeter.md).
+**MC-02 — FIN-01 Stripe financial integrity — complete, but FIN-01 stays open.**
+Validated the webhook trust boundary against the **real Stripe SDK** (found and
+fixed two production bugs) and added an explicit payment-environment model. The
+parts needing a Stripe account were **not executed — no test credentials
+available**; they are written and gated in `backend/tests/stripe_live/`.
+Output: [FIN-01 validation](design/fin-01-stripe-validation.md).
 
-**Next proposed cycle:** not started — awaiting approval. Recommendation in the
-report below (`FIN-01` real Stripe sandbox run, or `BK-01` auto-void).
+**Next proposed cycle:** awaiting approval — recommendation `BK-01` (ghost
+booking TTL + first scheduler), or close FIN-01 by supplying Stripe test keys.
 
 ## Completed cycles
 
@@ -33,7 +36,7 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 
 | Signal | Value |
 |---|---|
-| Tests | **84 passing** (unit, integration, business/OAT, security probes, rate limiting, secret config) |
+| Tests | **105 passing**, 1 skipped (gated Stripe Test Mode suite) |
 | Lint | ruff clean (`app tests alembic scripts`) |
 | CI | ✅ green on `main` (backend + contracts) |
 | Warfare (manual) | all verdicts pass; 1 known gap (ghost booking) |
@@ -45,7 +48,15 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 
 - ~~SEC-01 (P0) no rate limiting~~ — **closed** in MC-01.
 - ~~SEC-02 (P0) dev-default secrets fail open~~ — **closed** in MC-01.
-- **FIN-01 (P0)** Stripe path never run against a real sandbox — **only remaining P0**.
+- **FIN-01 (P0)** Stripe Test Mode still not exercised — **blocked on credentials, not on code**.
+  Webhook/signature path is now validated against the real SDK; API-calling
+  scenarios are written and gated (`make test-stripe`).
+- **BK-01 (P1)** re-confirmed with evidence: an *abandoned* payment leaves a
+  booking `pending` forever and blocks the calendar (a failed-payment event does
+  free it). Target state machine documented in the FIN-01 report.
+- **FIN-03 (P1)** no chargeback/dispute representation in the ledger.
+- **REC-01 (P1)** no Stripe-side reconciliation (orphaned payments, missing
+  webhooks, payout mismatch are undetectable).
 - **NEW (from MC-01):** rate-limit counters are per-process; deploying >1 instance
   weakens every limit (D-14). Warfare harnesses must run with `RATE_LIMIT_ENABLED=false`.
 - **BK-01 (P1)** unpaid bookings block inventory forever (no auto-void).

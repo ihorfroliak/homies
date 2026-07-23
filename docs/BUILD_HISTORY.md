@@ -23,7 +23,8 @@ One entry per completed micro-cycle. Newest last. Status legend: ✅ shipped ·
 | 16 | 2026-07-23 | Repo published to GitHub; salvaged early-draft ADRs preserved | 41 | — | `acba734` | ❌ then ✅ | — |
 | 17 | 2026-07-23 | **CI fix**: setuptools package discovery (`Multiple top-level packages`) | 41 | clean-venv CI chain reproduced before push | `ea35259` | ✅ | — |
 | 18 | 2026-07-23 | **AUDIT-01**: full system audit + project tracking docs + security probes | 53 | **12/12 IDOR/authz probes pass** | `638d06b` | ✅ | — |
-| 19 | 2026-07-23 | **MC-01 / SEC-01+SEC-02**: perimeter rate limiting (token bucket, central policies, proxy trust, per-policy failure semantics, metrics) + fail-fast secret validation | **84** | 31 new security tests; 12/12 probes still pass; production+default secrets refuse to start (verified e2e) | _this cycle_ | — | — |
+| 19 | 2026-07-23 | **MC-01 / SEC-01+SEC-02**: perimeter rate limiting (token bucket, central policies, proxy trust, per-policy failure semantics, metrics) + fail-fast secret validation | 84 | 31 new security tests; 12/12 probes still pass; production+default secrets refuse to start (verified e2e) | `ad93424` | ✅ | — |
+| 20 | 2026-07-23 | **MC-02 / FIN-01**: real-SDK webhook validation, payment-environment model, gated Stripe Test Mode suite. **Two production bugs found and fixed** (trust-vs-processing failure conflation; `dict(event)` crash on genuine Stripe events) | **105** (+1 skipped) | 10 real-signature tests, 9 environment tests; replay/tamper/stale rejected; duplicate delivery → single capture; reconciliation ok | _this cycle_ | — | — |
 
 ## Notes
 
