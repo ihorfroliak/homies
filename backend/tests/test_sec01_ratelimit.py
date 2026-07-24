@@ -31,12 +31,21 @@ class FakeClock:
 
 @pytest.fixture()
 def clock():
-    """Swap the global limiter onto a store we control, then restore."""
-    original = rl.limiter.store
+    """Swap the global limiter onto a store we control and turn limiting on
+    (the ordinary test suite runs with it off)."""
+    from app.core.config import settings
+
+    original_store = rl.limiter.store
+    original_enabled = settings.rate_limit_enabled
+    original_limiter_enabled = rl.limiter.enabled
     fake = FakeClock()
     rl.limiter.store = rl.InMemoryTokenBucketStore(clock=fake)
+    settings.rate_limit_enabled = True
+    rl.limiter.enabled = True  # direct check()/peek() calls bypass the middleware sync
     yield fake
-    rl.limiter.store = original
+    rl.limiter.store = original_store
+    settings.rate_limit_enabled = original_enabled
+    rl.limiter.enabled = original_limiter_enabled
 
 
 # --- store semantics (unit) ------------------------------------------------

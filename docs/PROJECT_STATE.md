@@ -14,15 +14,14 @@ Gate 1 — first safe production booking.
 
 ## Current cycle
 
-**MC-02 — FIN-01 Stripe financial integrity — complete, but FIN-01 stays open.**
-Validated the webhook trust boundary against the **real Stripe SDK** (found and
-fixed two production bugs) and added an explicit payment-environment model. The
-parts needing a Stripe account were **not executed — no test credentials
-available**; they are written and gated in `backend/tests/stripe_live/`.
-Output: [FIN-01 validation](design/fin-01-stripe-validation.md).
+**MC-03 — BK-01 booking lifecycle hardening — complete.** Unpaid bookings now
+carry a durable `payment_expires_at` deadline; a first background scheduler
+(`BookingExpiryWorker`) sweeps them to an explicit `expired` state via a
+row-guarded atomic UPDATE. Ghost-booking inventory DoS closed. Payment-vs-expiry
+race proven safe (late payment after expiry is auto-refunded — never
+PAID+EXPIRED). Output: [BK-01](design/bk-01-booking-expiry.md).
 
-**Next proposed cycle:** awaiting approval — recommendation `BK-01` (ghost
-booking TTL + first scheduler), or close FIN-01 by supplying Stripe test keys.
+**Next:** UI-01 (design system + web/mobile showcase) — Phase 2 of this task.
 
 ## Completed cycles
 
@@ -36,7 +35,7 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 
 | Signal | Value |
 |---|---|
-| Tests | **105 passing**, 1 skipped (gated Stripe Test Mode suite) |
+| Tests | **117 passing**, 1 skipped (gated Stripe Test Mode suite) |
 | Lint | ruff clean (`app tests alembic scripts`) |
 | CI | ✅ green on `main` (backend + contracts) |
 | Warfare (manual) | all verdicts pass; 1 known gap (ghost booking) |
@@ -51,9 +50,7 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 - **FIN-01 (P0)** Stripe Test Mode still not exercised — **blocked on credentials, not on code**.
   Webhook/signature path is now validated against the real SDK; API-calling
   scenarios are written and gated (`make test-stripe`).
-- **BK-01 (P1)** re-confirmed with evidence: an *abandoned* payment leaves a
-  booking `pending` forever and blocks the calendar (a failed-payment event does
-  free it). Target state machine documented in the FIN-01 report.
+- ~~BK-01 (P1) ghost booking~~ — **closed** in MC-03 (TTL + expiry scheduler).
 - **FIN-03 (P1)** no chargeback/dispute representation in the ledger.
 - **REC-01 (P1)** no Stripe-side reconciliation (orphaned payments, missing
   webhooks, payout mismatch are undetectable).

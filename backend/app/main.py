@@ -17,6 +17,7 @@ from sqlalchemy import text
 from app.core.config import settings, validate_security_config
 from app.core.db import Base, engine
 from app.core.ratelimit import client_ip, limiter, resolve_policy
+from app.modules.booking.expiry import worker as booking_expiry_worker
 from app.modules.events.worker import worker as notification_worker
 from app.modules.admin.router import router as admin_router
 from app.modules.booking.router import router as booking_router
@@ -86,8 +87,11 @@ async def lifespan(app: FastAPI):
         _apply_postgres_guards()
         if settings.notification_worker_enabled:
             notification_worker.start()
+        if settings.booking_expiry_worker_enabled:
+            booking_expiry_worker.start()
     yield
     notification_worker.stop()
+    booking_expiry_worker.stop()
 
 
 app = FastAPI(

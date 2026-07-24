@@ -1,4 +1,11 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
+
+# BK-01: bounds for the unpaid-booking TTL. Below the floor an accidental tiny
+# value would expire real customers mid-checkout; above the ceiling inventory
+# stays frozen too long. Zero is impossible by construction.
+BOOKING_TTL_MIN_SECONDS = 60
+BOOKING_TTL_MAX_SECONDS = 86_400  # 24h
 
 
 class Settings(BaseSettings):
@@ -29,6 +36,23 @@ class Settings(BaseSettings):
     # NOT trusted and the socket peer is used. Only raise this when the
     # deployment actually terminates through that many trusted proxies.
     trust_proxy_hops: int = 0
+
+    # Booking lifecycle (BK-01): how long an unpaid booking holds inventory
+    # before the expiry sweep frees it. Default = a checkout session lifetime.
+    booking_payment_ttl_seconds: int = 1800  # 30 min
+    booking_expiry_worker_enabled: bool = True
+    booking_expiry_interval_seconds: float = 30.0
+    booking_expiry_batch: int = 100
+
+    @field_validator("booking_payment_ttl_seconds")
+    @classmethod
+    def _validate_ttl(cls, v: int) -> int:
+        if not (BOOKING_TTL_MIN_SECONDS <= v <= BOOKING_TTL_MAX_SECONDS):
+            raise ValueError(
+                f"BOOKING_PAYMENT_TTL_SECONDS must be between {BOOKING_TTL_MIN_SECONDS} and "
+                f"{BOOKING_TTL_MAX_SECONDS} (got {v})"
+            )
+        return v
 
     # Notification delivery (OAT-03: transactional outbox + worker)
     notification_max_attempts: int = 5

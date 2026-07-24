@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy import select
@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.audit import audit
+from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import get_current_user, require_role
 from app.modules.booking.availability import blocked_ranges, is_available
@@ -73,6 +74,9 @@ def create_booking(
         total_amount=total,
         currency=listing.currency,
         idempotency_key=idempotency_key,
+        # BK-01: hold inventory only until the payment deadline.
+        payment_expires_at=datetime.now(timezone.utc)
+        + timedelta(seconds=settings.booking_payment_ttl_seconds),
     )
     db.add(booking)
     try:

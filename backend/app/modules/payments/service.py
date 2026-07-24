@@ -59,10 +59,12 @@ def process_intent_succeeded(db: Session, intent_id: str) -> Payment:
     if booking is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Booking is gone")
 
-    if booking.status == "cancelled":
-        # D5 RC-2: late success after cancellation. Stripe already captured
-        # the money — record the capture AND refund it immediately so a
-        # cancelled booking never holds escrow (invariant I6).
+    if booking.status in ("cancelled", "expired"):
+        # D5 RC-2 / BK-01: late success after the booking was cancelled OR
+        # expired. Stripe already captured the money — record the capture AND
+        # refund it immediately so the booking never holds escrow (invariant
+        # I6). This is what makes the expiry sweep safe against a payment that
+        # commits a moment after expiry.
         payment.status = "succeeded"
         ledger.post_entry(
             db,
@@ -105,6 +107,7 @@ def process_intent_succeeded(db: Session, intent_id: str) -> Payment:
 
     payment.status = "succeeded"
     booking.status = "confirmed"
+    booking.payment_expires_at = None  # BK-01: no longer subject to the expiry sweep
     booking.operational_state = "checkin_available"
     ledger.post_entry(
         db,

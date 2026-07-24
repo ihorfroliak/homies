@@ -20,7 +20,8 @@ class Booking(Base):
     check_in: Mapped[date] = mapped_column(Date)
     check_out: Mapped[date] = mapped_column(Date)  # exclusive
     guests: Mapped[int] = mapped_column(Integer, default=1)
-    # pending -> confirmed -> completed | cancelled
+    # pending -> confirmed -> completed | cancelled | expired (BK-01)
+    #   expired = unpaid past its deadline; distinct from a user cancellation
     status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
     total_amount: Mapped[int] = mapped_column(Integer)  # minor units, ADR-0002
     currency: Mapped[str] = mapped_column(String(3))
@@ -29,6 +30,12 @@ class Booking(Base):
     # operational state (OAT-02): none -> checkin_available -> checked_in -> checked_out
     operational_state: Mapped[str] = mapped_column(String(20), default="none")
     idempotency_key: Mapped[str] = mapped_column(String(64))
+    # BK-01: durable deadline for a pending (unpaid) booking. Persisted so the
+    # sweep does not depend on `created_at + N` arithmetic and survives a TTL
+    # config change. Null once the booking leaves 'pending'.
+    payment_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

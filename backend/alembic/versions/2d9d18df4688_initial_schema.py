@@ -173,6 +173,11 @@ def upgrade() -> None:
     # OAT-02: operational notification layer
     op.add_column('bookings', sa.Column('operational_state', sa.String(length=20),
                   nullable=False, server_default='none'))
+    # BK-01: unpaid-booking expiry deadline
+    op.add_column('bookings', sa.Column('payment_expires_at', sa.DateTime(timezone=True),
+                  nullable=True))
+    op.create_index(op.f('ix_bookings_payment_expires_at'), 'bookings',
+                    ['payment_expires_at'], unique=False)
     op.create_table('domain_events',
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('event_type', sa.String(length=48), nullable=False),
@@ -273,6 +278,8 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_domain_events_correlation_id'), table_name='domain_events')
     op.drop_index(op.f('ix_domain_events_event_type'), table_name='domain_events')
     op.drop_table('domain_events')
+    op.drop_index(op.f('ix_bookings_payment_expires_at'), table_name='bookings')
+    op.drop_column('bookings', 'payment_expires_at')
     op.drop_column('bookings', 'operational_state')
     op.drop_index(op.f('ix_webhook_events_event_type'), table_name='webhook_events')
     op.drop_index(op.f('ix_webhook_events_stripe_event_id'), table_name='webhook_events')

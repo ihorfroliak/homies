@@ -23,9 +23,13 @@ TestingSession = sessionmaker(bind=engine, autoflush=False, expire_on_commit=Fal
 
 @pytest.fixture()
 def client():
+    from app.core.config import settings
     from app.core.ratelimit import limiter
 
-    limiter.reset()  # SEC-01: buckets are process-global; isolate each test
+    # Rate limiting is process-global; leave it OFF for ordinary tests so bulk
+    # flows do not trip it. The SEC-01 suite turns it on explicitly.
+    limiter.reset()
+    settings.rate_limit_enabled = False
     Base.metadata.create_all(engine)
 
     def override_get_db():
