@@ -14,13 +14,14 @@ Gate 1 — first safe production booking.
 
 ## Current cycle
 
-**TD-01 — Alembic single schema source of truth — complete.** `create_all`
-removed from app startup and the ops script; `ensure_schema()` applies
-migrations in local dev and verifies head elsewhere (fails loudly if not
-migrated); the Docker image ships migrations; live app now boots via migrations.
-A Postgres migration/integration test suite (gated by `TEST_DATABASE_URL`)
-validates the real schema. [TD-01 design](design/td-01-schema-source-of-truth.md),
-D-28/D-29. **Next: CI-03 — real Postgres service in CI** (phase 2 of this task).
+**TD-01 + CI-03 — complete.**
+- TD-01: Alembic is the single schema source of truth; `create_all` removed;
+  `ensure_schema()` (apply in local, verify elsewhere); image ships migrations.
+- CI-03: CI now runs a real **postgres:16** service (health-checked,
+  migration-first). 4 real concurrency tests validate double-booking,
+  webhook idempotency, expiry and payment-vs-expiry with true row locks —
+  the authoritative concurrency evidence (SQLite could not model it).
+  [TD-01 design](design/td-01-schema-source-of-truth.md), D-28/29/30.
 
 **Previous: TST-01, MC-03 (BK-01), UI-01.**
 - BK-01: unpaid-booking TTL + first scheduler; ghost-booking DoS closed.
@@ -46,10 +47,10 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 
 | Signal | Value |
 |---|---|
-| Tests | **134 passing** on SQLite / **142** with Postgres, 1 gated Stripe suite |
+| Tests | **148 passing** (SQLite unit + real-Postgres migration/concurrency), 1 gated Stripe suite |
 | Lint | ruff clean (`app tests alembic scripts`), ruff pinned 0.15.22 |
-| CI | ✅ green on `main` (backend + contracts) — Postgres service pending CI-03 |
-| Warfare (manual) | all verdicts pass |
+| CI | ✅ green on `main` — backend job runs a real postgres:16 service (migration-first) |
+| Concurrency | validated on **real Postgres** in CI (double-book→1, webhook→1 capture, expiry→1) |
 | DR drill (manual) | backup + restore + financial reconciliation verified |
 | Deployment | **none** — nothing deployed |
 | Frontend | design-system showcase only (`frontend/design-system/`); `apps/` empty, no React/Expo app |
@@ -67,9 +68,8 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
   webhooks, payout mismatch are undetectable).
 - ~~TST-01 (P1) OpenAPI drift~~ — **closed** (generated spec + drift guard).
 - ~~TD-01 (P1) dual schema path~~ — **closed** (Alembic single source).
+- ~~CI-03 (P1) no Postgres in CI~~ — **closed** (postgres:16 service, concurrency validated).
 - **OBS-01 (P1)** `/healthz` does not check the database.
-- **CI-03 (P1)** CI has no Postgres service yet — Postgres migration/concurrency
-  tests skip in CI (next phase of this task).
 - rate-limit counters are per-process; >1 instance weakens limits (D-14).
 
 ## Security risks
@@ -88,6 +88,7 @@ AsyncAPI catalog drifted from emitted events (separate follow-up).
 
 ## Next action
 
-CI-03 — add a real Postgres service to CI (phase 2 of the current task) so the
-migration/concurrency/DB-guard tests run against the real engine instead of
-skipping.
+Awaiting approval. Ranked candidates: CI-04 static typecheck · branch protection
++ dependency/secret scanning · OBS-01 real health/DB check · real Product A
+frontend (React/Expo from the design-system contract) · FIN-01 (needs Stripe
+test keys).

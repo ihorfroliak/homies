@@ -8,6 +8,27 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    # CI-03: a real Postgres service so migration/concurrency/DB-guard tests run
+    # against the actual engine instead of skipping. Same major version (16) as
+    # the app; plain postgres image (btree_gist is contrib, PostGIS not needed
+    # by the schema). GitHub waits on the health check before steps run.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: homies
+          POSTGRES_PASSWORD: homies
+          POSTGRES_DB: homies_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U homies -d homies_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Enables the Postgres migration + concurrency suites (else they skip).
+      TEST_DATABASE_URL: postgresql+psycopg://homies:homies@localhost:5432/homies_ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -22,8 +43,15 @@ jobs:
       - name: Lint
         working-directory: backend
         run: ruff check app tests alembic scripts
+      - name: Migrate (verify Alembic base -> head on real Postgres)
+        working-directory: backend
+        env:
+          ALEMBIC_DATABASE_URL: postgresql+psycopg://homies:homies@localhost:5432/homies_ci
+        run: python -m alembic upgrade head
       - name: Test
         working-directory: backend
+        # Fast SQLite unit suite + gated Postgres migration/concurrency suites
+        # (TEST_DATABASE_URL is set, so they run against the service).
         run: pytest -q
 
   contracts:

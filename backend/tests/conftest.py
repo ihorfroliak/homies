@@ -107,6 +107,42 @@ def pg_migrated_engine():
 
 
 @pytest.fixture()
+def pg_client(pg_migrated_engine):
+    """A TestClient wired to the migration-built Postgres schema, so requests
+    hit the real engine (row locks, exclusion constraints). Data is truncated
+    between tests; the schema is preserved. Used by the CI-03 concurrency tests
+    — SQLite cannot model true multi-connection concurrency."""
+    from sqlalchemy import text
+    from sqlalchemy.orm import sessionmaker
+
+    from app.core.config import settings
+    from app.core.db import get_db
+
+    tables = (
+        "notifications domain_events incidents webhook_events journal_lines "
+        "journal_entries ledger_accounts payments bookings host_blocks listings "
+        "host_profiles refresh_tokens audit_log users"
+    ).split()
+    with pg_migrated_engine.begin() as conn:
+        conn.execute(text(f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"))
+
+    Session = sessionmaker(bind=pg_migrated_engine, autoflush=False, expire_on_commit=False)
+
+    def override_get_db():
+        db = Session()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    settings.rate_limit_enabled = False
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture()
 def pg_session(pg_migrated_engine):
     """A session on the migration-built Postgres schema, cleaned between tests
     (data only — schema is preserved)."""
