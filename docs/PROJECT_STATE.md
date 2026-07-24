@@ -14,7 +14,12 @@ Gate 1 — first safe production booking.
 
 ## Current cycle
 
-**MC-03 (BK-01) + UI-01 — both complete.**
+**TST-01 — OpenAPI contract alignment — complete.** The HTTP contract is now
+code-generated (`docs/api/openapi.json`, 35 paths) with a pytest drift-guard;
+the three drifted hand-written specs are retired. Contract can no longer rot.
+[api/README](api/README.md), D-27.
+
+**Previous: MC-03 (BK-01) + UI-01.**
 - BK-01: unpaid-booking TTL + first scheduler; ghost-booking DoS closed.
   [design](design/bk-01-booking-expiry.md).
 - UI-01: framework-agnostic design system + runnable web/mobile showcase in
@@ -38,7 +43,7 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 
 | Signal | Value |
 |---|---|
-| Tests | **127 passing**, 1 skipped (gated Stripe Test Mode suite) |
+| Tests | **132 passing**, 1 skipped (gated Stripe Test Mode suite) |
 | Frontend | design-system showcase in `frontend/design-system/` (runnable, no framework yet); `apps/` still empty |
 | Lint | ruff clean (`app tests alembic scripts`) |
 | CI | ✅ green on `main` (backend + contracts) |

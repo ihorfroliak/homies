@@ -1,6 +1,11 @@
 # ADR-0005: Contract-first APIs with OpenAPI 3.1, AsyncAPI 3.0, and Spectral linting
 
-- **Status:** Accepted
+- **Status:** Superseded in practice by D-27 (2026-07-23) for REST — the HTTP
+  contract is now **code-generated** (`docs/api/openapi.json`) and CI-guarded
+  against drift, because the hand-written contract-first specs rotted (covered
+  11 of 35 real paths). AsyncAPI remains contract-authored. Original text kept
+  below for history.
+- **Status (original):** Accepted
 - **Date:** 2026-07-05
 - **Context chat:** 01 — System Design & Contracts
 

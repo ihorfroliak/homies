@@ -1,13 +1,12 @@
-# Spectral linting policy for API contracts (docs/api/*.openapi.yaml).
-# Rule overrides are engineering decisions and must carry a written
-# rationale — see ADR-0005.
+# Spectral linting policy for docs/api/openapi.json (code-generated; see
+# docs/api/README.md and DECISIONS D-27). Rule overrides carry a rationale.
 extends: ["spectral:oas"]
 rules:
-  # Rationale: servers list includes a production placeholder domain
-  # until the real domain is registered (Phase 1). Re-enable then.
-  oas3-server-trailing-slash: warn
-
-  # Enforced project conventions:
+  # The spec is generated from the app; operation-level descriptions come from
+  # route docstrings and are not all present. Non-failing signal, not an error.
+  operation-description: warn
+  # Enforced project conventions (generated spec satisfies these):
   operation-operationId: error
   operation-tags: error
+  operation-tag-defined: warn
   oas3-valid-media-example: error

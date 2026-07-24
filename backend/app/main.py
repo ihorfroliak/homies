@@ -94,10 +94,26 @@ async def lifespan(app: FastAPI):
     booking_expiry_worker.stop()
 
 
+# Declared so the generated OpenAPI has global tag definitions (Spectral
+# operation-tag-defined). Router tags must match these names.
+OPENAPI_TAGS = [
+    {"name": "identity", "description": "Registration, authentication, tokens, profiles."},
+    {"name": "listings", "description": "Property listings and host calendar blocks."},
+    {"name": "bookings", "description": "Booking lifecycle, availability, check-in, state."},
+    {"name": "payments", "description": "Stripe webhooks and host payout execution."},
+    {"name": "admin", "description": "Read-only operations surface, incidents, reconciliation."},
+    {"name": "ops", "description": "Health and metrics."},
+]
+
 app = FastAPI(
     title="Homies API",
-    version="0.2.0",
-    description="Managed hospitality platform — D4 vertical slice.",
+    version="0.3.0",
+    description=(
+        "Managed hospitality platform. This spec is generated from the "
+        "implementation (code-first) and kept in sync by a CI drift-guard — "
+        "see docs/api/README.md."
+    ),
+    openapi_tags=OPENAPI_TAGS,
     lifespan=lifespan,
 )
 
