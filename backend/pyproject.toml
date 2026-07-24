@@ -25,7 +25,10 @@ dependencies = [
 dev = [
     "pytest>=8.2",
     "httpx>=0.27",
-    "ruff>=0.5",
+    # Pinned: an unpinned linter makes CI non-reproducible — ruff 0.16 enabled
+    # ~190 new default rules and broke a green build with zero code changes.
+    # Adopting a newer ruleset is a deliberate, separate cleanup cycle.
+    "ruff==0.15.22",
 ]
 
 # Only the application package is distributable. alembic/, scripts/ and tests/
