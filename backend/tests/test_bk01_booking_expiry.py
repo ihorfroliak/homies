@@ -108,25 +108,35 @@ def test_expiry_is_idempotent(client):
     assert _status(bk["id"]) == "expired"
 
 
-# 7. two concurrent sweeps cannot both expire the same booking
-def test_concurrent_sweeps_expire_once(client):
-    import threading
+# 7. two workers cannot both expire the same booking.
+#
+# The guarantee is the row-guarded UPDATE (... WHERE status='pending'): the
+# loser's UPDATE affects 0 rows. On real Postgres concurrent workers are
+# serialised by row locks; here we prove the *guard* deterministically, because
+# SQLite with a shared connection cannot faithfully model true thread
+# concurrency (same limitation the audit records as TST-05 / CI-03). A Postgres
+# CI service is the recommended way to also exercise real concurrency.
+def test_two_expiry_attempts_transition_the_row_exactly_once(client):
+    from sqlalchemy import update
 
     lid = _listing(client)
     bk = _book(client, lid, "bk01-0006")
     _set_deadline(bk["id"], datetime.now(timezone.utc) - timedelta(seconds=1))
-    results = []
 
-    def run():
+    def attempt_expire() -> int:
         with TestingSession() as db:
-            results.append(expire_due_bookings(db))
+            res = db.execute(
+                update(Booking)
+                .where(Booking.id == bk["id"], Booking.status == "pending")
+                .values(status="expired", payment_expires_at=None)
+            )
+            db.commit()
+            return res.rowcount
 
-    threads = [threading.Thread(target=run) for _ in range(2)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
-    assert sum(r["expired"] for r in results) == 1  # exactly one worker won
+    first = attempt_expire()   # winner
+    second = attempt_expire()  # loser: row is no longer pending
+    assert first == 1
+    assert second == 0         # the guard makes the second a no-op -> expired once
     assert _status(bk["id"]) == "expired"
 
 

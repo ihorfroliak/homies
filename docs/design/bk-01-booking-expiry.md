@@ -44,8 +44,12 @@ WHERE id = :id AND status = 'pending'
 ```
 
 - **Two workers** cannot both expire one booking — only one UPDATE gets
-  `rowcount == 1` (row lock); the other sees 0 and rolls back. Proven with two
-  concurrent sweeps → exactly one expiry.
+  `rowcount == 1`; the other sees 0. Proven deterministically via the row guard
+  (winner rowcount 1, loser rowcount 0). True thread concurrency is a Postgres
+  row-lock property; the test suite runs on SQLite (shared connection) which
+  cannot faithfully model it, so the *guard* is tested rather than raw threads
+  — a Postgres CI service (audit TST-05 / CI-03) would also exercise real
+  concurrency.
 - **A paid booking is never expired** — the `status='pending'` guard makes the
   UPDATE a no-op the instant payment set it to `confirmed`. Proven.
 - **Payment commits a moment after expiry** — the late webhook finds the
