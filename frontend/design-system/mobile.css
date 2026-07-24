@@ -1,0 +1,46 @@
+/* Mobile showcase (UI-01) — native interaction patterns in a device frame:
+   bottom nav, bottom sheet, sticky CTA, full-screen gallery. */
+
+.device { width: 360px; max-width: 100%; height: 720px; margin: 0 auto; background: var(--c-surface-2);
+  border: 10px solid #10151b; border-radius: 36px; box-shadow: var(--sh-3); overflow: hidden;
+  position: relative; display: flex; flex-direction: column; }
+.device__status { height: 28px; background: var(--c-surface); display: flex; align-items: center;
+  justify-content: space-between; padding: 0 var(--sp-4); font-size: 12px; color: var(--c-ink-500); }
+.device__screen { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.device__screen[hidden] { display: none; }
+
+.m-header { position: sticky; top: 0; background: var(--c-surface); padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--c-line); z-index: 2; }
+.m-searchbar { display: flex; align-items: center; gap: var(--sp-2); min-height: var(--tap-min);
+  padding: 0 var(--sp-3); background: var(--c-surface-3); border-radius: var(--r-pill); color: var(--c-ink-500); }
+.m-content { padding: var(--sp-3) var(--sp-4) 96px; }
+.m-card { margin-bottom: var(--sp-4); }
+.m-card .card__media { border-radius: var(--r-md); aspect-ratio: 16/10; }
+
+/* map/list toggle */
+.seg { display: inline-flex; background: var(--c-surface-3); border-radius: var(--r-pill); padding: 3px; }
+.seg button { min-height: 36px; padding: 0 var(--sp-4); border: none; background: none; border-radius: var(--r-pill);
+  font: inherit; font-weight: var(--fw-medium); color: var(--c-ink-500); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--c-surface); color: var(--c-ink-900); box-shadow: var(--sh-1); }
+
+/* sticky booking CTA */
+.m-sticky { position: absolute; left: 0; right: 0; bottom: 56px; background: var(--c-surface);
+  border-top: 1px solid var(--c-line); padding: var(--sp-3) var(--sp-4);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+
+/* bottom navigation */
+.m-bottomnav { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; background: var(--c-surface);
+  border-top: 1px solid var(--c-line); display: flex; }
+.m-bottomnav button { flex: 1; border: none; background: none; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px; font-size: 11px; color: var(--c-ink-500); cursor: pointer; }
+.m-bottomnav button[aria-current="page"] { color: var(--c-brand-600); }
+.m-bottomnav .ic { font-size: 18px; }
+
+/* bottom sheet */
+.sheet-overlay { position: absolute; inset: 0; background: rgba(20,24,31,.45); z-index: 5; }
+.sheet-overlay[hidden] { display: none; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--c-surface);
+  border-radius: 20px 20px 0 0; padding: var(--sp-3) var(--sp-4) var(--sp-5); box-shadow: var(--sh-3);
+  transform: translateY(0); transition: transform var(--motion); z-index: 6; }
+.sheet[hidden] { display: none; }
+.sheet__grip { width: 40px; height: 4px; background: var(--c-line); border-radius: var(--r-pill); margin: 4px auto var(--sp-3); }

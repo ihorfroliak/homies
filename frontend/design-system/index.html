@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Homies — Design System & UI Showcase</title>
+  <link rel="stylesheet" href="tokens.css" />
+  <link rel="stylesheet" href="components.css" />
+  <link rel="stylesheet" href="mobile.css" />
+  <style>
+    header.site { position: sticky; top: 0; z-index: 20; background: var(--c-surface); border-bottom: 1px solid var(--c-line); }
+    .site .container { display: flex; align-items: center; gap: var(--sp-4); min-height: 60px; }
+    .brand { font-weight: var(--fw-bold); color: var(--c-brand-600); font-size: var(--fs-h2); }
+    nav.site-nav { display: flex; gap: var(--sp-1); flex-wrap: wrap; margin-left: auto; }
+    nav.site-nav a { min-height: var(--tap-min); display: inline-flex; align-items: center; padding: 0 var(--sp-2); color: var(--c-ink-700); text-decoration: none; border-radius: var(--r-sm); font-size: var(--fs-small); }
+    nav.site-nav a:hover { background: var(--c-surface-3); }
+    .banner { background: var(--c-info-bg); color: var(--c-info-fg); }
+    .two-col { display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--sp-5); align-items: start; }
+    @media (max-width: 860px) { .two-col { grid-template-columns: 1fr; } }
+    .gallery { display: grid; grid-template-columns: 2fr 1fr 1fr; grid-auto-rows: 90px; gap: var(--sp-1); border-radius: var(--r-lg); overflow: hidden; }
+    .gallery > div { background: linear-gradient(135deg, var(--c-brand-100), var(--c-surface-3)); }
+    .gallery > div:first-child { grid-row: span 2; }
+    .amenities { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+    table.data { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
+    table.data th, table.data td { text-align: left; padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--c-line); }
+    table.data th { color: var(--c-ink-500); font-weight: var(--fw-medium); }
+    .kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: var(--sp-3); }
+    .kpi .card { padding: var(--sp-4); } .kpi b { font-size: var(--fs-h1); color: var(--c-ink-900); display: block; }
+    .chip { min-height: 36px; padding: 0 var(--sp-3); border-radius: var(--r-pill); border: 1px solid var(--c-line); background: var(--c-surface); font: inherit; font-size: var(--fs-small); cursor: pointer; }
+    .chip[aria-pressed="true"] { background: var(--c-brand-50); border-color: var(--c-brand-300); color: var(--c-brand-700); }
+    .analytics { position: sticky; bottom: 0; }
+    #analytics-feed { list-style: none; margin: 0; padding: 0; max-height: 120px; overflow-y: auto; font-family: ui-monospace, monospace; }
+  </style>
+</head>
+<body>
+  <a href="#main" class="btn btn--primary" style="position:absolute;left:-9999px" onfocus="this.style.left='8px';this.style.top='8px';this.style.position='fixed';this.style.zIndex=99">Skip to content</a>
+
+  <header class="site">
+    <div class="container">
+      <span class="brand">Homies</span>
+      <nav class="site-nav" aria-label="Sections">
+        <a href="#foundations">Foundations</a>
+        <a href="#components">Components</a>
+        <a href="#search">Search</a>
+        <a href="#listings">Listings</a>
+        <a href="#detail">Property</a>
+        <a href="#booking">Booking</a>
+        <a href="#host">Host</a>
+        <a href="#user">Guest</a>
+        <a href="#marketplace">Free market</a>
+        <a href="#admin">Moderation</a>
+        <a href="#mobile">Mobile</a>
+      </nav>
+      <button id="theme-toggle" class="btn btn--secondary" aria-pressed="false">🌙 Dark</button>
+    </div>
+  </header>
+
+  <div class="banner"><div class="container" style="padding-top:8px;padding-bottom:8px">
+    <strong>Design-system showcase.</strong> All data is <span class="mock-tag">mock</span>. No backend calls are made — no frontend framework exists yet; this establishes tokens & component specs a future React (web) / Expo (mobile) app will reuse.
+  </div></div>
+
+  <main id="main" class="container">
+
+    <!-- FOUNDATIONS -->
+    <section id="foundations" class="section">
+      <h2>Foundations — tokens</h2>
+      <p class="section__hint">Colour, type, spacing and radius are CSS custom properties (light + dark). Contrast targets WCAG 2.2 AA.</p>
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(120px,1fr))">
+        <div class="swatch" style="background:var(--c-brand-500)">brand-500</div>
+        <div class="swatch" style="background:var(--c-brand-600)">brand-600</div>
+        <div class="swatch" style="background:var(--c-success-fg)">success</div>
+        <div class="swatch" style="background:var(--c-warning-fg)">warning</div>
+        <div class="swatch" style="background:var(--c-danger-fg)">danger</div>
+        <div class="swatch" style="background:var(--c-info-fg)">info</div>
+        <div class="swatch" style="background:var(--c-ink-900)">ink-900</div>
+        <div class="swatch" style="background:var(--c-ink-500)">ink-500</div>
+      </div>
+      <div class="stack" style="margin-top:var(--sp-4)">
+        <div style="font-size:var(--fs-display);line-height:var(--lh-display);font-weight:var(--fw-bold);color:var(--c-ink-900)">Display / find a place to stay</div>
+        <h1>H1 — Verified stays, transparent pricing</h1>
+        <h2>H2 — Section heading</h2>
+        <p>Body — clear, trustworthy copy. Secondary text is <span class="muted">muted but still readable (AA)</span>.</p>
+      </div>
+    </section>
+
+    <!-- COMPONENTS -->
+    <section id="components" class="section">
+      <h2>Components</h2>
+      <p class="section__hint">Buttons, inputs, badges, alerts, states. Every control is keyboard-reachable with a visible focus ring; touch targets ≥ 44px.</p>
+      <div class="row">
+        <button class="btn btn--primary">Primary</button>
+        <button class="btn btn--secondary">Secondary</button>
+        <button class="btn btn--ghost">Ghost</button>
+        <button class="btn btn--danger">Cancel booking</button>
+        <button class="btn btn--primary" disabled>Disabled</button>
+      </div>
+      <div class="row" style="margin-top:var(--sp-4);align-items:flex-end">
+        <div class="field" style="min-width:200px"><label for="c-in">Location</label><input id="c-in" class="input" placeholder="City or address" /></div>
+        <div class="field" style="min-width:140px"><label for="c-sel">Guests</label>
+          <select id="c-sel" class="select"><option>1 guest</option><option>2 guests</option><option>3 guests</option></select></div>
+      </div>
+      <div class="row" style="margin-top:var(--sp-4)">
+        <span class="badge badge--verified">✓ Verified host</span>
+        <span class="badge badge--promoted">Promoted</span>
+        <span class="badge badge--free">Free listing</span>
+        <span class="badge badge--pending">Pending payment</span>
+        <span class="badge badge--confirmed">Confirmed</span>
+        <span class="badge badge--expired">Expired</span>
+      </div>
+      <div class="stack" style="margin-top:var(--sp-4)">
+        <div class="alert alert--success">✓ Payment received — your booking is confirmed.</div>
+        <div class="alert alert--warning">⏳ Complete payment within 30 minutes or the dates are released.</div>
+        <div class="alert alert--danger">✕ Card declined. Try another payment method.</div>
+        <div class="alert alert--info">🛈 Secure payment via Stripe. Homies never sees your card details.</div>
+      </div>
+      <div class="grid" style="margin-top:var(--sp-4)">
+        <div class="card"><div class="card__body state"><div class="state__icon">🔍</div><p>No stays match these filters yet.</p><button class="btn btn--secondary">Clear filters</button></div></div>
+        <div class="card"><div class="card__media skeleton"></div><div class="card__body stack"><div class="skeleton" style="height:14px;width:70%"></div><div class="skeleton" style="height:12px;width:40%"></div></div></div>
+        <div class="card"><div class="card__body state"><div class="state__icon">⚠️</div><p>Couldn’t load listings. <a href="#">Retry</a></p></div></div>
+      </div>
+    </section>
+
+    <!-- SEARCH -->
+    <section id="search" class="section">
+      <h2>Search</h2>
+      <form id="search-form" class="card" style="padding:var(--sp-4)">
+        <div class="row" style="align-items:flex-end">
+          <div class="field" style="flex:2;min-width:180px"><label for="s-city">Where</label><input id="s-city" name="city" class="input" placeholder="Warsaw, Kraków…" /></div>
+          <div class="field" style="flex:1;min-width:130px"><label for="s-in">Check-in</label><input id="s-in" name="check_in" type="date" class="input" /></div>
+          <div class="field" style="flex:1;min-width:130px"><label for="s-out">Check-out</label><input id="s-out" name="check_out" type="date" class="input" /></div>
+          <div class="field" style="min-width:120px"><label for="s-g">Guests</label><select id="s-g" name="guests" class="select"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+          <button class="btn btn--primary" type="submit">Search</button>
+        </div>
+        <div class="row" style="margin-top:var(--sp-3)">
+          <span class="small muted">Price / night:</span>
+          <input name="price_min" class="input" style="max-width:90px" type="number" placeholder="min" />
+          <input name="price_max" class="input" style="max-width:90px" type="number" placeholder="max" />
+          <button type="button" class="chip" data-filter="instant" aria-pressed="false">⚡ Instant book</button>
+          <button type="button" class="chip" data-filter="verified" aria-pressed="false">✓ Verified only</button>
+          <button type="button" class="chip" data-filter="pets" aria-pressed="false">🐾 Pets ok</button>
+        </div>
+      </form>
+      <p id="search-results" class="section__hint" role="status" aria-live="polite" style="margin-top:var(--sp-3)"></p>
+    </section>
+
+    <!-- LISTINGS -->
+    <section id="listings" class="section">
+      <h2>Listing cards — variants</h2>
+      <p class="section__hint">Apartment · house · room · verified host · promoted · free-marketplace. Prices show total transparency; no hidden fees.</p>
+      <div class="grid">
+        <article class="card"><div class="card__media"><div class="card__badges"><span class="badge badge--verified">✓ Verified</span></div><button class="card__fav" data-listing="l1" aria-pressed="false" aria-label="Save">♡</button></div>
+          <div class="card__body"><div class="card__row"><span class="card__title">Mokotów studio</span><span class="card__price">€52<span class="muted small"> /night</span></span></div><div class="card__meta">Apartment · Warsaw · ★ 4.9 (128)</div></div></article>
+        <article class="card"><div class="card__media"><div class="card__badges"><span class="badge badge--promoted">Promoted</span></div><button class="card__fav" data-listing="l2" aria-pressed="false" aria-label="Save">♡</button></div>
+          <div class="card__body"><div class="card__row"><span class="card__title">Family house, garden</span><span class="card__price">€140<span class="muted small"> /night</span></span></div><div class="card__meta">House · Kraków · ★ 4.8 (54)</div></div></article>
+        <article class="card"><div class="card__media"><button class="card__fav" data-listing="l3" aria-pressed="false" aria-label="Save">♡</button></div>
+          <div class="card__body"><div class="card__row"><span class="card__title">Private room, Old Town</span><span class="card__price">€28<span class="muted small"> /night</span></span></div><div class="card__meta">Room · Gdańsk · ★ 4.7 (203)</div></div></article>
+        <article class="card"><div class="card__media"><div class="card__badges"><span class="badge badge--free">Free listing</span></div></div>
+          <div class="card__body"><div class="card__row"><span class="card__title">Long-term flat (owner)</span><span class="card__price">€600<span class="muted small"> /month</span></span></div><div class="card__meta">Marketplace · Wrocław · <span class="badge badge--pending">Pending review</span></div></div></article>
+      </div>
+    </section>
+
+    <!-- PROPERTY DETAIL -->
+    <section id="detail" class="section">
+      <h2>Property detail</h2>
+      <div class="gallery" aria-label="Photo gallery (mock)"><div></div><div></div><div></div><div></div><div></div></div>
+      <div class="two-col" style="margin-top:var(--sp-4)">
+        <div class="stack">
+          <h1>Bright studio in Mokotów</h1>
+          <div class="card__meta">Apartment · Warsaw, Poland · ★ 4.9 (128 reviews)</div>
+          <div class="row"><span class="badge badge--verified">✓ Verified host</span><span class="badge badge--confirmed">Superhost</span></div>
+          <h3>Amenities</h3>
+          <div class="amenities"><span>📶 Wifi</span><span>🍳 Kitchen</span><span>❄️ A/C</span><span>🚿 Washer</span><span>🔥 Smoke alarm</span><span>🔑 Self check-in</span></div>
+          <h3>Your host</h3>
+          <div class="row"><div class="skeleton" style="width:44px;height:44px;border-radius:999px"></div><div><strong>Anna</strong><div class="small muted">Host since 2023 · responds within an hour</div></div></div>
+          <h3>Reviews <span class="mock-tag">mock</span></h3>
+          <div class="alert alert--info">“Spotless and exactly as pictured. Easy check-in.” — Marek, Jun 2026</div>
+        </div>
+        <aside class="stack">
+          <div class="price-breakdown" aria-label="Price breakdown">
+            <dl>
+              <dt>€52 × 3 nights</dt><dd>€156.00</dd>
+              <dt>Cleaning fee</dt><dd>€20.00</dd>
+              <dt>Homies service fee <span class="small muted">(shown, never hidden)</span></dt><dd>€23.40</dd>
+              <dt>City tax</dt><dd>€4.50</dd>
+              <div class="total" style="display:contents"><dt>Total</dt><dd>€203.90</dd></div>
+            </dl>
+          </div>
+          <button class="btn btn--primary btn--block" data-book="l1">Reserve</button>
+          <button id="open-modal" class="btn btn--ghost btn--block">Cancellation policy</button>
+          <p id="booking-status" class="alert alert--success" hidden>Booking started (mock) → payment_started. Inventory held 30 min.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- BOOKING lifecycle -->
+    <section id="booking" class="section">
+      <h2>Booking status</h2>
+      <p class="section__hint">The real booking lifecycle (BK-01): a pending booking holds inventory only until its payment deadline.</p>
+      <div class="tabs" role="tablist" aria-label="Booking states">
+        <button class="tab" role="tab" id="t1" aria-controls="p1" aria-selected="true">Pending</button>
+        <button class="tab" role="tab" id="t2" aria-controls="p2" aria-selected="false" tabindex="-1">Confirmed</button>
+        <button class="tab" role="tab" id="t3" aria-controls="p3" aria-selected="false" tabindex="-1">Expired</button>
+        <button class="tab" role="tab" id="t4" aria-controls="p4" aria-selected="false" tabindex="-1">Cancelled + refund</button>
+      </div>
+      <div id="p1" class="tabpanel card" role="tabpanel" aria-labelledby="t1" style="padding:var(--sp-4)"><span class="badge badge--pending">Pending payment</span><p>Awaiting payment — dates held until <strong>the deadline</strong>. Pay now to confirm.</p></div>
+      <div id="p2" class="tabpanel card" role="tabpanel" aria-labelledby="t2" hidden style="padding:var(--sp-4)"><span class="badge badge--confirmed">Confirmed</span><p>Payment captured, host paid out after check-in. Check-in instructions unlocked.</p></div>
+      <div id="p3" class="tabpanel card" role="tabpanel" aria-labelledby="t3" hidden style="padding:var(--sp-4)"><span class="badge badge--expired">Expired</span><p>Payment wasn’t completed in time. The dates were automatically released for other guests.</p></div>
+      <div id="p4" class="tabpanel card" role="tabpanel" aria-labelledby="t4" hidden style="padding:var(--sp-4)"><span class="badge badge--cancelled">Cancelled</span><p>Cancelled per the policy. Refund issued to the original payment method.</p></div>
+    </section>
+
+    <!-- HOST dashboard -->
+    <section id="host" class="section">
+      <h2>Host dashboard <span class="mock-tag">mock</span></h2>
+      <div class="kpi">
+        <div class="card"><span class="card__meta">Properties</span><b>3</b></div>
+        <div class="card"><span class="card__meta">Occupancy</span><b>78%</b></div>
+        <div class="card"><span class="card__meta">This month</span><b>€2,140</b></div>
+        <div class="card"><span class="card__meta">Upcoming</span><b>5</b></div>
+      </div>
+      <table class="data" style="margin-top:var(--sp-4)">
+        <thead><tr><th>Guest</th><th>Dates</th><th>Status</th><th>Payout</th></tr></thead>
+        <tbody>
+          <tr><td>Marek K.</td><td>28–31 Jul</td><td><span class="badge badge--confirmed">Confirmed</span></td><td>€132.60</td></tr>
+          <tr><td>Ola W.</td><td>2–4 Aug</td><td><span class="badge badge--pending">Pending</span></td><td>—</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- USER dashboard -->
+    <section id="user" class="section">
+      <h2>Guest dashboard <span class="mock-tag">mock</span></h2>
+      <div class="two-col">
+        <div class="stack"><h3>Upcoming trips</h3>
+          <div class="card"><div class="card__body card__row"><span>Warsaw · 28–31 Jul</span><span class="badge badge--confirmed">Confirmed</span></div></div>
+          <h3>Past trips</h3>
+          <div class="card"><div class="card__body card__row"><span>Kraków · Mar 2026</span><button class="btn btn--ghost">Leave review</button></div></div>
+        </div>
+        <div class="stack"><h3>Favourites</h3>
+          <div class="card"><div class="card__body card__row"><span>Old Town room</span><button class="card__fav" data-listing="fav" aria-pressed="true" aria-label="Remove">♥</button></div></div>
+          <h3>Messages</h3>
+          <div class="card"><div class="card__body"><strong>Anna (host)</strong><p class="small muted">“Check-in code is 4821. Enjoy your stay!”</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MARKETPLACE (Product B) -->
+    <section id="marketplace" class="section">
+      <h2>Free listings marketplace <span class="mock-tag">Product B — not built</span></h2>
+      <p class="section__hint">Free rental listings for organic reach. Every listing is moderated before it is indexed (protects the domain’s SEO reputation).</p>
+      <div class="grid">
+        <article class="card"><div class="card__media"><div class="card__badges"><span class="badge badge--free">Free</span></div></div>
+          <div class="card__body"><div class="card__row"><span class="card__title">2-room flat, Ursynów</span><span class="card__price">€720<span class="muted small">/mo</span></span></div>
+          <div class="card__meta">Owner listing · <span class="badge badge--confirmed">Approved</span></div></div></article>
+        <article class="card"><div class="card__media"><div class="card__badges"><span class="badge badge--free">Free</span></div></div>
+          <div class="card__body"><div class="card__row"><span class="card__title">Studio near center</span><span class="card__price">€550<span class="muted small">/mo</span></span></div>
+          <div class="card__meta">Owner listing · <span class="badge badge--pending">Pending review</span></div></div></article>
+      </div>
+      <div class="alert alert--info" style="margin-top:var(--sp-4)">Publishing requires verified email + phone and passes a moderation queue. Unreviewed listings are <code>noindex</code>.</div>
+    </section>
+
+    <!-- ADMIN / MODERATION -->
+    <section id="admin" class="section">
+      <h2>Admin & moderation <span class="mock-tag">mock</span></h2>
+      <table class="data">
+        <thead><tr><th>Item</th><th>Type</th><th>Signal</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td>“Studio near center”</td><td>Free listing</td><td><span class="badge badge--pending">Awaiting review</span></td><td><button class="btn btn--secondary">Approve</button> <button class="btn btn--danger">Reject</button></td></tr>
+          <tr><td>host_4821</td><td>Verification</td><td><span class="badge badge--warning">Doc mismatch</span></td><td><button class="btn btn--secondary">Review</button></td></tr>
+          <tr><td>listing_992</td><td>Report</td><td><span class="badge badge--danger">Possible scam</span></td><td><button class="btn btn--danger">Suspend</button></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- MOBILE SHOWCASE -->
+    <section id="mobile" class="section">
+      <h2>Mobile showcase</h2>
+      <p class="section__hint">Native patterns: bottom nav, sticky CTA, bottom-sheet filters, map/list toggle. Tap the bottom bar to switch screens.</p>
+      <div class="device">
+        <div class="device__status"><span>9:41</span><span>Homies</span><span>▮▮▮</span></div>
+
+        <div class="device__screen" data-screen="explore">
+          <div class="m-header"><div class="m-searchbar">🔍 Warsaw · 28–31 Jul · 2 guests</div>
+            <div class="row" style="margin-top:var(--sp-2);justify-content:space-between">
+              <div class="seg"><button data-view="list" aria-pressed="true">List</button><button data-view="map" aria-pressed="false">Map</button></div>
+              <button id="m-open-sheet" class="chip">⚙ Filters</button>
+            </div>
+          </div>
+          <div class="m-content">
+            <article class="card m-card"><div class="card__media"><div class="card__badges"><span class="badge badge--verified">✓</span></div></div>
+              <div class="card__body"><div class="card__row"><span class="card__title">Mokotów studio</span><span class="card__price">€52</span></div><div class="card__meta">★ 4.9 (128)</div></div></article>
+            <article class="card m-card"><div class="card__media"><div class="card__badges"><span class="badge badge--promoted">Promoted</span></div></div>
+              <div class="card__body"><div class="card__row"><span class="card__title">Old Town room</span><span class="card__price">€28</span></div><div class="card__meta">★ 4.7 (203)</div></div></article>
+          </div>
+        </div>
+
+        <div class="device__screen" data-screen="detail" hidden>
+          <div class="card__media" style="border-radius:0;aspect-ratio:1/1"></div>
+          <div class="m-content"><h2>Bright studio</h2><div class="card__meta">Warsaw · ★ 4.9</div>
+            <div class="amenities" style="margin-top:var(--sp-3)"><span>📶 Wifi</span><span>🍳 Kitchen</span></div></div>
+          <div class="m-sticky"><div><strong>€203.90</strong><div class="small muted">3 nights · all-in</div></div><button class="btn btn--primary" data-book="m1">Reserve</button></div>
+        </div>
+
+        <div class="device__screen" data-screen="trips" hidden>
+          <div class="m-content"><h2>Your trips</h2>
+            <div class="card"><div class="card__body card__row"><span>Warsaw · 28 Jul</span><span class="badge badge--confirmed">Confirmed</span></div></div></div>
+        </div>
+
+        <div id="m-sheet-overlay" class="sheet-overlay" hidden></div>
+        <div id="m-sheet" class="sheet" role="dialog" aria-label="Filters" hidden>
+          <div class="sheet__grip"></div><h3>Filters</h3>
+          <div class="row" style="margin-top:var(--sp-2)"><button class="chip" aria-pressed="false">⚡ Instant</button><button class="chip" aria-pressed="false">✓ Verified</button><button class="chip" aria-pressed="false">🐾 Pets</button></div>
+          <button id="m-apply-sheet" class="btn btn--primary btn--block" style="margin-top:var(--sp-4)">Show 24 stays</button>
+        </div>
+
+        <nav class="m-bottomnav" aria-label="Primary">
+          <button data-target="explore" aria-current="page"><span class="ic">🔍</span>Explore</button>
+          <button data-target="trips"><span class="ic">🧳</span>Trips</button>
+          <button data-target="detail"><span class="ic">♥</span>Saved</button>
+          <button data-target="explore"><span class="ic">👤</span>Profile</button>
+        </nav>
+      </div>
+    </section>
+
+    <!-- ANALYTICS FEED -->
+    <section class="section analytics">
+      <h2>Analytics events <span class="mock-tag">console + this feed</span></h2>
+      <p class="section__hint">Every interaction fires a taxonomy event (see docs/design/ANALYTICS_EVENTS.md). No PII is collected here.</p>
+      <ul id="analytics-feed" class="card" style="padding:var(--sp-3)"></ul>
+    </section>
+  </main>
+
+  <div id="modal-overlay" class="overlay" hidden>
+    <div class="modal stack" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <h2 id="modal-title">Cancellation policy</h2>
+      <p>Free cancellation up to 5 days before check-in. After that, the first night is non-refundable. Full terms are always shown before you pay — never hidden.</p>
+      <button id="close-modal" class="btn btn--primary btn--block">Got it</button>
+    </div>
+  </div>
+
+  <script src="showcase.js"></script>
+</body>
+</html>

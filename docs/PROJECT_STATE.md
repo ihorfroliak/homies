@@ -14,14 +14,17 @@ Gate 1 — first safe production booking.
 
 ## Current cycle
 
-**MC-03 — BK-01 booking lifecycle hardening — complete.** Unpaid bookings now
-carry a durable `payment_expires_at` deadline; a first background scheduler
-(`BookingExpiryWorker`) sweeps them to an explicit `expired` state via a
-row-guarded atomic UPDATE. Ghost-booking inventory DoS closed. Payment-vs-expiry
-race proven safe (late payment after expiry is auto-refunded — never
-PAID+EXPIRED). Output: [BK-01](design/bk-01-booking-expiry.md).
+**MC-03 (BK-01) + UI-01 — both complete.**
+- BK-01: unpaid-booking TTL + first scheduler; ghost-booking DoS closed.
+  [design](design/bk-01-booking-expiry.md).
+- UI-01: framework-agnostic design system + runnable web/mobile showcase in
+  `frontend/design-system/` (no frontend framework existed; this is the token +
+  component contract a future React/Expo app consumes). Browser-verified.
+  [DESIGN_SYSTEM](design/DESIGN_SYSTEM.md), [PRODUCT_UX](design/PRODUCT_UX.md),
+  [ANALYTICS_EVENTS](design/ANALYTICS_EVENTS.md).
 
-**Next:** UI-01 (design system + web/mobile showcase) — Phase 2 of this task.
+**Next:** awaiting approval — no cycle started (see remaining priorities in the
+final report / audit).
 
 ## Completed cycles
 
@@ -35,7 +38,8 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 
 | Signal | Value |
 |---|---|
-| Tests | **117 passing**, 1 skipped (gated Stripe Test Mode suite) |
+| Tests | **127 passing**, 1 skipped (gated Stripe Test Mode suite) |
+| Frontend | design-system showcase in `frontend/design-system/` (runnable, no framework yet); `apps/` still empty |
 | Lint | ruff clean (`app tests alembic scripts`) |
 | CI | ✅ green on `main` (backend + contracts) |
 | Warfare (manual) | all verdicts pass; 1 known gap (ghost booking) |

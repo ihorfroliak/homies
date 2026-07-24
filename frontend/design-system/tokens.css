@@ -1,0 +1,79 @@
+/* Homies design tokens (UI-01).
+   Framework-agnostic CSS custom properties. A future React/Expo app consumes
+   the same token names. Light + dark. Contrast targets WCAG 2.2 AA. */
+
+:root {
+  /* --- Brand & neutrals --- */
+  --c-brand-50:  #e9f7f3;
+  --c-brand-100: #c9ece1;
+  --c-brand-300: #6fc7ad;
+  --c-brand-500: #0f9d76; /* primary — trust/green, 4.5:1 on white for large; buttons use white text */
+  --c-brand-600: #0c7d5e;
+  --c-brand-700: #095e47;
+
+  --c-ink-900: #14181f; /* headings */
+  --c-ink-700: #333c49; /* body */
+  --c-ink-500: #5b6675; /* secondary text — 4.6:1 on white */
+  --c-ink-300: #97a1af; /* muted/placeholder */
+  --c-line:    #e3e7ec; /* borders */
+  --c-surface: #ffffff;
+  --c-surface-2: #f6f8fa; /* app background */
+  --c-surface-3: #eef1f5; /* subtle fills */
+
+  /* --- Semantic --- */
+  --c-success-fg: #0c7d5e; --c-success-bg: #e6f6ef;
+  --c-warning-fg: #8a5a00; --c-warning-bg: #fdf1dc;
+  --c-danger-fg:  #b3261e; --c-danger-bg:  #fbe9e7;
+  --c-info-fg:    #0b5cad; --c-info-bg:    #e7f0fb;
+  --c-verified:   #0c7d5e;
+  --c-promoted-fg: #7a4d00; --c-promoted-bg: #fbeccb;
+  --c-free-fg:    #0b5cad; --c-free-bg:    #e7f0fb;
+
+  --c-focus: #0b5cad; /* visible focus ring, distinct from brand */
+
+  /* --- Typography --- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --fs-display: 2rem;    --lh-display: 1.15;
+  --fs-h1: 1.5rem;       --lh-h1: 1.2;
+  --fs-h2: 1.25rem;      --lh-h2: 1.25;
+  --fs-h3: 1.0625rem;    --lh-h3: 1.3;
+  --fs-body: 0.9375rem;  --lh-body: 1.5;
+  --fs-small: 0.8125rem; --lh-small: 1.45;
+  --fw-regular: 400; --fw-medium: 550; --fw-bold: 700;
+
+  /* --- Spacing (4px base) --- */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px;
+
+  /* --- Radius / shadow / motion --- */
+  --r-sm: 6px; --r-md: 10px; --r-lg: 16px; --r-pill: 999px;
+  --sh-1: 0 1px 2px rgba(20,24,31,.06), 0 1px 3px rgba(20,24,31,.08);
+  --sh-2: 0 4px 12px rgba(20,24,31,.10);
+  --sh-3: 0 12px 32px rgba(20,24,31,.16);
+  --motion-fast: 120ms ease; --motion: 200ms ease;
+
+  /* --- Layout --- */
+  --container: 1120px;
+  --tap-min: 44px; /* minimum touch target (WCAG 2.2 AA 2.5.8) */
+}
+
+:root[data-theme="dark"] {
+  --c-ink-900: #f2f5f8;
+  --c-ink-700: #d3dae2;
+  --c-ink-500: #9aa6b4;
+  --c-ink-300: #6b7787;
+  --c-line:    #2a323d;
+  --c-surface: #171c23;
+  --c-surface-2: #10151b;
+  --c-surface-3: #1f262f;
+  --c-brand-500: #23b58c;
+  --c-brand-600: #46c6a1;
+  --c-success-bg: #10251d; --c-warning-bg: #2a2110; --c-danger-bg: #2a1513; --c-info-bg: #101f2e;
+  --c-promoted-bg: #2a2110; --c-free-bg: #101f2e;
+  --c-focus: #6db3f2;
+  --sh-1: 0 1px 2px rgba(0,0,0,.4); --sh-2: 0 4px 12px rgba(0,0,0,.5); --sh-3: 0 12px 32px rgba(0,0,0,.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
