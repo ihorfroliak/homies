@@ -7,7 +7,7 @@ import sys
 
 from sqlalchemy import select
 
-from app.core.db import Base, SessionLocal, engine
+from app.core.db import SessionLocal
 from app.core.security import hash_password
 from app.modules.identity.models import User
 
@@ -19,7 +19,8 @@ def main() -> None:
     email, password = sys.argv[1].lower(), sys.argv[2]
     if len(password) < 12:
         raise SystemExit("Admin password must be at least 12 characters")
-    Base.metadata.create_all(engine)
+    # TD-01: schema is owned by Alembic; this ops tool assumes `alembic upgrade
+    # head` has already run. It must not create schema.
     with SessionLocal() as db:
         if db.scalar(select(User).where(User.email == email)):
             raise SystemExit(f"User {email} already exists")

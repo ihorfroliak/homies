@@ -75,6 +75,59 @@ def register_and_login(client, email: str, role: str) -> str:
     return resp.json()["access_token"]
 
 
+# --- Postgres migration-backed schema (TD-01) --------------------------------
+# The fast unit suite runs on SQLite (create_all) — it exercises business logic,
+# not Postgres-only DB guards. Tests that must validate the REAL schema
+# (migrations, exclusion constraint, triggers, concurrency) use the fixtures
+# below, which build a fresh schema via Alembic on a real Postgres. They skip
+# unless TEST_DATABASE_URL is set (CI-03 provides it; locally point it at the
+# dev Postgres).
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", "")
+
+
+@pytest.fixture(scope="session")
+def pg_migrated_engine():
+    if not TEST_DATABASE_URL:
+        pytest.skip("TEST_DATABASE_URL not set — Postgres migration tests skipped")
+    from alembic import command
+    from sqlalchemy import create_engine, text
+
+    from app.core.schema import alembic_config
+
+    os.environ["ALEMBIC_DATABASE_URL"] = TEST_DATABASE_URL  # env.py reads this first
+    eng = create_engine(TEST_DATABASE_URL)
+    with eng.begin() as conn:  # fresh schema every session
+        conn.execute(text("DROP SCHEMA public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
+    cfg = alembic_config()
+    cfg.set_main_option("sqlalchemy.url", TEST_DATABASE_URL)
+    command.upgrade(cfg, "head")
+    yield eng
+    eng.dispose()
+
+
+@pytest.fixture()
+def pg_session(pg_migrated_engine):
+    """A session on the migration-built Postgres schema, cleaned between tests
+    (data only — schema is preserved)."""
+    from sqlalchemy import text
+    from sqlalchemy.orm import sessionmaker
+
+    tables = (
+        "notifications domain_events incidents webhook_events journal_lines "
+        "journal_entries ledger_accounts payments bookings host_blocks listings "
+        "host_profiles refresh_tokens audit_log users"
+    ).split()
+    with pg_migrated_engine.begin() as conn:
+        conn.execute(text(f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"))
+    Session = sessionmaker(bind=pg_migrated_engine, expire_on_commit=False)
+    db = Session()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 def auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 

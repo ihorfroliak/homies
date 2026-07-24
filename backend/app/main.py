@@ -12,66 +12,17 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
-from sqlalchemy import text
 
 from app.core.config import settings, validate_security_config
-from app.core.db import Base, engine
 from app.core.ratelimit import client_ip, limiter, resolve_policy
-from app.modules.booking.expiry import worker as booking_expiry_worker
-from app.modules.events.worker import worker as notification_worker
+from app.core.schema import ensure_schema
 from app.modules.admin.router import router as admin_router
+from app.modules.booking.expiry import worker as booking_expiry_worker
 from app.modules.booking.router import router as booking_router
+from app.modules.events.worker import worker as notification_worker
 from app.modules.identity.router import router as identity_router
 from app.modules.listings.router import router as listings_router
 from app.modules.payments.router import router as payments_router
-
-
-def _apply_postgres_guards() -> None:
-    """Postgres-only DB-level guards for local/dev create_all. In shared and
-    production environments the identical guards ship via Alembic
-    (alembic/versions/*_initial_schema.py) — that migration is the source of
-    truth. Kept here so a create_all'd dev DB matches production behaviour.
-
-    - I1 (D5/D6): exclusion constraint => overlapping pending/confirmed
-      bookings are physically impossible.
-    - B5 (D7): append-only triggers on ledger/audit => even direct SQL from
-      an admin cannot tamper financial records (owner-proof, unlike REVOKE).
-    """
-    if engine.dialect.name != "postgresql":
-        return
-    with engine.begin() as conn:
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS btree_gist"))
-        if not conn.execute(
-            text("SELECT 1 FROM pg_constraint WHERE conname = 'excl_booking_overlap'")
-        ).scalar():
-            conn.execute(
-                text(
-                    "ALTER TABLE bookings ADD CONSTRAINT excl_booking_overlap "
-                    "EXCLUDE USING gist ("
-                    "listing_id WITH =, "
-                    "daterange(check_in, check_out) WITH &&"
-                    ") WHERE (status IN ('pending', 'confirmed'))"
-                )
-            )
-        conn.execute(
-            text(
-                "CREATE OR REPLACE FUNCTION forbid_mutation() RETURNS trigger AS $$ "
-                "BEGIN RAISE EXCEPTION 'append-only table %: % is not permitted', "
-                "TG_TABLE_NAME, TG_OP; END; $$ LANGUAGE plpgsql"
-            )
-        )
-        for table in ("journal_entries", "journal_lines", "audit_log", "domain_events"):
-            if not conn.execute(
-                text("SELECT 1 FROM pg_trigger WHERE tgname = :n"),
-                {"n": f"{table}_append_only"},
-            ).scalar():
-                conn.execute(
-                    text(
-                        f"CREATE TRIGGER {table}_append_only "
-                        f"BEFORE UPDATE OR DELETE ON {table} "
-                        f"FOR EACH ROW EXECUTE FUNCTION forbid_mutation()"
-                    )
-                )
 
 
 @asynccontextmanager
@@ -79,12 +30,12 @@ async def lifespan(app: FastAPI):
     # SEC-02: refuse to start a production-like environment with weak or
     # default secrets. No-op in local/test by design.
     validate_security_config(settings)
-    # D4: create_all for local/sandbox; Alembic owns schema from the first
-    # deployment to a shared environment. Tests own their engine (conftest)
-    # and must never touch the real database.
+    # TD-01: Alembic migrations are the single schema source of truth. The app
+    # does not build schema from ORM metadata — ensure_schema() applies
+    # migrations in local dev and only verifies head elsewhere. Tests own their
+    # engine (conftest).
     if settings.env != "test":
-        Base.metadata.create_all(engine)
-        _apply_postgres_guards()
+        ensure_schema()
         if settings.notification_worker_enabled:
             notification_worker.start()
         if settings.booking_expiry_worker_enabled:

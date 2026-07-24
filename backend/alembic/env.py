@@ -22,13 +22,14 @@ from app.modules.payments.models import Payment, WebhookEvent  # noqa: F401
 
 config = context.config
 
-# DB URL from env (never hard-code prod creds); fall back to migration DB.
+# Single source of the DB URL (TD-01): explicit ALEMBIC_DATABASE_URL override
+# (used to migrate a throwaway DB) else the application's own settings — so the
+# CLI and the app's programmatic ensure_schema() migrate the same database.
+from app.core.config import settings  # noqa: E402
+
 config.set_main_option(
     "sqlalchemy.url",
-    os.environ.get(
-        "ALEMBIC_DATABASE_URL",
-        "postgresql+psycopg://homies:homies@localhost:5433/homies_mig",
-    ),
+    os.environ.get("ALEMBIC_DATABASE_URL", settings.database_url),
 )
 
 if config.config_file_name is not None:
