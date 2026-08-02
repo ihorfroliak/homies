@@ -9,13 +9,16 @@ concurrency evidence; the SQLite suite is not.
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 
+from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from app.modules.booking.expiry import expire_due_bookings
 from app.modules.booking.models import Booking
 from app.modules.identity.models import User
 from app.modules.payments import service as payments_service
+from app.modules.payments.models import WebhookEvent
 from tests.conftest import auth, fire_webhook, register_and_login
+from tests.test_fin01_stripe_signature import event_body, sign
 
 CI = (date.today() + timedelta(days=25)).isoformat()
 CO = (date.today() + timedelta(days=28)).isoformat()
@@ -98,6 +101,42 @@ def test_concurrent_webhook_delivery_captures_once(pg_client, pg_migrated_engine
     entries = pg_client.get("/v1/admin/ledger/entries", headers=auth(admin)).json()
     captures = [e for e in entries if e["kind"] == "payment_captured" and e["booking_id"] == bk["id"]]
     assert len(captures) == 1
+
+
+# 10 (H2). Concurrent deliveries of the SAME signed event race on the unique
+# stripe_event_id. Exactly one audit row must exist and money must move once —
+# this exercises the IntegrityError branch on a real engine (SQLite cannot).
+def test_concurrent_same_stripe_event_persists_one_row(
+    pg_client, pg_migrated_engine, stripe_webhook
+):
+    lid = _listing(pg_client)
+    admin = _admin_token(pg_client, pg_migrated_engine)
+    guest = register_and_login(pg_client, "guest@example.com", "guest")
+    bk = pg_client.post("/v1/bookings", json={"listing_id": lid, "check_in": CI, "check_out": CO},
+                        headers=auth(guest) | {"Idempotency-Key": "ci03-h2-01"}).json()
+    body = event_body(bk["payment_intent_id"], event_id="evt_ci03_race")
+
+    def deliver(_):
+        return pg_client.post("/v1/payments/webhook/stripe", content=body,
+                              headers={"Stripe-Signature": sign(body, stripe_webhook)}).status_code
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        codes = list(ex.map(deliver, range(8)))
+    assert all(c == 200 for c in codes), codes  # no 5xx from the insert race
+
+    Session = _sessionmaker(pg_migrated_engine)
+    with Session() as db:
+        rows = list(db.scalars(
+            select(WebhookEvent).where(WebhookEvent.stripe_event_id == "evt_ci03_race")
+        ))
+    assert len(rows) == 1 and rows[0].processed_at is not None
+
+    entries = pg_client.get("/v1/admin/ledger/entries", headers=auth(admin)).json()
+    captures = [e for e in entries
+                if e["kind"] == "payment_captured" and e["booking_id"] == bk["id"]]
+    assert len(captures) == 1
+    rec = pg_client.get("/v1/admin/payments/reconciliation", headers=auth(admin)).json()
+    assert rec["ok"] is True and rec["double_capture"] == []
 
 
 # 4 & 5. Two workers expire the same booking -> exactly one transition

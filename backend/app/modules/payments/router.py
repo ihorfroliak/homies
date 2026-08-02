@@ -1,8 +1,10 @@
 import hmac
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -66,17 +68,23 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     try:
         event = provider.construct_event(payload, sig)
     except WebhookVerificationError:
-        # Untrusted sender — a 400 tells Stripe not to retry, which is correct.
+        # Untrusted sender: 400 is the honest status. (Stripe retries every
+        # non-2xx, so this does not "stop" a retry — but a forged request is not
+        # coming from Stripe in the first place.)
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid signature") from None
-    # Anything else (a trusted event we failed to process) intentionally
-    # propagates as a 5xx so Stripe retries and the real cause stays visible,
-    # instead of being mislabelled as a forged request.
 
     event_id = event["id"]
     existing = db.scalar(select(WebhookEvent).where(WebhookEvent.stripe_event_id == event_id))
     if existing is not None and existing.processed_at is not None:
         return {"received": True, "duplicate": True}  # already fully processed
 
+    # H2: the raw event is committed in its OWN transaction, BEFORE dispatch.
+    # It used to share one transaction with the ledger-affecting handlers and
+    # only `flush()`ed here, so any handler failure (unknown intent, payment in
+    # a conflicting state, refund-after-payout) rolled the audit record back
+    # with it: the event vanished entirely and Stripe eventually stopped
+    # retrying. Persisting first makes the audit trail durable whatever the
+    # outcome, and leaves `processed_at IS NULL` as the dead-letter marker.
     if existing is None:
         db.add(
             WebhookEvent(
@@ -85,22 +93,34 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                 payload=dict(event),
             )
         )
-        db.flush()
+        try:
+            db.commit()
+        except IntegrityError:
+            # A concurrent delivery of the same event won the insert race
+            # (stripe_event_id is unique). Its row is authoritative; continue —
+            # dispatch is itself idempotent and row-locked.
+            db.rollback()
 
     intent_id = _intent_id_of(event)
-    if intent_id is not None:
-        if event["type"] == "payment_intent.succeeded":
-            service.process_intent_succeeded(db, intent_id)
-        elif event["type"] == "payment_intent.payment_failed":
-            service.process_intent_failed(db, intent_id)
-        elif event["type"] == "charge.refunded":
-            service.process_charge_refunded(db, intent_id)
+    try:
+        if intent_id is not None:
+            if event["type"] == "payment_intent.succeeded":
+                service.process_intent_succeeded(db, intent_id)
+            elif event["type"] == "payment_intent.payment_failed":
+                service.process_intent_failed(db, intent_id)
+            elif event["type"] == "charge.refunded":
+                service.process_charge_refunded(db, intent_id)
 
-    stored = db.scalar(select(WebhookEvent).where(WebhookEvent.stripe_event_id == event_id))
-    from datetime import datetime, timezone
-
-    stored.processed_at = datetime.now(timezone.utc)
-    db.commit()
+        stored = db.scalar(select(WebhookEvent).where(WebhookEvent.stripe_event_id == event_id))
+        stored.processed_at = datetime.now(timezone.utc)
+        db.commit()
+    except Exception:
+        # Dispatch failed: undo only the dispatch work. The event row stays
+        # committed with processed_at IS NULL, so nothing is lost and a Stripe
+        # retry re-runs it. The original error still propagates, so the real
+        # cause stays visible instead of being swallowed.
+        db.rollback()
+        raise
     return {"received": True, "type": event["type"]}
 
 

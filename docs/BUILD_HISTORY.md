@@ -33,6 +33,10 @@ One entry per completed micro-cycle. Newest last. Status legend: ✅ shipped ·
 | 26 | 2026-07-24 | **TD-01**: Alembic = single schema source of truth. Removed `create_all` + `_apply_postgres_guards` from startup; `ensure_schema()` (apply in local, verify elsewhere); Dockerfile ships migrations; SQLite-vs-Postgres test split | 134 SQLite / 142 with Postgres | 13 migration tests on real Postgres; live app boots via migrations; money-flow smoke recon=0 | `1a6933b` | ✅ | — |
 | 27 | 2026-07-24 | **CI-03**: real Postgres service in CI (postgres:16, health-checked, migration-first) + 4 real concurrency tests on Postgres | **148** (+1 gated) | concurrent double-booking→1 (exclusion constraint, 12 threads), concurrent webhook→1 capture (FOR UPDATE), concurrent expiry→1, payment-races-expiry safe (recon=0); all with real row locks. Migrate 2.2s, suite 41s (+9s) | _this cycle_ | — | — |
 
+| 28 | 2026-08-03 | **Technical code audit** (read-only): whole repo reviewed + real checks; 4 High / 9 Medium / 9 Low recorded with evidence | 134 | no code changed | `8e6db90` | ✅ | — |
+| 29 | 2026-08-03 | **Audit H1**: enforce a single supported currency at listing creation — the ledger sums balances across currencies with no scoping, so a non-PLN listing corrupted escrow math and voided invariant I5 | 138 | 4 tests: default, explicit, case-normalized, non-default → 422 | `ad8222e` | ✅ | — |
+| 30 | 2026-08-03 | **Audit H2**: the raw Stripe webhook event is now committed before dispatch, so a failed handler can no longer erase the audit record; insert race handled; retry re-processes | **158** (Postgres) | defect reproduced then proven closed (0 rows → 1 row, same script); 5 new tests + 1 real-Postgres 8-thread race test; warfare + refund_warfare + live_smoke all PASS, recon ok=true grand_total=0 | _this cycle_ | — | — |
+
 ## Notes
 
 - Entries 01–15 predate GitHub publication, so CI status is `n/a` (the workflow

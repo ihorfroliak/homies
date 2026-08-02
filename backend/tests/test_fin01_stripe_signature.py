@@ -19,11 +19,6 @@ import secrets
 import time
 from datetime import date, timedelta
 
-import pytest
-
-import app.modules.payments.router as payments_router
-from app.core.config import settings
-from app.modules.payments.provider import StripeConnectProvider
 from tests.conftest import auth, register_and_login
 
 CI = (date.today() + timedelta(days=25)).isoformat()
@@ -38,14 +33,8 @@ def sign(payload: bytes, secret: str, timestamp: int | None = None) -> str:
     return f"t={ts},v1={signature}"
 
 
-@pytest.fixture()
-def stripe_webhook(monkeypatch):
-    """Real StripeConnectProvider wired to a locally generated signing secret."""
-    secret = "whsec_" + secrets.token_hex(24)
-    monkeypatch.setattr(settings, "stripe_webhook_secret", secret)
-    provider = StripeConnectProvider(api_key="sk_test_" + secrets.token_hex(12))
-    monkeypatch.setattr(payments_router, "provider", provider)
-    return secret
+# The `stripe_webhook` fixture (real provider + locally generated signing
+# secret) lives in tests/conftest.py so several suites can use it.
 
 
 def _paid_booking(client):

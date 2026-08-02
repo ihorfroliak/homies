@@ -164,6 +164,27 @@ def pg_session(pg_migrated_engine):
         db.close()
 
 
+@pytest.fixture()
+def stripe_webhook(monkeypatch):
+    """Real StripeConnectProvider wired to a locally generated signing secret.
+
+    Lives here (not in a test module) so every suite that drives the production
+    webhook can request it without importing it — importing a fixture makes its
+    name collide with the test parameter (ruff F811).
+    """
+    import secrets
+
+    import app.modules.payments.router as payments_router
+    from app.core.config import settings
+    from app.modules.payments.provider import StripeConnectProvider
+
+    secret = "whsec_" + secrets.token_hex(24)
+    monkeypatch.setattr(settings, "stripe_webhook_secret", secret)
+    provider = StripeConnectProvider(api_key="sk_test_" + secrets.token_hex(12))
+    monkeypatch.setattr(payments_router, "provider", provider)
+    return secret
+
+
 def auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 

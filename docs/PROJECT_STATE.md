@@ -4,7 +4,7 @@ Single place to answer "where are we right now". Updated after every completed
 micro-cycle. Companions: [BUILD_HISTORY.md](BUILD_HISTORY.md) (what happened),
 [DECISIONS.md](DECISIONS.md) (why), [RELEASE.md](../RELEASE.md) (release gate).
 
-**Last updated:** 2026-07-24 · **Branch:** `main` · CI green
+**Last updated:** 2026-08-03 · **Branch:** `main` · CI green
 
 ## Current phase
 
@@ -14,7 +14,21 @@ Gate 1 — first safe production booking.
 
 ## Current cycle
 
-**TD-01 + CI-03 — complete.**
+**Audit remediation — H1, H2 complete.** A read-only technical code audit
+([2026-07-28](reviews/2026-07-28-technical-code-audit.md)) found 4 High / 9
+Medium / 9 Low. Fixing them in priority order, one cycle each.
+- **H1**: listing creation now rejects any currency but `settings.default_currency`.
+  The ledger sums balances across currencies with no scoping, so a non-PLN
+  listing silently corrupted escrow math and made invariant I5 meaningless.
+- **H2**: the raw Stripe webhook event is committed in its own transaction
+  **before** dispatch. It previously shared the handlers' transaction, so a
+  handler failure erased the audit record — reproduced (unknown intent → 404,
+  zero rows), then proven closed with the same script. `processed_at IS NULL`
+  is now the dead-letter marker. D-31/D-32.
+- Next in the queue: **H3** (Stripe intent idempotency key is random despite
+  its comment) → **H4** (Stripe call inside a row-locked transaction).
+
+**Previous: TD-01 + CI-03.**
 - TD-01: Alembic is the single schema source of truth; `create_all` removed;
   `ensure_schema()` (apply in local, verify elsewhere); image ships migrations.
 - CI-03: CI now runs a real **postgres:16** service (health-checked,
@@ -47,7 +61,7 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 
 | Signal | Value |
 |---|---|
-| Tests | **148 passing** (SQLite unit + real-Postgres migration/concurrency), 1 gated Stripe suite |
+| Tests | **158 passing** on real Postgres (143 SQLite-only), 1 gated Stripe suite |
 | Lint | ruff clean (`app tests alembic scripts`), ruff pinned 0.15.22 |
 | CI | ✅ green on `main` — backend job runs a real postgres:16 service (migration-first) |
 | Concurrency | validated on **real Postgres** in CI (double-book→1, webhook→1 capture, expiry→1) |
@@ -69,7 +83,17 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 - ~~TST-01 (P1) OpenAPI drift~~ — **closed** (generated spec + drift guard).
 - ~~TD-01 (P1) dual schema path~~ — **closed** (Alembic single source).
 - ~~CI-03 (P1) no Postgres in CI~~ — **closed** (postgres:16 service, concurrency validated).
+- ~~H1 (High) currency-blind ledger~~ — **closed** (single supported currency).
+- ~~H2 (High) webhook event lost on dispatch failure~~ — **closed** (persist before dispatch).
+- **H3 (High)** Stripe intent idempotency key is random, not booking-derived —
+  an app-level retry can double-charge. Next up.
+- **H4 (High)** the Stripe API call runs inside the row-locked booking
+  transaction (head-of-line blocking, pool pressure).
 - **OBS-01 (P1)** `/healthz` does not check the database.
+- **WAR-01** the warfare harnesses cannot run unmodified since MC-01: the
+  register/login rate limit rejects their bulk user creation
+  (`RATE_LIMIT_ENABLED=false` is required). The harness bootstrap also assumes
+  a `homies-api-1` container.
 - rate-limit counters are per-process; >1 instance weakens limits (D-14).
 
 ## Security risks

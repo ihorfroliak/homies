@@ -22,6 +22,19 @@
   mock-Stripe: підпис, дублікат→1 capture, replay, ledger-звірка; **16 тестів
   зелені, warfare без регресій, live 503 у simulation-режимі**.
 
+- **Технічний аудит коду (2026-07-28)** — доказовий, read-only: 4 High / 9
+  Medium / 9 Low. Закрито 2 з 4 High:
+  - **H1** — валюта. Ledger сумує баланси по всіх валютах без scoping, тому
+    non-PLN лістинг тихо ламав escrow-математику й знецінював інваріант I5.
+    Тепер приймається лише `settings.default_currency`.
+  - **H2** — webhook. Сира Stripe-подія комітиться **до** диспетчу, тож збій
+    хендлера більше не стирає audit-запис. Дефект спершу **відтворено**
+    (unknown intent → 404, нуль рядків), потім доведено закриття тим самим
+    скриптом. `processed_at IS NULL` = dead-letter маркер.
+  - Доказ: **158 тестів зелені на реальному Postgres** (+8-тредовий race-тест
+    на унікальність event id), warfare + refund_warfare + live_smoke PASS,
+    `recon ok=true`, `grand_total=0`.
+
 ### 2. Що ще блокує наступний реліз (Gate 1)?
 - **B1-решта:** реальні Stripe **test-ключі** → спостерегти sandbox (3DS/SCA,
   transfers, partial capture, disputes, payout events). Адаптер готовий; це
@@ -31,6 +44,14 @@
 - (Gate 2: auto-void, rate-limit, observability, MFA, chargeback/clawback.)
 
 ### 3. Одна наступна задача з найбільшим наближенням до prod?
+**H3 — детермінований Stripe idempotency-key.** Ключ інтенту зараз містить
+`uuid4()`, попри коментар, що він booking-derived: app-level retry створює
+другий інтент на ту саму бронь → ризик подвійного списання. Це прямо на шляху
+до першої реальної оплати й коштує кілька рядків. Далі — **H4** (виклик Stripe
+всередині транзакції під row-lock).
+
+<details><summary>Попередній запис (нотифікації)</summary>
+
 Доставка нотифікацій тепер durable+retryable+observable (OAT-03), але
 email-канал = stub (SMTP-адаптер є, без реальних creds). Наступний ROI:
 - **Реальний email-провайдер** (`EMAIL_PROVIDER=smtp` + creds, або SendGrid-
@@ -38,7 +59,8 @@ email-канал = stub (SMTP-адаптер є, без реальних creds).
   ключі в template payload).
 - Потім: **auto-void неоплачених** (закрити ghost-booking DoS).
 - Без коду паралельно: Stripe test-ключі (B1→YES) + юр-трек (B3).
-→ Рекомендація наступного циклу: **реальний email + check-in контент**.
+
+</details>
 
 ---
 
@@ -50,6 +72,8 @@ email-канал = stub (SMTP-адаптер є, без реальних creds).
 - 2026-07-06: OAT-01 — 10 бізнес-сценаріїв з порожньої системи. Хребет (onboard→book→pay→cancel/refund→complete→payout→reconcile) PASS без ручного ремонту; операційний шар (check-in/клінінг/support/incident/dispute/нотифікації) = dead-end (404). Answer: PARTIALLY — платформа тримає гроші/бронювання, операції ручні off-platform. 26 тестів зелені.
 - 2026-07-06: OAT-02 — Operational Notification Layer (domain_events append-only + notification routing + `/bookings/{id}/state` + founder-feed + incidents). 7 подій, guest/host/founder нотифікації (log-based канали), operational_state, timeline reconstruction. 4 acceptance-gate PASS. Warfare спіймав і виправлено latent double-capture race (FOR UPDATE на payment). 34 тести зелені. Founder ops-visibility ❌→✅. Readiness ~50 → ~56.
 - 2026-07-09: OAT-03 — Reliable delivery: transactional outbox (notifications) + background worker + retry state machine (pending→processing→delivered|failed→dead) + exponential backoff/jitter + channel abstraction (in_app/email-stub/SMTP/sms) + templates + Prometheus /metrics. 6 acceptance-gate PASS. Live: worker auto-delivers, queue→0, duplicate-worker SKIP LOCKED overlap=0. Warfare без регресій. 41 тест зелений. Readiness ~56 → ~62.
+
+- 2026-08-03: Технічний аудит коду (read-only, доказовий) → 4 High/9 Medium/9 Low. Закрито **H1** (єдина підтримувана валюта — ledger не має currency-scoping) і **H2** (сира webhook-подія комітиться до диспетчу; дефект відтворено й доведено закритим). 158 тестів на реальному Postgres, warfare/refund/live_smoke PASS, recon ok=true. Наступне: H3 (детермінований Stripe idempotency-key) → H4.
 
 ## Робочий режим (постійний, без нових D-етапів)
 Build → Verify → Release Gate → Repeat. Кожен цикл: одна задача критичного
