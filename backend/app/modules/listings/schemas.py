@@ -1,6 +1,8 @@
 from datetime import date
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from app.core.config import settings
 
 
 class ListingCreate(BaseModel):
@@ -9,7 +11,25 @@ class ListingCreate(BaseModel):
     address: str = Field(min_length=3, max_length=255)
     capacity: int = Field(ge=1, le=20, default=2)
     nightly_price_amount: int = Field(gt=0, description="Minor units (grosz), ADR-0002")
-    currency: str = Field(default="PLN", min_length=3, max_length=3)
+    currency: str = Field(default=settings.default_currency, min_length=3, max_length=3)
+
+    @field_validator("currency")
+    @classmethod
+    def _single_supported_currency(cls, v: str) -> str:
+        # H1 (audit 2026-07-28): the ledger sums account balances across ALL
+        # currencies without scoping (journal_lines has no currency column), so
+        # a non-default currency would silently corrupt booking_escrow math and
+        # make the I5 escrow invariant meaningless. Listing creation is the sole
+        # entry point for currency (booking/payment/ledger inherit it), so this
+        # is the single choke point. Until currency-scoped ledger accounts exist
+        # (long-term), only the configured default currency is accepted.
+        normalized = v.upper()
+        if normalized != settings.default_currency.upper():
+            raise ValueError(
+                f"currency must be {settings.default_currency} "
+                "(multi-currency is not supported yet)"
+            )
+        return normalized
 
 
 class ListingUpdate(BaseModel):
