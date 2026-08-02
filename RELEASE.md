@@ -31,7 +31,10 @@
     хендлера більше не стирає audit-запис. Дефект спершу **відтворено**
     (unknown intent → 404, нуль рядків), потім доведено закриття тим самим
     скриптом. `processed_at IS NULL` = dead-letter маркер.
-  - Доказ: **158 тестів зелені на реальному Postgres** (+8-тредовий race-тест
+  - **H3** — ідемпотентність Stripe. Ключ інтенту містив `uuid4()`, попри
+    коментар про booking-derived: retry після невдалої транзакції створював
+    другий інтент на ту саму бронь — подвійне списання. Тепер ключ = id броні.
+  - Доказ: **165 тестів зелені на реальному Postgres** (+8-тредовий race-тест
     на унікальність event id), warfare + refund_warfare + live_smoke PASS,
     `recon ok=true`, `grand_total=0`.
 
@@ -44,11 +47,11 @@
 - (Gate 2: auto-void, rate-limit, observability, MFA, chargeback/clawback.)
 
 ### 3. Одна наступна задача з найбільшим наближенням до prod?
-**H3 — детермінований Stripe idempotency-key.** Ключ інтенту зараз містить
-`uuid4()`, попри коментар, що він booking-derived: app-level retry створює
-другий інтент на ту саму бронь → ризик подвійного списання. Це прямо на шляху
-до першої реальної оплати й коштує кілька рядків. Далі — **H4** (виклик Stripe
-всередині транзакції під row-lock).
+**H4 — винести виклик Stripe за межі транзакції під row-lock.** Зараз інтент
+створюється, поки тримається `FOR UPDATE` на лістингу: усі конкурентні броні
+того самого об'єкта шикуються за одним мережевим викликом, а з'єднання з пулу
+зайняте весь час I/O. У симуляції це миттєво й невидиме — з реальним Stripe
+стане першим вузьким місцем.
 
 <details><summary>Попередній запис (нотифікації)</summary>
 
@@ -73,7 +76,7 @@ email-канал = stub (SMTP-адаптер є, без реальних creds).
 - 2026-07-06: OAT-02 — Operational Notification Layer (domain_events append-only + notification routing + `/bookings/{id}/state` + founder-feed + incidents). 7 подій, guest/host/founder нотифікації (log-based канали), operational_state, timeline reconstruction. 4 acceptance-gate PASS. Warfare спіймав і виправлено latent double-capture race (FOR UPDATE на payment). 34 тести зелені. Founder ops-visibility ❌→✅. Readiness ~50 → ~56.
 - 2026-07-09: OAT-03 — Reliable delivery: transactional outbox (notifications) + background worker + retry state machine (pending→processing→delivered|failed→dead) + exponential backoff/jitter + channel abstraction (in_app/email-stub/SMTP/sms) + templates + Prometheus /metrics. 6 acceptance-gate PASS. Live: worker auto-delivers, queue→0, duplicate-worker SKIP LOCKED overlap=0. Warfare без регресій. 41 тест зелений. Readiness ~56 → ~62.
 
-- 2026-08-03: Технічний аудит коду (read-only, доказовий) → 4 High/9 Medium/9 Low. Закрито **H1** (єдина підтримувана валюта — ledger не має currency-scoping) і **H2** (сира webhook-подія комітиться до диспетчу; дефект відтворено й доведено закритим). 158 тестів на реальному Postgres, warfare/refund/live_smoke PASS, recon ok=true. Наступне: H3 (детермінований Stripe idempotency-key) → H4.
+- 2026-08-03: Технічний аудит коду (read-only, доказовий) → 4 High/9 Medium/9 Low. Закрито **H1** (єдина підтримувана валюта — ledger не має currency-scoping) і **H2** (сира webhook-подія комітиться до диспетчу; дефект відтворено й доведено закритим). 158 тестів на реальному Postgres, warfare/refund/live_smoke PASS, recon ok=true. Закрито також **H3** (ключ = id броні). Наступне: H4 (виклик Stripe під row-lock).
 
 ## Робочий режим (постійний, без нових D-етапів)
 Build → Verify → Release Gate → Repeat. Кожен цикл: одна задача критичного

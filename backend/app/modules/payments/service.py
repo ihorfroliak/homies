@@ -29,6 +29,11 @@ def create_payment_for_booking(db: Session, booking: Booking, host_id: str) -> P
         currency=booking.currency,
         host_account_id=host_account,
         application_fee=platform_fee(booking.total_amount),
+        # H3: one booking owns exactly one intent (payments.booking_id is
+        # unique), so the booking id is the correct idempotency scope. If this
+        # call is retried after a failed transaction, Stripe returns the
+        # original intent instead of charging the guest twice.
+        idempotency_key=booking.id,
     )
     payment = Payment(
         booking_id=booking.id,

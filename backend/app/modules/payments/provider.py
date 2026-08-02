@@ -34,7 +34,12 @@ class PaymentIntent:
 
 class PaymentProvider(Protocol):
     def create_payment_intent(
-        self, amount: int, currency: str, host_account_id: str, application_fee: int
+        self,
+        amount: int,
+        currency: str,
+        host_account_id: str,
+        application_fee: int,
+        idempotency_key: str,
     ) -> PaymentIntent: ...
 
     def refund(self, intent_id: str, amount: int) -> str: ...
@@ -44,7 +49,12 @@ class StripeSimulationProvider:
     """Deterministic in-process stand-in for Stripe Connect sandbox."""
 
     def create_payment_intent(
-        self, amount: int, currency: str, host_account_id: str, application_fee: int
+        self,
+        amount: int,
+        currency: str,
+        host_account_id: str,
+        application_fee: int,
+        idempotency_key: str,
     ) -> PaymentIntent:
         intent_id = f"pi_sim_{uuid4().hex[:20]}"
         return PaymentIntent(
@@ -84,17 +94,25 @@ class StripeConnectProvider:
         self._stripe = stripe
 
     def create_payment_intent(
-        self, amount: int, currency: str, host_account_id: str, application_fee: int
+        self,
+        amount: int,
+        currency: str,
+        host_account_id: str,
+        application_fee: int,
+        idempotency_key: str,
     ) -> PaymentIntent:
-        # Idempotency-Key: a booking creates exactly one intent; the caller's
-        # booking id makes this safe to retry without duplicate charges.
+        # H3 (audit 2026-07-28): the key MUST be derived from the caller's scope
+        # (one booking = one intent), never generated here. It previously
+        # embedded a uuid4, so every call was a fresh key and Stripe's
+        # idempotency protected nothing: a retry after a failed commit created a
+        # second intent for the same booking — a double charge.
         intent = self._stripe.PaymentIntent.create(
             amount=amount,
             currency=currency.lower(),
             automatic_payment_methods={"enabled": True},  # cards, BLIK, Apple/Google Pay
             application_fee_amount=application_fee,
             transfer_data={"destination": host_account_id},
-            idempotency_key=f"pi_{host_account_id}_{amount}_{currency}_{uuid4().hex[:12]}",
+            idempotency_key=f"pi_{idempotency_key}",
         )
         return PaymentIntent(
             intent_id=intent["id"],

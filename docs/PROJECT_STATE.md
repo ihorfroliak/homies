@@ -25,8 +25,10 @@ Medium / 9 Low. Fixing them in priority order, one cycle each.
   handler failure erased the audit record — reproduced (unknown intent → 404,
   zero rows), then proven closed with the same script. `processed_at IS NULL`
   is now the dead-letter marker. D-31/D-32.
-- Next in the queue: **H3** (Stripe intent idempotency key is random despite
-  its comment) → **H4** (Stripe call inside a row-locked transaction).
+- **H3**: the Stripe intent idempotency key is derived from the booking id. It
+  embedded a `uuid4()` despite a comment claiming otherwise, so Stripe's
+  idempotency protected nothing and a retry could charge a guest twice. D-33.
+- Next in the queue: **H4** (Stripe call inside a row-locked transaction).
 
 **Previous: TD-01 + CI-03.**
 - TD-01: Alembic is the single schema source of truth; `create_all` removed;
@@ -61,7 +63,7 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 
 | Signal | Value |
 |---|---|
-| Tests | **158 passing** on real Postgres (143 SQLite-only), 1 gated Stripe suite |
+| Tests | **165 passing** on real Postgres (150 SQLite-only), 1 gated Stripe suite |
 | Lint | ruff clean (`app tests alembic scripts`), ruff pinned 0.15.22 |
 | CI | ✅ green on `main` — backend job runs a real postgres:16 service (migration-first) |
 | Concurrency | validated on **real Postgres** in CI (double-book→1, webhook→1 capture, expiry→1) |
@@ -85,10 +87,9 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 - ~~CI-03 (P1) no Postgres in CI~~ — **closed** (postgres:16 service, concurrency validated).
 - ~~H1 (High) currency-blind ledger~~ — **closed** (single supported currency).
 - ~~H2 (High) webhook event lost on dispatch failure~~ — **closed** (persist before dispatch).
-- **H3 (High)** Stripe intent idempotency key is random, not booking-derived —
-  an app-level retry can double-charge. Next up.
+- ~~H3 (High) random Stripe idempotency key~~ — **closed** (booking-scoped key).
 - **H4 (High)** the Stripe API call runs inside the row-locked booking
-  transaction (head-of-line blocking, pool pressure).
+  transaction (head-of-line blocking, pool pressure). Next up.
 - **OBS-01 (P1)** `/healthz` does not check the database.
 - **WAR-01** the warfare harnesses cannot run unmodified since MC-01: the
   register/login rate limit rejects their bulk user creation
