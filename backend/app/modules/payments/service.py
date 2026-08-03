@@ -4,6 +4,7 @@ the ledger is the source of truth (docs/strategy/00-DECISIONS.md D2)."""
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.audit import audit
@@ -44,6 +45,29 @@ def create_payment_for_booking(db: Session, booking: Booking, host_id: str) -> P
     db.add(payment)
     db.flush()
     return payment
+
+
+def ensure_payment_for_booking(db: Session, booking: Booking, host_id: str) -> Payment:
+    """Idempotent entry point used after the booking is already committed (H4).
+
+    The provider call is network I/O, so it must never run inside the booking's
+    row-locked transaction. This runs afterwards, in its own transaction, and is
+    safe to call again: if the payment already exists it is returned untouched,
+    and a concurrent retry that loses the unique-constraint race re-reads the
+    winner's row instead of failing. Creating a second intent at Stripe is
+    prevented by the booking-scoped idempotency key (H3/D-33) — the retry gets
+    the original intent back, not a new charge.
+    """
+    payment = db.scalar(select(Payment).where(Payment.booking_id == booking.id))
+    if payment is not None:
+        return payment
+    try:
+        payment = create_payment_for_booking(db, booking, host_id)
+        db.commit()
+        return payment
+    except IntegrityError:
+        db.rollback()  # payments.booking_id is unique — someone else won
+        return db.scalar(select(Payment).where(Payment.booking_id == booking.id))
 
 
 def process_intent_succeeded(db: Session, intent_id: str) -> Payment:

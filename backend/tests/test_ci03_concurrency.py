@@ -6,7 +6,9 @@ constraint — the guarantees SQLite cannot model. This is the authoritative
 concurrency evidence; the SQLite suite is not.
 """
 
+import threading
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeout
 from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import select
@@ -22,6 +24,9 @@ from tests.test_fin01_stripe_signature import event_body, sign
 
 CI = (date.today() + timedelta(days=25)).isoformat()
 CO = (date.today() + timedelta(days=28)).isoformat()
+# a second, non-overlapping window on the same listing (H4)
+CI2 = (date.today() + timedelta(days=40)).isoformat()
+CO2 = (date.today() + timedelta(days=43)).isoformat()
 
 
 def _sessionmaker(engine):
@@ -137,6 +142,61 @@ def test_concurrent_same_stripe_event_persists_one_row(
     assert len(captures) == 1
     rec = pg_client.get("/v1/admin/payments/reconciliation", headers=auth(admin)).json()
     assert rec["ok"] is True and rec["double_capture"] == []
+
+
+# 11 (H4). A slow provider must not hold the listing row lock. While one booking
+# is parked inside the provider call, a different window on the SAME listing must
+# still be bookable. Before the fix this blocked until the provider returned.
+def test_provider_call_does_not_hold_the_listing_lock(
+    pg_client, pg_migrated_engine, monkeypatch
+):
+    import app.modules.payments.service as payments_service
+
+    lid = _listing(pg_client)
+    g1 = register_and_login(pg_client, "g1@example.com", "guest")
+    g2 = register_and_login(pg_client, "g2@example.com", "guest")
+
+    real = payments_service.provider.create_payment_intent
+    in_provider = threading.Event()
+    release = threading.Event()
+    calls = {"n": 0}
+
+    def parked(**kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:  # only the first booking parks
+            in_provider.set()
+            release.wait(timeout=25)
+        return real(**kwargs)
+
+    monkeypatch.setattr(payments_service.provider, "create_payment_intent", parked)
+
+    def book(token, ci, co, key):
+        # Both requests run on worker threads: the TestClient is driven from one
+        # thread at a time per request, mirroring the other tests here.
+        return pg_client.post(
+            "/v1/bookings", json={"listing_id": lid, "check_in": ci, "check_out": co},
+            headers=auth(token) | {"Idempotency-Key": key},
+        ).status_code
+
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        slow = ex.submit(book, g1, CI, CO, "ci03-h4-slow")
+        assert in_provider.wait(timeout=15), "the provider call never started"
+        fast = ex.submit(book, g2, CI2, CO2, "ci03-h4-fast")
+        try:
+            # Decisive, not timing-sensitive: if the lock were still held this
+            # could not finish until release.set() below, and would time out.
+            fast_status = fast.result(timeout=10)
+        except FuturesTimeout:
+            release.set()
+            raise AssertionError(
+                "a second booking blocked while the provider call was in flight — "
+                "the listing row lock is still held across provider I/O"
+            ) from None
+        finally:
+            release.set()
+        assert slow.result(timeout=20) == 201
+
+    assert fast_status == 201
 
 
 # 4 & 5. Two workers expire the same booking -> exactly one transition

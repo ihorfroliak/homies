@@ -45,6 +45,16 @@ def create_booking(
     )
     if existing:
         payment = db.scalar(select(Payment).where(Payment.booking_id == existing.id))
+        if payment is None and existing.status == "pending":
+            # H4: the booking committed but the provider call did not finish
+            # (Stripe was down, the process died). Heal it here so the replay
+            # returns something the guest can actually pay, instead of a
+            # booking with no intent.
+            existing_listing = db.get(Listing, existing.listing_id)
+            if existing_listing is not None:
+                payment = payments_service.ensure_payment_for_booking(
+                    db, existing, existing_listing.host_id
+                )
         return _booking_out(existing, payment)
 
     if body.check_in < date.today():
@@ -84,7 +94,6 @@ def create_booking(
     except IntegrityError:
         db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, "Dates are not available") from None
-    payment = payments_service.create_payment_for_booking(db, booking, listing.host_id)
     audit(
         db,
         actor=user.id,
@@ -99,7 +108,16 @@ def create_booking(
                  "check_in": body.check_in.isoformat(), "check_out": body.check_out.isoformat()},
         dedup_key=f"{events.BOOKING_CREATED}:{booking.id}",
     )
-    db.commit()
+    db.commit()  # releases the listing row lock — everything above is DB-only
+
+    # H4: the provider call is network I/O and deliberately runs AFTER the
+    # commit. It used to sit inside the locked transaction, so every concurrent
+    # booking of this listing queued behind one Stripe round-trip and a pooled
+    # connection stayed pinned for its duration. If this fails the booking
+    # survives as `pending` with its TTL: a replay heals it (see above) and
+    # otherwise the expiry sweep frees the dates. No intent can exist without a
+    # committed booking.
+    payment = payments_service.ensure_payment_for_booking(db, booking, listing.host_id)
     return _booking_out(booking, payment)
 
 

@@ -14,7 +14,7 @@ Gate 1 — first safe production booking.
 
 ## Current cycle
 
-**Audit remediation — H1, H2 complete.** A read-only technical code audit
+**Audit remediation — all 4 High findings complete.** A read-only technical code audit
 ([2026-07-28](reviews/2026-07-28-technical-code-audit.md)) found 4 High / 9
 Medium / 9 Low. Fixing them in priority order, one cycle each.
 - **H1**: listing creation now rejects any currency but `settings.default_currency`.
@@ -28,7 +28,12 @@ Medium / 9 Low. Fixing them in priority order, one cycle each.
 - **H3**: the Stripe intent idempotency key is derived from the booking id. It
   embedded a `uuid4()` despite a comment claiming otherwise, so Stripe's
   idempotency protected nothing and a retry could charge a guest twice. D-33.
-- Next in the queue: **H4** (Stripe call inside a row-locked transaction).
+- **H4**: the provider call now runs after the booking commits, so a slow
+  Stripe no longer blocks every other booking of that listing. A booking whose
+  provider call failed is healed by a replay; otherwise its TTL frees the dates.
+  D-34.
+- **All 4 High findings closed.** Next: Medium tier — M9 (CI quality gates),
+  M8/OBS-1 (real health check + observability), M4 (dependency pinning).
 
 **Previous: TD-01 + CI-03.**
 - TD-01: Alembic is the single schema source of truth; `create_all` removed;
@@ -63,7 +68,7 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 
 | Signal | Value |
 |---|---|
-| Tests | **165 passing** on real Postgres (150 SQLite-only), 1 gated Stripe suite |
+| Tests | **171 passing** on real Postgres (155 SQLite-only), 1 gated Stripe suite |
 | Lint | ruff clean (`app tests alembic scripts`), ruff pinned 0.15.22 |
 | CI | ✅ green on `main` — backend job runs a real postgres:16 service (migration-first) |
 | Concurrency | validated on **real Postgres** in CI (double-book→1, webhook→1 capture, expiry→1) |
@@ -88,8 +93,9 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 - ~~H1 (High) currency-blind ledger~~ — **closed** (single supported currency).
 - ~~H2 (High) webhook event lost on dispatch failure~~ — **closed** (persist before dispatch).
 - ~~H3 (High) random Stripe idempotency key~~ — **closed** (booking-scoped key).
-- **H4 (High)** the Stripe API call runs inside the row-locked booking
-  transaction (head-of-line blocking, pool pressure). Next up.
+- ~~H4 (High) Stripe call inside the row-locked transaction~~ — **closed**
+  (provider call moved after commit; proven with a falsifiable Postgres test).
+  **All four High findings from the 2026-07-28 audit are now closed.**
 - **OBS-01 (P1)** `/healthz` does not check the database.
 - **WAR-01** the warfare harnesses cannot run unmodified since MC-01: the
   register/login rate limit rejects their bulk user creation
