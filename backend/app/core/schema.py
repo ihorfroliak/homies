@@ -42,7 +42,17 @@ def alembic_config() -> Config:
 
 
 def _head_revision() -> str:
-    return ScriptDirectory.from_config(alembic_config()).get_current_head()
+    head = ScriptDirectory.from_config(alembic_config()).get_current_head()
+    if head is None:
+        # No revisions found at all — the migration directory is missing or
+        # empty (e.g. an image built without alembic/). Without this guard both
+        # head and current are None, `current != head` is False, and the app
+        # would report "schema verified" against a completely empty database.
+        raise SchemaNotMigratedError(
+            "No Alembic revisions found. The migration directory is missing or "
+            "empty, so the schema cannot be verified."
+        )
+    return head
 
 
 def _current_revision() -> str | None:

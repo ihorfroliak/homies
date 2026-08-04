@@ -67,7 +67,12 @@ def ensure_payment_for_booking(db: Session, booking: Booking, host_id: str) -> P
         return payment
     except IntegrityError:
         db.rollback()  # payments.booking_id is unique — someone else won
-        return db.scalar(select(Payment).where(Payment.booking_id == booking.id))
+        winner = db.scalar(select(Payment).where(Payment.booking_id == booking.id))
+        if winner is None:
+            # No competing row exists, so the violation came from somewhere else
+            # entirely. Never hand the caller a None it does not expect.
+            raise
+        return winner
 
 
 def process_intent_succeeded(db: Session, intent_id: str) -> Payment:

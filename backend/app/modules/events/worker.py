@@ -82,7 +82,7 @@ def claim_batch(db: Session, limit: int) -> list[Notification]:
         notif.status = "processing"
         notif.claimed_at = _now()
     db.commit()  # release the lock; rows are now marked processing (owned by us)
-    return rows
+    return list(rows)
 
 
 def deliver_one(db: Session, notif: Notification) -> str:
@@ -95,11 +95,15 @@ def deliver_one(db: Session, notif: Notification) -> str:
         idem_key=notif.id,  # stable per notification -> idempotent redelivery
     )
     if result.ok:
+        delivered_at = _now()
         notif.status = "delivered"
-        notif.delivered_at = _now()
+        notif.delivered_at = delivered_at
         notif.last_error = ""
         metrics.DELIVERED.labels(channel=notif.channel).inc()
-        latency = (notif.delivered_at - _aware(notif.created_at)).total_seconds()
+        # created_at is non-nullable, but a missing value must not crash delivery
+        # over a metric — record zero latency rather than raise.
+        created_at = _aware(notif.created_at)
+        latency = (delivered_at - created_at).total_seconds() if created_at else 0.0
         metrics.LATENCY.observe(max(latency, 0))
     else:
         notif.last_error = result.error

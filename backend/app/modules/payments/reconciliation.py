@@ -23,14 +23,14 @@ def payment_ledger_consistency(db: Session) -> dict:
             select(func.count())
             .select_from(JournalEntry)
             .where(JournalEntry.payment_id == pid, JournalEntry.kind == "payment_captured")
-        )
+        ) or 0
 
     def _refund_count(pid: str) -> int:
         return db.scalar(
             select(func.count())
             .select_from(JournalEntry)
             .where(JournalEntry.payment_id == pid, JournalEntry.kind == "refund")
-        )
+        ) or 0
 
     succeeded_without_capture: list[str] = []
     refunded_without_reversal: list[str] = []

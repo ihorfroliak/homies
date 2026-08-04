@@ -4,7 +4,7 @@ Single place to answer "where are we right now". Updated after every completed
 micro-cycle. Companions: [BUILD_HISTORY.md](BUILD_HISTORY.md) (what happened),
 [DECISIONS.md](DECISIONS.md) (why), [RELEASE.md](../RELEASE.md) (release gate).
 
-**Last updated:** 2026-08-03 · **Branch:** `main` · CI green
+**Last updated:** 2026-08-04 · **Branch:** `main` · CI green
 
 ## Current phase
 
@@ -32,8 +32,14 @@ Medium / 9 Low. Fixing them in priority order, one cycle each.
   Stripe no longer blocks every other booking of that listing. A booking whose
   provider call failed is healed by a replay; otherwise its TTL frees the dates.
   D-34.
-- **All 4 High findings closed.** Next: Medium tier — M9 (CI quality gates),
-  M8/OBS-1 (real health check + observability), M4 (dependency pinning).
+- **All 4 High findings closed.**
+- **M9a (CI-04)**: mypy is now a **blocking** CI gate. It paid for itself
+  immediately — a missing migration directory used to be reported as a verified
+  schema, so an app with no tables at all would start serving. Three latent
+  None-handling gaps fixed alongside it. D-35.
+- Next: **M9b** — supply-chain and build gates (pip-audit, gitleaks,
+  `docker build`, Dependabot, coverage threshold). Already measured: 5 CVEs, all
+  in `pip` itself with runtime dependencies clean; coverage 88%.
 
 **Previous: TD-01 + CI-03.**
 - TD-01: Alembic is the single schema source of truth; `create_all` removed;
@@ -68,8 +74,10 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 
 | Signal | Value |
 |---|---|
-| Tests | **171 passing** on real Postgres (155 SQLite-only), 1 gated Stripe suite |
+| Tests | **172 passing** on real Postgres (156 SQLite-only), 1 gated Stripe suite |
 | Lint | ruff clean (`app tests alembic scripts`), ruff pinned 0.15.22 |
+| Typecheck | **mypy clean** on `app/` - blocking CI gate, pinned 2.3.0 (D-35) |
+| Coverage | 88% measured, not yet gated (M9b) |
 | CI | ✅ green on `main` — backend job runs a real postgres:16 service (migration-first) |
 | Concurrency | validated on **real Postgres** in CI (double-book→1, webhook→1 capture, expiry→1) |
 | DR drill (manual) | backup + restore + financial reconciliation verified |
@@ -96,6 +104,10 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 - ~~H4 (High) Stripe call inside the row-locked transaction~~ — **closed**
   (provider call moved after commit; proven with a falsifiable Postgres test).
   **All four High findings from the 2026-07-28 audit are now closed.**
+- ~~M9a (Medium) no typecheck in CI~~ — **closed** (blocking mypy gate, D-35).
+- **M9b (Medium)** CI still has no dependency/secret scanning, no `docker build`
+  and no coverage threshold: a broken Dockerfile or a vulnerable dependency
+  still passes a green build.
 - **OBS-01 (P1)** `/healthz` does not check the database.
 - **WAR-01** the warfare harnesses cannot run unmodified since MC-01: the
   register/login rate limit rejects their bulk user creation

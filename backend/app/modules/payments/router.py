@@ -112,7 +112,11 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                 service.process_charge_refunded(db, intent_id)
 
         stored = db.scalar(select(WebhookEvent).where(WebhookEvent.stripe_event_id == event_id))
-        stored.processed_at = datetime.now(timezone.utc)
+        if stored is not None:
+            stored.processed_at = datetime.now(timezone.utc)
+        # A missing row means the racing insert did not survive after all. The
+        # dispatch above still happened and is idempotent, so acknowledge rather
+        # than 500 — a Stripe retry re-runs it safely.
         db.commit()
     except Exception:
         # Dispatch failed: undo only the dispatch work. The event row stays

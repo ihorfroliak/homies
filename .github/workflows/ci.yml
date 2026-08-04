@@ -43,6 +43,10 @@ jobs:
       - name: Lint
         working-directory: backend
         run: ruff check app tests alembic scripts
+      - name: Typecheck
+        working-directory: backend
+        # Blocking gate (audit M9). Config in pyproject.toml [tool.mypy].
+        run: python -m mypy
       - name: Migrate (verify Alembic base -> head on real Postgres)
         working-directory: backend
         env:

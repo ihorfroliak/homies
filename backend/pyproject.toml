@@ -29,6 +29,9 @@ dev = [
     # ~190 new default rules and broke a green build with zero code changes.
     # Adopting a newer ruleset is a deliberate, separate cleanup cycle.
     "ruff==0.15.22",
+    # Pinned for the same reason: a new mypy release ships new inference and
+    # would fail a green build with no code change (D-26).
+    "mypy==2.3.0",
 ]
 
 # Only the application package is distributable. alembic/, scripts/ and tests/
@@ -44,3 +47,15 @@ target-version = "py312"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+# CI-04 / audit M9. Default strictness, applied to the application package only.
+# It is a real blocking gate — it already caught a production hole in
+# ensure_schema() (an empty migration directory verified as "at head").
+# Raising strictness (disallow_untyped_defs, check_untyped_defs) and extending
+# the gate to tests/ are separate cleanup cycles, not a silent widening here.
+[tool.mypy]
+python_version = "3.12"
+files = ["app"]
+ignore_missing_imports = true   # stripe/alembic/prometheus ship no complete stubs
+warn_redundant_casts = true
+warn_unused_ignores = true

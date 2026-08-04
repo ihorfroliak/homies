@@ -41,6 +41,35 @@ def test_alembic_has_a_single_head():
     assert len(heads) == 1, f"expected exactly one migration head, found {heads}"
 
 
+def test_missing_revisions_are_never_reported_as_a_verified_schema(monkeypatch):
+    """Regression (audit M9): `get_current_head()` returns None when the
+    migration directory is missing or empty — for instance an image built
+    without `alembic/`. Both head and current were then None, `current != head`
+    was False, and an application with NO schema at all logged "schema verified
+    at head None" and started serving. Surfaced by the typecheck gate, which
+    caught `_head_revision() -> str` returning `str | None`."""
+    from app.core import schema as schema_mod
+
+    class _NoRevisions:
+        @classmethod
+        def from_config(cls, cfg):  # noqa: ARG003
+            return cls()
+
+        def get_current_head(self):
+            return None
+
+    monkeypatch.setattr(schema_mod, "ScriptDirectory", _NoRevisions)
+    monkeypatch.setattr(schema_mod.settings, "env", "production")  # verify mode
+
+    def _must_not_be_consulted():
+        raise AssertionError("the database must not be queried when no revisions exist")
+
+    monkeypatch.setattr(schema_mod, "_current_revision", _must_not_be_consulted)
+
+    with pytest.raises(schema_mod.SchemaNotMigratedError, match="No Alembic revisions"):
+        schema_mod.ensure_schema()
+
+
 # --- schema validation against a real migrated Postgres ---------------------
 EXPECTED_TABLES = {
     "users", "host_profiles", "refresh_tokens", "listings", "host_blocks",

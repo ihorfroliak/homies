@@ -26,9 +26,11 @@ from __future__ import annotations
 import logging
 import threading
 from datetime import datetime, timezone
+from typing import cast
 
 from prometheus_client import Counter, Gauge, Histogram
 from sqlalchemy import select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -75,10 +77,15 @@ def expire_due_bookings(db: Session, now: datetime | None = None, batch: int | N
             try:
                 # Authoritative, atomic transition. rowcount == 1 only if this
                 # worker won and the booking was still pending.
-                result = db.execute(
-                    update(Booking)
-                    .where(Booking.id == booking_id, Booking.status == "pending")
-                    .values(status="expired", payment_expires_at=None)
+                # Session.execute() is typed as Result; a DML statement really
+                # returns a CursorResult, which is what carries rowcount.
+                result = cast(
+                    CursorResult,
+                    db.execute(
+                        update(Booking)
+                        .where(Booking.id == booking_id, Booking.status == "pending")
+                        .values(status="expired", payment_expires_at=None)
+                    ),
                 )
                 if result.rowcount == 1:
                     db.commit()
