@@ -15,6 +15,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.core.config import settings, validate_security_config
 from app.core.health import check_database
+from app.core.http_metrics import http_metrics_middleware
 from app.core.ratelimit import client_ip, limiter, resolve_policy
 from app.core.schema import ensure_schema
 from app.modules.admin.router import router as admin_router
@@ -86,6 +87,13 @@ async def rate_limit_middleware(request: Request, call_next):
                 headers={"Retry-After": str(max(1, int(retry_after)))},
             )
     return await call_next(request)
+
+
+# Registered AFTER the rate limiter, which makes it the OUTER middleware:
+# Starlette applies them in reverse order of registration. That ordering is
+# deliberate — metrics must observe throttled requests too, or a rate-limit
+# storm would show up as a drop in traffic rather than a spike in 429s.
+app.middleware("http")(http_metrics_middleware)
 
 
 API_V1 = "/v1"

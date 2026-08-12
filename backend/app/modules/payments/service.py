@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.modules.booking.models import Booking
 from app.modules.events import service as events
 from app.modules.ledger import service as ledger
+from app.core import business_metrics as metrics
 from app.modules.payments.models import Payment
 from app.modules.payments.provider import provider
 
@@ -141,6 +142,8 @@ def process_intent_succeeded(db: Session, intent_id: str) -> Payment:
 
     payment.status = "succeeded"
     booking.status = "confirmed"
+    metrics.record_payment(db, "succeeded")
+    metrics.record_booking(db, "confirmed")
     booking.payment_expires_at = None  # BK-01: no longer subject to the expiry sweep
     booking.operational_state = "checkin_available"
     ledger.post_entry(
@@ -195,6 +198,7 @@ def process_intent_failed(db: Session, intent_id: str) -> Payment | None:
         )
         return payment
     payment.status = "failed"
+    metrics.record_payment(db, "failed")
     booking = db.get(Booking, payment.booking_id)
     if booking is not None and booking.status == "pending":
         booking.status = "payment_failed"
@@ -216,6 +220,7 @@ def process_charge_refunded(db: Session, intent_id: str) -> Payment | None:
     if booking is not None and booking.payout_status != "none":
         raise HTTPException(status.HTTP_409_CONFLICT, "Refund after payout needs clawback flow")
     payment.status = "refunded"
+    metrics.record_payment(db, "refunded")
     ledger.post_entry(
         db,
         kind="refund",
@@ -244,6 +249,7 @@ def refund_booking(db: Session, booking: Booking, actor: str) -> Payment | None:
         return None
     if payment.status == "requires_payment":
         payment.status = "voided"  # nothing was captured
+        metrics.record_payment(db, "voided")
         return payment
     if payment.status != "succeeded":
         raise HTTPException(status.HTTP_409_CONFLICT, f"Cannot refund payment in {payment.status}")
@@ -253,6 +259,7 @@ def refund_booking(db: Session, booking: Booking, actor: str) -> Payment | None:
 
     provider.refund(payment.provider_intent_id, payment.amount)
     payment.status = "refunded"
+    metrics.record_payment(db, "refunded")
     ledger.post_entry(
         db,
         kind="refund",
@@ -338,6 +345,7 @@ def run_host_payout(db: Session, host_id: str, actor: str) -> dict:
             description=f"Payout to host {host_id} (simulated transfer)",
         )
         booking.payout_status = "paid"
+        metrics.record_payout(db, "paid")
         if booking.operational_state in ("none", "checkin_available", "checked_in"):
             booking.operational_state = "checked_out"
         events.emit(

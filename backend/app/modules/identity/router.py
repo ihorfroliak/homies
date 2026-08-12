@@ -9,6 +9,7 @@ from app.core.audit import audit
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.ratelimit import AUTH_LOGIN_ACCOUNT, limiter
+from app.core import business_metrics as metrics
 from app.core.security import (
     create_access_token,
     get_current_user,
@@ -64,6 +65,7 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
     db.add(user)
     db.flush()
     audit(db, actor=user.id, action="user.registered", entity_type="user", entity_id=user.id)
+    metrics.record_registration(db, user.role)
     db.commit()
     return user
 

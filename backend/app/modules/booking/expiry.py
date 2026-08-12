@@ -29,6 +29,8 @@ from datetime import datetime, timezone
 from typing import cast
 
 from prometheus_client import Counter, Gauge, Histogram
+
+from app.core.business_metrics import record_booking
 from sqlalchemy import select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
@@ -91,6 +93,9 @@ def expire_due_bookings(db: Session, now: datetime | None = None, batch: int | N
                     db.commit()
                     expired += 1
                     EXPIRY_EXPIRED.inc()
+                    # Recorded after the commit: record_booking() sees no open
+                    # transaction and increments immediately (OBS-03).
+                    record_booking(db, "expired")
                     log.info(
                         "booking expired id=%s prev=pending new=expired reason=payment_ttl",
                         booking_id,

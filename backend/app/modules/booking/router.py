@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core import business_metrics as metrics
 from app.core.audit import audit
 from app.core.config import settings
 from app.core.db import get_db
@@ -102,6 +103,7 @@ def create_booking(
         entity_id=booking.id,
         data={"total": total, "currency": listing.currency, "nights": nights},
     )
+    metrics.record_booking(db, "created")
     events.emit(
         db, events.BOOKING_CREATED, correlation_id=booking.id,
         payload={"listing_id": listing.id, "total": total, "currency": listing.currency,
@@ -164,6 +166,7 @@ def cancel_booking(
 
     payment = payments_service.refund_booking(db, booking, actor=user.id)
     booking.status = "cancelled"
+    metrics.record_booking(db, "cancelled")
     audit(db, actor=user.id, action="booking.cancelled", entity_type="booking", entity_id=booking.id)
     events.emit(
         db, events.CANCELLATION_PROCESSED, correlation_id=booking.id,
@@ -185,6 +188,7 @@ def complete_booking(
     if booking.status != "confirmed":
         raise HTTPException(status.HTTP_409_CONFLICT, "Only confirmed bookings can complete")
     booking.status = "completed"
+    metrics.record_booking(db, "completed")
     audit(db, actor=user.id, action="booking.completed", entity_type="booking", entity_id=booking.id)
     db.commit()
     payment = db.scalar(select(Payment).where(Payment.booking_id == booking.id))
