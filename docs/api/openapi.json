@@ -613,6 +613,7 @@
   "paths": {
     "/healthz": {
       "get": {
+        "description": "Liveness. Deliberately checks nothing external — see app/core/health.py.\n\nA failing liveness probe restarts the container, so making this depend on\nthe database would convert a database outage into a fleet-wide crash loop.\nUse /readyz to gate traffic.",
         "operationId": "healthz_healthz_get",
         "responses": {
           "200": {
@@ -648,6 +649,33 @@
           }
         },
         "summary": "Metrics",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
+    "/readyz": {
+      "get": {
+        "description": "Readiness. 503 pulls this instance from the load balancer without killing it.",
+        "operationId": "readyz_readyz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Readyz Readyz Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "description": "A dependency is unavailable; do not route traffic here."
+          }
+        },
+        "summary": "Readyz",
         "tags": [
           "ops"
         ]

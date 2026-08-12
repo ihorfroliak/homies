@@ -73,8 +73,19 @@ PUBLIC_READ = Policy("public_read", capacity=120, refill_per_second=10.0)
 
 # Paths that must NEVER be throttled. Payment webhooks are retried by the
 # provider; throttling them would create inconsistent financial state, and the
-# handler is already idempotent and signature-verified.
-EXEMPT_PREFIXES = ("/v1/payments/webhook", "/healthz", "/metrics", "/docs", "/openapi.json", "/redoc")
+# handler is already idempotent and signature-verified. The probes are exempt
+# because an orchestrator re-probes every few seconds from a small set of IPs:
+# throttling /readyz would fail readiness on a perfectly healthy instance and
+# pull it out of the load balancer — a self-inflicted outage (OBS-01).
+EXEMPT_PREFIXES = (
+    "/v1/payments/webhook",
+    "/healthz",
+    "/readyz",
+    "/metrics",
+    "/docs",
+    "/openapi.json",
+    "/redoc",
+)
 
 
 class Clock(Protocol):

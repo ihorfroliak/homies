@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.core.config import settings, validate_security_config
+from app.core.health import check_database
 from app.core.ratelimit import client_ip, limiter, resolve_policy
 from app.core.schema import ensure_schema
 from app.modules.admin.router import router as admin_router
@@ -97,7 +98,37 @@ app.include_router(admin_router, prefix=API_V1)
 
 @app.get("/healthz", tags=["ops"])
 def healthz() -> dict:
+    """Liveness. Deliberately checks nothing external — see app/core/health.py.
+
+    A failing liveness probe restarts the container, so making this depend on
+    the database would convert a database outage into a fleet-wide crash loop.
+    Use /readyz to gate traffic.
+    """
     return {"status": "ok", "env": settings.env}
+
+
+@app.get(
+    "/readyz",
+    tags=["ops"],
+    responses={503: {"description": "A dependency is unavailable; do not route traffic here."}},
+)
+def readyz(response: Response) -> dict:
+    """Readiness. 503 pulls this instance from the load balancer without killing it."""
+    db = check_database()
+    if not db.ok:
+        response.status_code = 503
+    return {
+        "status": "ready" if db.ok else "not_ready",
+        "env": settings.env,
+        "checks": {
+            "database": {
+                "ok": db.ok,
+                "latency_ms": db.latency_ms,
+                # Class name only — the message would carry the DSN (D-37).
+                **({"error": db.error} if db.error else {}),
+            }
+        },
+    }
 
 
 @app.get("/metrics", tags=["ops"])

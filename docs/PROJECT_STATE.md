@@ -42,6 +42,11 @@ Medium / 9 Low. Fixing them in priority order, one cycle each.
   though TD-01 made its contents load-bearing) and enforces a coverage floor.
   The 5 CVEs found were all in `pip` itself and are deliberately outside the
   gate; runtime dependencies are clean. D-36.
+- **OBS-01**: readiness/liveness split. `/readyz` checks the database and
+  returns 503; `/healthz` deliberately does not, because a failing liveness
+  probe restarts the container and would turn one database outage into a
+  fleet-wide crash loop. Writing the test exposed that nothing bounded the
+  TCP connect. D-37.
 
 **Previous: TD-01 + CI-03.**
 - TD-01: Alembic is the single schema source of truth; `create_all` removed;
@@ -76,10 +81,10 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 
 | Signal | Value |
 |---|---|
-| Tests | **172 passing** on real Postgres (156 SQLite-only), 1 gated Stripe suite |
+| Tests | **164 passing** SQLite-only (Postgres suites add 16 in CI), 1 gated Stripe suite |
 | Lint | ruff clean (`app tests alembic scripts`), ruff pinned 0.15.22 |
 | Typecheck | **mypy clean** on `app/` - blocking CI gate, pinned 2.3.0 (D-35) |
-| Coverage | **84.2% branch** on `app/`, gated at 80 (M9b) — statement-only would read 88% |
+| Coverage | **84.5% branch** on `app/`, gated at 80 (M9b) — statement-only would flatter it |
 | Supply chain | pip-audit clean on declared deps · gitleaks on full history · image built in CI |
 | CI | ✅ green on `main` — backend job runs a real postgres:16 service (migration-first) |
 | Concurrency | validated on **real Postgres** in CI (double-book→1, webhook→1 capture, expiry→1) |
@@ -112,7 +117,10 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 - **M9c (Low, not started)** branch protection is still not configured: the
   gates are enforceable but nothing *requires* them to pass before a merge to
   `main`. This is a GitHub repo setting, not code — it needs the repo owner.
-- **OBS-01 (P1)** `/healthz` does not check the database.
+- ~~OBS-01 (P1) blind health check~~ - **closed**: `/readyz` checks the database,
+  `/healthz` deliberately does not (D-37).
+- **OBS-02/03 (P1)** no HTTP metrics and no business metrics: the founder KPI
+  framework still has no data source.
 - **WAR-01** the warfare harnesses cannot run unmodified since MC-01: the
   register/login rate limit rejects their bulk user creation
   (`RATE_LIMIT_ENABLED=false` is required). The harness bootstrap also assumes
@@ -135,6 +143,6 @@ AsyncAPI catalog drifted from emitted events (separate follow-up).
 
 ## Next action
 
-Awaiting approval. Ranked candidates: OBS-01 real health/DB check · M9c branch
-protection (owner action, not code) · real Product A frontend (React/Expo from
+Awaiting approval. Ranked candidates: OBS-02/03 HTTP + business metrics
+(the KPI framework has no data source) · M9c branch protection (owner action) · real Product A frontend (React/Expo from
 the design-system contract) · FIN-01 (needs Stripe test keys).
