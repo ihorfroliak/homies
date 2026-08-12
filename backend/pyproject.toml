@@ -32,6 +32,8 @@ dev = [
     # Pinned for the same reason: a new mypy release ships new inference and
     # would fail a green build with no code change (D-26).
     "mypy==2.3.0",
+    "coverage==7.13.0",
+    "pip-audit==2.9.0",
 ]
 
 # Only the application package is distributable. alembic/, scripts/ and tests/
@@ -59,3 +61,27 @@ files = ["app"]
 ignore_missing_imports = true   # stripe/alembic/prometheus ship no complete stubs
 warn_redundant_casts = true
 warn_unused_ignores = true
+
+# M9b. branch = true, so the honest number is 84.2%, not the 88% a
+# statement-only run reports — branch coverage counts the untaken side of a
+# conditional, which is where the bugs this audit found actually lived.
+# fail_under is 80: the SQLite-only run is the conservative floor (CI adds
+# Postgres suites and covers strictly more), so the gate stays green for a
+# developer without a local database. It is a ratchet against regression, not
+# a target to chase — raising it is a deliberate cycle, and nothing here is
+# excluded to flatter the number. Coverage bounds what is *executed* and says
+# nothing about what is *asserted*; the warfare harnesses remain the real
+# evidence.
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 80
+precision = 1
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

@@ -1,0 +1,35 @@
+version: 2
+
+# M9b. Grouped and monthly on purpose: a per-dependency weekly PR stream on a
+# solo project is noise that gets ignored, and an ignored security PR is worse
+# than none. Security updates are exempt from grouping by Dependabot and still
+# arrive immediately.
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      backend-deps:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    ignore:
+      # Pinned deliberately (D-26, D-35): a new release ships new rules or new
+      # inference and fails a green build with no code change. Adopting one is
+      # a deliberate cycle, not an automated PR.
+      - dependency-name: ruff
+      - dependency-name: mypy
+
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]

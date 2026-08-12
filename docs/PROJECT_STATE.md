@@ -37,9 +37,11 @@ Medium / 9 Low. Fixing them in priority order, one cycle each.
   immediately — a missing migration directory used to be reported as a verified
   schema, so an app with no tables at all would start serving. Three latent
   None-handling gaps fixed alongside it. D-35.
-- Next: **M9b** — supply-chain and build gates (pip-audit, gitleaks,
-  `docker build`, Dependabot, coverage threshold). Already measured: 5 CVEs, all
-  in `pip` itself with runtime dependencies clean; coverage 88%.
+- **M9b**: supply-chain and build gates. CI now audits declared dependencies,
+  scans full history for secrets, **builds the image** (never built before,
+  though TD-01 made its contents load-bearing) and enforces a coverage floor.
+  The 5 CVEs found were all in `pip` itself and are deliberately outside the
+  gate; runtime dependencies are clean. D-36.
 
 **Previous: TD-01 + CI-03.**
 - TD-01: Alembic is the single schema source of truth; `create_all` removed;
@@ -77,7 +79,8 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 | Tests | **172 passing** on real Postgres (156 SQLite-only), 1 gated Stripe suite |
 | Lint | ruff clean (`app tests alembic scripts`), ruff pinned 0.15.22 |
 | Typecheck | **mypy clean** on `app/` - blocking CI gate, pinned 2.3.0 (D-35) |
-| Coverage | 88% measured, not yet gated (M9b) |
+| Coverage | **84.2% branch** on `app/`, gated at 80 (M9b) — statement-only would read 88% |
+| Supply chain | pip-audit clean on declared deps · gitleaks on full history · image built in CI |
 | CI | ✅ green on `main` — backend job runs a real postgres:16 service (migration-first) |
 | Concurrency | validated on **real Postgres** in CI (double-book→1, webhook→1 capture, expiry→1) |
 | DR drill (manual) | backup + restore + financial reconciliation verified |
@@ -105,9 +108,10 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
   (provider call moved after commit; proven with a falsifiable Postgres test).
   **All four High findings from the 2026-07-28 audit are now closed.**
 - ~~M9a (Medium) no typecheck in CI~~ — **closed** (blocking mypy gate, D-35).
-- **M9b (Medium)** CI still has no dependency/secret scanning, no `docker build`
-  and no coverage threshold: a broken Dockerfile or a vulnerable dependency
-  still passes a green build.
+- ~~M9b (Medium) no supply-chain or build gates~~ — **closed** (D-36).
+- **M9c (Low, not started)** branch protection is still not configured: the
+  gates are enforceable but nothing *requires* them to pass before a merge to
+  `main`. This is a GitHub repo setting, not code — it needs the repo owner.
 - **OBS-01 (P1)** `/healthz` does not check the database.
 - **WAR-01** the warfare harnesses cannot run unmodified since MC-01: the
   register/login rate limit rejects their bulk user creation
@@ -131,7 +135,6 @@ AsyncAPI catalog drifted from emitted events (separate follow-up).
 
 ## Next action
 
-Awaiting approval. Ranked candidates: CI-04 static typecheck · branch protection
-+ dependency/secret scanning · OBS-01 real health/DB check · real Product A
-frontend (React/Expo from the design-system contract) · FIN-01 (needs Stripe
-test keys).
+Awaiting approval. Ranked candidates: OBS-01 real health/DB check · M9c branch
+protection (owner action, not code) · real Product A frontend (React/Expo from
+the design-system contract) · FIN-01 (needs Stripe test keys).
