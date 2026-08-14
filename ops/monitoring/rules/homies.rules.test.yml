@@ -6,6 +6,11 @@
 # the nearby condition it must ignore — especially at zero traffic, which is
 # this business's current state and would otherwise page continuously.
 #
+# NOTE: exp_annotations is NOT optional. promtool compares the rendered
+# annotations exactly, so omitting them asserts the alert has NONE and fails.
+# Values interpolated with $value must be written as Prometheus renders them
+# (humanizePercentage gives 16.67%, not 16.667%).
+#
 # Run: promtool test rules ops/monitoring/rules/homies.rules.test.yml
 # CI runs this on every push (see .github/workflows/ci.yml, job `monitoring`).
 
@@ -93,6 +98,9 @@ tests:
         exp_alerts:
           - exp_labels:
               severity: page
+            exp_annotations:
+              summary: "Over 5% of requests are failing with 5xx"
+              description: "Current ratio: 16.67%."
 
   - interval: 1m
     name: HighServerErrorRate is silent when errors are below threshold
@@ -130,6 +138,8 @@ tests:
         exp_alerts:
           - exp_labels:
               severity: ticket
+            exp_annotations:
+              summary: "Sustained rate limiting (10.0/s)"
 
   # --- money ----------------------------------------------------------------
   - interval: 1m
@@ -193,6 +203,10 @@ tests:
           - exp_labels:
               severity: ticket
               channel: email
+            exp_annotations:
+              summary: "1 notification(s) moved to DEAD"
+              description: >-
+                A guest or host was not told something. These do not retry again.
 
   - interval: 1m
     name: BookingExpiryBacklogGrowing fires past 20 held bookings
@@ -208,6 +222,8 @@ tests:
         exp_alerts:
           - exp_labels:
               severity: ticket
+            exp_annotations:
+              summary: "25 bookings are due for expiry but still held"
 
   - interval: 1m
     name: BookingExpirySweepStalled fires when the worker stops
