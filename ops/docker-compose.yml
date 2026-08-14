@@ -42,6 +42,38 @@ services:
       nats:
         condition: service_started
 
+  # OBS-06: the collector. Without this the application published metrics into
+  # nothing. Rules are mounted read-only and are the same files CI tests.
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/rules:/etc/prometheus/rules:ro
+      - promdata:/prometheus
+    depends_on:
+      api:
+        condition: service_healthy
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+
+  # Local destination so the routing tree is exercised end to end. NOT a real
+  # alert channel — see ops/monitoring/alertmanager.yml.
+  alert-sink:
+    image: hashicorp/http-echo:1.0
+    command: ["-listen=:8080", "-text=alert received"]
+
   db:
     image: postgis/postgis:16-3.4
     environment:
@@ -84,3 +116,4 @@ services:
 volumes:
   pgdata:
   meilidata:
+  promdata:

@@ -1,0 +1,159 @@
+# Alert rules (OBS-06).
+#
+# Design rules applied throughout, because a noisy alert set is worse than none
+# — people mute it, and then the one real page is muted too:
+#
+#   * Nothing fires at zero traffic. This business has not launched. Absence
+#     alerts ("no bookings in 24h") would fire continuously today and train
+#     everyone to ignore the channel, so they are deliberately absent and
+#     belong in a weekly business review instead. Ratio alerts are naturally
+#     silent at zero traffic: rate()/rate() is NaN, which never satisfies `>`.
+#   * Every rule has a `for:` window, so a single scrape blip cannot page.
+#   * Thresholds that exist in the founder KPI framework (docs/strategy/06) are
+#     taken from it rather than invented; each is cited in the annotation.
+#
+# Verified by ops/monitoring/rules/homies.rules.test.yml (promtool test rules),
+# which is run in CI — each alert is proven to fire on the condition it claims
+# and to stay silent otherwise.
+
+groups:
+  - name: homies-availability
+    rules:
+      - alert: ApiDown
+        expr: up{job="homies-api"} == 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "API instance {{ $labels.instance }} is not scrapeable"
+          description: >-
+            Prometheus cannot reach /metrics. The process is gone, wedged, or
+            partitioned. Check /healthz (liveness) before restarting.
+
+      - alert: DatabaseUnreachable
+        # The readiness probe publishes this; see app/core/health.py.
+        expr: homies_database_up == 0
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: "Readiness probe cannot reach the database"
+          description: >-
+            /readyz is failing, so this instance is out of the load balancer.
+            Bookings and payments cannot be written.
+
+      - alert: DatabaseHealthStale
+        # A stale `1` reads as healthy, which is the dangerous direction: the
+        # gauge is only refreshed by a readiness probe, so if probing stops the
+        # last value would otherwise be trusted indefinitely.
+        expr: time() - homies_database_last_check_timestamp_seconds > 300
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Database health has not been re-checked for 5 minutes"
+          description: >-
+            Nothing is probing /readyz, so homies_database_up is stale and must
+            not be trusted. Check the orchestrator's readiness configuration.
+
+  - name: homies-http
+    rules:
+      - alert: HighServerErrorRate
+        expr: |
+          sum(rate(homies_http_requests_total{status="5xx"}[5m]))
+            / sum(rate(homies_http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "Over 5% of requests are failing with 5xx"
+          description: "Current ratio: {{ $value | humanizePercentage }}."
+
+      - alert: HighRequestLatency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, route) (rate(homies_http_request_duration_seconds_bucket[5m]))
+          ) > 1
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "p95 latency above 1s on {{ $labels.route }}"
+          description: >-
+            Sustained for 10 minutes. The booking path holds a row lock, so
+            latency here becomes contention.
+
+      - alert: RateLimitStorm
+        # Not necessarily an attack — a broken client retrying hard looks the
+        # same, and both are worth a look before guests are affected.
+        expr: sum(rate(homies_rate_limit_hits_total[5m])) > 5
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Sustained rate limiting ({{ $value | printf \"%.1f\" }}/s)"
+
+  - name: homies-money
+    rules:
+      - alert: PaymentFailureRateHigh
+        expr: |
+          sum(rate(homies_payments_total{outcome="failed"}[30m]))
+            / sum(rate(homies_payments_total[30m])) > 0.2
+        for: 15m
+        labels:
+          severity: page
+        annotations:
+          summary: "Over 20% of payments are failing"
+          description: >-
+            Guests cannot complete bookings. Check the Stripe status page and
+            the webhook dead-letter (payments with processed_at IS NULL).
+
+      - alert: RefundRateHigh
+        # KPI framework (docs/strategy/06, CFO dashboard): refund rate alert
+        # threshold is 5% of GMV. Approximated here by refund *count* share —
+        # amounts deliberately do not live in Prometheus (D-38), so this is a
+        # proxy that points at the ledger rather than replacing it.
+        expr: |
+          sum(rate(homies_payments_total{outcome="refunded"}[6h]))
+            / sum(rate(homies_payments_total{outcome="succeeded"}[6h])) > 0.05
+        for: 30m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Refund share above the 5% KPI threshold"
+          description: >-
+            Count-based proxy. Confirm against the ledger before acting —
+            docs/strategy/06 defines the KPI in money, not in events.
+
+  - name: homies-workers
+    rules:
+      - alert: NotificationsDeadLettered
+        expr: increase(homies_notifications_dead_total[1h]) > 0
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "{{ $value | printf \"%.0f\" }} notification(s) moved to DEAD"
+          description: >-
+            A guest or host was not told something. These do not retry again.
+
+      - alert: BookingExpiryBacklogGrowing
+        # BK-01: the sweep frees dates held by unpaid bookings. A growing
+        # backlog means held inventory nobody can book.
+        expr: homies_booking_expiry_backlog > 20
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "{{ $value | printf \"%.0f\" }} bookings are due for expiry but still held"
+
+      - alert: BookingExpirySweepStalled
+        expr: increase(homies_booking_expiry_runs_total[30m]) == 0
+        for: 30m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "The booking expiry worker has not run for 30 minutes"
+          description: >-
+            Unpaid bookings keep holding dates until this resumes (BK-01).

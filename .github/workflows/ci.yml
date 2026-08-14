@@ -101,6 +101,33 @@ jobs:
           docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.28.0 \
             detect --source /repo --redact --no-banner --verbose
 
+  monitoring:
+    # OBS-06. An alert rule is code: the usual failure is a typo in a metric
+    # name that nobody notices until the outage the rule was written for. This
+    # job proves the config parses and that every alert fires on the condition
+    # it claims — and stays silent on the ones it must ignore.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Prometheus config and rules
+        run: |
+          docker run --rm -v "$PWD/ops/monitoring:/work" -w /work \
+            --entrypoint promtool prom/prometheus:v2.55.1 \
+            check config prometheus.yml --syntax-only
+          docker run --rm -v "$PWD/ops/monitoring:/work" -w /work \
+            --entrypoint promtool prom/prometheus:v2.55.1 \
+            check rules rules/homies.rules.yml
+      - name: Unit-test the alert rules
+        run: |
+          docker run --rm -v "$PWD/ops/monitoring:/work" -w /work/rules \
+            --entrypoint promtool prom/prometheus:v2.55.1 \
+            test rules homies.rules.test.yml
+      - name: Check Alertmanager config
+        run: |
+          docker run --rm -v "$PWD/ops/monitoring:/work" -w /work \
+            --entrypoint amtool prom/alertmanager:v0.27.0 \
+            check-config alertmanager.yml
+
   contracts:
     runs-on: ubuntu-latest
     steps:

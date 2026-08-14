@@ -1,0 +1,270 @@
+# promtool unit tests for homies.rules.yml.
+#
+# An alert rule is code, and an untested one usually has a typo in a metric
+# name that nobody notices until the outage it was written for. Each alert here
+# is proven twice: it fires on the condition it claims, and it stays silent on
+# the nearby condition it must ignore — especially at zero traffic, which is
+# this business's current state and would otherwise page continuously.
+#
+# Run: promtool test rules ops/monitoring/rules/homies.rules.test.yml
+# CI runs this on every push (see .github/workflows/ci.yml, job `monitoring`).
+
+rule_files:
+  - homies.rules.yml
+
+evaluation_interval: 1m
+
+tests:
+  # --- availability ---------------------------------------------------------
+  - interval: 1m
+    name: ApiDown fires when the target stops being scrapeable
+    input_series:
+      - series: 'up{job="homies-api", instance="api:8000"}'
+        values: "1+0x5 0+0x5"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: ApiDown
+        exp_alerts: []
+      - eval_time: 9m
+        alertname: ApiDown
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              job: homies-api
+              instance: api:8000
+            exp_annotations:
+              summary: "API instance api:8000 is not scrapeable"
+              description: >-
+                Prometheus cannot reach /metrics. The process is gone, wedged, or partitioned. Check /healthz (liveness) before restarting.
+
+  - interval: 1m
+    name: DatabaseUnreachable fires only while the probe reports down
+    input_series:
+      - series: "homies_database_up"
+        values: "1 1 0 0 0 1 1"
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: DatabaseUnreachable
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: DatabaseUnreachable
+        exp_alerts:
+          - exp_labels:
+              severity: page
+            exp_annotations:
+              summary: "Readiness probe cannot reach the database"
+              description: >-
+                /readyz is failing, so this instance is out of the load balancer. Bookings and payments cannot be written.
+      - eval_time: 6m
+        alertname: DatabaseUnreachable
+        exp_alerts: []
+
+  - interval: 1m
+    name: DatabaseHealthStale catches a gauge nobody is refreshing
+    input_series:
+      # Timestamp frozen at t=0 while wall-clock advances: the probe stopped.
+      - series: "homies_database_last_check_timestamp_seconds"
+        values: "0+0x20"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: DatabaseHealthStale
+        exp_alerts: []
+      - eval_time: 11m
+        alertname: DatabaseHealthStale
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+            exp_annotations:
+              summary: "Database health has not been re-checked for 5 minutes"
+              description: >-
+                Nothing is probing /readyz, so homies_database_up is stale and must not be trusted. Check the orchestrator's readiness configuration.
+
+  # --- http -----------------------------------------------------------------
+  - interval: 1m
+    name: HighServerErrorRate fires above 5% and stays silent at zero traffic
+    input_series:
+      - series: 'homies_http_requests_total{status="5xx", method="GET", route="/v1/bookings"}'
+        values: "0+10x20"
+      - series: 'homies_http_requests_total{status="2xx", method="GET", route="/v1/bookings"}'
+        values: "0+50x20"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: HighServerErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: page
+
+  - interval: 1m
+    name: HighServerErrorRate is silent when errors are below threshold
+    input_series:
+      - series: 'homies_http_requests_total{status="5xx", method="GET", route="/v1/bookings"}'
+        values: "0+1x20"
+      - series: 'homies_http_requests_total{status="2xx", method="GET", route="/v1/bookings"}'
+        values: "0+100x20"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: HighServerErrorRate
+        exp_alerts: []
+
+  - interval: 1m
+    name: No HTTP alert fires when there is no traffic at all
+    input_series:
+      - series: 'homies_http_requests_total{status="2xx", method="GET", route="/healthz"}'
+        values: "0+0x30"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: HighServerErrorRate
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: RateLimitStorm
+        exp_alerts: []
+
+  - interval: 1m
+    name: RateLimitStorm fires on sustained throttling
+    input_series:
+      - series: 'homies_rate_limit_hits_total{policy="login"}'
+        values: "0+600x30"
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: RateLimitStorm
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+
+  # --- money ----------------------------------------------------------------
+  - interval: 1m
+    name: PaymentFailureRateHigh fires when a fifth of payments fail
+    input_series:
+      - series: 'homies_payments_total{outcome="failed"}'
+        values: "0+3x60"
+      - series: 'homies_payments_total{outcome="succeeded"}'
+        values: "0+7x60"
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: PaymentFailureRateHigh
+        exp_alerts:
+          - exp_labels:
+              severity: page
+            exp_annotations:
+              summary: "Over 20% of payments are failing"
+              description: >-
+                Guests cannot complete bookings. Check the Stripe status page and the webhook dead-letter (payments with processed_at IS NULL).
+
+  - interval: 1m
+    name: PaymentFailureRateHigh ignores a healthy failure rate
+    input_series:
+      - series: 'homies_payments_total{outcome="failed"}'
+        values: "0+1x60"
+      - series: 'homies_payments_total{outcome="succeeded"}'
+        values: "0+99x60"
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: PaymentFailureRateHigh
+        exp_alerts: []
+
+  - interval: 1m
+    name: RefundRateHigh fires above the 5% KPI threshold
+    input_series:
+      - series: 'homies_payments_total{outcome="refunded"}'
+        values: "0+10x120"
+      - series: 'homies_payments_total{outcome="succeeded"}'
+        values: "0+100x120"
+    alert_rule_test:
+      - eval_time: 100m
+        alertname: RefundRateHigh
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+            exp_annotations:
+              summary: "Refund share above the 5% KPI threshold"
+              description: >-
+                Count-based proxy. Confirm against the ledger before acting — docs/strategy/06 defines the KPI in money, not in events.
+
+  # --- workers --------------------------------------------------------------
+  - interval: 1m
+    name: NotificationsDeadLettered fires on a single dead notification
+    input_series:
+      - series: 'homies_notifications_dead_total{channel="email"}'
+        values: "0 0 0 1 1 1 1 1 1 1"
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: NotificationsDeadLettered
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+              channel: email
+
+  - interval: 1m
+    name: BookingExpiryBacklogGrowing fires past 20 held bookings
+    input_series:
+      - series: "homies_booking_expiry_backlog"
+        values: "5 10 25 25 25 25 25 25 25 25 25 25 25 25 25 25 25 25 25 25"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: BookingExpiryBacklogGrowing
+        exp_alerts: []
+      - eval_time: 19m
+        alertname: BookingExpiryBacklogGrowing
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+
+  - interval: 1m
+    name: BookingExpirySweepStalled fires when the worker stops
+    input_series:
+      # Sweeps every minute, then flatlines from t=10m.
+      - series: "homies_booking_expiry_runs_total"
+        values: "0+1x10 11+0x70"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: BookingExpirySweepStalled
+        exp_alerts: []
+      - eval_time: 75m
+        alertname: BookingExpirySweepStalled
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+            exp_annotations:
+              summary: "The booking expiry worker has not run for 30 minutes"
+              description: >-
+                Unpaid bookings keep holding dates until this resumes (BK-01).
+
+  - interval: 1m
+    name: HighRequestLatency fires when p95 exceeds one second
+    input_series:
+      - series: 'homies_http_request_duration_seconds_bucket{le="0.5", route="/v1/bookings", method="POST"}'
+        values: "0+0x20"
+      - series: 'homies_http_request_duration_seconds_bucket{le="1.0", route="/v1/bookings", method="POST"}'
+        values: "0+0x20"
+      - series: 'homies_http_request_duration_seconds_bucket{le="2.5", route="/v1/bookings", method="POST"}'
+        values: "0+10x20"
+      - series: 'homies_http_request_duration_seconds_bucket{le="+Inf", route="/v1/bookings", method="POST"}'
+        values: "0+10x20"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: HighRequestLatency
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: HighRequestLatency
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+              route: /v1/bookings
+            exp_annotations:
+              summary: "p95 latency above 1s on /v1/bookings"
+              description: >-
+                Sustained for 10 minutes. The booking path holds a row lock, so latency here becomes contention.
+
+  - interval: 1m
+    name: HighRequestLatency stays silent on a fast endpoint
+    input_series:
+      - series: 'homies_http_request_duration_seconds_bucket{le="0.05", route="/healthz", method="GET"}'
+        values: "0+10x20"
+      - series: 'homies_http_request_duration_seconds_bucket{le="1.0", route="/healthz", method="GET"}'
+        values: "0+10x20"
+      - series: 'homies_http_request_duration_seconds_bucket{le="+Inf", route="/healthz", method="GET"}'
+        values: "0+10x20"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: HighRequestLatency
+        exp_alerts: []

@@ -50,6 +50,9 @@ Medium / 9 Low. Fixing them in priority order, one cycle each.
 - **OBS-02/03**: HTTP metrics (latency, status class, throughput by route
   template) and business event counters on the money/booking funnel. Money is
   deliberately absent from Prometheus - it stays in the ledger (D-38).
+- **OBS-06**: Prometheus and Alertmanager now run in the stack and 11 alert rules
+  exist, every one unit-tested by promtool in CI. Nothing alerts at zero traffic
+  by design. Alert *delivery* is still unconfigured - OBS-08. D-39.
 
 **Previous: TD-01 + CI-03.**
 - TD-01: Alembic is the single schema source of truth; `create_all` removed;
@@ -84,14 +87,15 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 
 | Signal | Value |
 |---|---|
-| Tests | **174 passing** SQLite-only (Postgres suites add 16 in CI), 1 gated Stripe suite |
+| Tests | **177 passing** SQLite-only (Postgres suites add 16 in CI), 1 gated Stripe suite |
 | Lint | ruff clean (`app tests alembic scripts`), ruff pinned 0.15.22 |
 | Typecheck | **mypy clean** on `app/` - blocking CI gate, pinned 2.3.0 (D-35) |
-| Coverage | **85.3% branch** on `app/`, gated at 80 (M9b) |
+| Coverage | **85.4% branch** on `app/`, gated at 80 (M9b) |
 | Supply chain | pip-audit clean on declared deps · gitleaks on full history · image built in CI |
 | CI | ✅ green on `main` — backend job runs a real postgres:16 service (migration-first) |
 | Concurrency | validated on **real Postgres** in CI (double-book→1, webhook→1 capture, expiry→1) |
-| Observability | HTTP latency/status/throughput by route template · business event counters · `/readyz` |
+| Observability | HTTP + business metrics **scraped by Prometheus**; 11 alert rules, all promtool-tested in CI |
+| Alert delivery | ⚠️ **nowhere** — Alertmanager routes to a local sink; the real destination is a founder decision |
 | DR drill (manual) | backup + restore + financial reconciliation verified |
 | Deployment | **none** — nothing deployed |
 | Frontend | design-system showcase only (`frontend/design-system/`); `apps/` empty, no React/Expo app |
@@ -131,8 +135,12 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
   counter (D-38). The CFO dashboard still has no query surface: see OBS-07.
 - **OBS-07 (P1, new)** no ledger-backed KPI query surface. Until it exists the
   founder KPI framework's monetary rows remain unanswerable.
-- **OBS-06 (P2)** `ops/monitoring/` is still empty - nothing scrapes `/metrics`,
-  so the new metrics exist but are not collected or alerted on.
+- ~~OBS-06 (P2) nothing scrapes `/metrics`~~ - **closed**: Prometheus + Alertmanager
+  in compose, 11 tested alert rules, readiness exposed as `homies_database_up`.
+- **OBS-08 (P1, new)** alerts are delivered **nowhere**. Alertmanager points at a
+  local sink; picking the real channel (email/Telegram/PagerDuty) is a founder
+  decision with account and cost implications. Until it is set, a `page` alert
+  fires into a void.
 - **WAR-01** the warfare harnesses cannot run unmodified since MC-01: the
   register/login rate limit rejects their bulk user creation
   (`RATE_LIMIT_ENABLED=false` is required). The harness bootstrap also assumes
@@ -155,6 +163,6 @@ AsyncAPI catalog drifted from emitted events (separate follow-up).
 
 ## Next action
 
-Awaiting approval. Ranked candidates: OBS-07 ledger-backed KPI queries ·
-OBS-06 actually scrape/alert on `/metrics` · M9c branch protection (owner action) · real Product A frontend (React/Expo from
+Awaiting approval. Ranked candidates: OBS-08 real alert destination (needs a
+founder choice) · OBS-07 ledger-backed KPI queries · M9c branch protection (owner action) · real Product A frontend (React/Expo from
 the design-system contract) · FIN-01 (needs Stripe test keys).

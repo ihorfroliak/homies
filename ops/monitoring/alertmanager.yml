@@ -1,0 +1,38 @@
+# Alert routing (OBS-06).
+#
+# IMPORTANT — this configuration delivers alerts NOWHERE outside local dev.
+# The receiver below is a local sink so the pilot stack runs end to end and the
+# routing tree is reviewable. Choosing the real destination (email, Telegram,
+# PagerDuty, on-call rota) is a founder decision with account and cost
+# implications, and it is deliberately not invented here. Until it is set,
+# `severity: page` alerts fire into a void — treat that as an open item, not as
+# working alerting.
+
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: local-sink
+  group_by: ["alertname", "severity"]
+  # Money and availability pages should not wait behind a batching window.
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers: ['severity = "page"']
+      receiver: local-sink
+      group_wait: 10s
+      repeat_interval: 1h
+
+receivers:
+  - name: local-sink
+    webhook_configs:
+      # Prometheus's own example sink; replace with the real destination.
+      - url: http://alert-sink:8080/
+        send_resolved: true
+
+inhibit_rules:
+  # If the whole instance is unreachable, its dependent alerts are noise.
+  - source_matchers: ['alertname = "ApiDown"']
+    target_matchers: ['severity =~ "page|ticket"']
+    equal: ["instance"]

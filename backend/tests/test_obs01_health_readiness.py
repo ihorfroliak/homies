@@ -139,3 +139,48 @@ def test_postgres_connections_bound_the_tcp_connect():
 def test_healthz_still_reports_env():
     """Kept from the original suite — the ops surface contract did not change."""
     assert client.get("/healthz").json()["env"] == settings.env
+
+
+# --- OBS-06: the readiness result must be alertable ---------------------------
+
+
+def test_readiness_publishes_database_gauge(database_up):
+    """Prometheus cannot read an HTTP probe; without this the most important
+    dependency in the system has no alertable signal."""
+    from prometheus_client import REGISTRY
+
+    client.get("/readyz")
+    assert REGISTRY.get_sample_value("homies_database_up") == 1.0
+    assert REGISTRY.get_sample_value("homies_database_last_check_timestamp_seconds") > 0
+
+
+def test_database_gauge_goes_to_zero_when_unreachable(database_down):
+    from prometheus_client import REGISTRY
+
+    client.get("/readyz")
+    assert REGISTRY.get_sample_value("homies_database_up") == 0.0
+
+
+def test_alert_rules_only_reference_metrics_the_code_exposes():
+    """Ties ops/monitoring/rules to reality.
+
+    The classic alert-rule bug is a metric name that never existed, discovered
+    during the outage the rule was written for. promtool cannot catch it — it
+    validates syntax, not whether the series is ever produced.
+    """
+    import re
+    from pathlib import Path
+
+    from prometheus_client import REGISTRY
+
+    rules = Path(__file__).resolve().parents[2] / "ops/monitoring/rules/homies.rules.yml"
+    referenced = set(re.findall(r"\bhomies_[a-z0-9_]+", rules.read_text(encoding="utf-8")))
+
+    exposed = set()
+    for metric in REGISTRY.collect():
+        exposed.add(metric.name)
+        for suffix in ("_total", "_bucket", "_count", "_sum"):
+            exposed.add(metric.name + suffix)
+
+    missing = referenced - exposed
+    assert not missing, f"alert rules reference metrics the app never exposes: {sorted(missing)}"

@@ -1,0 +1,35 @@
+# OBS-06: something that actually scrapes /metrics.
+#
+# Until this existed the application published HTTP, business and readiness
+# metrics into nothing — no collection, no history, no alerts. Metrics nobody
+# scrapes are the same failure as no metrics.
+#
+# This is the pilot/local configuration. A real deployment replaces
+# static_configs with service discovery but keeps the rule files verbatim —
+# they are the reviewable, tested part.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    env: local
+
+rule_files:
+  - /etc/prometheus/rules/*.rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: homies-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:8000"]
+        labels:
+          service: homies-api
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
