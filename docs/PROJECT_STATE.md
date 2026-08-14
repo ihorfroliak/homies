@@ -96,6 +96,7 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 | Concurrency | validated on **real Postgres** in CI (double-book→1, webhook→1 capture, expiry→1) |
 | Observability | HTTP + business metrics **scraped by Prometheus**; 11 alert rules, all promtool-tested in CI |
 | Alert delivery | ⚠️ **nowhere** — Alertmanager routes to a local sink; the real destination is a founder decision |
+| Adversarial harnesses | ✅ **re-verified on the live stack** — warfare 7/7, refund_warfare, live_smoke; recon ok=true, grand_total=0 |
 | DR drill (manual) | backup + restore + financial reconciliation verified |
 | Deployment | **none** — nothing deployed |
 | Frontend | design-system showcase only (`frontend/design-system/`); `apps/` empty, no React/Expo app |
@@ -141,7 +142,8 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
   local sink; picking the real channel (email/Telegram/PagerDuty) is a founder
   decision with account and cost implications. Until it is set, a `page` alert
   fires into a void.
-- **WAR-01** the warfare harnesses cannot run unmodified since MC-01: the
+- **WAR-01** (still true, now re-confirmed by running them) the warfare harnesses
+  cannot run unmodified since MC-01: the
   register/login rate limit rejects their bulk user creation
   (`RATE_LIMIT_ENABLED=false` is required). The harness bootstrap also assumes
   a `homies-api-1` container.
