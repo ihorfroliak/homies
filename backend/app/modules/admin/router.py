@@ -1,6 +1,8 @@
 """Admin visibility: raw system state, no dashboards (D4 scope)."""
 
-from fastapi import APIRouter, Depends, Query
+from datetime import date
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -8,7 +10,9 @@ from pydantic import BaseModel
 
 from app.core.audit import AuditLog, audit
 from app.core.db import get_db
+from app.core.config import settings
 from app.core.security import require_role
+from app.modules.admin import kpi as kpi_service
 from app.modules.booking.models import Booking
 from app.modules.events import service as events
 from app.modules.events.models import Incident, Notification
@@ -105,6 +109,29 @@ def ledger_balances(db: Session = Depends(get_db)):
 @router.get("/ledger/reconciliation")
 def ledger_reconciliation(db: Session = Depends(get_db)):
     return ledger.reconcile(db)
+
+
+@router.get("/kpi")
+def kpi(
+    date_from: date = Query(..., alias="from", description="Inclusive start (UTC date)"),
+    date_to: date = Query(..., alias="to", description="EXCLUSIVE end (UTC date)"),
+    currency: str | None = Query(None, description="Defaults to the platform currency"),
+    db: Session = Depends(get_db),
+):
+    """Monetary KPIs, answered from the ledger (OBS-07).
+
+    The window is half-open [from, to) so consecutive periods never
+    double-count a boundary day. Money is in integer minor units and ratios in
+    basis points — see app/modules/admin/kpi.py for why neither is a float.
+    """
+    if date_to <= date_from:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "'to' must be after 'from'")
+    report = kpi_service.compute(
+        db,
+        currency=(currency or settings.default_currency).upper(),
+        window=kpi_service.Window(start=date_from, end=date_to),
+    )
+    return kpi_service.as_payload(report)
 
 
 @router.get("/payments/reconciliation")

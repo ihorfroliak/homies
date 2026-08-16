@@ -934,6 +934,85 @@
         ]
       }
     },
+    "/v1/admin/kpi": {
+      "get": {
+        "description": "Monetary KPIs, answered from the ledger (OBS-07).\n\nThe window is half-open [from, to) so consecutive periods never\ndouble-count a boundary day. Money is in integer minor units and ratios in\nbasis points — see app/modules/admin/kpi.py for why neither is a float.",
+        "operationId": "kpi_v1_admin_kpi_get",
+        "parameters": [
+          {
+            "description": "Inclusive start (UTC date)",
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "description": "Inclusive start (UTC date)",
+              "format": "date",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "description": "EXCLUSIVE end (UTC date)",
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "description": "EXCLUSIVE end (UTC date)",
+              "format": "date",
+              "title": "To",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Defaults to the platform currency",
+            "in": "query",
+            "name": "currency",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Defaults to the platform currency",
+              "title": "Currency"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Kpi",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/v1/admin/ledger/balances": {
       "get": {
         "operationId": "ledger_balances_v1_admin_ledger_balances_get",
