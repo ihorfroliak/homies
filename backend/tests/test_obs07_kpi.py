@@ -18,24 +18,38 @@ from sqlalchemy import select
 
 from app.modules.admin import kpi as kpi_service
 from app.modules.ledger import service as ledger
-from app.modules.ledger.models import JournalEntry
+from app.modules.ledger.models import JournalEntry, JournalLine
 
 WINDOW = kpi_service.Window(start=date(2026, 1, 1), end=date(2026, 2, 1))
 
 
 def _post(db, kind, lines, *, currency="PLN", when=None, booking_id=None):
-    entry = ledger.post_entry(
-        db, kind=kind, lines=lines, currency=currency, booking_id=booking_id
-    )
+    """Insert a balanced entry, optionally back-dated.
+
+    Built directly instead of through `ledger.post_entry()` because the row has
+    to carry `created_at` at INSERT time. `journal_entries` is append-only, and
+    on Postgres that is enforced by a database trigger (D-04) — back-dating
+    with a later UPDATE raises `append-only table journal_entries: UPDATE is
+    not permitted`. The first version of this suite did exactly that: it passed
+    on SQLite, which has no such trigger, and CI caught it against the real
+    engine. `post_entry()` flushes before returning, so its row already exists
+    by the time a test could touch the timestamp.
+
+    The balance checks below mirror the ones `post_entry()` enforces, so this
+    helper cannot quietly create an entry the service would have rejected; the
+    reconciliation cross-check below proves the resulting set is well-formed.
+    """
+    assert sum(amount for _, amount in lines) == 0, "test entry does not balance"
+    assert all(amount != 0 for _, amount in lines), "test entry has a zero-amount line"
+
+    entry = JournalEntry(kind=kind, currency=currency, booking_id=booking_id)
     if when is not None:
-        # created_at defaults to now(); the ledger is append-only at the ORM
-        # layer, so the timestamp is set on the pending row before flush.
-        db.flush()
-        db.execute(
-            JournalEntry.__table__.update()
-            .where(JournalEntry.__table__.c.id == entry.id)
-            .values(created_at=when)
-        )
+        entry.created_at = when
+    db.add(entry)
+    db.flush()
+    for code, amount in lines:
+        account = ledger.ensure_account(db, code)
+        db.add(JournalLine(entry_id=entry.id, account_id=account.id, amount=amount))
     db.commit()
     return entry
 
@@ -287,23 +301,8 @@ def test_ledger_stays_append_only_under_the_kpi_query(db):
 
 def test_window_boundaries_hold_on_real_postgres(pg_session):
     """The boundary case, on the engine that actually stores timestamptz."""
-    from app.modules.ledger.models import JournalEntry as JE
-
-    def capture(amount, when):
-        entry = ledger.post_entry(
-            pg_session,
-            kind="payment_captured",
-            lines=[(ledger.PROVIDER_CASH, amount), (ledger.BOOKING_ESCROW, -amount)],
-            currency="PLN",
-        )
-        pg_session.flush()
-        pg_session.execute(
-            JE.__table__.update().where(JE.__table__.c.id == entry.id).values(created_at=when)
-        )
-        pg_session.commit()
-
-    capture(10_000, datetime(2026, 1, 31, 23, 59, 59, tzinfo=timezone.utc))
-    capture(70_000, datetime(2026, 2, 1, 0, 0, 0, tzinfo=timezone.utc))
+    _capture(pg_session, 10_000, when=datetime(2026, 1, 31, 23, 59, 59, tzinfo=timezone.utc))
+    _capture(pg_session, 70_000, when=datetime(2026, 2, 1, 0, 0, 0, tzinfo=timezone.utc))
 
     january = kpi_service.compute(pg_session, currency="PLN", window=WINDOW)
     february = kpi_service.compute(
