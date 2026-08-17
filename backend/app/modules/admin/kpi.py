@@ -33,7 +33,12 @@ from sqlalchemy.orm import Session
 
 from app.modules.booking.models import Booking
 from app.modules.ledger.models import JournalEntry, JournalLine, LedgerAccount
-from app.modules.ledger.service import PLATFORM_REVENUE, PROVIDER_CASH
+from app.modules.ledger.service import (
+    CHARGEBACK_LOSS,
+    DISPUTE_FEE_EXPENSE,
+    PLATFORM_REVENUE,
+    PROVIDER_CASH,
+)
 
 # KPIs the framework asks for that this system genuinely cannot answer yet.
 # Returned in the payload rather than silently omitted: an endpoint that shows
@@ -60,11 +65,6 @@ UNAVAILABLE: list[dict[str, str]] = [
         "reason": "no spend, cash or invoice data exists in this system",
         "unblocked_by": "finance data outside the platform",
     },
-    {
-        "kpi": "Chargeback / dispute rate",
-        "reason": "disputes have no ledger representation",
-        "unblocked_by": "FIN-03",
-    },
 ]
 
 
@@ -84,6 +84,7 @@ class Window:
 class KpiReport:
     currency: str
     window: Window
+    unknown_kinds: list[str] = field(default_factory=list)
     money: dict[str, int] = field(default_factory=dict)
     ratios_bps: dict[str, int] = field(default_factory=dict)
     bookings: dict[str, int] = field(default_factory=dict)
@@ -108,6 +109,39 @@ def _entry_sum(db: Session, *, kind: str, account: str, currency: str, window: W
         )
     )
     return int(total or 0)
+
+
+# Every entry kind compute() knows how to read. Anything else is money this
+# endpoint cannot see (N-13): the kind filter simply matches nothing and
+# coalesce() returns 0, so the response is a smaller number with no error. Every
+# other ledger reader is either kind-agnostic or fails loud; this one used to
+# return HTTP 200 and a quiet lie.
+KNOWN_KINDS = frozenset(
+    {
+        "payment_captured",
+        "refund",
+        "payout_allocated",
+        "payout_sent",
+        "chargeback",
+        "chargeback_reversed",
+        "dispute_fee",
+    }
+)
+
+
+def unknown_kinds(db: Session, *, currency: str, window: Window) -> list[str]:
+    """Entry kinds present in the window that compute() does not understand."""
+    start, end = window.bounds()
+    rows = db.scalars(
+        select(JournalEntry.kind)
+        .where(
+            JournalEntry.currency == currency,
+            JournalEntry.created_at >= start,
+            JournalEntry.created_at < end,
+        )
+        .distinct()
+    ).all()
+    return sorted(set(rows) - KNOWN_KINDS)
 
 
 def _bps(part: int, whole: int) -> int:
@@ -139,7 +173,28 @@ def compute(db: Session, *, currency: str, window: Window) -> KpiReport:
     payouts_sent = -_entry_sum(
         db, kind="payout_sent", account=PROVIDER_CASH, currency=currency, window=window
     )
-    gmv_net = gmv_captured - refunded
+    # FIN-03. Kept separate from `refunded`: a guest who asked for their money
+    # back and a guest who went to their bank mean very different things, and
+    # only the second threatens card processing.
+    charged_back = -_entry_sum(
+        db, kind="chargeback", account=PROVIDER_CASH, currency=currency, window=window
+    )
+    chargebacks_reversed = _entry_sum(
+        db, kind="chargeback_reversed", account=PROVIDER_CASH, currency=currency, window=window
+    )
+    dispute_fees = _entry_sum(
+        db, kind="dispute_fee", account=DISPUTE_FEE_EXPENSE, currency=currency, window=window
+    )
+    # Absorbed by the platform because the booking was already paid out — the
+    # part of the loss no host is being chased for.
+    # Both kinds touch the same account with opposite signs (debit on open,
+    # credit on a win), so the running balance IS the net absorbed loss.
+    chargeback_loss = _entry_sum(
+        db, kind="chargeback", account=CHARGEBACK_LOSS, currency=currency, window=window
+    ) + _entry_sum(
+        db, kind="chargeback_reversed", account=CHARGEBACK_LOSS, currency=currency, window=window
+    )
+    gmv_net = gmv_captured - refunded - (charged_back - chargebacks_reversed)
 
     report = KpiReport(currency=currency, window=window)
     report.money = {
@@ -148,13 +203,22 @@ def compute(db: Session, *, currency: str, window: Window) -> KpiReport:
         "gmv_net": gmv_net,
         "commission_recognised": commission,
         "payouts_sent": payouts_sent,
+        "charged_back": charged_back,
+        "chargebacks_reversed": chargebacks_reversed,
+        "chargeback_loss_absorbed": chargeback_loss,
+        "dispute_fees": dispute_fees,
     }
     report.ratios_bps = {
         # Against captured, not net: the question "what share of money taken
         # came back" is what the 5% KPI threshold is about.
         "refund_rate": _bps(refunded, gmv_captured),
         "take_rate": _bps(commission, gmv_net),
+        # The card networks threaten processing over this one — the KPI
+        # framework alerts at 65 bps. Net of reversals: a dispute we won is not
+        # a chargeback against us.
+        "chargeback_rate": _bps(charged_back - chargebacks_reversed, gmv_captured),
     }
+    report.unknown_kinds = unknown_kinds(db, currency=currency, window=window)
     report.bookings = _booking_counts(db, currency=currency, window=window)
     report.nights_sold = _nights_sold(db, currency=currency, window=window)
     report.adr_minor_units = gmv_net // report.nights_sold if report.nights_sold else 0
@@ -219,4 +283,7 @@ def as_payload(report: KpiReport) -> dict:
         "nights_sold": report.nights_sold,
         "adr_minor_units": report.adr_minor_units,
         "unavailable": UNAVAILABLE,
+        # Non-empty means this report is missing money. Surfaced rather than
+        # swallowed: a wrong KPI still renders and still gets acted on.
+        "unreadable_entry_kinds": report.unknown_kinds,
     }

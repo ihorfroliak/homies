@@ -54,7 +54,13 @@ Medium / 9 Low. Fixing them in priority order, one cycle each.
   payouts, take/refund rate, nights and ADR from the ledger. Still unanswerable
   and declared as such in the payload: CM2 (no cost data), occupancy (no
   availability model), NPS/CSAT, CAC/runway/DSO, chargebacks (FIN-03). D-40.
-- **OBS-06**: Prometheus and Alertmanager now run in the stack and 11 alert rules
+- **FIN-03**: card disputes are in the ledger. Entries follow the money (posted
+  at dispute creation, when it actually leaves), a win reverses the amount but
+  never the fee, a loss posts nothing. A post-payout dispute becomes an explicit
+  `chargeback_loss` because no clawback exists to claim otherwise. Closed three
+  defects found in this session's own work along the way (N-13 silent KPI
+  mis-report, N-14 diluted alert denominator). D-41.
+- **OBS-06**: Prometheus and Alertmanager now run in the stack and 12 alert rules
   exist, every one unit-tested by promtool in CI. Nothing alerts at zero traffic
   by design. Alert *delivery* is still unconfigured - OBS-08. D-39.
 
@@ -91,14 +97,14 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
 
 | Signal | Value |
 |---|---|
-| Tests | **192 passing** SQLite-only (Postgres suites add 18 in CI), 1 gated Stripe suite |
+| Tests | **214 passing** SQLite-only (232 with Postgres), 1 gated Stripe suite |
 | Lint | ruff clean (`app tests alembic scripts`), ruff pinned 0.15.22 |
 | Typecheck | **mypy clean** on `app/` - blocking CI gate, pinned 2.3.0 (D-35) |
-| Coverage | **85.8% branch** on `app/`, gated at 80 (M9b) |
+| Coverage | **86.1% branch** on `app/`, gated at 80 (M9b) |
 | Supply chain | pip-audit clean on declared deps · gitleaks on full history · image built in CI |
 | CI | ✅ green on `main` — backend job runs a real postgres:16 service (migration-first) |
 | Concurrency | validated on **real Postgres** in CI (double-book→1, webhook→1 capture, expiry→1) |
-| Observability | HTTP + business metrics **scraped by Prometheus**; 11 alert rules, all promtool-tested in CI |
+| Observability | HTTP + business metrics **scraped by Prometheus**; 12 alert rules, all promtool-tested in CI |
 | Alert delivery | ⚠️ **nowhere** — Alertmanager routes to a local sink; the real destination is a founder decision |
 | Adversarial harnesses | ✅ **re-verified on the live stack** — warfare 7/7, refund_warfare, live_smoke; recon ok=true, grand_total=0 |
 | DR drill (manual) | backup + restore + financial reconciliation verified |
@@ -113,7 +119,13 @@ AUDIT-01. Full detail in [BUILD_HISTORY.md](BUILD_HISTORY.md).
   Webhook/signature path is now validated against the real SDK; API-calling
   scenarios are written and gated (`make test-stripe`).
 - ~~BK-01 (P1) ghost booking~~ — **closed** in MC-03 (TTL + expiry scheduler).
-- **FIN-03 (P1)** no chargeback/dispute representation in the ledger.
+- ~~FIN-03 (P1) no chargeback representation~~ - **closed**: disputes table,
+  `chargeback`/`chargeback_reversed`/`dispute_fee` entries, `chargeback_loss` and
+  `dispute_fee_expense` accounts, KPI + reconciliation + alert (D-41).
+- **FIN-02 (P1)** still open, and FIN-03 sharpened it: a post-payout dispute is
+  now *recorded* as a platform loss, but nothing recovers it from the host. With
+  Stripe destination charges the host's share leaves at capture, so real recovery
+  needs a transfer reversal this system does not implement.
 - **REC-01 (P1)** no Stripe-side reconciliation (orphaned payments, missing
   webhooks, payout mismatch are undetectable).
 - ~~TST-01 (P1) OpenAPI drift~~ — **closed** (generated spec + drift guard).

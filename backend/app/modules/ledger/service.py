@@ -14,6 +14,12 @@ from app.modules.ledger.models import JournalEntry, JournalLine, LedgerAccount
 PROVIDER_CASH = "provider_cash"
 BOOKING_ESCROW = "booking_escrow"
 PLATFORM_REVENUE = "platform_revenue"
+# FIN-03. Expenses, not liabilities: money that left and is not coming back.
+# CHARGEBACK_LOSS holds a disputed amount the platform absorbed because the
+# booking had already been paid out; DISPUTE_FEE_EXPENSE holds the provider's
+# fee, which is charged per dispute and is not returned even when we win.
+CHARGEBACK_LOSS = "chargeback_loss"
+DISPUTE_FEE_EXPENSE = "dispute_fee_expense"
 
 
 def host_payable_code(host_id: str) -> str:
@@ -24,6 +30,11 @@ _ACCOUNT_KINDS = {
     PROVIDER_CASH: "asset",
     BOOKING_ESCROW: "liability",
     PLATFORM_REVENUE: "income",
+    # Declared explicitly: ensure_account() defaults any unlisted code to
+    # "liability" without complaint, so an expense account left out here would
+    # be silently mis-classified forever (audit L2).
+    CHARGEBACK_LOSS: "expense",
+    DISPUTE_FEE_EXPENSE: "expense",
 }
 
 

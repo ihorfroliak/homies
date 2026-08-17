@@ -97,9 +97,14 @@ groups:
   - name: homies-money
     rules:
       - alert: PaymentFailureRateHigh
+        # The denominator is pinned to the outcomes a payment attempt can end
+        # in. It used to be the unlabelled total, which meant every new outcome
+        # label silently inflated it and pushed the page further away than the
+        # 20% threshold claims — FIN-03's `charged_back` would have done
+        # exactly that.
         expr: |
           sum(rate(homies_payments_total{outcome="failed"}[30m]))
-            / sum(rate(homies_payments_total[30m])) > 0.2
+            / sum(rate(homies_payments_total{outcome=~"failed|succeeded"}[30m])) > 0.2
         for: 15m
         labels:
           severity: page
@@ -125,6 +130,22 @@ groups:
           description: >-
             Count-based proxy. Confirm against the ledger before acting —
             docs/strategy/06 defines the KPI in money, not in events.
+
+      - alert: ChargebackRateHigh
+        # The card networks can withdraw processing over this, which ends the
+        # business — hence a page rather than a ticket. Threshold from the
+        # founder KPI framework (docs/strategy/06, Risk dashboard): alert at
+        # 0.65%. A count-based proxy; the money answer is /admin/kpi.
+        expr: |
+          sum(rate(homies_payments_total{outcome="charged_back"}[24h]))
+            / sum(rate(homies_payments_total{outcome="succeeded"}[24h])) > 0.0065
+        for: 1h
+        labels:
+          severity: page
+        annotations:
+          summary: "Chargeback share above the 0.65% card-network threshold"
+          description: >-
+            Sustained breaches risk losing card processing entirely. Confirm against /admin/kpi, which reports disputes in money rather than counts.
 
   - name: homies-workers
     rules:

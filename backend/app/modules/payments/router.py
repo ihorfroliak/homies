@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import require_role
-from app.modules.payments import service
+from app.modules.payments import disputes, service
 from app.modules.payments.models import WebhookEvent
 from app.modules.payments.provider import (
     StripeConnectProvider,
@@ -51,6 +51,9 @@ def _intent_id_of(event: dict) -> str | None:
     if event["type"].startswith("payment_intent."):
         return obj.get("id")
     if event["type"] == "charge.refunded":
+        return obj.get("payment_intent")
+    if event["type"].startswith("charge.dispute."):
+        # The event object is the Dispute, which carries the intent it disputes.
         return obj.get("payment_intent")
     return None
 
@@ -110,6 +113,26 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                 service.process_intent_failed(db, intent_id)
             elif event["type"] == "charge.refunded":
                 service.process_charge_refunded(db, intent_id)
+            elif event["type"] == "charge.dispute.created":
+                obj = event.get("data", {}).get("object", {})
+                disputes.process_dispute_created(
+                    db,
+                    provider_dispute_id=obj.get("id", ""),
+                    intent_id=intent_id,
+                    amount=int(obj.get("amount") or 0),
+                    fee=disputes.fee_from_event(obj),
+                    currency=(obj.get("currency") or "").upper(),
+                    reason=obj.get("reason") or "",
+                )
+            elif event["type"] == "charge.dispute.closed":
+                obj = event.get("data", {}).get("object", {})
+                disputes.process_dispute_closed(
+                    db,
+                    provider_dispute_id=obj.get("id", ""),
+                    # Stripe closes a dispute as won | lost | warning_closed.
+                    # Only an outright win returns the money.
+                    won=obj.get("status") == "won",
+                )
 
         stored = db.scalar(select(WebhookEvent).where(WebhookEvent.stripe_event_id == event_id))
         if stored is not None:

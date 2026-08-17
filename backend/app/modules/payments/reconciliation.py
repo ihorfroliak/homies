@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.ledger import service as ledger
 from app.modules.ledger.models import JournalEntry
-from app.modules.payments.models import Payment
+from app.modules.payments.models import Dispute, Payment
 
 
 def payment_ledger_consistency(db: Session) -> dict:
@@ -32,10 +32,23 @@ def payment_ledger_consistency(db: Session) -> dict:
             .where(JournalEntry.payment_id == pid, JournalEntry.kind == "refund")
         ) or 0
 
+    def _kind_count(pid: str, kind: str) -> int:
+        return db.scalar(
+            select(func.count())
+            .select_from(JournalEntry)
+            .where(JournalEntry.payment_id == pid, JournalEntry.kind == kind)
+        ) or 0
+
     succeeded_without_capture: list[str] = []
     refunded_without_reversal: list[str] = []
     double_capture: list[str] = []
     orphan_payments: list[str] = []
+    # FIN-03. A charged_back payment with no chargeback entry is the shape the
+    # old 409 dead-letter left behind: money gone at the provider, ledger
+    # untouched. Nothing detected it, because one capture and no refund is also
+    # what a perfectly healthy payment looks like.
+    charged_back_without_entry: list[str] = []
+    disputes_without_money: list[str] = []
 
     for p in db.scalars(select(Payment)):
         if p.booking_id is None:
@@ -47,6 +60,15 @@ def payment_ledger_consistency(db: Session) -> dict:
             double_capture.append(p.id)
         if p.status == "refunded" and _refund_count(p.id) == 0:
             refunded_without_reversal.append(p.id)
+        if p.status == "charged_back" and _kind_count(p.id, "chargeback") == 0:
+            charged_back_without_entry.append(p.id)
+
+    for d in db.scalars(select(Dispute)):
+        # A closure we saw without ever seeing the opening: recorded on purpose
+        # (no withdrawal was ever booked, so there is nothing to reverse), but
+        # it must not stay invisible.
+        if d.status == "needs_review":
+            disputes_without_money.append(d.provider_dispute_id)
 
     led = ledger.reconcile(db)
     ok = (
@@ -54,10 +76,14 @@ def payment_ledger_consistency(db: Session) -> dict:
         and not refunded_without_reversal
         and not double_capture
         and not orphan_payments
+        and not charged_back_without_entry
+        and not disputes_without_money
         and led["ok"]
     )
     return {
         "ok": ok,
+        "charged_back_without_entry": charged_back_without_entry,
+        "disputes_without_money": disputes_without_money,
         "ledger_balanced": led["ok"],
         "ledger_grand_total": led["grand_total"],
         "succeeded_without_capture": succeeded_without_capture,

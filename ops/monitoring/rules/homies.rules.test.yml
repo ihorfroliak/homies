@@ -284,3 +284,57 @@ tests:
       - eval_time: 20m
         alertname: HighRequestLatency
         exp_alerts: []
+
+  - interval: 1m
+    name: ChargebackRateHigh fires above the 0.65% card-network threshold
+    input_series:
+      - series: 'homies_payments_total{outcome="charged_back"}'
+        values: "0+1x400"
+      - series: 'homies_payments_total{outcome="succeeded"}'
+        values: "0+100x400"
+    alert_rule_test:
+      - eval_time: 300m
+        alertname: ChargebackRateHigh
+        exp_alerts:
+          - exp_labels:
+              severity: page
+            exp_annotations:
+              summary: "Chargeback share above the 0.65% card-network threshold"
+              description: >-
+                Sustained breaches risk losing card processing entirely. Confirm against /admin/kpi, which reports disputes in money rather than counts.
+
+  - interval: 1m
+    name: ChargebackRateHigh stays silent below the threshold
+    input_series:
+      # 1 in 400 = 0.25%, comfortably under 0.65%.
+      - series: 'homies_payments_total{outcome="charged_back"}'
+        values: "0+1x400"
+      - series: 'homies_payments_total{outcome="succeeded"}'
+        values: "0+400x400"
+    alert_rule_test:
+      - eval_time: 300m
+        alertname: ChargebackRateHigh
+        exp_alerts: []
+
+  - interval: 1m
+    name: A new payment outcome must not dilute PaymentFailureRateHigh
+    input_series:
+      # 3 failed vs 7 succeeded is 30% and must page. The chargeback series is
+      # the trap: with the old unlabelled denominator it dragged the ratio
+      # under 20% and the page never fired.
+      - series: 'homies_payments_total{outcome="failed"}'
+        values: "0+3x60"
+      - series: 'homies_payments_total{outcome="succeeded"}'
+        values: "0+7x60"
+      - series: 'homies_payments_total{outcome="charged_back"}'
+        values: "0+40x60"
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: PaymentFailureRateHigh
+        exp_alerts:
+          - exp_labels:
+              severity: page
+            exp_annotations:
+              summary: "Over 20% of payments are failing"
+              description: >-
+                Guests cannot complete bookings. Check the Stripe status page and the webhook dead-letter (payments with processed_at IS NULL).
