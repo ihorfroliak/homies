@@ -32,8 +32,8 @@ dev = [
     # Pinned for the same reason: a new mypy release ships new inference and
     # would fail a green build with no code change (D-26).
     "mypy==2.3.0",
-    "coverage==7.13.0",
-    "pip-audit==2.9.0",
+    "coverage==7.16.0",
+    "pip-audit==2.10.1",
 ]
 
 # Only the application package is distributable. alembic/, scripts/ and tests/
