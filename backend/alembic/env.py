@@ -19,6 +19,11 @@ from app.modules.identity.models import HostProfile, RefreshToken, User  # noqa:
 from app.modules.ledger.models import JournalEntry, JournalLine, LedgerAccount  # noqa: F401
 from app.modules.listings.models import HostBlock, Listing  # noqa: F401
 from app.modules.payments.models import Payment, WebhookEvent  # noqa: F401
+from app.modules.properties.models import (  # noqa: F401
+    ClassifiedOffer,
+    ContactReveal,
+    Property,
+)
 
 config = context.config
 

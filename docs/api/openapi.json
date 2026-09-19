@@ -155,6 +155,242 @@
         "title": "BookingOut",
         "type": "object"
       },
+      "ClassifiedCreate": {
+        "properties": {
+          "admin_fee": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Admin Fee",
+            "type": "integer"
+          },
+          "available_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available From"
+          },
+          "contact_mode": {
+            "default": "message",
+            "title": "Contact Mode",
+            "type": "string"
+          },
+          "contact_phone": {
+            "default": "",
+            "maxLength": 32,
+            "title": "Contact Phone",
+            "type": "string"
+          },
+          "deposit_amount": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Deposit Amount",
+            "type": "integer"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Description",
+            "type": "string"
+          },
+          "min_term_months": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Term Months"
+          },
+          "open_ended": {
+            "default": false,
+            "title": "Open Ended",
+            "type": "boolean"
+          },
+          "other_costs": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Other Costs",
+            "type": "string"
+          },
+          "parking_fee": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Parking Fee",
+            "type": "integer"
+          },
+          "rent_amount": {
+            "exclusiveMinimum": 0.0,
+            "title": "Rent Amount",
+            "type": "integer"
+          },
+          "title": {
+            "maxLength": 140,
+            "minLength": 3,
+            "title": "Title",
+            "type": "string"
+          },
+          "utilities_amount": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Utilities Amount",
+            "type": "integer"
+          },
+          "utilities_included": {
+            "default": false,
+            "title": "Utilities Included",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "title",
+          "rent_amount"
+        ],
+        "title": "ClassifiedCreate",
+        "type": "object"
+      },
+      "ClassifiedOut": {
+        "description": "Public shape. Deliberately has no phone field — see the module docstring.",
+        "properties": {
+          "admin_fee": {
+            "title": "Admin Fee",
+            "type": "integer"
+          },
+          "available_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available From"
+          },
+          "contact_mode": {
+            "title": "Contact Mode",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "deposit_amount": {
+            "title": "Deposit Amount",
+            "type": "integer"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "min_term_months": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Term Months"
+          },
+          "monthly_total_estimate": {
+            "title": "Monthly Total Estimate",
+            "type": "integer"
+          },
+          "open_ended": {
+            "title": "Open Ended",
+            "type": "boolean"
+          },
+          "other_costs": {
+            "title": "Other Costs",
+            "type": "string"
+          },
+          "owner_id": {
+            "title": "Owner Id",
+            "type": "string"
+          },
+          "parking_fee": {
+            "title": "Parking Fee",
+            "type": "integer"
+          },
+          "property_id": {
+            "title": "Property Id",
+            "type": "string"
+          },
+          "rent_amount": {
+            "title": "Rent Amount",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "utilities_amount": {
+            "title": "Utilities Amount",
+            "type": "integer"
+          },
+          "utilities_included": {
+            "title": "Utilities Included",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "property_id",
+          "owner_id",
+          "title",
+          "description",
+          "status",
+          "rent_amount",
+          "currency",
+          "admin_fee",
+          "utilities_amount",
+          "utilities_included",
+          "parking_fee",
+          "deposit_amount",
+          "other_costs",
+          "open_ended",
+          "contact_mode",
+          "monthly_total_estimate"
+        ],
+        "title": "ClassifiedOut",
+        "type": "object"
+      },
+      "ContactRevealOut": {
+        "properties": {
+          "contact_phone": {
+            "title": "Contact Phone",
+            "type": "string"
+          },
+          "offer_id": {
+            "title": "Offer Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "offer_id",
+          "contact_phone"
+        ],
+        "title": "ContactRevealOut",
+        "type": "object"
+      },
       "DayStatus": {
         "properties": {
           "date": {
@@ -430,6 +666,270 @@
           "password"
         ],
         "title": "LoginRequest",
+        "type": "object"
+      },
+      "PropertyCreate": {
+        "properties": {
+          "address": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Address",
+            "type": "string"
+          },
+          "area_m2": {
+            "exclusiveMinimum": 0.0,
+            "title": "Area M2",
+            "type": "integer"
+          },
+          "attributes": {
+            "additionalProperties": true,
+            "title": "Attributes",
+            "type": "object"
+          },
+          "bathrooms": {
+            "default": 1,
+            "minimum": 0.0,
+            "title": "Bathrooms",
+            "type": "integer"
+          },
+          "bedrooms": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Bedrooms",
+            "type": "integer"
+          },
+          "capacity": {
+            "default": 2,
+            "minimum": 1.0,
+            "title": "Capacity",
+            "type": "integer"
+          },
+          "city": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "City",
+            "type": "string"
+          },
+          "district": {
+            "default": "",
+            "title": "District",
+            "type": "string"
+          },
+          "floor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Floor"
+          },
+          "floors_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Floors Total"
+          },
+          "furnished": {
+            "default": "full",
+            "title": "Furnished",
+            "type": "string"
+          },
+          "has_elevator": {
+            "default": false,
+            "title": "Has Elevator",
+            "type": "boolean"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "municipality": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Municipality",
+            "type": "string"
+          },
+          "parking": {
+            "default": "none",
+            "title": "Parking",
+            "type": "string"
+          },
+          "pets_allowed": {
+            "default": false,
+            "title": "Pets Allowed",
+            "type": "boolean"
+          },
+          "postcode": {
+            "default": "",
+            "title": "Postcode",
+            "type": "string"
+          },
+          "property_type": {
+            "title": "Property Type",
+            "type": "string"
+          },
+          "rooms": {
+            "minimum": 0.0,
+            "title": "Rooms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "property_type",
+          "city",
+          "municipality",
+          "address",
+          "area_m2",
+          "rooms"
+        ],
+        "title": "PropertyCreate",
+        "type": "object"
+      },
+      "PropertyOut": {
+        "properties": {
+          "address": {
+            "title": "Address",
+            "type": "string"
+          },
+          "area_m2": {
+            "title": "Area M2",
+            "type": "integer"
+          },
+          "attributes": {
+            "additionalProperties": true,
+            "title": "Attributes",
+            "type": "object"
+          },
+          "bathrooms": {
+            "title": "Bathrooms",
+            "type": "integer"
+          },
+          "bedrooms": {
+            "title": "Bedrooms",
+            "type": "integer"
+          },
+          "capacity": {
+            "title": "Capacity",
+            "type": "integer"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "district": {
+            "title": "District",
+            "type": "string"
+          },
+          "floor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Floor"
+          },
+          "floors_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Floors Total"
+          },
+          "furnished": {
+            "title": "Furnished",
+            "type": "string"
+          },
+          "has_elevator": {
+            "title": "Has Elevator",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "municipality": {
+            "title": "Municipality",
+            "type": "string"
+          },
+          "owner_id": {
+            "title": "Owner Id",
+            "type": "string"
+          },
+          "parking": {
+            "title": "Parking",
+            "type": "string"
+          },
+          "pets_allowed": {
+            "title": "Pets Allowed",
+            "type": "boolean"
+          },
+          "postcode": {
+            "title": "Postcode",
+            "type": "string"
+          },
+          "property_type": {
+            "title": "Property Type",
+            "type": "string"
+          },
+          "rooms": {
+            "title": "Rooms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "owner_id",
+          "property_type",
+          "city",
+          "district",
+          "postcode",
+          "municipality",
+          "address",
+          "area_m2",
+          "rooms",
+          "bedrooms",
+          "bathrooms",
+          "capacity",
+          "has_elevator",
+          "furnished",
+          "parking",
+          "pets_allowed",
+          "attributes"
+        ],
+        "title": "PropertyOut",
         "type": "object"
       },
       "RefreshRequest": {
@@ -1788,6 +2288,265 @@
         ]
       }
     },
+    "/v1/classifieds": {
+      "get": {
+        "description": "Public board. Only active offers, and never a phone number.",
+        "operationId": "list_classifieds_v1_classifieds_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "city",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "City"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ClassifiedOut"
+                  },
+                  "title": "Response List Classifieds V1 Classifieds Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Classifieds",
+        "tags": [
+          "properties"
+        ]
+      }
+    },
+    "/v1/classifieds/{offer_id}": {
+      "get": {
+        "operationId": "get_classified_v1_classifieds__offer_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassifiedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Classified",
+        "tags": [
+          "properties"
+        ]
+      }
+    },
+    "/v1/classifieds/{offer_id}/contact": {
+      "post": {
+        "description": "Disclose the owner's phone number to a signed-in account, and record it.\n\nSign-in is the gate that makes bulk collection attributable: a scraper has\nto hold an account, and every number it takes leaves a row with its name on\nit. Anonymous visitors get the message channel instead.",
+        "operationId": "reveal_contact_v1_classifieds__offer_id__contact_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactRevealOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reveal Contact",
+        "tags": [
+          "properties"
+        ]
+      }
+    },
+    "/v1/classifieds/{offer_id}/pause": {
+      "post": {
+        "operationId": "pause_classified_v1_classifieds__offer_id__pause_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassifiedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Pause Classified",
+        "tags": [
+          "properties"
+        ]
+      }
+    },
+    "/v1/classifieds/{offer_id}/publish": {
+      "post": {
+        "operationId": "publish_classified_v1_classifieds__offer_id__publish_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassifiedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Publish Classified",
+        "tags": [
+          "properties"
+        ]
+      }
+    },
     "/v1/hosts/me": {
       "get": {
         "operationId": "host_me_v1_hosts_me_get",
@@ -2405,6 +3164,139 @@
           "payments"
         ]
       }
+    },
+    "/v1/properties": {
+      "get": {
+        "operationId": "my_properties_v1_properties_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PropertyOut"
+                  },
+                  "title": "Response My Properties V1 Properties Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Properties",
+        "tags": [
+          "properties"
+        ]
+      },
+      "post": {
+        "description": "Register a physical object. It exists once, whatever is later done with it.\n\n`municipality` (gmina) is required: the Polish tourist tax is set per gmina\nand charged per night, so a short-stay price cannot be computed without it.",
+        "operationId": "create_property_v1_properties_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PropertyCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Property",
+        "tags": [
+          "properties"
+        ]
+      }
+    },
+    "/v1/properties/{property_id}/classifieds": {
+      "post": {
+        "description": "Post a free long-term listing against one of your properties.\n\nThe board starts at six months. Anything shorter is a Homies booking — paid\nand commissioned — and must not arrive here relabelled.",
+        "operationId": "create_classified_v1_properties__property_id__classifieds_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "property_id",
+            "required": true,
+            "schema": {
+              "title": "Property Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassifiedCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassifiedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Classified",
+        "tags": [
+          "properties"
+        ]
+      }
     }
   },
   "tags": [
@@ -2423,6 +3315,10 @@
     {
       "description": "Stripe webhooks and host payout execution.",
       "name": "payments"
+    },
+    {
+      "description": "Physical objects and the free long-term listings board.",
+      "name": "properties"
     },
     {
       "description": "Read-only operations surface, incidents, reconciliation.",

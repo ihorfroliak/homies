@@ -119,9 +119,12 @@ def pg_client(pg_migrated_engine):
     from app.core.db import get_db
 
     tables = (
-        "notifications domain_events incidents webhook_events journal_lines "
-        "journal_entries ledger_accounts payments bookings host_blocks listings "
-        "host_profiles refresh_tokens audit_log users"
+        # Every table a test can write to. A missing name leaks state into the
+        # next test: `disputes` was absent since FIN-03 and nothing noticed.
+        "notifications domain_events incidents webhook_events disputes "
+        "contact_reveals classified_offers properties "
+        "journal_lines journal_entries ledger_accounts payments bookings "
+        "host_blocks listings host_profiles refresh_tokens audit_log users"
     ).split()
     with pg_migrated_engine.begin() as conn:
         conn.execute(text(f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"))
@@ -150,9 +153,12 @@ def pg_session(pg_migrated_engine):
     from sqlalchemy.orm import sessionmaker
 
     tables = (
-        "notifications domain_events incidents webhook_events journal_lines "
-        "journal_entries ledger_accounts payments bookings host_blocks listings "
-        "host_profiles refresh_tokens audit_log users"
+        # Every table a test can write to. A missing name leaks state into the
+        # next test: `disputes` was absent since FIN-03 and nothing noticed.
+        "notifications domain_events incidents webhook_events disputes "
+        "contact_reveals classified_offers properties "
+        "journal_lines journal_entries ledger_accounts payments bookings "
+        "host_blocks listings host_profiles refresh_tokens audit_log users"
     ).split()
     with pg_migrated_engine.begin() as conn:
         conn.execute(text(f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"))

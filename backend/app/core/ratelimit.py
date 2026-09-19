@@ -64,6 +64,12 @@ AUTH_REFRESH = Policy("auth_refresh", capacity=30, refill_per_second=0.5, on_sto
 BOOKING_CREATE = Policy("booking_create", capacity=10, refill_per_second=0.2)
 BOOKING_MUTATE = Policy("booking_mutate", capacity=20, refill_per_second=0.5)
 LISTING_WRITE = Policy("listing_write", capacity=20, refill_per_second=0.5)
+# Free board. Writes are cheap for us and valuable to a spammer, so they are
+# throttled like any other write. CONTACT_REVEAL is separate and tighter: it is
+# the endpoint that hands out personal data, and bulk collection is exactly
+# what it must make expensive.
+PROPERTY_WRITE = Policy("property_write", capacity=20, refill_per_second=0.5)
+CONTACT_REVEAL = Policy("contact_reveal", capacity=10, refill_per_second=0.05)
 ADMIN = Policy("admin", capacity=120, refill_per_second=5.0)
 PUBLIC_READ = Policy("public_read", capacity=120, refill_per_second=10.0)
 
@@ -241,4 +247,11 @@ def resolve_policy(method: str, path: str) -> Policy | None:
         return BOOKING_CREATE if path.rstrip("/") == "/v1/bookings" else BOOKING_MUTATE
     if path.startswith("/v1/listings"):
         return LISTING_WRITE
+    if path.startswith("/v1/classifieds") and path.endswith("/contact"):
+        return CONTACT_REVEAL
+    if path.startswith(("/v1/properties", "/v1/classifieds")):
+        return PROPERTY_WRITE
+    # Anything unmatched is a READ budget. A new write route that forgets to
+    # register here inherits it silently, which is why every write path above is
+    # asserted by a test rather than trusted.
     return PUBLIC_READ

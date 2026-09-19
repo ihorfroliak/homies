@@ -25,6 +25,7 @@ from app.modules.events.worker import worker as notification_worker
 from app.modules.identity.router import router as identity_router
 from app.modules.listings.router import router as listings_router
 from app.modules.payments.router import router as payments_router
+from app.modules.properties.router import router as properties_router
 
 
 @asynccontextmanager
@@ -54,6 +55,7 @@ OPENAPI_TAGS = [
     {"name": "listings", "description": "Property listings and host calendar blocks."},
     {"name": "bookings", "description": "Booking lifecycle, availability, check-in, state."},
     {"name": "payments", "description": "Stripe webhooks and host payout execution."},
+    {"name": "properties", "description": "Physical objects and the free long-term listings board."},
     {"name": "admin", "description": "Read-only operations surface, incidents, reconciliation."},
     {"name": "ops", "description": "Health and metrics."},
 ]
@@ -101,6 +103,7 @@ app.include_router(identity_router, prefix=API_V1)
 app.include_router(listings_router, prefix=API_V1)
 app.include_router(booking_router, prefix=API_V1)
 app.include_router(payments_router, prefix=API_V1)
+app.include_router(properties_router, prefix=API_V1)
 app.include_router(admin_router, prefix=API_V1)
 
 
