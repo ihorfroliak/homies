@@ -759,6 +759,23 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "PhoneVerificationStart": {
+        "description": "E.164 only. A free-text number cannot be compared for uniqueness, and\nwithout uniqueness \"verified phone\" stops being one account per SIM.",
+        "properties": {
+          "phone": {
+            "maxLength": 16,
+            "minLength": 8,
+            "pattern": "^\\+[1-9]\\d{7,14}$",
+            "title": "Phone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone"
+        ],
+        "title": "PhoneVerificationStart",
+        "type": "object"
+      },
       "PropertyCreate": {
         "properties": {
           "address": {
@@ -1125,6 +1142,18 @@
             "title": "Email",
             "type": "string"
           },
+          "email_verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Verified At"
+          },
           "full_name": {
             "title": "Full Name",
             "type": "string"
@@ -1132,6 +1161,29 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "phone_verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Verified At"
           },
           "role": {
             "title": "Role",
@@ -1185,6 +1237,77 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VerificationConfirm": {
+        "properties": {
+          "code": {
+            "maxLength": 8,
+            "minLength": 4,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "VerificationConfirm",
+        "type": "object"
+      },
+      "VerificationStarted": {
+        "properties": {
+          "channel": {
+            "enum": [
+              "email",
+              "phone"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "destination_masked": {
+            "title": "Destination Masked",
+            "type": "string"
+          },
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "channel",
+          "destination_masked",
+          "expires_in"
+        ],
+        "title": "VerificationStarted",
+        "type": "object"
+      },
+      "VerificationState": {
+        "properties": {
+          "email_verified": {
+            "title": "Email Verified",
+            "type": "boolean"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "phone_verified": {
+            "title": "Phone Verified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "email_verified",
+          "phone_verified"
+        ],
+        "title": "VerificationState",
         "type": "object"
       }
     },
@@ -2732,7 +2855,7 @@
     },
     "/v1/classifieds/{offer_id}/contact": {
       "post": {
-        "description": "Disclose the owner's phone number to a signed-in account, and record it.\n\nSign-in is the gate that makes bulk collection attributable: a scraper has\nto hold an account, and every number it takes leaves a row with its name on\nit. Anonymous visitors get the message channel instead.",
+        "description": "Disclose the owner's phone number to a verified account, and record it.\n\nA *verified phone* is the gate, not merely sign-in. An address costs a\nscraper nothing; a SIM costs money, and `users.phone` is unique, so the\ncost is paid per account rather than once. Every number taken still leaves\na row naming who took it. Anonymous and unverified visitors get the message\nchannel instead.\n\nEmail verification is deliberately NOT a second gate here: it adds a round\ntrip for the tenant and nothing an automated collector cannot buy in bulk.\nTightening that is a product call, not a technical gap.",
         "operationId": "reveal_contact_v1_classifieds__offer_id__contact_post",
         "parameters": [
           {
@@ -3414,6 +3537,161 @@
           }
         ],
         "summary": "My Notifications",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/v1/me/verification": {
+      "get": {
+        "operationId": "verification_state_v1_me_verification_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Verification State",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/v1/me/verify/email/start": {
+      "post": {
+        "operationId": "start_email_verification_v1_me_verify_email_start_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationStarted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Email Verification",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/v1/me/verify/phone/start": {
+      "post": {
+        "operationId": "start_phone_verification_v1_me_verify_phone_start_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhoneVerificationStart"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationStarted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Phone Verification",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/v1/me/verify/{channel}/confirm": {
+      "post": {
+        "operationId": "confirm_verification_v1_me_verify__channel__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel",
+            "required": true,
+            "schema": {
+              "title": "Channel",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerificationConfirm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Confirm Verification",
         "tags": [
           "identity"
         ]

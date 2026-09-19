@@ -70,6 +70,15 @@ LISTING_WRITE = Policy("listing_write", capacity=20, refill_per_second=0.5)
 # what it must make expensive.
 PROPERTY_WRITE = Policy("property_write", capacity=20, refill_per_second=0.5)
 CONTACT_REVEAL = Policy("contact_reveal", capacity=10, refill_per_second=0.05)
+# Verification. Sending is the only route in the product that spends real
+# money per call (an SMS), which makes it the natural target of "SMS pumping":
+# a fraudster points the sender at premium-rate ranges they collect on. Hence a
+# tight bucket and fail-CLOSED — if the limiter is unavailable, not sending is
+# an inconvenience, sending without a ceiling is a bill.
+VERIFY_SEND = Policy("verify_send", capacity=3, refill_per_second=0.005, on_store_failure="closed")
+VERIFY_CONFIRM = Policy(
+    "verify_confirm", capacity=10, refill_per_second=0.05, on_store_failure="closed"
+)
 ADMIN = Policy("admin", capacity=120, refill_per_second=5.0)
 PUBLIC_READ = Policy("public_read", capacity=120, refill_per_second=10.0)
 
@@ -240,6 +249,8 @@ def resolve_policy(method: str, path: str) -> Policy | None:
         return AUTH_REFRESH
     if path.startswith("/v1/admin"):
         return ADMIN
+    if path.startswith("/v1/me/verify"):
+        return VERIFY_CONFIRM if path.endswith("/confirm") else VERIFY_SEND
     if method in ("GET", "HEAD", "OPTIONS"):
         return PUBLIC_READ
     if path.startswith("/v1/bookings"):

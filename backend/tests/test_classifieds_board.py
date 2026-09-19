@@ -10,7 +10,7 @@ from datetime import date
 import pytest
 
 from app.modules.properties.models import MIN_CLASSIFIED_TERM_MONTHS
-from tests.conftest import auth, register_and_login
+from tests.conftest import auth, register_and_login, verify_phone
 
 PROPERTY = {
     "property_type": "apartment",
@@ -207,10 +207,23 @@ def test_anonymous_visitors_cannot_reveal_a_number(client):
     assert PHONE not in resp.text
 
 
-def test_a_signed_in_user_gets_the_number(client):
+def test_a_user_without_a_verified_phone_is_refused(client):
+    """Sign-in alone is free. The gate is a proven number, because that is what
+    costs a bulk collector something per account."""
+    owner = _owner(client)
+    offer_id = _published(client, owner)
+    seeker = register_and_login(client, "unverified@example.com", "guest")
+
+    resp = client.post(f"/v1/classifieds/{offer_id}/contact", headers=auth(seeker))
+    assert resp.status_code == 403, resp.text
+    assert PHONE not in resp.text
+
+
+def test_a_verified_user_gets_the_number(client):
     owner = _owner(client)
     offer_id = _published(client, owner)
     seeker = register_and_login(client, "seeker@example.com", "guest")
+    verify_phone(client, seeker, "+48500000001")
 
     resp = client.post(f"/v1/classifieds/{offer_id}/contact", headers=auth(seeker))
     assert resp.status_code == 200, resp.text
@@ -225,6 +238,7 @@ def test_every_disclosure_is_recorded(client):
     owner = _owner(client)
     offer_id = _published(client, owner)
     seeker = register_and_login(client, "logged@example.com", "guest")
+    verify_phone(client, seeker, "+48500000002")
 
     client.post(f"/v1/classifieds/{offer_id}/contact", headers=auth(seeker))
 
@@ -247,6 +261,7 @@ def test_asking_twice_is_one_disclosure(client):
     owner = _owner(client)
     offer_id = _published(client, owner)
     seeker = register_and_login(client, "twice@example.com", "guest")
+    verify_phone(client, seeker, "+48500000003")
 
     for _ in range(3):
         resp = client.post(f"/v1/classifieds/{offer_id}/contact", headers=auth(seeker))
@@ -261,6 +276,7 @@ def test_message_only_owners_never_disclose_a_number(client):
     owner = _owner(client)
     offer_id = _published(client, owner, contact_mode="message", contact_phone="")
     seeker = register_and_login(client, "msg@example.com", "guest")
+    verify_phone(client, seeker, "+48500000004")
 
     resp = client.post(f"/v1/classifieds/{offer_id}/contact", headers=auth(seeker))
     assert resp.status_code == 409

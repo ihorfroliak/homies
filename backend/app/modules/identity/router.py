@@ -1,14 +1,16 @@
 from datetime import datetime, timedelta, timezone
+from typing import Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.audit import audit
 from app.core.config import settings
 from app.core.db import get_db
-from app.core.ratelimit import AUTH_LOGIN_ACCOUNT, limiter
+from app.core.ratelimit import AUTH_LOGIN_ACCOUNT, VERIFY_SEND, limiter
 from app.core import business_metrics as metrics
 from app.core.security import (
     create_access_token,
@@ -19,15 +21,20 @@ from app.core.security import (
     require_role,
     verify_password,
 )
+from app.modules.identity import verification
 from app.modules.identity.models import HostProfile, RefreshToken, User
 from app.modules.identity.schemas import (
     HostOnboardingRequest,
     HostProfileOut,
     LoginRequest,
+    PhoneVerificationStart,
     RefreshRequest,
     RegisterRequest,
     TokenPair,
     UserOut,
+    VerificationConfirm,
+    VerificationStarted,
+    VerificationState,
 )
 
 router = APIRouter(tags=["identity"])
@@ -165,3 +172,156 @@ def host_me(user: User = Depends(require_role("host")), db: Session = Depends(ge
     if profile is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Host profile not created yet")
     return profile
+
+
+# --- Verification -----------------------------------------------------------
+# Proving an address and a number belong to the account. The number is the one
+# that earns anything: it is what the free board checks before it discloses
+# somebody else's phone.
+
+
+def _state(user: User) -> VerificationState:
+    return VerificationState(
+        email_verified=user.email_verified_at is not None,
+        phone_verified=user.phone_verified_at is not None,
+        phone=user.phone,
+    )
+
+
+def _mask_email(value: str) -> str:
+    name, _, domain = value.partition("@")
+    return f"{name[:1]}***@{domain}"
+
+
+def _mask_phone(value: str) -> str:
+    return f"{value[:3]}***{value[-3:]}"
+
+
+def _phone_taken(db: Session, phone: str | None, user_id: str) -> bool:
+    """Advisory only. Between this read and the commit another confirmation can
+    claim the same number; `uq_users_phone` is the guarantee, this is the
+    courtesy. Kept as a named seam so a test can make it lie the way a race
+    does and prove the commit path still answers 409 rather than 500.
+    """
+    return db.scalar(select(User).where(User.phone == phone, User.id != user_id)) is not None
+
+
+def _spend_send_budget(*keys: str) -> None:
+    """Per-user AND per-destination, on top of the per-IP middleware bucket.
+
+    Each closes a hole the others leave: one account cycling addresses, many
+    accounts pointed at one number, one host cycling accounts.
+    """
+    for key in keys:
+        allowed, retry_after = limiter.check(f"{VERIFY_SEND.name}:{key}", VERIFY_SEND)
+        if not allowed:
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                "Too many verification messages requested",
+                headers={"Retry-After": str(max(1, int(retry_after)))},
+            )
+
+
+def _start(
+    db: Session, user: User, channel: Literal["email", "phone"], destination: str
+) -> VerificationStarted:
+    _spend_send_budget(f"user:{user.id}:{channel}", f"dest:{destination}")
+    _, delivered = verification.issue(
+        db, user_id=user.id, channel=verification.CHANNELS[channel], destination=destination
+    )
+    if not delivered:
+        # The code exists but never left the building. Committing it would
+        # leave the user staring at a field they can never fill.
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY, "Could not send the verification code, try again"
+        )
+    audit(db, actor=user.id, action=f"verification.{channel}.sent", entity_type="user",
+          entity_id=user.id)
+    db.commit()
+    masked = _mask_email(destination) if channel == "email" else _mask_phone(destination)
+    return VerificationStarted(
+        channel=channel, destination_masked=masked, expires_in=verification.CODE_TTL_SECONDS
+    )
+
+
+@router.get("/me/verification", response_model=VerificationState)
+def verification_state(user: User = Depends(get_current_user)):
+    return _state(user)
+
+
+@router.post("/me/verify/email/start", response_model=VerificationStarted)
+def start_email_verification(
+    user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    if user.email_verified_at is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Email is already verified")
+    return _start(db, user, "email", user.email)
+
+
+@router.post("/me/verify/phone/start", response_model=VerificationStarted)
+def start_phone_verification(
+    body: PhoneVerificationStart,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if user.phone == body.phone and user.phone_verified_at is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This number is already verified")
+    # Whether the number is already attached to another account is checked at
+    # CONFIRM, not here. Answering it now would turn this endpoint into a way
+    # to ask "does Homies know this phone number?" about anybody.
+    return _start(db, user, "phone", body.phone)
+
+
+@router.post("/me/verify/{channel}/confirm", response_model=VerificationState)
+def confirm_verification(
+    channel: str,
+    body: VerificationConfirm,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if channel not in verification.CHANNELS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown verification channel")
+
+    outcome, destination = verification.confirm(
+        db, user_id=user.id, channel=verification.CHANNELS[channel], code=body.code
+    )
+    if outcome != verification.Outcome.OK:
+        db.commit()  # the spent attempt is the point — it must survive the failure
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            {
+                verification.Outcome.NO_CODE: "Request a code first",
+                verification.Outcome.EXPIRED: "That code has expired, request a new one",
+                verification.Outcome.TOO_MANY_ATTEMPTS: "Too many attempts, request a new code",
+            }.get(outcome, "Incorrect code"),
+        )
+
+    now = datetime.now(timezone.utc)
+    if channel == "email":
+        user.email_verified_at = now
+    else:
+        if _phone_taken(db, destination, user.id):
+            # Only reachable by someone who just proved control of the number,
+            # so this tells them nothing they did not already know.
+            db.rollback()
+            raise HTTPException(
+                status.HTTP_409_CONFLICT, "That number is already linked to another account"
+            )
+        user.phone = destination
+        user.phone_verified_at = now
+
+    audit(db, actor=user.id, action=f"verification.{channel}.confirmed", entity_type="user",
+          entity_id=user.id)
+    try:
+        db.commit()
+    except IntegrityError:
+        # The SELECT above is advisory, not a guarantee: two confirmations of
+        # the same number racing each other both read an empty result. The
+        # unique index is what actually holds, and this turns its rejection
+        # into the same answer the loser would have got a moment earlier.
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "That number is already linked to another account"
+        ) from None
+    return _state(user)

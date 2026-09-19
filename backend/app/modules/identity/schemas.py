@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class RegisterRequest(BaseModel):
@@ -31,8 +32,43 @@ class UserOut(BaseModel):
     email: EmailStr
     full_name: str
     role: str
+    # Only ever the caller's own record (/me), so returning the number is not a
+    # disclosure. It is null until a code proved it.
+    phone: str | None = None
+    email_verified_at: datetime | None = None
+    phone_verified_at: datetime | None = None
 
     model_config = {"from_attributes": True}
+
+
+class PhoneVerificationStart(BaseModel):
+    """E.164 only. A free-text number cannot be compared for uniqueness, and
+    without uniqueness "verified phone" stops being one account per SIM."""
+
+    phone: str = Field(min_length=8, max_length=16, pattern=r"^\+[1-9]\d{7,14}$")
+
+
+class VerificationStarted(BaseModel):
+    channel: Literal["email", "phone"]
+    destination_masked: str
+    expires_in: int
+
+
+class VerificationConfirm(BaseModel):
+    code: str = Field(min_length=4, max_length=8)
+
+    @field_validator("code")
+    @classmethod
+    def digits_only(cls, v: str) -> str:
+        if not v.isdigit():
+            raise ValueError("code must be digits")
+        return v
+
+
+class VerificationState(BaseModel):
+    email_verified: bool
+    phone_verified: bool
+    phone: str | None = None
 
 
 class HostOnboardingRequest(BaseModel):

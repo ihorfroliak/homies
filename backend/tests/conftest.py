@@ -1,4 +1,5 @@
 import os
+import re
 
 os.environ["ENV"] = "test"  # must precede app imports: lifespan skips real-DB setup
 
@@ -93,6 +94,51 @@ def admin_token(client):
     return resp.json()["access_token"]
 
 
+# Verification codes never leave the process in tests: the delivery seam is
+# swapped for a capture, so a test can read the code the user would have got
+# without the code ever appearing in an HTTP response (where production would
+# then be one careless change away from leaking it).
+SENT_MESSAGES: list[dict] = []
+
+
+@pytest.fixture(autouse=True)
+def _capture_verification_messages(monkeypatch):
+    from app.modules.events.providers import DeliveryResult
+
+    SENT_MESSAGES.clear()
+
+    class _Capture:
+        def send(self, to, subject, body, idem_key):
+            SENT_MESSAGES.append(
+                {"to": to, "subject": subject, "body": body, "idem_key": idem_key}
+            )
+            return DeliveryResult(ok=True)
+
+    monkeypatch.setattr(
+        "app.modules.identity.verification.channel_for", lambda name: _Capture()
+    )
+    return SENT_MESSAGES
+
+
+def last_code() -> str:
+    match = re.search(r"\b(\d{6})\b", SENT_MESSAGES[-1]["body"])
+    assert match, f"no code in {SENT_MESSAGES[-1]['body']!r}"
+    return match.group(1)
+
+
+def verify_phone(client, token: str, phone: str) -> None:
+    """Drive the real endpoints — never set the column directly, or the tests
+    stop proving that the flow a user walks actually works."""
+    started = client.post(
+        "/v1/me/verify/phone/start", json={"phone": phone}, headers=auth(token)
+    )
+    assert started.status_code == 200, started.text
+    confirmed = client.post(
+        "/v1/me/verify/phone/confirm", json={"code": last_code()}, headers=auth(token)
+    )
+    assert confirmed.status_code == 200, confirmed.text
+
+
 def register_and_login(client, email: str, role: str) -> str:
     resp = client.post(
         "/v1/auth/register",
@@ -151,7 +197,7 @@ def pg_client(pg_migrated_engine):
         # Every table a test can write to. A missing name leaks state into the
         # next test: `disputes` was absent since FIN-03 and nothing noticed.
         "notifications domain_events incidents webhook_events disputes "
-        "contact_reveals classified_offers properties "
+        "contact_reveals classified_offers properties verification_codes "
         "journal_lines journal_entries ledger_accounts payments bookings "
         "host_blocks listings host_profiles refresh_tokens audit_log users"
     ).split()
@@ -185,7 +231,7 @@ def pg_session(pg_migrated_engine):
         # Every table a test can write to. A missing name leaks state into the
         # next test: `disputes` was absent since FIN-03 and nothing noticed.
         "notifications domain_events incidents webhook_events disputes "
-        "contact_reveals classified_offers properties "
+        "contact_reveals classified_offers properties verification_codes "
         "journal_lines journal_entries ledger_accounts payments bookings "
         "host_blocks listings host_profiles refresh_tokens audit_log users"
     ).split()

@@ -9,16 +9,20 @@ That protection is the security-relevant part of this module:
 * the public response shape (`ClassifiedOut`) has no phone field, so a leak
   needs someone to deliberately add one back;
 * the number is disclosed only through `POST /classifieds/{id}/contact`, which
-  requires an authenticated account;
+  requires an account with a *verified phone* — and `users.phone` is unique, so
+  the SIM that proves one account cannot prove the next;
 * every disclosure is recorded in `ContactReveal`, which is what makes a daily
   quota, an owner-facing "who asked for my number" view, and a scraping signal
   possible later. Recording from day one costs nothing; reconstructing it
   afterwards is impossible.
 
-Known gap, stated rather than hidden: PRODUCT_MODEL requires a *verified* email
-and phone before a reveal. Verification does not exist yet, so the gate today is
-only authentication. That is strictly better than public, and weaker than the
-target — it must close before the board is advertised.
+Narrower than PRODUCT_MODEL, deliberately: the model asks for a verified email
+*and* phone. Email verification exists (`/v1/me/verify/email/*`) but is not a
+second gate here — it adds a round trip for the tenant and nothing an automated
+collector cannot buy in bulk. Tightening it is a product call, not a gap.
+
+Still open: a per-account daily reveal quota. `ContactReveal` already carries
+the rows it needs; nothing reads them yet.
 """
 
 from datetime import date, datetime, timezone
@@ -348,12 +352,23 @@ def reveal_contact(
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Disclose the owner's phone number to a signed-in account, and record it.
+    """Disclose the owner's phone number to a verified account, and record it.
 
-    Sign-in is the gate that makes bulk collection attributable: a scraper has
-    to hold an account, and every number it takes leaves a row with its name on
-    it. Anonymous visitors get the message channel instead.
+    A *verified phone* is the gate, not merely sign-in. An address costs a
+    scraper nothing; a SIM costs money, and `users.phone` is unique, so the
+    cost is paid per account rather than once. Every number taken still leaves
+    a row naming who took it. Anonymous and unverified visitors get the message
+    channel instead.
+
+    Email verification is deliberately NOT a second gate here: it adds a round
+    trip for the tenant and nothing an automated collector cannot buy in bulk.
+    Tightening that is a product call, not a technical gap.
     """
+    if user.phone_verified_at is None:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Verify your phone number before contacting owners",
+        )
     offer = db.get(ClassifiedOffer, offer_id)
     if offer is None or offer.status != "active":
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
