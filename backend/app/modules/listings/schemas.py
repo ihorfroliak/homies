@@ -6,6 +6,9 @@ from app.core.config import settings
 
 
 class ListingCreate(BaseModel):
+    # Optional while the shim in the router exists; becomes required when
+    # listings turn into offers.
+    property_id: str | None = None
     title: str = Field(min_length=3, max_length=140)
     city: str = Field(min_length=2, max_length=80)
     address: str = Field(min_length=3, max_length=255)

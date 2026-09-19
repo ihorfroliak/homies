@@ -69,7 +69,11 @@ class Property(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     owner_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
-    property_type: Mapped[str] = mapped_column(String(24), index=True)
+    # Nullable at the database level, required by the API. Properties created
+    # before the Property/Offer split were derived from listings, which never
+    # recorded a type — and inventing "apartment" for them would write a fact
+    # nobody established. New properties must supply it (PropertyCreate).
+    property_type: Mapped[str | None] = mapped_column(String(24), index=True, nullable=True)
 
     # Address. `municipality` (gmina) is required and entered by the owner: the
     # Polish tourist tax is set per gmina and charged per night, so a short-stay
@@ -78,7 +82,7 @@ class Property(Base):
     city: Mapped[str] = mapped_column(String(80), index=True)
     district: Mapped[str] = mapped_column(String(80), default="", index=True)
     postcode: Mapped[str] = mapped_column(String(12), default="")
-    municipality: Mapped[str] = mapped_column(String(80))
+    municipality: Mapped[str | None] = mapped_column(String(80), nullable=True)
     address: Mapped[str] = mapped_column(String(255))
     # Plain decimals, not PostGIS: CI runs stock postgres:16 and a geometry
     # column would break the migration there. This is also the shape external
@@ -88,8 +92,8 @@ class Property(Base):
 
     # Hot filters live in real columns with indexes; the long tail lives in
     # `attributes` so a new amenity never needs a migration.
-    area_m2: Mapped[int] = mapped_column(Integer)
-    rooms: Mapped[int] = mapped_column(Integer, index=True)
+    area_m2: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rooms: Mapped[int | None] = mapped_column(Integer, index=True, nullable=True)
     bedrooms: Mapped[int] = mapped_column(Integer, default=0)
     bathrooms: Mapped[int] = mapped_column(Integer, default=1)
     capacity: Mapped[int] = mapped_column(Integer, default=2)

@@ -15,6 +15,7 @@ from app.modules.booking.models import Booking
 from app.modules.booking.schemas import AvailabilityOut, BookingCreate, BookingOut, DayStatus
 from app.modules.events import service as events
 from app.modules.listings.models import Listing
+from app.modules.properties.models import Property
 from app.modules.payments import service as payments_service
 from app.modules.payments.models import Payment
 
@@ -61,16 +62,24 @@ def create_booking(
     if body.check_in < date.today():
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "check_in is in the past")
 
-    # Lock the listing row: serializes concurrent bookings of the same listing
-    # (no-op on SQLite; real double-booking protection requires Postgres).
-    listing = db.scalar(
-        select(Listing).where(Listing.id == body.listing_id).with_for_update()
-    )
+    listing = db.scalar(select(Listing).where(Listing.id == body.listing_id))
     if listing is None or listing.status != "active":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Listing not found")
+
+    # Lock the PROPERTY row, not the listing. This is the whole point of the
+    # move: two listings of the same flat are two different rows, so locking the
+    # listing would let a short-stay booking and a monthly booking of the same
+    # nights both pass the availability check and race to the insert. The
+    # property is the one row they share.
+    # (No-op on SQLite; real serialization requires Postgres.)
+    prop = db.scalar(
+        select(Property).where(Property.id == listing.property_id).with_for_update()
+    )
+    if prop is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Listing not found")
     if body.guests > listing.capacity:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Exceeds listing capacity")
-    if not is_available(db, listing.id, body.check_in, body.check_out):
+    if not is_available(db, prop.id, body.check_in, body.check_out):
         raise HTTPException(status.HTTP_409_CONFLICT, "Dates are not available")
 
     nights = (body.check_out - body.check_in).days
@@ -78,6 +87,7 @@ def create_booking(
 
     booking = Booking(
         listing_id=listing.id,
+        property_id=prop.id,
         guest_id=user.id,
         check_in=body.check_in,
         check_out=body.check_out,
@@ -259,7 +269,10 @@ def get_availability(
     if (date_to - date_from).days > MAX_AVAILABILITY_WINDOW_DAYS:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Window too large")
 
-    ranges = blocked_ranges(db, listing_id, date_from, date_to)
+    # The URL is still per-listing (public contract), but the answer comes
+    # from the property's calendar — otherwise this endpoint would show a
+    # night as free while the flat's other listing has it booked.
+    ranges = blocked_ranges(db, listing.property_id, date_from, date_to)
     days: list[DayStatus] = []
     day = date_from
     while day < date_to:

@@ -12,6 +12,13 @@ class Listing(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     host_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
+    # The physical object this listing offers. Ownership deliberately stays on
+    # the listing for now: moving host_id to Property in the same change would
+    # touch booking authorization, host notifications and the payout query at
+    # once, and this change is already the risky one.
+    property_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("properties.id"), index=True
+    )
     title: Mapped[str] = mapped_column(String(140))
     city: Mapped[str] = mapped_column(String(80), index=True)
     address: Mapped[str] = mapped_column(String(255))
@@ -32,5 +39,10 @@ class HostBlock(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     listing_id: Mapped[str] = mapped_column(String(36), ForeignKey("listings.id"), index=True)
+    # Blocks apply to the physical object: a flat blocked for renovation is
+    # unavailable in every mode it is offered in.
+    property_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("properties.id"), index=True
+    )
     start_date: Mapped[date] = mapped_column(Date)
     end_date: Mapped[date] = mapped_column(Date)

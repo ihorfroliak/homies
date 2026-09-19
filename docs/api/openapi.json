@@ -523,6 +523,17 @@
             "title": "Nightly Price Amount",
             "type": "integer"
           },
+          "property_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Property Id"
+          },
           "title": {
             "maxLength": 140,
             "minLength": 3,

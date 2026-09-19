@@ -6,6 +6,7 @@ from app.core.audit import audit
 from app.core.db import get_db
 from app.core.security import require_role
 from app.modules.listings.models import HostBlock, Listing
+from app.modules.properties.models import Property
 from app.modules.listings.schemas import (
     BlockCreate,
     ListingCreate,
@@ -29,7 +30,31 @@ def create_listing(
     user=Depends(require_role("host")),
     db: Session = Depends(get_db),
 ):
-    listing = Listing(host_id=user.id, **body.model_dump())
+    # Every listing offers a physical object. Callers that already created a
+    # Property pass its id; the rest get one derived from the listing body.
+    #
+    # The derivation is transitional. It exists so this change could move the
+    # calendar without rewriting fifteen test modules and every client at the
+    # same time, and it carries only what a listing actually knows — type,
+    # gmina, area and room count stay empty rather than invented. When listings
+    # become offers, the shim goes and property_id becomes required.
+    data = body.model_dump()
+    property_id = data.pop("property_id", None)
+    if property_id is not None:
+        prop = db.get(Property, property_id)
+        if prop is None or prop.owner_id != user.id:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Property not found")
+    else:
+        prop = Property(
+            owner_id=user.id,
+            city=data["city"],
+            address=data["address"],
+            capacity=data["capacity"],
+        )
+        db.add(prop)
+        db.flush()
+
+    listing = Listing(host_id=user.id, property_id=prop.id, **data)
     db.add(listing)
     db.flush()
     audit(db, actor=user.id, action="listing.created", entity_type="listing", entity_id=listing.id)
@@ -96,8 +121,16 @@ def create_block(
     user=Depends(require_role("host")),
     db: Session = Depends(get_db),
 ):
-    _owned_listing(db, listing_id, user.id)
-    block = HostBlock(listing_id=listing_id, start_date=body.start_date, end_date=body.end_date)
+    listing = _owned_listing(db, listing_id, user.id)
+    # Blocked on the property: a flat closed for renovation is unavailable in
+    # every mode it is offered in, not just the listing the host happened to
+    # open.
+    block = HostBlock(
+        listing_id=listing_id,
+        property_id=listing.property_id,
+        start_date=body.start_date,
+        end_date=body.end_date,
+    )
     db.add(block)
     db.commit()
     return {"id": block.id}

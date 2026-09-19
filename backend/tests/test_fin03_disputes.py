@@ -34,6 +34,9 @@ def db(client):  # noqa: ARG001 — client builds the schema and session factory
 def _paid_booking(db, *, payout_status="none", total=AMOUNT):
     booking = Booking(
         guest_id="g1", listing_id="l1",
+        # Availability is keyed on the property; these fixtures never go
+        # through the booking endpoint, so the link is supplied directly.
+        property_id="p1",
         check_in=date(2026, 3, 1), check_out=date(2026, 3, 5),
         total_amount=total, currency="PLN", status="completed",
         payout_status=payout_status, idempotency_key=f"k-{payout_status}-{total}",

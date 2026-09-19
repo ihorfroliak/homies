@@ -17,6 +17,12 @@ class Booking(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     listing_id: Mapped[str] = mapped_column(String(36), ForeignKey("listings.id"), index=True)
+    # Availability is a fact about the PHYSICAL OBJECT, not about one way of
+    # offering it. Two listings of the same flat share this key, which is what
+    # stops a short-stay and a monthly booking landing on the same nights.
+    property_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("properties.id"), index=True
+    )
     guest_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
     check_in: Mapped[date] = mapped_column(Date)
     check_out: Mapped[date] = mapped_column(Date)  # exclusive

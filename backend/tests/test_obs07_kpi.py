@@ -264,6 +264,9 @@ def test_nights_and_adr_use_the_same_window_as_the_money(client, admin_token, db
 
     booking = Booking(
         guest_id="g1", listing_id="l1",
+        # Availability is keyed on the property; these fixtures never go
+        # through the booking endpoint, so the link is supplied directly.
+        property_id="p1",
         check_in=date(2026, 3, 1), check_out=date(2026, 3, 5),  # 4 nights
         total_amount=80_000, currency="PLN", status="confirmed",
         idempotency_key="kpi-adr-test",
