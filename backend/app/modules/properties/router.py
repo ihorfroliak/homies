@@ -21,10 +21,10 @@ only authentication. That is strictly better than public, and weaker than the
 target — it must close before the board is advertised.
 """
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -35,6 +35,7 @@ from app.modules.properties.models import ClassifiedOffer, ContactReveal, Proper
 from app.modules.properties.schemas import (
     ClassifiedCreate,
     ClassifiedOut,
+    ClassifiedPage,
     ContactRevealOut,
     PropertyCreate,
     PropertyOut,
@@ -168,25 +169,127 @@ def pause_classified(
     return _public(offer)
 
 
-@router.get("/classifieds", response_model=list[ClassifiedOut])
+# Sorting is an allowlist, never a column name from the query string. Passing
+# user input into order_by() exposes every column in the table and, with a
+# string-built query, worse.
+SORTS = {
+    "newest": ClassifiedOffer.published_at.desc(),
+    "price_asc": None,  # filled in below: the total, not the rent
+    "price_desc": None,
+    "size_desc": Property.area_m2.desc(),
+}
+
+
+def _monthly_total_sql():
+    """The tenant's real monthly cost, as SQL, so it can be filtered and sorted.
+
+    Deliberately not `rent_amount`. Two offers at 3 000 zł rent are not the same
+    price when one adds 600 zł of building fees and the other does not, and a
+    tenant who filters "up to 3 000" and is shown a 3 600 zł flat has been
+    misled by the search, not by the owner. The deposit is excluded — it comes
+    back.
+    """
+    utilities = case(
+        (ClassifiedOffer.utilities_included.is_(True), 0),
+        else_=ClassifiedOffer.utilities_amount,
+    )
+    return ClassifiedOffer.rent_amount + ClassifiedOffer.admin_fee + (
+        ClassifiedOffer.parking_fee + utilities
+    )
+
+
+@router.get("/classifieds", response_model=ClassifiedPage)
 def list_classifieds(
     city: str | None = None,
+    district: str | None = None,
+    # Budget is expressed against the TOTAL, which is what the tenant pays.
+    max_monthly_total: int | None = Query(default=None, ge=0),
+    min_monthly_total: int | None = Query(default=None, ge=0),
+    min_rooms: int | None = Query(default=None, ge=0),
+    min_area_m2: int | None = Query(default=None, ge=0),
+    furnished: str | None = None,
+    parking: str | None = None,
+    pets_allowed: bool | None = None,
+    has_elevator: bool | None = None,
+    # "I can move by this date" — offers available then or sooner, plus those
+    # with no date set, which means available now.
+    available_by: date | None = None,
+    max_term_months: int | None = Query(default=None, ge=0),
+    sort: str = "newest",
     limit: int = Query(default=50, le=100),
-    offset: int = 0,
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ):
-    """Public board. Only active offers, and never a phone number."""
-    stmt = (
-        select(ClassifiedOffer)
-        .join(Property, Property.id == ClassifiedOffer.property_id)
-        .where(ClassifiedOffer.status == "active")
-        .order_by(ClassifiedOffer.published_at.desc())
-        .limit(limit)
-        .offset(offset)
-    )
+    """Search the free board. Only active offers, and never a phone number."""
+    if sort not in SORTS:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"sort must be one of {', '.join(sorted(SORTS))}",
+        )
+
+    total_expr = _monthly_total_sql()
+    filters = [ClassifiedOffer.status == "active"]
     if city:
-        stmt = stmt.where(Property.city == city)
-    return [_public(o) for o in db.scalars(stmt)]
+        filters.append(Property.city == city)
+    if district:
+        filters.append(Property.district == district)
+    if max_monthly_total is not None:
+        filters.append(total_expr <= max_monthly_total)
+    if min_monthly_total is not None:
+        filters.append(total_expr >= min_monthly_total)
+    if min_rooms is not None:
+        filters.append(Property.rooms >= min_rooms)
+    if min_area_m2 is not None:
+        filters.append(Property.area_m2 >= min_area_m2)
+    if furnished:
+        filters.append(Property.furnished == furnished)
+    if parking:
+        filters.append(Property.parking == parking)
+    if pets_allowed is not None:
+        filters.append(Property.pets_allowed.is_(pets_allowed))
+    if has_elevator is not None:
+        filters.append(Property.has_elevator.is_(has_elevator))
+    if available_by is not None:
+        # A missing date means "available now", so it must not be filtered out.
+        filters.append(
+            or_(
+                ClassifiedOffer.available_from.is_(None),
+                ClassifiedOffer.available_from <= available_by,
+            )
+        )
+    if max_term_months is not None:
+        # An open-ended offer commits the tenant to nothing, so it satisfies any
+        # "I can stay at most N months" filter.
+        filters.append(
+            or_(
+                ClassifiedOffer.open_ended.is_(True),
+                ClassifiedOffer.min_term_months <= max_term_months,
+            )
+        )
+
+    base = select(ClassifiedOffer).join(
+        Property, Property.id == ClassifiedOffer.property_id
+    ).where(*filters)
+
+    order = SORTS[sort]
+    if sort == "price_asc":
+        order = total_expr.asc()
+    elif sort == "price_desc":
+        order = total_expr.desc()
+
+    total = db.scalar(
+        select(func.count())
+        .select_from(ClassifiedOffer)
+        .join(Property, Property.id == ClassifiedOffer.property_id)
+        .where(*filters)
+    )
+    rows = db.scalars(base.order_by(order).limit(limit).offset(offset))
+    return ClassifiedPage(
+        items=[_public(o) for o in rows],
+        total=int(total or 0),
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/classifieds/{offer_id}", response_model=ClassifiedOut)

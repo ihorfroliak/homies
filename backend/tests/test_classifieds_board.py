@@ -325,8 +325,8 @@ def test_the_board_can_be_filtered_by_city(client):
         client.post(f"/v1/classifieds/{offer['id']}/publish", headers=auth(token))
 
     only_krakow = client.get("/v1/classifieds", params={"city": "Kraków"}).json()
-    assert len(only_krakow) == 1
-    assert only_krakow[0]["property_id"] == krakow
+    assert only_krakow["total"] == 1
+    assert only_krakow["items"][0]["property_id"] == krakow
 
 
 # --- rate limiting ------------------------------------------------------------

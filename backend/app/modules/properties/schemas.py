@@ -144,6 +144,20 @@ class ClassifiedOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ClassifiedPage(BaseModel):
+    """A page of the board plus the count the UI needs to say "Show 124 places".
+
+    `total` is the size of the whole result set, not of this page: a filter
+    panel that cannot show how many places match forces people to paginate to
+    find out whether a filter did anything.
+    """
+
+    items: list["ClassifiedOut"]
+    total: int
+    limit: int
+    offset: int
+
+
 class ContactRevealOut(BaseModel):
     offer_id: str
     contact_phone: str

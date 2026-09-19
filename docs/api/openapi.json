@@ -373,6 +373,38 @@
         "title": "ClassifiedOut",
         "type": "object"
       },
+      "ClassifiedPage": {
+        "description": "A page of the board plus the count the UI needs to say \"Show 124 places\".\n\n`total` is the size of the whole result set, not of this page: a filter\npanel that cannot show how many places match forces people to paginate to\nfind out whether a filter did anything.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ClassifiedOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "ClassifiedPage",
+        "type": "object"
+      },
       "ContactRevealOut": {
         "properties": {
           "contact_phone": {
@@ -2301,7 +2333,7 @@
     },
     "/v1/classifieds": {
       "get": {
-        "description": "Public board. Only active offers, and never a phone number.",
+        "description": "Search the free board. Only active offers, and never a phone number.",
         "operationId": "list_classifieds_v1_classifieds_get",
         "parameters": [
           {
@@ -2322,6 +2354,198 @@
           },
           {
             "in": "query",
+            "name": "district",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "District"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_monthly_total",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Monthly Total"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_monthly_total",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Monthly Total"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_rooms",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Rooms"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_area_m2",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Area M2"
+            }
+          },
+          {
+            "in": "query",
+            "name": "furnished",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Furnished"
+            }
+          },
+          {
+            "in": "query",
+            "name": "parking",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parking"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pets_allowed",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pets Allowed"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_elevator",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Elevator"
+            }
+          },
+          {
+            "in": "query",
+            "name": "available_by",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Available By"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_term_months",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Term Months"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "newest",
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -2337,6 +2561,7 @@
             "required": false,
             "schema": {
               "default": 0,
+              "minimum": 0,
               "title": "Offset",
               "type": "integer"
             }
@@ -2347,11 +2572,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/ClassifiedOut"
-                  },
-                  "title": "Response List Classifieds V1 Classifieds Get",
-                  "type": "array"
+                  "$ref": "#/components/schemas/ClassifiedPage"
                 }
               }
             },
