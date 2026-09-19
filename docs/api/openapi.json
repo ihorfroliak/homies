@@ -1,6 +1,54 @@
 {
   "components": {
     "schemas": {
+      "AttributeOut": {
+        "properties": {
+          "allowed_values": {
+            "title": "Allowed Values",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "filterable": {
+            "title": "Filterable",
+            "type": "boolean"
+          },
+          "label_en": {
+            "title": "Label En",
+            "type": "string"
+          },
+          "label_pl": {
+            "title": "Label Pl",
+            "type": "string"
+          },
+          "sortable": {
+            "title": "Sortable",
+            "type": "boolean"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value_type": {
+            "title": "Value Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "value_type",
+          "unit",
+          "filterable",
+          "sortable",
+          "allowed_values",
+          "label_pl",
+          "label_en"
+        ],
+        "title": "AttributeOut",
+        "type": "object"
+      },
       "AvailabilityOut": {
         "properties": {
           "days": {
@@ -1885,6 +1933,32 @@
         ]
       }
     },
+    "/v1/attributes": {
+      "get": {
+        "description": "The attribute catalogue. Public because the filter panel is public.\n\nEvery surface — web, both apps, admin — builds its amenity filters from\nthis. Hand-written lists per client are how three of them end up disagreeing\nabout what \"has a dishwasher\" means.",
+        "operationId": "list_attributes_v1_attributes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AttributeOut"
+                  },
+                  "title": "Response List Attributes V1 Attributes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Attributes",
+        "tags": [
+          "properties"
+        ]
+      }
+    },
     "/v1/auth/login": {
       "post": {
         "operationId": "login_v1_auth_login_post",
@@ -2532,6 +2606,25 @@
                 }
               ],
               "title": "Max Term Months"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has"
             }
           },
           {

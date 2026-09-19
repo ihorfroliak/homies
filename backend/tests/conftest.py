@@ -21,6 +21,34 @@ engine = create_engine(
 TestingSession = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
+def _seed_attribute_catalogue():
+    """The fast suite builds its schema with create_all, which runs no seeds.
+
+    The rows are read from the migration that owns them rather than copied here:
+    two lists of amenity codes drift, and the one that drifts is always the one
+    nobody runs.
+    """
+    import importlib.util
+    from pathlib import Path
+
+    from app.modules.properties.models import AttributeDefinition
+
+    # Loaded by path: `alembic` on sys.path is the installed library, and the
+    # versions directory is not a package.
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "alembic" / "versions" / "9010d2077493_attribute_catalogue.py"
+    )
+    spec = importlib.util.spec_from_file_location("_attr_catalogue_seed", source)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    with TestingSession() as db:
+        if db.query(AttributeDefinition).first() is not None:
+            return
+        db.add_all(AttributeDefinition(**row) for row in module._seed_rows())
+        db.commit()
+
+
 @pytest.fixture()
 def client():
     from app.core.config import settings
@@ -31,6 +59,7 @@ def client():
     limiter.reset()
     settings.rate_limit_enabled = False
     Base.metadata.create_all(engine)
+    _seed_attribute_catalogue()
 
     def override_get_db():
         db = TestingSession()

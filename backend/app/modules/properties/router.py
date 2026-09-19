@@ -31,8 +31,16 @@ from sqlalchemy.orm import Session
 from app.core.audit import audit
 from app.core.db import get_db
 from app.core.security import get_current_user, require_role
-from app.modules.properties.models import ClassifiedOffer, ContactReveal, Property
+from app.modules.properties.attributes import AttributeError_, load_catalogue
+from app.modules.properties.attributes import validate as validate_attributes
+from app.modules.properties.models import (
+    AttributeDefinition,
+    ClassifiedOffer,
+    ContactReveal,
+    Property,
+)
 from app.modules.properties.schemas import (
+    AttributeOut,
     ClassifiedCreate,
     ClassifiedOut,
     ClassifiedPage,
@@ -94,7 +102,12 @@ def create_property(
     `municipality` (gmina) is required: the Polish tourist tax is set per gmina
     and charged per night, so a short-stay price cannot be computed without it.
     """
-    prop = Property(owner_id=user.id, **body.model_dump())
+    data = body.model_dump()
+    try:
+        validate_attributes(db, data.get("attributes") or {})
+    except AttributeError_ as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
+    prop = Property(owner_id=user.id, **data)
     db.add(prop)
     db.flush()
     audit(db, actor=user.id, action="property.created", entity_type="property", entity_id=prop.id)
@@ -105,6 +118,17 @@ def create_property(
 @router.get("/properties", response_model=list[PropertyOut])
 def my_properties(user=Depends(require_role("host")), db: Session = Depends(get_db)):
     return list(db.scalars(select(Property).where(Property.owner_id == user.id)))
+
+
+@router.get("/attributes", response_model=list[AttributeOut])
+def list_attributes(db: Session = Depends(get_db)):
+    """The attribute catalogue. Public because the filter panel is public.
+
+    Every surface — web, both apps, admin — builds its amenity filters from
+    this. Hand-written lists per client are how three of them end up disagreeing
+    about what "has a dishwasher" means.
+    """
+    return list(db.scalars(select(AttributeDefinition).order_by(AttributeDefinition.code)))
 
 
 # --- classifieds (free long-term board) ---------------------------------------
@@ -215,6 +239,10 @@ def list_classifieds(
     # with no date set, which means available now.
     available_by: date | None = None,
     max_term_months: int | None = Query(default=None, ge=0),
+    # Repeatable: ?has=dishwasher&has=balcony. Only codes the catalogue marks
+    # filterable are accepted, so a typo fails loudly instead of quietly
+    # matching nothing.
+    has: list[str] | None = Query(default=None),
     sort: str = "newest",
     limit: int = Query(default=50, le=100),
     offset: int = Query(default=0, ge=0),
@@ -229,6 +257,20 @@ def list_classifieds(
 
     total_expr = _monthly_total_sql()
     filters = [ClassifiedOffer.status == "active"]
+    if has:
+        catalogue = load_catalogue(db)
+        for code in has:
+            definition = catalogue.get(code)
+            if definition is None or not definition.filterable:
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    f"'{code}' is not a filterable attribute — see GET /v1/attributes",
+                )
+            # as_boolean() rather than a text comparison: SQLite's
+            # JSON_EXTRACT yields 1/0 while Postgres yields a JSON boolean, and
+            # SQLAlchemy is the thing that knows the difference. An earlier
+            # version compared the literal 'true' and matched nothing on SQLite.
+            filters.append(Property.attributes[code].as_boolean().is_(True))
     if city:
         filters.append(Property.city == city)
     if district:

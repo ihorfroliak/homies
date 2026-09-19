@@ -17,6 +17,19 @@ PARKING = ("none", "street", "spot", "garage")
 CONTACT_MODES = ("message", "phone")
 
 
+class AttributeOut(BaseModel):
+    code: str
+    value_type: str
+    unit: str
+    filterable: bool
+    sortable: bool
+    allowed_values: str
+    label_pl: str
+    label_en: str
+
+    model_config = {"from_attributes": True}
+
+
 class PropertyCreate(BaseModel):
     property_type: str
     city: str = Field(min_length=1, max_length=80)

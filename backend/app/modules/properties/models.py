@@ -181,3 +181,47 @@ class ContactReveal(Base):
     )
     viewer_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
     revealed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+# Value types an attribute can carry. Kept small on purpose: every type here
+# needs a validator, a filter form and a way to render, so each one is a real
+# cost across the web, both apps and the admin.
+ATTRIBUTE_TYPES = ("bool", "int", "enum")
+
+
+class AttributeDefinition(Base):
+    """The catalogue that makes the JSONB tail safe to use.
+
+    `Property.attributes` is free-form storage, which is what lets a new amenity
+    ship without a migration. Free-form also means `washing_machne` is stored
+    happily and then matches no filter for ever — the owner believes the flat
+    has a washing machine, the search disagrees, and nothing errors. This table
+    is what turns that silent mismatch into a rejected write.
+
+    It is also the single definition the web, both apps and the admin build
+    their filter panels from. Hand-written amenity lists per surface are how
+    three clients end up disagreeing about what "has a dishwasher" means.
+
+    `external_code` maps onto the vocabularies external pricing APIs already
+    use (Wheelhouse's amenity list, for one). Recording it from the start costs
+    nothing; discovering later that every code needs translating costs a layer.
+    """
+
+    __tablename__ = "attribute_definitions"
+
+    code: Mapped[str] = mapped_column(String(48), primary_key=True)
+    value_type: Mapped[str] = mapped_column(String(12))  # bool | int | enum
+    unit: Mapped[str] = mapped_column(String(16), default="")
+    # Whether it may appear as a search filter, a sort key, or in analytics.
+    # A definition that is not filterable is still stored and shown — it simply
+    # does not get a filter control.
+    filterable: Mapped[bool] = mapped_column(Boolean, default=True)
+    sortable: Mapped[bool] = mapped_column(Boolean, default=False)
+    analytic: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Comma-separated for enums; empty otherwise.
+    allowed_values: Mapped[str] = mapped_column(String(500), default="")
+    label_pl: Mapped[str] = mapped_column(String(120), default="")
+    label_en: Mapped[str] = mapped_column(String(120), default="")
+    # The equivalent code at an external pricing provider, where one exists.
+    external_code: Mapped[str] = mapped_column(String(48), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
