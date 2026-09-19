@@ -174,3 +174,15 @@ class ClassifiedPage(BaseModel):
 class ContactRevealOut(BaseModel):
     offer_id: str
     contact_phone: str
+
+
+class RevealQuotaOut(BaseModel):
+    """What the app shows next to the "show number" button.
+
+    Carries no phone numbers and no offer ids — it is a budget, not a history.
+    """
+
+    limit: int
+    used: int
+    remaining: int
+    resets_in: int  # seconds until the oldest view ages out; 0 when nothing is used

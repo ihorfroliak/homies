@@ -1088,6 +1088,35 @@
         "title": "RegisterRequest",
         "type": "object"
       },
+      "RevealQuotaOut": {
+        "description": "What the app shows next to the \"show number\" button.\n\nCarries no phone numbers and no offer ids — it is a budget, not a history.",
+        "properties": {
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "remaining": {
+            "title": "Remaining",
+            "type": "integer"
+          },
+          "resets_in": {
+            "title": "Resets In",
+            "type": "integer"
+          },
+          "used": {
+            "title": "Used",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "used",
+          "remaining",
+          "resets_in"
+        ],
+        "title": "RevealQuotaOut",
+        "type": "object"
+      },
       "SimulatedWebhook": {
         "description": "Stand-in for the Stripe webhook payload (kept for hermetic tests).\nThe production endpoint is /payments/webhook/stripe below.",
         "properties": {
@@ -3539,6 +3568,33 @@
         "summary": "My Notifications",
         "tags": [
           "identity"
+        ]
+      }
+    },
+    "/v1/me/reveal-quota": {
+      "get": {
+        "description": "What the app shows before someone runs into the wall.\n\nA limit nobody can see is indistinguishable from a broken button.",
+        "operationId": "my_reveal_quota_v1_me_reveal_quota_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevealQuotaOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Reveal Quota",
+        "tags": [
+          "properties"
         ]
       }
     },

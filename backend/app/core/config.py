@@ -67,6 +67,23 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
     smtp_from: str = "noreply@homies.example"
+    # Free board: how many DIFFERENT owners one account may uncover in a
+    # rolling 24 hours. The rate limiter bounds speed, not volume — at its
+    # sustained refill one account could still take thousands of numbers a day,
+    # which is the whole board. This is the ceiling on the total.
+    #
+    # Sized for a person looking for a flat, not for a business: viewings are
+    # arranged a handful at a time. Raise it only against evidence of real
+    # tenants hitting it, never to unblock a single complaint.
+    contact_reveal_daily_quota: int = 20
+
+    @field_validator("contact_reveal_daily_quota")
+    @classmethod
+    def _validate_reveal_quota(cls, v: int) -> int:
+        if v < 1:
+            raise ValueError("CONTACT_REVEAL_DAILY_QUOTA must be at least 1")
+        return v
+
     access_token_ttl_seconds: int = 1800
     refresh_token_ttl_days: int = 30
 

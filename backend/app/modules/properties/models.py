@@ -31,6 +31,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -173,6 +174,10 @@ class ContactReveal(Base):
         # One row per (viewer, offer): repeat views are not repeat disclosures,
         # and counting them would overstate both the quota and the risk signal.
         UniqueConstraint("offer_id", "viewer_id", name="uq_contact_reveal_viewer"),
+        # The quota query, run before every disclosure: one viewer's rows inside
+        # a 24-hour window. Without the time column in the index this degrades
+        # into reading a heavy user's whole history on each request.
+        Index("ix_contact_reveals_viewer_time", "viewer_id", "revealed_at"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))

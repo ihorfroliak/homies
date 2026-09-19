@@ -11,28 +11,29 @@ That protection is the security-relevant part of this module:
 * the number is disclosed only through `POST /classifieds/{id}/contact`, which
   requires an account with a *verified phone* — and `users.phone` is unique, so
   the SIM that proves one account cannot prove the next;
-* every disclosure is recorded in `ContactReveal`, which is what makes a daily
-  quota, an owner-facing "who asked for my number" view, and a scraping signal
-  possible later. Recording from day one costs nothing; reconstructing it
-  afterwards is impossible.
+* every disclosure is recorded in `ContactReveal`, and those rows are now read:
+  one account may uncover a bounded number of DIFFERENT owners per rolling 24
+  hours. The rate limiter bounds speed; this bounds the total, which is what
+  stands between a verified account and the whole board overnight.
 
 Narrower than PRODUCT_MODEL, deliberately: the model asks for a verified email
 *and* phone. Email verification exists (`/v1/me/verify/email/*`) but is not a
 second gate here — it adds a round trip for the tenant and nothing an automated
 collector cannot buy in bulk. Tightening it is a product call, not a gap.
 
-Still open: a per-account daily reveal quota. `ContactReveal` already carries
-the rows it needs; nothing reads them yet.
+Still open: the owner-facing "who asked for my number" view. The rows exist.
 """
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from prometheus_client import Counter
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.audit import audit
+from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import get_current_user, require_role
 from app.modules.properties.attributes import AttributeError_, load_catalogue
@@ -51,6 +52,7 @@ from app.modules.properties.schemas import (
     ContactRevealOut,
     PropertyCreate,
     PropertyOut,
+    RevealQuotaOut,
 )
 
 router = APIRouter(tags=["properties"])
@@ -346,6 +348,64 @@ def get_classified(offer_id: str, db: Session = Depends(get_db)):
     return _public(offer)
 
 
+QUOTA_WINDOW = timedelta(hours=24)
+
+REVEALS = Counter(
+    "homies_contact_reveals_total",
+    "Owner phone disclosures on the free board",
+    # granted: a new number handed over. repeat: the viewer already had it.
+    # quota_blocked: the account hit its daily ceiling — the one to watch, and
+    # the only signal that distinguishes a busy tenant from a collector.
+    ["outcome"],
+)
+
+
+def _aware(value: datetime) -> datetime:
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+def _quota_used(db: Session, viewer_id: str) -> tuple[int, int]:
+    """Reveals this account made in the last 24 hours, and when one frees up.
+
+    A ROLLING window, not a calendar day: resetting at midnight hands anyone
+    who waits for it a double quota in the small hours, which is exactly when
+    an unattended collector runs.
+
+    Counted from `contact_reveals` rather than a counter on the user, so the
+    number is reconstructible, survives a restart, and matches the evidence a
+    dispute would be argued from.
+    """
+    since = datetime.now(timezone.utc) - QUOTA_WINDOW
+    rows = list(
+        db.scalars(
+            select(ContactReveal.revealed_at)
+            .where(ContactReveal.viewer_id == viewer_id, ContactReveal.revealed_at >= since)
+            .order_by(ContactReveal.revealed_at)
+        )
+    )
+    if not rows:
+        return 0, int(QUOTA_WINDOW.total_seconds())
+    frees_at = _aware(rows[0]) + QUOTA_WINDOW
+    retry_after = max(1, int((frees_at - datetime.now(timezone.utc)).total_seconds()))
+    return len(rows), retry_after
+
+
+@router.get("/me/reveal-quota", response_model=RevealQuotaOut)
+def my_reveal_quota(user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """What the app shows before someone runs into the wall.
+
+    A limit nobody can see is indistinguishable from a broken button.
+    """
+    used, retry_after = _quota_used(db, user.id)
+    quota = settings.contact_reveal_daily_quota
+    return RevealQuotaOut(
+        limit=quota,
+        used=min(used, quota),
+        remaining=max(0, quota - used),
+        resets_in=retry_after if used else 0,
+    )
+
+
 @router.post("/classifieds/{offer_id}/contact", response_model=ContactRevealOut)
 def reveal_contact(
     offer_id: str,
@@ -379,20 +439,45 @@ def reveal_contact(
             status.HTTP_409_CONFLICT, "This owner accepts messages only, not phone calls"
         )
 
+    already = db.scalar(
+        select(ContactReveal).where(
+            ContactReveal.offer_id == offer.id, ContactReveal.viewer_id == user.id
+        )
+    )
+    if already is not None:
+        # Same viewer asking twice. Not a second disclosure — they already have
+        # the number — so it costs no quota, inflates no risk signal, and adds
+        # no row. Checked BEFORE the quota, or a tenant who spent today's
+        # budget could not re-open a number they were given this morning.
+        REVEALS.labels(outcome="repeat").inc()
+        return ContactRevealOut(offer_id=offer.id, contact_phone=offer.contact_phone)
+
+    used, retry_after = _quota_used(db, user.id)
+    if used >= settings.contact_reveal_daily_quota:
+        REVEALS.labels(outcome="quota_blocked").inc()
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Daily limit of owner contacts reached. It frees up as today's views age out.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
     db.add(ContactReveal(offer_id=offer.id, viewer_id=user.id))
     try:
         db.flush()
     except IntegrityError:
-        # Same viewer asking twice. Not a second disclosure — they already have
-        # the number — so keep one row and do not inflate the risk signal.
+        # Two requests for the same offer racing each other. The unique
+        # constraint is what decides; the loser gets the same answer.
         db.rollback()
-    else:
-        audit(
-            db,
-            actor=user.id,
-            action="classified.contact_revealed",
-            entity_type="classified_offer",
-            entity_id=offer.id,
-        )
-        db.commit()
+        REVEALS.labels(outcome="repeat").inc()
+        return ContactRevealOut(offer_id=offer.id, contact_phone=offer.contact_phone)
+
+    audit(
+        db,
+        actor=user.id,
+        action="classified.contact_revealed",
+        entity_type="classified_offer",
+        entity_id=offer.id,
+    )
+    db.commit()
+    REVEALS.labels(outcome="granted").inc()
     return ContactRevealOut(offer_id=offer.id, contact_phone=offer.contact_phone)
