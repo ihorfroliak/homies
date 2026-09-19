@@ -8,13 +8,16 @@ Result matrix and gaps: docs/reviews/2026-07-06-oat-01-report.md.
 
 from datetime import date, timedelta
 
+from app.core.config import settings
 from tests.conftest import auth, fire_webhook, register_and_login
 
 CI = (date.today() + timedelta(days=25)).isoformat()
 CO = (date.today() + timedelta(days=28)).isoformat()  # 3 nights
 NIGHTLY = 40000
 TOTAL = 3 * NIGHTLY
-FEE = TOTAL * 1500 // 10_000
+# Derived from the configured rate, not hardcoded: the commission is a business
+# knob (8% as of 2026-09-19) and a rate change must not break arithmetic tests.
+FEE = TOTAL * settings.platform_fee_bps // 10_000
 NET = TOTAL - FEE
 
 

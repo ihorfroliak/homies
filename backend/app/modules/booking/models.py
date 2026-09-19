@@ -4,6 +4,7 @@ from uuid import uuid4
 from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.config import settings
 from app.core.db import Base
 
 
@@ -25,6 +26,14 @@ class Booking(Base):
     status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
     total_amount: Mapped[int] = mapped_column(Integer)  # minor units, ADR-0002
     currency: Mapped[str] = mapped_column(String(3))
+    # The commission rate agreed AT BOOKING TIME, in basis points. Stamped here
+    # rather than read from settings at payout: the rate is an admin-editable
+    # setting, and reading it later silently re-prices every booking that has
+    # not been paid out yet — a host who agreed to 8% would be paid as if they
+    # had agreed to whatever the rate is on payout day.
+    commission_bps: Mapped[int] = mapped_column(
+        Integer, default=lambda: settings.platform_fee_bps
+    )
     # none -> paid (payout allocated and sent to host via ledger)
     payout_status: Mapped[str] = mapped_column(String(16), default="none", index=True)
     # operational state (OAT-02): none -> checkin_available -> checked_in -> checked_out

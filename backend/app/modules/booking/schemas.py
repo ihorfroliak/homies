@@ -3,6 +3,14 @@ from datetime import date
 from pydantic import BaseModel, Field, model_validator
 
 
+# A Homies booking is capped at 180 nights (docs/PRODUCT_MODEL.md §1). Anything
+# longer is long-term rental, which lives on the free classifieds board and is
+# never booked or paid through the platform. Enforced here rather than deeper in
+# because a 3650-night booking would otherwise multiply cleanly all the way into
+# the ledger.
+MAX_NIGHTS = 180
+
+
 class BookingCreate(BaseModel):
     listing_id: str
     check_in: date
@@ -13,6 +21,11 @@ class BookingCreate(BaseModel):
     def check_dates(self):
         if self.check_out <= self.check_in:
             raise ValueError("check_out must be after check_in")
+        if (self.check_out - self.check_in).days > MAX_NIGHTS:
+            raise ValueError(
+                f"A booking may not exceed {MAX_NIGHTS} nights. Longer stays are "
+                "long-term rental — see the free listings board."
+            )
         return self
 
 

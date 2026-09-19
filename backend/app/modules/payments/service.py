@@ -17,8 +17,13 @@ from app.modules.payments.models import Payment
 from app.modules.payments.provider import provider
 
 
-def platform_fee(amount: int) -> int:
-    return amount * settings.platform_fee_bps // 10_000
+def platform_fee(amount: int, bps: int | None = None) -> int:
+    """Commission in minor units. `bps` comes from the booking, not from config.
+
+    The default exists only for callers computing a quote before a booking row
+    exists; every payout path must pass the booking's stamped rate.
+    """
+    return amount * (settings.platform_fee_bps if bps is None else bps) // 10_000
 
 
 def create_payment_for_booking(db: Session, booking: Booking, host_id: str) -> Payment:
@@ -317,7 +322,7 @@ def run_host_payout(db: Session, host_id: str, actor: str) -> dict:
         )
         if payment is None:
             continue  # unpaid or refunded booking never pays out
-        fee = platform_fee(booking.total_amount)
+        fee = platform_fee(booking.total_amount, booking.commission_bps)
         net = booking.total_amount - fee
         allocation_lines = [
             (ledger.BOOKING_ESCROW, booking.total_amount),

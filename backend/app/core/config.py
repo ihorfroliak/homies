@@ -71,7 +71,12 @@ class Settings(BaseSettings):
     refresh_token_ttl_days: int = 30
 
     # Money (ADR-0002: integer minor units)
-    platform_fee_bps: int = 1500  # 15% managed fee placeholder until pricing is approved
+    # 8% on both paid rental modes, decided 2026-09-19 (docs/PRODUCT_MODEL.md).
+    # Basis points, not a percentage: ADR-0002 keeps money in integers.
+    # NOTE: this is read at PAYOUT time, so changing it re-prices every booking
+    # that has not been paid out yet. Stamping the rate onto the booking at
+    # creation is the fix and must land before the first real booking exists.
+    platform_fee_bps: int = 800
     default_currency: str = "PLN"
 
 
