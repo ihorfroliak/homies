@@ -9,10 +9,15 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 export BACKUP_KEY="${BACKUP_KEY:-dev-backup-key-change-me}"
+# A drill produces a throwaway artifact, so the published default is fine
+# here and nowhere else.
+export ALLOW_DEV_BACKUP_KEY=1
 CONTAINER=homies-db-1
 SRC=homies
 DR=homies_dr
-PY="../../.venv/Scripts/python"
+# Was hardcoded to a Windows venv path, which meant the drill could not run
+# on the machine that would actually be recovering anything.
+PY="${PY:-$(command -v python3 || command -v python)}"
 URL="postgresql+psycopg://homies:homies@localhost:5433/${DR}"
 
 echo "=================== D9 DR DRILL ==================="

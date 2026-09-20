@@ -8,7 +8,16 @@ set -euo pipefail
 ART="$1"
 TARGET="${2:-homies_dr}"
 CONTAINER="${3:-homies-db-1}"
-KEY="${BACKUP_KEY:-dev-backup-key-change-me}"
+# An encrypted artifact under a key that is published in this repository is an
+# unencrypted artifact. Refuse rather than produce a backup whose protection is
+# imaginary; a drill can opt out explicitly.
+DEFAULT_KEY="dev-backup-key-change-me"
+KEY="${BACKUP_KEY:-$DEFAULT_KEY}"
+if [ "$KEY" = "$DEFAULT_KEY" ] && [ "${ALLOW_DEV_BACKUP_KEY:-0}" != "1" ]; then
+    echo "refusing: BACKUP_KEY is the published default. Set a real key, or" >&2
+    echo "ALLOW_DEV_BACKUP_KEY=1 for a throwaway drill." >&2
+    exit 2
+fi
 
 echo "[restore] verifying checksum"
 sha256sum -c "${ART}.sha256"
