@@ -17,7 +17,7 @@ from app.core.config import settings, validate_security_config
 from app.core.health import check_database
 from app.core.http_metrics import http_metrics_middleware
 from app.core.ratelimit import client_ip, limiter, resolve_policy
-from app.core.schema import ensure_schema
+from app.core.schema import ensure_schema, verify_ledger_privileges
 from app.modules.admin.router import router as admin_router
 from app.modules.booking.expiry import worker as booking_expiry_worker
 from app.modules.booking.router import router as booking_router
@@ -39,6 +39,10 @@ async def lifespan(app: FastAPI):
     # engine (conftest).
     if settings.env != "test":
         ensure_schema()
+        # B5: a production role must not be able to rewrite the ledger. Checked
+        # here because a provisioning step nobody verifies is a provisioning
+        # step that eventually does not happen.
+        verify_ledger_privileges()
         if settings.notification_worker_enabled:
             notification_worker.start()
         if settings.booking_expiry_worker_enabled:

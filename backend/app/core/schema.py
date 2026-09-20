@@ -17,7 +17,7 @@ from alembic import command
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 from app.core.config import settings
 
@@ -78,3 +78,57 @@ def ensure_schema() -> None:
             "Run `alembic upgrade head` before starting the app."
         )
     log.info("schema verified at head %s", head)
+
+
+class LedgerPrivilegeError(RuntimeError):
+    """The application's database role can rewrite the ledger.
+
+    Append-only is enforced by triggers, but a trigger does not bind the role
+    that owns the table — the owner can disable it, edit, and re-enable. So a
+    production deployment must connect as a role without UPDATE or DELETE on
+    the append-only tables (`ops/sql/app_role.sql`). This is raised when it
+    does not.
+    """
+
+
+def verify_ledger_privileges() -> None:
+    """Refuse to serve production traffic with a role that can edit the money.
+
+    Checked rather than documented, for the same reason SEC-02 checks secrets:
+    "run this SQL when you provision" is a step that gets skipped, and the
+    skipping is invisible until the day someone needs the ledger to be
+    evidence. A local or test database is deliberately exempt — there the app
+    owns its schema by design.
+
+    Tables are taken from the triggers, so a new append-only table is covered
+    the day it exists rather than the day someone remembers this function.
+    """
+    if settings.env in SELF_MIGRATING_ENVIRONMENTS or settings.env == "test":
+        return
+    if not settings.database_url.startswith("postgresql"):
+        return
+
+    engine = create_engine(settings.database_url)
+    try:
+        with engine.connect() as conn:
+            writable = list(
+                conn.scalars(
+                    text(
+                        "SELECT tbl FROM (SELECT DISTINCT tgrelid::regclass::text AS tbl "
+                        "FROM pg_trigger WHERE NOT tgisinternal "
+                        "AND tgname ~ '_append_only$') t "
+                        "WHERE has_table_privilege(current_user, tbl, 'UPDATE') "
+                        "OR has_table_privilege(current_user, tbl, 'DELETE')"
+                    )
+                )
+            )
+    finally:
+        engine.dispose()
+
+    if writable:
+        raise LedgerPrivilegeError(
+            "The application role holds UPDATE/DELETE on append-only tables: "
+            f"{', '.join(writable)}. Apply ops/sql/app_role.sql and connect as "
+            "homies_app (release plan B5)."
+        )
+    log.info("ledger privileges verified: append-only tables are not writable")
