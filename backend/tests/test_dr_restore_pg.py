@@ -28,7 +28,7 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import DBAPIError
 
-from tests.conftest import TEST_DATABASE_URL, auth, register_and_login
+from tests.conftest import TEST_DATABASE_URL, auth, register_and_login, verify_ownership
 
 # The client tools are not importable Python; they are binaries that must match
 # the server's major version. PG_BIN lets a deployment point at a pinned client
@@ -130,6 +130,7 @@ def _seed_a_real_business_day(client):
     # The free board, so the copy is checked against the whole current schema
     # and not only the tables that existed when the drill was first written.
     prop = client.post("/v1/properties", json=PROPERTY, headers=auth(host))
+    verify_ownership(client, host, prop.json()["id"])
     offer_id = client.post(
         f"/v1/properties/{prop.json()['id']}/classifieds",
         json=CLASSIFIED,

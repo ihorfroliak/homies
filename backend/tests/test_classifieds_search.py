@@ -11,7 +11,7 @@ from datetime import date
 
 import pytest
 
-from tests.conftest import auth, register_and_login
+from tests.conftest import auth, register_and_login, verify_ownership
 
 BASE_PROPERTY = {
     "property_type": "apartment",
@@ -46,6 +46,7 @@ def _publish(client, token, *, property_overrides=None, offer_overrides=None):
         headers=auth(token),
     )
     assert prop.status_code == 201, prop.text
+    verify_ownership(client, token, prop.json()["id"])
     offer = client.post(
         f"/v1/properties/{prop.json()['id']}/classifieds",
         json={**BASE_OFFER, **(offer_overrides or {})},

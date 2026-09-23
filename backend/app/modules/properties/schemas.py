@@ -64,6 +64,18 @@ class PropertyCreate(BaseModel):
         return self
 
 
+class AuthorityOut(BaseModel):
+    """Owner-facing summary of one right over the property. The holder's legal
+    identity is not included: this is what the owner needs to act, not a
+    record of who else may."""
+
+    id: str
+    authority_type: str
+    status: str
+    verification_state: str
+    scopes: list[str]
+
+
 class PropertyOut(BaseModel):
     id: str
     owner_id: str
@@ -85,6 +97,7 @@ class PropertyOut(BaseModel):
     parking: str
     pets_allowed: bool
     attributes: dict
+    authorities: list[AuthorityOut] = []
 
     model_config = {"from_attributes": True}
 

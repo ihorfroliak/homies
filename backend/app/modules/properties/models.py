@@ -29,6 +29,7 @@ from sqlalchemy import (
     BigInteger,
     JSON,
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     ForeignKey,
@@ -231,3 +232,106 @@ class AttributeDefinition(Base):
     # The equivalent code at an external pricing provider, where one exists.
     external_code: Mapped[str] = mapped_column(String(48), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+# --- Property authority (Domain Schema v1 §30–§32) ----------------------------
+#
+# The right to act on a specific property, held by a LegalParty. This — not
+# `Property.owner_id` — is what every write on a property is authorised against.
+#
+# Two axes, deliberately separate:
+#
+# * `status` is whether the right is in force (ACTIVE, REVOKED, EXPIRED...);
+# * `verification_state` is whether Homies has checked the claim.
+#
+# A person who registers a flat holds an ACTIVE, UNVERIFIED authority at once:
+# enough to prepare the listing, not enough to publish it. Publishing a flat
+# you do not own is the classic scam on a free board, and it is stopped here
+# rather than after the first victim wires a deposit.
+
+AUTHORITY_TYPES = (
+    "OWNER",
+    "CO_OWNER",
+    "AUTHORIZED_REPRESENTATIVE",
+    "PROPERTY_MANAGER",
+    "TENANT_WITH_SUBLET_RIGHT",
+    "OTHER_VERIFIED_RIGHT",
+)
+AUTHORITY_STATUSES = ("PENDING", "ACTIVE", "REVOKED", "EXPIRED")
+VERIFICATION_STATES = ("UNVERIFIED", "PENDING", "VERIFIED", "REJECTED")
+AUTHORITY_SCOPES = (
+    "EDIT_PROPERTY",
+    "PUBLISH_LISTING",
+    "MANAGE_MEDIA",
+    "MANAGE_VIEWINGS",
+    "MANAGE_MESSAGES",
+    "MANAGE_APPLICATIONS",
+    "SIGN_CONTRACT",
+    "VIEW_FINANCIALS",
+    "MANAGE_SERVICES",
+)
+# What an owner registering their own flat receives in Phase 1. Contract,
+# financial and service scopes wait for the features that would use them.
+OWNER_PHASE1_SCOPES = (
+    "EDIT_PROPERTY",
+    "PUBLISH_LISTING",
+    "MANAGE_MEDIA",
+    "MANAGE_VIEWINGS",
+    "MANAGE_MESSAGES",
+)
+
+
+def _in(column: str, values: tuple[str, ...]) -> str:
+    return f"{column} IN ({', '.join(repr(v) for v in values)})"
+
+
+class PropertyAuthority(Base):
+    __tablename__ = "property_authorities"
+    __table_args__ = (
+        CheckConstraint(
+            _in("authority_type", AUTHORITY_TYPES), name="ck_property_authorities_type"
+        ),
+        CheckConstraint(_in("status", AUTHORITY_STATUSES), name="ck_property_authorities_status"),
+        CheckConstraint(
+            _in("verification_state", VERIFICATION_STATES),
+            name="ck_property_authorities_verification",
+        ),
+        CheckConstraint(
+            "effective_until IS NULL OR effective_until >= effective_from",
+            name="ck_property_authorities_effective_range",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    property_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("properties.id", ondelete="RESTRICT"), index=True
+    )
+    holder_legal_party_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("legal_parties.id", ondelete="RESTRICT"), index=True
+    )
+    authority_type: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(16), default="PENDING")
+    verification_state: Mapped[str] = mapped_column(String(16), default="UNVERIFIED")
+    effective_from: Mapped[date] = mapped_column(Date)
+    effective_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    created_by_user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="RESTRICT")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(BigInteger, default=1)
+
+
+class PropertyAuthorityScope(Base):
+    __tablename__ = "property_authority_scopes"
+    __table_args__ = (
+        CheckConstraint(_in("scope", AUTHORITY_SCOPES), name="ck_property_authority_scopes_scope"),
+    )
+
+    property_authority_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("property_authorities.id", ondelete="CASCADE"), primary_key=True
+    )
+    scope: Mapped[str] = mapped_column(String(32), primary_key=True)

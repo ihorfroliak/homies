@@ -22,10 +22,13 @@ from app.core.security import (
     verify_password,
 )
 from app.modules.identity import verification
-from app.modules.identity.models import HostProfile, RefreshToken, User
+from app.modules.identity.models import HostProfile, PersonLegalParty, RefreshToken, User
+from app.modules.identity.parties import personal_party
 from app.modules.identity.schemas import (
     HostOnboardingRequest,
     HostProfileOut,
+    LegalIdentityIn,
+    LegalIdentityOut,
     LoginRequest,
     PhoneVerificationStart,
     RefreshRequest,
@@ -325,3 +328,54 @@ def confirm_verification(
             status.HTTP_409_CONFLICT, "That number is already linked to another account"
         ) from None
     return _state(user)
+
+
+# --- Legal identity -----------------------------------------------------------
+
+
+@router.put("/me/legal-identity", response_model=LegalIdentityOut)
+def set_legal_identity(
+    body: LegalIdentityIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Record the legal name a property claim is verified against.
+
+    Locked once any claim held under it has been verified. Otherwise a
+    verified owner could rename themselves afterwards, and the verification
+    would silently vouch for a person nobody checked.
+    """
+    # Imported here, not at module level: identity must not depend on the
+    # property module to load. It reads one fact from it, at one moment.
+    from app.modules.properties.models import PropertyAuthority
+
+    party = personal_party(db, user)
+    person = db.get(PersonLegalParty, party.id)
+    assert person is not None  # personal_party always creates the subtype row
+
+    verified = db.scalar(
+        select(PropertyAuthority.id)
+        .where(
+            PropertyAuthority.holder_legal_party_id == party.id,
+            PropertyAuthority.verification_state == "VERIFIED",
+        )
+        .limit(1)
+    )
+    if verified is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Your legal name is locked: an ownership claim has been verified against it",
+        )
+
+    person.legal_first_name = body.legal_first_name.strip()
+    person.legal_last_name = body.legal_last_name.strip()
+    person.country_of_residence = body.country_of_residence
+    audit(db, actor=user.id, action="legal_identity.updated", entity_type="legal_party",
+          entity_id=party.id)
+    db.commit()
+    return LegalIdentityOut(
+        legal_party_id=party.id,
+        legal_first_name=person.legal_first_name,
+        legal_last_name=person.legal_last_name,
+        country_of_residence=person.country_of_residence,
+    )

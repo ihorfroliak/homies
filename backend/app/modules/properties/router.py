@@ -36,6 +36,7 @@ from app.core.audit import audit
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import get_current_user, require_role
+from app.modules.properties import authority
 from app.modules.properties.attributes import AttributeError_, load_catalogue
 from app.modules.properties.attributes import validate as validate_attributes
 from app.modules.properties.models import (
@@ -46,6 +47,7 @@ from app.modules.properties.models import (
 )
 from app.modules.properties.schemas import (
     AttributeOut,
+    AuthorityOut,
     ClassifiedCreate,
     ClassifiedOut,
     ClassifiedPage,
@@ -77,21 +79,46 @@ def _public(offer: ClassifiedOffer) -> ClassifiedOut:
     )
 
 
-def _owned_property(db: Session, property_id: str, owner_id: str) -> Property:
-    prop = db.get(Property, property_id)
-    # 404 rather than 403 for someone else's property: an authorization error
-    # that distinguishes "not yours" from "does not exist" is an enumeration
-    # oracle.
-    if prop is None or prop.owner_id != owner_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Property not found")
-    return prop
+def _authorized_offer(
+    db: Session, user, offer_id: str, *, verified: bool
+) -> ClassifiedOffer:
+    """An offer the caller may manage, decided by authority over its property.
 
-
-def _owned_offer(db: Session, offer_id: str, owner_id: str) -> ClassifiedOffer:
+    Not by `offer.owner_id`: that records who typed the listing in, which stops
+    being the right answer the moment an agent lists for an owner, or an owner
+    sells and the new one takes over.
+    """
     offer = db.get(ClassifiedOffer, offer_id)
-    if offer is None or offer.owner_id != owner_id:
+    if offer is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
+    try:
+        authority.require(db, user, offer.property_id, "PUBLISH_LISTING", verified=verified)
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_404_NOT_FOUND:
+            # Same enumeration rule as the property itself.
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found") from None
+        raise
     return offer
+
+
+def _property_out(db: Session, prop: Property) -> PropertyOut:
+    """The owner-facing shape, with the authority summary Schema v1 §116 asks
+    for: the owner needs to see that their claim is unverified to understand
+    why Publish refuses."""
+    return PropertyOut.model_validate(prop).model_copy(
+        update={
+            "authorities": [
+                AuthorityOut(
+                    id=a.id,
+                    authority_type=a.authority_type,
+                    status=a.status,
+                    verification_state=a.verification_state,
+                    scopes=authority.scopes_of(db, a.id),
+                )
+                for a in authority.authorities_of(db, prop.id)
+            ]
+        }
+    )
 
 
 # --- properties ---------------------------------------------------------------
@@ -116,14 +143,24 @@ def create_property(
     prop = Property(owner_id=user.id, **data)
     db.add(prop)
     db.flush()
+    # Registering a flat is a claim to it, recorded as an authority held by the
+    # registrant's legal person — unverified until Homies checks it.
+    authority.grant_owner(db, user, prop.id)
     audit(db, actor=user.id, action="property.created", entity_type="property", entity_id=prop.id)
     db.commit()
-    return prop
+    return _property_out(db, prop)
 
 
 @router.get("/properties", response_model=list[PropertyOut])
 def my_properties(user=Depends(require_role("host")), db: Session = Depends(get_db)):
-    return list(db.scalars(select(Property).where(Property.owner_id == user.id)))
+    """Every property this account may edit — by authority, not by who
+    created the row."""
+    props = db.scalars(
+        select(Property).where(
+            Property.id.in_(authority.authorized_property_ids(user.id, "EDIT_PROPERTY"))
+        )
+    )
+    return [_property_out(db, p) for p in props]
 
 
 @router.get("/attributes", response_model=list[AttributeOut])
@@ -152,7 +189,9 @@ def create_classified(
     The board starts at six months. Anything shorter is a Homies booking — paid
     and commissioned — and must not arrive here relabelled.
     """
-    prop = _owned_property(db, property_id, user.id)
+    # A draft needs an authority in force, not a verified one: the owner has
+    # to be able to prepare the listing while the claim is being checked.
+    prop = authority.require(db, user, property_id, "PUBLISH_LISTING", verified=False)
     offer = ClassifiedOffer(property_id=prop.id, owner_id=user.id, **body.model_dump())
     db.add(offer)
     db.flush()
@@ -173,7 +212,10 @@ def publish_classified(
     user=Depends(require_role("host")),
     db: Session = Depends(get_db),
 ):
-    offer = _owned_offer(db, offer_id, user.id)
+    # Publishing is the one step that needs a VERIFIED claim. A listing for a
+    # flat the poster does not own is the scam this board would otherwise
+    # carry; it is refused here, before the first deposit is wired.
+    offer = _authorized_offer(db, user, offer_id, verified=True)
     offer.status = "active"
     offer.published_at = datetime.now(timezone.utc)
     audit(
@@ -193,7 +235,9 @@ def pause_classified(
     user=Depends(require_role("host")),
     db: Session = Depends(get_db),
 ):
-    offer = _owned_offer(db, offer_id, user.id)
+    # Taking a listing down needs no verification: a holder whose claim is
+    # still unchecked must always be able to stop showing it.
+    offer = _authorized_offer(db, user, offer_id, verified=False)
     offer.status = "paused"
     db.commit()
     return _public(offer)

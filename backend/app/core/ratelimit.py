@@ -251,6 +251,8 @@ def resolve_policy(method: str, path: str) -> Policy | None:
         return ADMIN
     if path.startswith("/v1/me/verify"):
         return VERIFY_CONFIRM if path.endswith("/confirm") else VERIFY_SEND
+    if path.startswith("/v1/me/legal-identity") and method not in ("GET", "HEAD", "OPTIONS"):
+        return PROPERTY_WRITE
     if method in ("GET", "HEAD", "OPTIONS"):
         return PUBLIC_READ
     if path.startswith("/v1/bookings"):

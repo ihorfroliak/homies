@@ -9,7 +9,7 @@ have rented it.
 
 import pytest
 
-from tests.conftest import auth, register_and_login
+from tests.conftest import auth, register_and_login, verify_ownership
 
 PROPERTY = {
     "property_type": "apartment",
@@ -40,6 +40,7 @@ def _property(client, token, attributes, address="ul. Atrybutowa 1"):
 def _publish(client, token, attributes, address):
     prop = _property(client, token, attributes, address)
     assert prop.status_code == 201, prop.text
+    verify_ownership(client, token, prop.json()["id"])
     offer = client.post(
         f"/v1/properties/{prop.json()['id']}/classifieds",
         json=OFFER,
@@ -189,6 +190,7 @@ def test_an_unknown_filter_code_fails_loudly(client, owner):
 def test_amenity_filters_combine_with_the_budget(client, owner):
     wanted = _publish(client, owner, {"dishwasher": True}, "ul. Tania 8")
     pricey_prop = _property(client, owner, {"dishwasher": True}, "ul. Droga 9")
+    verify_ownership(client, owner, pricey_prop.json()["id"])
     offer = client.post(
         f"/v1/properties/{pricey_prop.json()['id']}/classifieds",
         json={**OFFER, "rent_amount": 900000},

@@ -10,7 +10,7 @@ from datetime import date
 import pytest
 
 from app.modules.properties.models import MIN_CLASSIFIED_TERM_MONTHS
-from tests.conftest import auth, register_and_login, verify_phone
+from tests.conftest import auth, register_and_login, verify_ownership, verify_phone
 
 PROPERTY = {
     "property_type": "apartment",
@@ -53,6 +53,7 @@ def _owner(client, email="owner@example.com"):
 def _property(client, token, **overrides):
     resp = client.post("/v1/properties", json={**PROPERTY, **overrides}, headers=auth(token))
     assert resp.status_code == 201, resp.text
+    verify_ownership(client, token, resp.json()["id"])
     return resp.json()["id"]
 
 

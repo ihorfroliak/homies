@@ -1,7 +1,15 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -95,3 +103,70 @@ class VerificationCode(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     __table_args__ = (Index("ix_verification_codes_user_channel", "user_id", "channel"),)
+
+
+# --- Legal parties (Domain Schema v1 §16–§17) ---------------------------------
+#
+# A User is an account: an email that can sign in. A LegalParty is someone who
+# can own a flat or sign for one — a natural person or a company. They are not
+# the same thing and must not be merged:
+#
+# * one person may own through their company, and through themselves, at once;
+# * an agent's account acts for an owner who has no account at all;
+# * a verified login proves who is typing, not who owns the building.
+#
+# Rights over a property therefore attach to a LegalParty (see
+# PropertyAuthority), never to a User directly. `Property.owner_id` was exactly
+# the shortcut Schema v1 §110 forbids; it survives only as the creating account.
+
+PARTY_TYPES = ("PERSON", "ORGANIZATION")
+PARTY_STATUSES = ("ACTIVE", "ARCHIVED")
+
+
+def _in(column: str, values: tuple[str, ...]) -> str:
+    return f"{column} IN ({', '.join(repr(v) for v in values)})"
+
+
+class LegalParty(Base):
+    __tablename__ = "legal_parties"
+    __table_args__ = (
+        CheckConstraint(_in("party_type", PARTY_TYPES), name="ck_legal_parties_party_type"),
+        CheckConstraint(_in("status", PARTY_STATUSES), name="ck_legal_parties_status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    party_type: Mapped[str] = mapped_column(String(16))
+    display_name: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(16), default="ACTIVE")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now
+    )
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(BigInteger, default=1)
+
+
+class PersonLegalParty(Base):
+    """PERSON subtype. At most one per account: a person is one legal person.
+
+    Legal names are nullable here although Schema v1 makes them required.
+    Registration has never asked for them, and inventing them from the display
+    name would record as *legal* a name nobody gave as legal. They are required
+    at the point that needs them — verifying authority — not before.
+    """
+
+    __tablename__ = "person_legal_parties"
+
+    legal_party_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("legal_parties.id", ondelete="CASCADE"), primary_key=True
+    )
+    linked_user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="RESTRICT"), unique=True, nullable=True
+    )
+    legal_first_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    legal_last_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    country_of_residence: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now
+    )

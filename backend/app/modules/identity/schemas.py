@@ -82,3 +82,19 @@ class HostProfileOut(BaseModel):
     payout_iban_masked: str
 
     model_config = {"from_attributes": True}
+
+
+class LegalIdentityIn(BaseModel):
+    """The legal name ownership is checked against — as it appears in the land
+    register, not a display name."""
+
+    legal_first_name: str = Field(min_length=1, max_length=255)
+    legal_last_name: str = Field(min_length=1, max_length=255)
+    country_of_residence: str | None = Field(default=None, pattern=r"^[A-Z]{2}$")
+
+
+class LegalIdentityOut(BaseModel):
+    legal_party_id: str
+    legal_first_name: str | None
+    legal_last_name: str | None
+    country_of_residence: str | None

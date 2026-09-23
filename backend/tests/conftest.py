@@ -139,6 +139,60 @@ def verify_phone(client, token: str, phone: str) -> None:
     assert confirmed.status_code == 200, confirmed.text
 
 
+def admin_login(client) -> str:
+    """An admin token for whichever database this client is wired to.
+
+    Works for the SQLite and the Postgres client alike by borrowing the
+    session the app itself was given, so a test never has to know which engine
+    it is running on.
+    """
+    from app.core.db import get_db
+    from sqlalchemy import select
+
+    email = "fixture-admin@example.com"
+    source = client.app.dependency_overrides[get_db]()
+    db = next(source)
+    try:
+        if db.scalar(select(User).where(User.email == email)) is None:
+            db.add(User(email=email, password_hash=hash_password("admin-password-123"),
+                        role="admin"))
+            db.commit()
+    finally:
+        db.close()
+    resp = client.post("/v1/auth/login", json={"email": email, "password": "admin-password-123"})
+    assert resp.status_code == 200, resp.text
+    return resp.json()["access_token"]
+
+
+def verify_ownership(client, owner_token: str, property_id: str) -> None:
+    """Take a property claim through the real verification path.
+
+    The owner gives a legal name, an admin verifies every authority on the
+    property. Driven through the endpoints rather than by setting the column,
+    so every test that publishes also proves the path a real owner walks.
+    """
+    named = client.put(
+        "/v1/me/legal-identity",
+        json={"legal_first_name": "Jan", "legal_last_name": "Kowalski"},
+        headers=auth(owner_token),
+    )
+    # 409 means a claim of theirs is already verified and the name is locked —
+    # the state this helper exists to reach.
+    assert named.status_code in (200, 409), named.text
+
+    admin = admin_login(client)
+    authorities = client.get(
+        f"/v1/admin/properties/{property_id}/authorities", headers=auth(admin)
+    )
+    assert authorities.status_code == 200, authorities.text
+    for entry in authorities.json():
+        if entry["verification_state"] != "VERIFIED":
+            done = client.post(
+                f"/v1/admin/property-authorities/{entry['id']}/verify", headers=auth(admin)
+            )
+            assert done.status_code == 200, done.text
+
+
 def register_and_login(client, email: str, role: str) -> str:
     resp = client.post(
         "/v1/auth/register",
@@ -197,7 +251,8 @@ def pg_client(pg_migrated_engine):
         # Every table a test can write to. A missing name leaks state into the
         # next test: `disputes` was absent since FIN-03 and nothing noticed.
         "notifications domain_events incidents webhook_events disputes "
-        "contact_reveals classified_offers properties verification_codes "
+        "contact_reveals classified_offers property_authority_scopes property_authorities "
+        "properties person_legal_parties legal_parties verification_codes "
         "journal_lines journal_entries ledger_accounts payments bookings "
         "host_blocks listings host_profiles refresh_tokens audit_log users"
     ).split()
@@ -231,7 +286,8 @@ def pg_session(pg_migrated_engine):
         # Every table a test can write to. A missing name leaks state into the
         # next test: `disputes` was absent since FIN-03 and nothing noticed.
         "notifications domain_events incidents webhook_events disputes "
-        "contact_reveals classified_offers properties verification_codes "
+        "contact_reveals classified_offers property_authority_scopes property_authorities "
+        "properties person_legal_parties legal_parties verification_codes "
         "journal_lines journal_entries ledger_accounts payments bookings "
         "host_blocks listings host_profiles refresh_tokens audit_log users"
     ).split()

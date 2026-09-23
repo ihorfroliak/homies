@@ -20,6 +20,8 @@ from app.modules.identity.models import User
 from app.modules.ledger import service as ledger
 from app.modules.ledger.models import JournalEntry
 from app.modules.payments.models import Payment
+from app.modules.properties import authority as property_authority
+from app.modules.properties.models import PropertyAuthority
 
 router = APIRouter(
     prefix="/admin", tags=["admin"], dependencies=[Depends(require_role("admin"))]
@@ -244,3 +246,63 @@ def list_audit(limit: int = Query(100), offset: int = 0, db: Session = Depends(g
         }
         for a in rows
     ]
+
+
+# --- Property authority (Domain Schema v1 §30, §63) ---------------------------
+# Verifying a claim is a human decision against evidence (a land-register
+# extract, a notarial deed, a power of attorney). The endpoint records the
+# decision; it does not pretend to make it.
+
+
+def _authority_view(db: Session, a) -> dict:
+    return {
+        "id": a.id,
+        "property_id": a.property_id,
+        "holder_legal_party_id": a.holder_legal_party_id,
+        "authority_type": a.authority_type,
+        "status": a.status,
+        "verification_state": a.verification_state,
+        "effective_from": a.effective_from.isoformat(),
+        "effective_until": a.effective_until.isoformat() if a.effective_until else None,
+        "scopes": property_authority.scopes_of(db, a.id),
+        "version": a.version,
+    }
+
+
+def _load_authority(db: Session, authority_id: str):
+    found = db.get(PropertyAuthority, authority_id)
+    if found is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Authority not found")
+    return found
+
+
+@router.get("/properties/{property_id}/authorities")
+def property_authorities(property_id: str, db: Session = Depends(get_db)):
+    return [_authority_view(db, a) for a in property_authority.authorities_of(db, property_id)]
+
+
+@router.post("/property-authorities/{authority_id}/verify")
+def verify_property_authority(
+    authority_id: str,
+    db: Session = Depends(get_db),
+    admin=Depends(require_role("admin")),
+):
+    found = _load_authority(db, authority_id)
+    try:
+        property_authority.verify(db, found, admin.id)
+    except property_authority.AuthorityStateError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from None
+    db.commit()
+    return _authority_view(db, found)
+
+
+@router.post("/property-authorities/{authority_id}/revoke")
+def revoke_property_authority(
+    authority_id: str,
+    db: Session = Depends(get_db),
+    admin=Depends(require_role("admin")),
+):
+    found = _load_authority(db, authority_id)
+    paused = property_authority.revoke(db, found, admin.id)
+    db.commit()
+    return {**_authority_view(db, found), "paused_offers": paused}

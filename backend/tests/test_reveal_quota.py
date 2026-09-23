@@ -19,7 +19,13 @@ from sqlalchemy import select
 
 from app.core.config import settings
 from app.modules.properties.models import ContactReveal
-from tests.conftest import TestingSession, auth, register_and_login, verify_phone
+from tests.conftest import (
+    TestingSession,
+    auth,
+    register_and_login,
+    verify_ownership,
+    verify_phone,
+)
 
 PROPERTY = {
     "property_type": "apartment",
@@ -66,6 +72,7 @@ def _publish(client, token, address):
         "/v1/properties", json={**PROPERTY, "address": address}, headers=auth(token)
     )
     assert prop.status_code == 201, prop.text
+    verify_ownership(client, token, prop.json()["id"])
     offer = client.post(
         f"/v1/properties/{prop.json()['id']}/classifieds", json=OFFER, headers=auth(token)
     )
@@ -225,6 +232,7 @@ def test_a_message_only_offer_does_not_spend_quota(client, owner, seeker, small_
     prop = client.post(
         "/v1/properties", json={**PROPERTY, "address": "ul. Wiadomosc 8"}, headers=auth(owner)
     ).json()["id"]
+    verify_ownership(client, owner, prop)
     offer = client.post(
         f"/v1/properties/{prop}/classifieds",
         json={**OFFER, "contact_mode": "message", "contact_phone": ""},

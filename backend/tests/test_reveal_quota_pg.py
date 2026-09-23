@@ -15,7 +15,7 @@ from sqlalchemy import select, text
 from app.core.config import settings
 from app.modules.identity.models import User
 from app.modules.properties.models import ContactReveal
-from tests.conftest import auth, last_code, register_and_login
+from tests.conftest import auth, last_code, register_and_login, verify_ownership
 
 PROPERTY = {
     "property_type": "apartment",
@@ -58,6 +58,7 @@ def _publish(pg_client, owner, address):
         "/v1/properties", json={**PROPERTY, "address": address}, headers=auth(owner)
     )
     assert prop.status_code == 201, prop.text
+    verify_ownership(pg_client, owner, prop.json()["id"])
     offer = pg_client.post(
         f"/v1/properties/{prop.json()['id']}/classifieds", json=OFFER, headers=auth(owner)
     )

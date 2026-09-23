@@ -49,6 +49,43 @@
         "title": "AttributeOut",
         "type": "object"
       },
+      "AuthorityOut": {
+        "description": "Owner-facing summary of one right over the property. The holder's legal\nidentity is not included: this is what the owner needs to act, not a\nrecord of who else may.",
+        "properties": {
+          "authority_type": {
+            "title": "Authority Type",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "verification_state": {
+            "title": "Verification State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "authority_type",
+          "status",
+          "verification_state",
+          "scopes"
+        ],
+        "title": "AuthorityOut",
+        "type": "object"
+      },
       "AvailabilityOut": {
         "properties": {
           "days": {
@@ -564,6 +601,90 @@
         "title": "IncidentCreate",
         "type": "object"
       },
+      "LegalIdentityIn": {
+        "description": "The legal name ownership is checked against — as it appears in the land\nregister, not a display name.",
+        "properties": {
+          "country_of_residence": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Z]{2}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Of Residence"
+          },
+          "legal_first_name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Legal First Name",
+            "type": "string"
+          },
+          "legal_last_name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Legal Last Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "legal_first_name",
+          "legal_last_name"
+        ],
+        "title": "LegalIdentityIn",
+        "type": "object"
+      },
+      "LegalIdentityOut": {
+        "properties": {
+          "country_of_residence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Of Residence"
+          },
+          "legal_first_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legal First Name"
+          },
+          "legal_last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legal Last Name"
+          },
+          "legal_party_id": {
+            "title": "Legal Party Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "legal_party_id",
+          "legal_first_name",
+          "legal_last_name",
+          "country_of_residence"
+        ],
+        "title": "LegalIdentityOut",
+        "type": "object"
+      },
       "ListingCreate": {
         "properties": {
           "address": {
@@ -928,6 +1049,14 @@
             "additionalProperties": true,
             "title": "Attributes",
             "type": "object"
+          },
+          "authorities": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AuthorityOut"
+            },
+            "title": "Authorities",
+            "type": "array"
           },
           "bathrooms": {
             "title": "Bathrooms",
@@ -2019,6 +2148,141 @@
           }
         ],
         "summary": "Payments Reconciliation",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/properties/{property_id}/authorities": {
+      "get": {
+        "operationId": "property_authorities_v1_admin_properties__property_id__authorities_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "property_id",
+            "required": true,
+            "schema": {
+              "title": "Property Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Property Authorities",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/property-authorities/{authority_id}/revoke": {
+      "post": {
+        "operationId": "revoke_property_authority_v1_admin_property_authorities__authority_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "authority_id",
+            "required": true,
+            "schema": {
+              "title": "Authority Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Property Authority",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/property-authorities/{authority_id}/verify": {
+      "post": {
+        "operationId": "verify_property_authority_v1_admin_property_authorities__authority_id__verify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "authority_id",
+            "required": true,
+            "schema": {
+              "title": "Authority Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Verify Property Authority",
         "tags": [
           "admin"
         ]
@@ -3541,6 +3805,53 @@
         ]
       }
     },
+    "/v1/me/legal-identity": {
+      "put": {
+        "description": "Record the legal name a property claim is verified against.\n\nLocked once any claim held under it has been verified. Otherwise a\nverified owner could rename themselves afterwards, and the verification\nwould silently vouch for a person nobody checked.",
+        "operationId": "set_legal_identity_v1_me_legal_identity_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LegalIdentityIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalIdentityOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Legal Identity",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
     "/v1/me/notifications": {
       "get": {
         "description": "In-app notification feed for the logged-in user (guest or host).",
@@ -3821,6 +4132,7 @@
     },
     "/v1/properties": {
       "get": {
+        "description": "Every property this account may edit — by authority, not by who\ncreated the row.",
         "operationId": "my_properties_v1_properties_get",
         "responses": {
           "200": {
