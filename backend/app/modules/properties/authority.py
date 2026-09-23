@@ -3,27 +3,41 @@
 One place decides it, so no route grows its own idea of "owner". Every write on
 a property or its listings asks `require(...)` with the scope it needs.
 
-The chains Schema v1 names:
+The chains Schema v1 names (§32), all three live:
 
 * personal:      User → linked PERSON LegalParty → PropertyAuthority
-* organisation:  User → membership → Organization → its LegalParty → authority
-* mandate:       User → verified RepresentationMandate → LegalParty → authority
+* organisation:  User → ACTIVE membership, in a role that carries the scope →
+                 ACTIVE Organization → its ORGANIZATION LegalParty → authority
+* mandate:       User → ACTIVE, VERIFIED, in-date RepresentationMandate that
+                 carries the scope → principal LegalParty → authority
 
-Only the personal chain exists yet. Organisations and mandates arrive with the
-agency cycle; they extend `_chains`, not the routes.
+Every chain ends at the same authority check — in force, holding the scope,
+and VERIFIED where the action needs it. So a membership or a mandate can pass
+on only what the legal party at its end actually holds; neither can create a
+right that party does not have.
 """
 
 from datetime import date, datetime, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, or_, select, union
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select
 
 from app.core.audit import audit
-from app.modules.identity.models import LegalParty, PersonLegalParty, User
+from app.modules.identity.models import (
+    LegalParty,
+    Organization,
+    OrganizationLegalParty,
+    OrganizationMembership,
+    PersonLegalParty,
+    RepresentationMandate,
+    RepresentationMandateScope,
+    User,
+)
 from app.modules.identity.parties import has_legal_name, personal_party
 from app.modules.properties.models import (
+    AUTHORITY_SCOPES,
     OWNER_PHASE1_SCOPES,
     ClassifiedOffer,
     Property,
@@ -49,12 +63,82 @@ def _in_force(today: date):
     )
 
 
+# What a membership role may do, through its organisation, to the
+# organisation's properties. A VIEWER sees the workspace and acts on nothing; a
+# FINANCE member reads money and publishes nothing.
+ROLE_SCOPES: dict[str, frozenset[str]] = {
+    "OWNER": frozenset(AUTHORITY_SCOPES),
+    "ADMIN": frozenset(AUTHORITY_SCOPES),
+    "AGENT": frozenset(
+        {"EDIT_PROPERTY", "PUBLISH_LISTING", "MANAGE_MEDIA", "MANAGE_VIEWINGS", "MANAGE_MESSAGES"}
+    ),
+    "FINANCE": frozenset({"VIEW_FINANCIALS"}),
+    "VIEWER": frozenset(),
+}
+
+# What each mandate scope lets its holder do to the principal's properties.
+MANDATE_PROPERTY_SCOPES: dict[str, frozenset[str]] = {
+    "MANAGE_PROPERTY": frozenset({"EDIT_PROPERTY", "MANAGE_MEDIA"}),
+    "PUBLISH_LISTING": frozenset({"PUBLISH_LISTING"}),
+    "MANAGE_VIEWINGS": frozenset({"MANAGE_VIEWINGS"}),
+    "MANAGE_MESSAGES": frozenset({"MANAGE_MESSAGES"}),
+    "MANAGE_APPLICATIONS": frozenset({"MANAGE_APPLICATIONS"}),
+    "SIGN_CONTRACTS": frozenset({"SIGN_CONTRACT"}),
+    "VIEW_FINANCIALS": frozenset({"VIEW_FINANCIALS"}),
+    "MANAGE_PAYOUTS": frozenset(),
+}
+
+
+def _holder_parties(user_id: str, scope: str):
+    """Every legal party this account may act for, for this scope."""
+    today = _today()
+    personal = select(PersonLegalParty.legal_party_id).where(
+        PersonLegalParty.linked_user_id == user_id
+    )
+    roles = [role for role, scopes in ROLE_SCOPES.items() if scope in scopes]
+    organisational = (
+        select(OrganizationLegalParty.legal_party_id)
+        .join(Organization, Organization.id == OrganizationLegalParty.organization_id)
+        .join(
+            OrganizationMembership,
+            OrganizationMembership.organization_id == Organization.id,
+        )
+        .where(
+            OrganizationMembership.user_id == user_id,
+            OrganizationMembership.status == "ACTIVE",
+            OrganizationMembership.role.in_(roles),
+            Organization.status == "ACTIVE",
+        )
+    )
+    mandate_scopes = [m for m, scopes in MANDATE_PROPERTY_SCOPES.items() if scope in scopes]
+    mandated = (
+        select(RepresentationMandate.principal_legal_party_id)
+        .join(
+            RepresentationMandateScope,
+            and_(
+                RepresentationMandateScope.mandate_id == RepresentationMandate.id,
+                RepresentationMandateScope.scope.in_(mandate_scopes),
+            ),
+        )
+        .where(
+            RepresentationMandate.representative_user_id == user_id,
+            RepresentationMandate.status == "ACTIVE",
+            RepresentationMandate.verification_state == "VERIFIED",
+            RepresentationMandate.effective_from <= today,
+            or_(
+                RepresentationMandate.effective_until.is_(None),
+                RepresentationMandate.effective_until >= today,
+            ),
+        )
+    )
+    return union(personal, organisational, mandated)
+
+
 def _chains(user_id: str, scope: str, *, verified: bool) -> Select:
     """Property ids this account may act on with `scope`."""
     query = (
         select(PropertyAuthority.property_id)
         .join(LegalParty, LegalParty.id == PropertyAuthority.holder_legal_party_id)
-        .join(PersonLegalParty, PersonLegalParty.legal_party_id == LegalParty.id)
         .join(
             PropertyAuthorityScope,
             and_(
@@ -63,7 +147,7 @@ def _chains(user_id: str, scope: str, *, verified: bool) -> Select:
             ),
         )
         .where(
-            PersonLegalParty.linked_user_id == user_id,
+            PropertyAuthority.holder_legal_party_id.in_(_holder_parties(user_id, scope)),
             LegalParty.status == "ACTIVE",
             _in_force(_today()),
         )
@@ -106,16 +190,25 @@ def require(
     return prop
 
 
-def grant_owner(db: Session, user: User, property_id: str) -> PropertyAuthority:
-    """What registering your own flat gives you: an ACTIVE, UNVERIFIED claim.
+def grant_owner(
+    db: Session,
+    user: User,
+    property_id: str,
+    *,
+    holder_legal_party_id: str | None = None,
+    authority_type: str = "OWNER",
+) -> PropertyAuthority:
+    """What registering a flat gives the registrant: an ACTIVE, UNVERIFIED
+    claim — held by their own legal person, or by the organisation they
+    registered it for.
 
     Enough to prepare every part of the listing. Not enough to publish it.
     """
-    party = personal_party(db, user)
+    holder = holder_legal_party_id or personal_party(db, user).id
     authority = PropertyAuthority(
         property_id=property_id,
-        holder_legal_party_id=party.id,
-        authority_type="OWNER",
+        holder_legal_party_id=holder,
+        authority_type=authority_type,
         status="ACTIVE",
         verification_state="UNVERIFIED",
         effective_from=_today(),

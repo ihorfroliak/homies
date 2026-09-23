@@ -947,6 +947,261 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "MandateCreate": {
+        "properties": {
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "effective_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective Until"
+          },
+          "representative_email": {
+            "format": "email",
+            "title": "Representative Email",
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "enum": [
+                "MANAGE_PROPERTY",
+                "PUBLISH_LISTING",
+                "MANAGE_VIEWINGS",
+                "MANAGE_MESSAGES",
+                "MANAGE_APPLICATIONS",
+                "SIGN_CONTRACTS",
+                "VIEW_FINANCIALS",
+                "MANAGE_PAYOUTS"
+              ],
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Scopes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "representative_email",
+          "scopes"
+        ],
+        "title": "MandateCreate",
+        "type": "object"
+      },
+      "MandateOut": {
+        "properties": {
+          "effective_from": {
+            "format": "date",
+            "title": "Effective From",
+            "type": "string"
+          },
+          "effective_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective Until"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "principal_legal_party_id": {
+            "title": "Principal Legal Party Id",
+            "type": "string"
+          },
+          "representative_user_id": {
+            "title": "Representative User Id",
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "verification_state": {
+            "title": "Verification State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "principal_legal_party_id",
+          "representative_user_id",
+          "status",
+          "verification_state",
+          "effective_from",
+          "effective_until",
+          "scopes"
+        ],
+        "title": "MandateOut",
+        "type": "object"
+      },
+      "MemberInvite": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "ADMIN",
+              "AGENT",
+              "FINANCE",
+              "VIEWER"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "role"
+        ],
+        "title": "MemberInvite",
+        "type": "object"
+      },
+      "MemberOut": {
+        "properties": {
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "role",
+          "status"
+        ],
+        "title": "MemberOut",
+        "type": "object"
+      },
+      "OrganizationCreate": {
+        "properties": {
+          "display_name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "legal_name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Legal Name",
+            "type": "string"
+          },
+          "registration_country": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Z]{2}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registration Country"
+          },
+          "registration_number": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registration Number"
+          },
+          "slug": {
+            "pattern": "^[a-z0-9][a-z0-9-]{1,78}[a-z0-9]$",
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "display_name",
+          "slug",
+          "legal_name"
+        ],
+        "title": "OrganizationCreate",
+        "type": "object"
+      },
+      "OrganizationOut": {
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "legal_party_id": {
+            "title": "Legal Party Id",
+            "type": "string"
+          },
+          "my_role": {
+            "title": "My Role",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "slug",
+          "status",
+          "legal_party_id",
+          "my_role"
+        ],
+        "title": "OrganizationOut",
+        "type": "object"
+      },
       "PhoneVerificationStart": {
         "description": "E.164 only. A free-text number cannot be compared for uniqueness, and\nwithout uniqueness \"verified phone\" stops being one account per SIM.",
         "properties": {
@@ -1093,6 +1348,19 @@
             "title": "Attributes",
             "type": "object"
           },
+          "authority_type": {
+            "default": "OWNER",
+            "enum": [
+              "OWNER",
+              "CO_OWNER",
+              "AUTHORIZED_REPRESENTATIVE",
+              "PROPERTY_MANAGER",
+              "TENANT_WITH_SUBLET_RIGHT",
+              "OTHER_VERIFIED_RIGHT"
+            ],
+            "title": "Authority Type",
+            "type": "string"
+          },
           "bathrooms": {
             "default": 1,
             "minimum": 0.0,
@@ -1181,6 +1449,17 @@
             "minLength": 1,
             "title": "Municipality",
             "type": "string"
+          },
+          "organization_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization Id"
           },
           "parking": {
             "default": "none",
@@ -4416,6 +4695,128 @@
         ]
       }
     },
+    "/v1/me/mandates": {
+      "get": {
+        "description": "Mandates you granted, and mandates granted to you.",
+        "operationId": "my_mandates_v1_me_mandates_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MandateOut"
+                  },
+                  "title": "Response My Mandates V1 Me Mandates Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Mandates",
+        "tags": [
+          "organizations"
+        ]
+      },
+      "post": {
+        "description": "Let someone act for you. The principal is always the caller's own legal\nperson — nobody can grant a mandate over anyone else, and a representative\ncannot pass theirs on.\n\nVERIFIED at once, because the principal's own signed-in account granting it\nis the consent a mandate needs. A mandate arriving any other way — an\nuploaded power of attorney — would start UNVERIFIED and wait for review.",
+        "operationId": "grant_mandate_v1_me_mandates_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MandateCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Grant Mandate",
+        "tags": [
+          "organizations"
+        ]
+      }
+    },
+    "/v1/me/mandates/{mandate_id}/revoke": {
+      "post": {
+        "description": "Only the principal can take a mandate back. To the representative and\nto anyone else, somebody else's mandate does not exist.",
+        "operationId": "revoke_mandate_v1_me_mandates__mandate_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mandate_id",
+            "required": true,
+            "schema": {
+              "title": "Mandate Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MandateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Mandate",
+        "tags": [
+          "organizations"
+        ]
+      }
+    },
     "/v1/me/notifications": {
       "get": {
         "description": "In-app notification feed for the logged-in user (guest or host).",
@@ -4620,6 +5021,289 @@
         "summary": "Confirm Verification",
         "tags": [
           "identity"
+        ]
+      }
+    },
+    "/v1/organizations": {
+      "get": {
+        "operationId": "my_organizations_v1_organizations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationOut"
+                  },
+                  "title": "Response My Organizations V1 Organizations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Organizations",
+        "tags": [
+          "organizations"
+        ]
+      },
+      "post": {
+        "description": "A workspace, its legal party, and its creator as OWNER — one\ntransaction, so none of the three can exist without the others.",
+        "operationId": "create_organization_v1_organizations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Organization",
+        "tags": [
+          "organizations"
+        ]
+      }
+    },
+    "/v1/organizations/{organization_id}/members": {
+      "get": {
+        "operationId": "list_members_v1_organizations__organization_id__members_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organization_id",
+            "required": true,
+            "schema": {
+              "title": "Organization Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MemberOut"
+                  },
+                  "title": "Response List Members V1 Organizations  Organization Id  Members Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Members",
+        "tags": [
+          "organizations"
+        ]
+      },
+      "post": {
+        "operationId": "invite_member_v1_organizations__organization_id__members_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organization_id",
+            "required": true,
+            "schema": {
+              "title": "Organization Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberInvite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Invite Member",
+        "tags": [
+          "organizations"
+        ]
+      }
+    },
+    "/v1/organizations/{organization_id}/members/{member_user_id}/revoke": {
+      "post": {
+        "description": "Take a person's access away. The last OWNER cannot be removed: an\norganisation with nobody able to manage it is one nobody can repair.",
+        "operationId": "revoke_member_v1_organizations__organization_id__members__member_user_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organization_id",
+            "required": true,
+            "schema": {
+              "title": "Organization Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "member_user_id",
+            "required": true,
+            "schema": {
+              "title": "Member User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Member",
+        "tags": [
+          "organizations"
+        ]
+      }
+    },
+    "/v1/organizations/{organization_id}/membership/accept": {
+      "post": {
+        "operationId": "accept_invitation_v1_organizations__organization_id__membership_accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organization_id",
+            "required": true,
+            "schema": {
+              "title": "Organization Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Accept Invitation",
+        "tags": [
+          "organizations"
         ]
       }
     },

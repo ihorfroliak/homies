@@ -22,6 +22,7 @@ from app.modules.admin.router import router as admin_router
 from app.modules.booking.expiry import worker as booking_expiry_worker
 from app.modules.booking.router import router as booking_router
 from app.modules.events.worker import worker as notification_worker
+from app.modules.identity.organizations import router as organizations_router
 from app.modules.identity.router import router as identity_router
 from app.modules.listings.router import router as listings_router
 from app.modules.payments.router import router as payments_router
@@ -104,6 +105,7 @@ app.middleware("http")(http_metrics_middleware)
 
 API_V1 = "/v1"
 app.include_router(identity_router, prefix=API_V1)
+app.include_router(organizations_router, prefix=API_V1)
 app.include_router(listings_router, prefix=API_V1)
 app.include_router(booking_router, prefix=API_V1)
 app.include_router(payments_router, prefix=API_V1)

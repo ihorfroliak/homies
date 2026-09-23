@@ -38,6 +38,7 @@ from app.core.audit import audit
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import get_current_user, require_role
+from app.modules.identity import organizations
 from app.modules.properties import authority, location, pricing, spaces
 from app.modules.properties.attributes import AttributeError_, load_catalogue
 from app.modules.properties.attributes import validate as validate_attributes
@@ -151,17 +152,30 @@ def create_property(
     `municipality` (gmina) is required: the Polish tourist tax is set per gmina
     and charged per night, so a short-stay price cannot be computed without it.
     """
-    data = body.model_dump()
+    data = body.model_dump(exclude={"organization_id", "authority_type"})
     try:
         validate_attributes(db, data.get("attributes") or {})
     except AttributeError_ as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
+    holder = None
+    if body.organization_id is not None:
+        # Registering for an organisation needs a role that may do so, in an
+        # organisation that is active. Anything else looks like no
+        # organisation at all.
+        membership = organizations.active_membership(db, body.organization_id, user.id)
+        if membership is None or membership.role not in organizations.REGISTERING_ROLES:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Organization not found")
+        party = organizations.organization_party(db, body.organization_id)
+        assert party is not None
+        holder = party.legal_party_id
     prop = Property(owner_id=user.id, **data)
     db.add(prop)
     db.flush()
     # Registering a flat is a claim to it, recorded as an authority held by the
     # registrant's legal person — unverified until Homies checks it.
-    authority.grant_owner(db, user, prop.id)
+    authority.grant_owner(
+        db, user, prop.id, holder_legal_party_id=holder, authority_type=body.authority_type
+    )
     # And the whole flat as its first unit of inventory, in the same
     # transaction: a property that exists without one cannot be listed.
     spaces.create_whole(db, prop.id)

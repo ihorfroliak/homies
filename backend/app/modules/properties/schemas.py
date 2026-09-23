@@ -36,6 +36,15 @@ class AttributeOut(BaseModel):
 
 
 class PropertyCreate(BaseModel):
+    # Register for an organisation you belong to, rather than for yourself.
+    # The claim is then held by the organisation's legal party.
+    organization_id: str | None = None
+    # What the registrant claims to be. A claim, not a fact: it is what the
+    # verification checks the evidence against.
+    authority_type: Literal[
+        "OWNER", "CO_OWNER", "AUTHORIZED_REPRESENTATIVE", "PROPERTY_MANAGER",
+        "TENANT_WITH_SUBLET_RIGHT", "OTHER_VERIFIED_RIGHT",
+    ] = "OWNER"
     property_type: str
     city: str = Field(min_length=1, max_length=80)
     district: str = ""

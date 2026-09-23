@@ -10,7 +10,12 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.modules.identity.models import LegalParty, PersonLegalParty, User
+from app.modules.identity.models import (
+    LegalParty,
+    OrganizationLegalParty,
+    PersonLegalParty,
+    User,
+)
 
 
 def find_personal_party(db: Session, user_id: str) -> LegalParty | None:
@@ -53,7 +58,9 @@ def personal_party(db: Session, user: User) -> LegalParty:
 
 def has_legal_name(db: Session, legal_party_id: str) -> bool:
     person = db.get(PersonLegalParty, legal_party_id)
-    if person is None:
-        # Not a person: organisations carry their legal name elsewhere (C6).
-        return True
-    return bool(person.legal_first_name and person.legal_last_name)
+    if person is not None:
+        return bool(person.legal_first_name and person.legal_last_name)
+    organisation = db.get(OrganizationLegalParty, legal_party_id)
+    if organisation is not None:
+        return bool(organisation.legal_name.strip())
+    return False

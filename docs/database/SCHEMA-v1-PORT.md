@@ -15,9 +15,9 @@ reason, the impact, and whether domain semantics changed (spec §131).
 | C2 | `legal_parties`, `person_legal_parties`, `property_authorities`, scopes; one authorization service; publish requires a VERIFIED authority; revocation takes listings down | `49641c0` |
 | C3 | `spaces` (WHOLE_PROPERTY / ROOM); offers point at a space through a composite key; archiving takes listings down; search filters and sorts on the listed area | `903312c` |
 | C4 | Temporal price components with contiguous history; stored summaries (headline, monthly, move-in) recomputed in the same transaction; optimistic concurrency on price edits; flat price columns dropped | `dba093a` |
-| C5 | PostGIS; exact location private (`properties.exact_geog`); listings get a public point at the owner's precision (EXACT / APPROXIMATE grid cell / DISTRICT); viewport and geodesic radius search on a GiST index; public shape gains city and district | this commit |
-| C6 | Organizations, memberships, representation mandates (agency chain) | next |
-| C7 | Conversations, messages, viewings | |
+| C5 | PostGIS; exact location private (`properties.exact_geog`); listings get a public point at the owner's precision (EXACT / APPROXIMATE grid cell / DISTRICT); viewport and geodesic radius search on a GiST index; public shape gains city and district | `1cf8130` |
+| C6 | Organizations with an ORGANIZATION legal party, memberships with roles, representation mandates with scopes; authorization walks all three chains of §32; registering a property for an organisation | this commit |
+| C7 | Conversations, messages, viewings | next |
 | C8 | Files and media | |
 
 ## Deviations
@@ -40,6 +40,8 @@ reason, the impact, and whether domain semantics changed (spec §131).
 | 14 | Price composed of any component types (§46) | The API writes rent, building fee, utilities, parking and deposit; the other types (agency, cleaning, Homies fee, sale price) are accepted by the schema but no endpoint writes them yet | Nothing on the board charges them today; SALE and agency listings arrive later | Those components cannot yet be entered | No |
 | 15 | Structured `addresses` table with `geo_areas` hierarchy, `exact_geog` on the address (§23–§24) | Address stays text on the property; `exact_geog` is a generated column on `properties`; no `geo_areas` yet | The address table and area hierarchy need a geocoder and seeded boundaries; the privacy rule does not | District search is by name, not by polygon | No — exact location is private either way |
 | 16 | Public location precision on the listing (§42) | Same, plus a rule the spec leaves open: APPROXIMATE is the centre of a fixed ~550 m grid cell, not a random offset | A fresh random offset per publication can be averaged back to the flat; a grid cell cannot | Flats sharing a cell share a point | No |
+| 17 | Mandate status defaults to PENDING, verification to UNVERIFIED (§21) | A mandate granted by the principal's own signed-in account is ACTIVE and VERIFIED at once | That grant is the principal's consent; a mandate arriving any other way (an uploaded power of attorney) will start UNVERIFIED when that path exists | Only principals can grant, and only over their own legal person | No |
+| 18 | Organisations as mandate principals, organisation verification (§21, §62) | Mandates are granted by persons only; an organisation's registration number is recorded but not checked | Neither is on the Phase-1 path; both land with the trust cycle | An agency cannot yet delegate by mandate; it delegates by membership | No |
 
 ## What C2 changed in behaviour
 

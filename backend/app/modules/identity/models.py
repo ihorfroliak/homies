@@ -1,14 +1,16 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import (
     BigInteger,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
     Integer,
     String,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -170,3 +172,163 @@ class PersonLegalParty(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_now, onupdate=_now
     )
+
+
+# --- Organizations (Domain Schema v1 §18–§20) ---------------------------------
+#
+# An organization is a workspace — an agency, a management company — that
+# people act in through a membership. Its legal side is a separate ORGANIZATION
+# legal party: the workspace is how people log in and share work, the legal
+# party is what holds rights over property and signs for it.
+
+ORGANIZATION_STATUSES = ("ACTIVE", "SUSPENDED", "ARCHIVED")
+MEMBERSHIP_ROLES = ("OWNER", "ADMIN", "AGENT", "FINANCE", "VIEWER")
+MEMBERSHIP_STATUSES = ("INVITED", "ACTIVE", "REVOKED")
+
+
+class Organization(Base):
+    __tablename__ = "organizations"
+    __table_args__ = (
+        CheckConstraint(_in("status", ORGANIZATION_STATUSES), name="ck_organizations_status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    display_name: Mapped[str] = mapped_column(String(255))
+    slug: Mapped[str] = mapped_column(String(80), unique=True)
+    country_code: Mapped[str] = mapped_column(String(2), default="PL")
+    default_locale: Mapped[str] = mapped_column(String(8), default="pl")
+    status: Mapped[str] = mapped_column(String(16), default="ACTIVE")
+    created_by_user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="RESTRICT")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now
+    )
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(BigInteger, default=1)
+
+
+class OrganizationLegalParty(Base):
+    """ORGANIZATION subtype: the company behind a workspace, by its legal name."""
+
+    __tablename__ = "organization_legal_parties"
+
+    legal_party_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("legal_parties.id", ondelete="CASCADE"), primary_key=True
+    )
+    organization_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("organizations.id", ondelete="RESTRICT"), unique=True,
+        nullable=True,
+    )
+    legal_name: Mapped[str] = mapped_column(String(255))
+    registration_country: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    # KRS or NIP in Poland. Recorded, not validated here: checking it against
+    # the registry is part of verifying the organisation, not of creating it.
+    registration_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now
+    )
+
+
+class OrganizationMembership(Base):
+    __tablename__ = "organization_memberships"
+    __table_args__ = (
+        CheckConstraint(_in("role", MEMBERSHIP_ROLES), name="ck_organization_memberships_role"),
+        CheckConstraint(
+            _in("status", MEMBERSHIP_STATUSES), name="ck_organization_memberships_status"
+        ),
+        UniqueConstraint("organization_id", "user_id", name="uq_organization_memberships_member"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    organization_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("organizations.id", ondelete="RESTRICT"), index=True
+    )
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="RESTRICT"), index=True
+    )
+    role: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16), default="ACTIVE")
+    invited_by_user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
+    )
+    joined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now
+    )
+    version: Mapped[int] = mapped_column(BigInteger, default=1)
+
+
+# --- Representation mandates (Domain Schema v1 §21–§22) -----------------------
+#
+# "User X may act for legal party Y": an owner letting an agent they trust list
+# their flat without that agent joining any organisation. A mandate can only
+# pass on what its principal holds — the authority chain checks both.
+
+MANDATE_STATUSES = ("PENDING", "ACTIVE", "REVOKED", "EXPIRED")
+MANDATE_SCOPES = (
+    "MANAGE_PROPERTY",
+    "PUBLISH_LISTING",
+    "MANAGE_VIEWINGS",
+    "MANAGE_MESSAGES",
+    "MANAGE_APPLICATIONS",
+    "SIGN_CONTRACTS",
+    "VIEW_FINANCIALS",
+    "MANAGE_PAYOUTS",
+)
+MANDATE_VERIFICATION_STATES = ("UNVERIFIED", "PENDING", "VERIFIED", "REJECTED")
+
+
+class RepresentationMandate(Base):
+    __tablename__ = "representation_mandates"
+    __table_args__ = (
+        CheckConstraint(_in("status", MANDATE_STATUSES), name="ck_representation_mandates_status"),
+        CheckConstraint(
+            _in("verification_state", MANDATE_VERIFICATION_STATES),
+            name="ck_representation_mandates_verification",
+        ),
+        CheckConstraint(
+            "effective_until IS NULL OR effective_until >= effective_from",
+            name="ck_representation_mandates_effective_range",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    principal_legal_party_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("legal_parties.id", ondelete="RESTRICT"), index=True
+    )
+    representative_user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="RESTRICT"), index=True
+    )
+    status: Mapped[str] = mapped_column(String(16), default="PENDING")
+    effective_from: Mapped[date] = mapped_column(Date)
+    effective_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    verification_state: Mapped[str] = mapped_column(String(16), default="UNVERIFIED")
+    granted_by_user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(BigInteger, default=1)
+
+
+class RepresentationMandateScope(Base):
+    __tablename__ = "representation_mandate_scopes"
+    __table_args__ = (
+        CheckConstraint(
+            _in("scope", MANDATE_SCOPES), name="ck_representation_mandate_scopes_scope"
+        ),
+    )
+
+    mandate_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("representation_mandates.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    scope: Mapped[str] = mapped_column(String(32), primary_key=True)
