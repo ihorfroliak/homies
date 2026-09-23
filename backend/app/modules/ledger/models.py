@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, event
+from sqlalchemy import BigInteger, DateTime, ForeignKey, String, event
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -56,7 +56,7 @@ class JournalLine(Base):
     account_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("ledger_accounts.id"), index=True
     )
-    amount: Mapped[int] = mapped_column(Integer)  # signed minor units; debit>0, credit<0
+    amount: Mapped[int] = mapped_column(BigInteger)  # signed minor units; debit>0, credit<0
 
 
 # D5 hardening (invariant I4): the ledger is append-only. Corrections are new

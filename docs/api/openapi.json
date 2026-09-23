@@ -305,7 +305,7 @@
         "type": "object"
       },
       "ClassifiedOut": {
-        "description": "Public shape. Deliberately has no phone field — see the module docstring.",
+        "description": "Public shape. Deliberately has no phone field — see the module docstring.\n\nNor an owner id. A stable account identifier on every public listing lets\nanyone join all of one person's listings together — their whole portfolio,\ntheir addresses by district — without an account. Built field by field\nrather than from the row, so a new column never goes public by default\n(Schema v1 §80).",
         "properties": {
           "admin_fee": {
             "title": "Admin Fee",
@@ -366,10 +366,6 @@
             "title": "Other Costs",
             "type": "string"
           },
-          "owner_id": {
-            "title": "Owner Id",
-            "type": "string"
-          },
           "parking_fee": {
             "title": "Parking Fee",
             "type": "integer"
@@ -402,7 +398,6 @@
         "required": [
           "id",
           "property_id",
-          "owner_id",
           "title",
           "description",
           "status",

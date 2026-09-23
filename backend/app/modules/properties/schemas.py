@@ -129,11 +129,17 @@ class ClassifiedCreate(BaseModel):
 
 
 class ClassifiedOut(BaseModel):
-    """Public shape. Deliberately has no phone field — see the module docstring."""
+    """Public shape. Deliberately has no phone field — see the module docstring.
+
+    Nor an owner id. A stable account identifier on every public listing lets
+    anyone join all of one person's listings together — their whole portfolio,
+    their addresses by district — without an account. Built field by field
+    rather than from the row, so a new column never goes public by default
+    (Schema v1 §80).
+    """
 
     id: str
     property_id: str
-    owner_id: str
     title: str
     description: str
     status: str

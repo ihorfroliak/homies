@@ -366,3 +366,19 @@ def test_available_from_is_optional_and_preserved(client):
     property_id = _property(client, token)
     body = _classified(client, token, property_id, available_from=date(2027, 1, 15).isoformat())
     assert body.json()["available_from"] == "2027-01-15"
+
+
+def test_the_public_listing_carries_no_owner_id(client):
+    """A stable account id on every public listing lets anyone join one
+    person's whole portfolio together without signing in."""
+    token = _owner(client, "portfolio@example.com")
+    offer_id = _published(client, token)
+    owner_id = client.get("/v1/me", headers=auth(token)).json()["id"]
+
+    board = client.get("/v1/classifieds").text
+    detail = client.get(f"/v1/classifieds/{offer_id}").text
+    search = client.get("/v1/classifieds", params={"city": "Warszawa"}).text
+
+    for body in (board, detail, search):
+        assert owner_id not in body
+        assert "owner_id" not in body

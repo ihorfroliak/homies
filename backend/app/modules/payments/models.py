@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String
+from sqlalchemy import BigInteger, JSON, Boolean, DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -18,7 +18,7 @@ class Payment(Base):
     provider_intent_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     # requires_payment -> succeeded -> refunded | charged_back | voided (never paid) | failed
     status: Mapped[str] = mapped_column(String(24), default="requires_payment", index=True)
-    amount: Mapped[int] = mapped_column(Integer)  # minor units, ADR-0002
+    amount: Mapped[int] = mapped_column(BigInteger)  # minor units, ADR-0002
     currency: Mapped[str] = mapped_column(String(3))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
@@ -59,10 +59,10 @@ class Dispute(Base):
     provider_dispute_id: Mapped[str] = mapped_column(String(80), unique=True, index=True)
     payment_id: Mapped[str] = mapped_column(String(36), ForeignKey("payments.id"), index=True)
     booking_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
-    amount: Mapped[int] = mapped_column(Integer)  # disputed, minor units
+    amount: Mapped[int] = mapped_column(BigInteger)  # disputed, minor units
     # The provider's non-refundable dispute fee. Kept separate from `amount`
     # because winning returns the amount but never the fee.
-    fee: Mapped[int] = mapped_column(Integer, default=0)
+    fee: Mapped[int] = mapped_column(BigInteger, default=0)
     currency: Mapped[str] = mapped_column(String(3))
     reason: Mapped[str] = mapped_column(String(64), default="")
     # open -> won | lost. `needs_review` marks a closure we saw without ever

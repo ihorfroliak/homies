@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.config import settings
@@ -30,7 +30,7 @@ class Booking(Base):
     # pending -> confirmed -> completed | cancelled | expired (BK-01)
     #   expired = unpaid past its deadline; distinct from a user cancellation
     status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
-    total_amount: Mapped[int] = mapped_column(Integer)  # minor units, ADR-0002
+    total_amount: Mapped[int] = mapped_column(BigInteger)  # minor units, ADR-0002
     currency: Mapped[str] = mapped_column(String(3))
     # The commission rate agreed AT BOOKING TIME, in basis points. Stamped here
     # rather than read from settings at payout: the rate is an admin-editable

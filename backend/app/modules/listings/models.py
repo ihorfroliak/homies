@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String
+from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -24,7 +24,7 @@ class Listing(Base):
     address: Mapped[str] = mapped_column(String(255))
     capacity: Mapped[int] = mapped_column(Integer, default=2)
     # ADR-0002: integer minor units (grosz) + ISO 4217
-    nightly_price_amount: Mapped[int] = mapped_column(Integer)
+    nightly_price_amount: Mapped[int] = mapped_column(BigInteger)
     currency: Mapped[str] = mapped_column(String(3), default="PLN")
     status: Mapped[str] = mapped_column(String(16), default="draft")  # draft | active | archived
     created_at: Mapped[datetime] = mapped_column(

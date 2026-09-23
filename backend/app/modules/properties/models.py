@@ -26,6 +26,7 @@ from datetime import date, datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import (
+    BigInteger,
     JSON,
     Boolean,
     Date,
@@ -134,14 +135,14 @@ class ClassifiedOffer(Base):
 
     # Money, in integer minor units (ADR-0002). None of this passes through
     # Homies — it is what the owner tells the tenant they will pay.
-    rent_amount: Mapped[int] = mapped_column(Integer)
+    rent_amount: Mapped[int] = mapped_column(BigInteger)
     currency: Mapped[str] = mapped_column(String(3), default="PLN")
     # Structured so tenants can compare offers instead of parsing prose.
-    admin_fee: Mapped[int] = mapped_column(Integer, default=0)  # czynsz administracyjny
-    utilities_amount: Mapped[int] = mapped_column(Integer, default=0)
+    admin_fee: Mapped[int] = mapped_column(BigInteger, default=0)  # czynsz administracyjny
+    utilities_amount: Mapped[int] = mapped_column(BigInteger, default=0)
     utilities_included: Mapped[bool] = mapped_column(Boolean, default=False)
-    parking_fee: Mapped[int] = mapped_column(Integer, default=0)
-    deposit_amount: Mapped[int] = mapped_column(Integer, default=0)
+    parking_fee: Mapped[int] = mapped_column(BigInteger, default=0)
+    deposit_amount: Mapped[int] = mapped_column(BigInteger, default=0)
     other_costs: Mapped[str] = mapped_column(String(500), default="")
 
     # Term. Either a minimum in months (>= 6) or explicitly open-ended.
