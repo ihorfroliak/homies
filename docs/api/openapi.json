@@ -406,6 +406,10 @@
             "title": "Monthly Total Estimate",
             "type": "integer"
           },
+          "move_in_total": {
+            "title": "Move In Total",
+            "type": "integer"
+          },
           "open_ended": {
             "title": "Open Ended",
             "type": "boolean"
@@ -460,6 +464,10 @@
           "utilities_included": {
             "title": "Utilities Included",
             "type": "boolean"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
           }
         },
         "required": [
@@ -480,7 +488,9 @@
           "other_costs",
           "open_ended",
           "contact_mode",
-          "monthly_total_estimate"
+          "monthly_total_estimate",
+          "move_in_total",
+          "version"
         ],
         "title": "ClassifiedOut",
         "type": "object"
@@ -922,6 +932,117 @@
           "phone"
         ],
         "title": "PhoneVerificationStart",
+        "type": "object"
+      },
+      "PriceComponentOut": {
+        "properties": {
+          "amount_minor": {
+            "title": "Amount Minor",
+            "type": "integer"
+          },
+          "cadence": {
+            "title": "Cadence",
+            "type": "string"
+          },
+          "component_key": {
+            "title": "Component Key",
+            "type": "string"
+          },
+          "component_type": {
+            "title": "Component Type",
+            "type": "string"
+          },
+          "estimated": {
+            "title": "Estimated",
+            "type": "boolean"
+          },
+          "mandatory": {
+            "title": "Mandatory",
+            "type": "boolean"
+          },
+          "refundable": {
+            "title": "Refundable",
+            "type": "boolean"
+          },
+          "valid_from": {
+            "format": "date-time",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          }
+        },
+        "required": [
+          "component_type",
+          "component_key",
+          "amount_minor",
+          "cadence",
+          "mandatory",
+          "refundable",
+          "estimated",
+          "valid_from"
+        ],
+        "title": "PriceComponentOut",
+        "type": "object"
+      },
+      "PriceUpdate": {
+        "description": "A new price, stated the same way as when the offer was created, plus\nthe version the owner was looking at when they edited it.",
+        "properties": {
+          "admin_fee": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Admin Fee",
+            "type": "integer"
+          },
+          "deposit_amount": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Deposit Amount",
+            "type": "integer"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "parking_fee": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Parking Fee",
+            "type": "integer"
+          },
+          "rent_amount": {
+            "exclusiveMinimum": 0.0,
+            "title": "Rent Amount",
+            "type": "integer"
+          },
+          "utilities_amount": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Utilities Amount",
+            "type": "integer"
+          },
+          "utilities_included": {
+            "default": false,
+            "title": "Utilities Included",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "rent_amount",
+          "expected_version"
+        ],
+        "title": "PriceUpdate",
         "type": "object"
       },
       "PropertyCreate": {
@@ -3418,6 +3539,116 @@
           }
         ],
         "summary": "Pause Classified",
+        "tags": [
+          "properties"
+        ]
+      }
+    },
+    "/v1/classifieds/{offer_id}/price": {
+      "put": {
+        "description": "Change the price. What moved is closed and reopened; what did not keeps\nits row, so the history records changes rather than saves.\n\n`expected_version` is the version the owner was looking at. If someone\nelse changed the price since, this answers 409 and changes nothing: two\nedits racing each other must not both win, and neither may silently undo\nthe other.",
+        "operationId": "change_price_v1_classifieds__offer_id__price_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassifiedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Change Price",
+        "tags": [
+          "properties"
+        ]
+      }
+    },
+    "/v1/classifieds/{offer_id}/price-history": {
+      "get": {
+        "description": "Every component the price has ever had, with when it applied.",
+        "operationId": "price_history_v1_classifieds__offer_id__price_history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PriceComponentOut"
+                  },
+                  "title": "Response Price History V1 Classifieds  Offer Id  Price History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Price History",
         "tags": [
           "properties"
         ]

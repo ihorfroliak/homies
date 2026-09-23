@@ -89,11 +89,21 @@ def test_a_sale_sized_amount_goes_in_and_comes_back(pg_client, pg_session):
     assert offer.status_code == 201, offer.text
     assert offer.json()["rent_amount"] == SALE_SIZED
 
-    stored = pg_session.execute(
-        text("SELECT rent_amount, deposit_amount FROM classified_offers WHERE id = :id"),
+    stored = dict(
+        pg_session.execute(
+            text("SELECT component_type, amount_minor FROM listing_price_components "
+                 "WHERE listing_id = :id AND valid_to IS NULL"),
+            {"id": offer.json()["id"]},
+        ).fetchall()
+    )
+    assert stored["BASE_RENT"] == SALE_SIZED
+    assert stored["SECURITY_DEPOSIT"] == SALE_SIZED
+    # And the summary that search filters on did not overflow either.
+    move_in = pg_session.execute(
+        text("SELECT move_in_total_minor FROM classified_offers WHERE id = :id"),
         {"id": offer.json()["id"]},
-    ).one()
-    assert stored == (SALE_SIZED, SALE_SIZED)
+    ).scalar_one()
+    assert move_in == SALE_SIZED * 2
 
 
 @pytest.mark.parametrize("name", ["floors_total", "commission_bps", "min_term_months"])

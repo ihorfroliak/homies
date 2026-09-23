@@ -167,17 +167,62 @@ class ClassifiedOffer(Base):
     # draft -> active -> paused | archived
     status: Mapped[str] = mapped_column(String(16), default="draft", index=True)
 
-    # Money, in integer minor units (ADR-0002). None of this passes through
-    # Homies — it is what the owner tells the tenant they will pay.
-    rent_amount: Mapped[int] = mapped_column(BigInteger)
+    # Price. The source of truth is `listing_price_components`, one row per
+    # component per period, never overwritten (Schema v1 §46). What sits on
+    # the offer is a summary recomputed in the same transaction as every
+    # change, so search can filter and sort on it with an index (§47). None of
+    # this money passes through Homies — it is what the owner tells the tenant
+    # they will pay.
     currency: Mapped[str] = mapped_column(String(3), default="PLN")
-    # Structured so tenants can compare offers instead of parsing prose.
-    admin_fee: Mapped[int] = mapped_column(BigInteger, default=0)  # czynsz administracyjny
-    utilities_amount: Mapped[int] = mapped_column(BigInteger, default=0)
     utilities_included: Mapped[bool] = mapped_column(Boolean, default=False)
-    parking_fee: Mapped[int] = mapped_column(BigInteger, default=0)
-    deposit_amount: Mapped[int] = mapped_column(BigInteger, default=0)
     other_costs: Mapped[str] = mapped_column(String(500), default="")
+    primary_price_minor: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    estimated_monthly_total_minor: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True, index=True
+    )
+    move_in_total_minor: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    # Optimistic concurrency (§118–§120): a price change names the version it
+    # was made against, and loses cleanly if someone else got there first.
+    version: Mapped[int] = mapped_column(BigInteger, default=1)
+
+    current_components = relationship(
+        "ListingPriceComponent",
+        primaryjoin=(
+            "and_(ListingPriceComponent.listing_id == ClassifiedOffer.id, "
+            "ListingPriceComponent.valid_to.is_(None))"
+        ),
+        foreign_keys="ListingPriceComponent.listing_id",
+        lazy="selectin",
+        viewonly=True,
+    )
+
+    def _current(self, component_type: str, key: str = "") -> int:
+        for c in self.current_components:
+            if c.component_type == component_type and c.component_key == key:
+                return c.amount_minor
+        return 0
+
+    # The owner-facing price fields, read from the current components. Kept on
+    # the response so a client sees the same shape it always did.
+    @property
+    def rent_amount(self) -> int:
+        return self._current("BASE_RENT")
+
+    @property
+    def admin_fee(self) -> int:
+        return self._current("ADMIN_FEE")
+
+    @property
+    def utilities_amount(self) -> int:
+        return self._current("UTILITIES_ESTIMATE")
+
+    @property
+    def parking_fee(self) -> int:
+        return self._current("OTHER_MANDATORY", "parking")
+
+    @property
+    def deposit_amount(self) -> int:
+        return self._current("SECURITY_DEPOSIT")
 
     # Term. Either a minimum in months (>= 6) or explicitly open-ended.
     min_term_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -431,3 +476,73 @@ class Space(Base):
     )
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     version: Mapped[int] = mapped_column(BigInteger, default=1)
+
+
+# --- Price components (Domain Schema v1 §46–§47) ------------------------------
+#
+# Each row is one component of the price for one period. A change closes the
+# current row (`valid_to`) and opens a new one; nothing is overwritten, so the
+# price a tenant was shown last month can always be reconstructed — which is
+# what a dispute about "the advert said 2 800" is argued from.
+
+PRICE_COMPONENT_TYPES = (
+    "BASE_RENT",
+    "ADMIN_FEE",
+    "UTILITIES_FIXED",
+    "UTILITIES_ESTIMATE",
+    "SECURITY_DEPOSIT",
+    "AGENCY_FEE",
+    "CLEANING_FEE",
+    "HOMIES_FEE",
+    "OTHER_MANDATORY",
+    "SALE_ASKING_PRICE",
+)
+PRICE_CADENCES = ("ONE_TIME", "MONTHLY", "PER_STAY", "PER_NIGHT")
+
+_CURRENT_COMPONENT = "valid_to IS NULL"
+
+
+class ListingPriceComponent(Base):
+    __tablename__ = "listing_price_components"
+    __table_args__ = (
+        CheckConstraint(
+            _in("component_type", PRICE_COMPONENT_TYPES),
+            name="ck_listing_price_components_type",
+        ),
+        CheckConstraint(_in("cadence", PRICE_CADENCES), name="ck_listing_price_components_cadence"),
+        CheckConstraint("amount_minor >= 0", name="ck_listing_price_components_amount"),
+        CheckConstraint(
+            "valid_to IS NULL OR valid_to > valid_from",
+            name="ck_listing_price_components_period",
+        ),
+        # One current row per component. History is unlimited; "now" is not.
+        Index(
+            "uq_listing_price_components_current",
+            "listing_id",
+            "component_type",
+            "component_key",
+            unique=True,
+            postgresql_where=text(_CURRENT_COMPONENT),
+            sqlite_where=text(_CURRENT_COMPONENT),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    listing_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("classified_offers.id", ondelete="CASCADE"), index=True
+    )
+    component_type: Mapped[str] = mapped_column(String(32))
+    # Distinguishes several components of one type ("parking", "internet").
+    component_key: Mapped[str] = mapped_column(String(40), default="")
+    amount_minor: Mapped[int] = mapped_column(BigInteger)
+    cadence: Mapped[str] = mapped_column(String(16))
+    mandatory: Mapped[bool] = mapped_column(Boolean, default=True)
+    refundable: Mapped[bool] = mapped_column(Boolean, default=False)
+    estimated: Mapped[bool] = mapped_column(Boolean, default=False)
+    display_label: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by_user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="RESTRICT")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

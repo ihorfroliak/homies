@@ -13,9 +13,9 @@ reason, the impact, and whether domain semantics changed (spec §131).
 |---|---|---|
 | C1 | Money columns → `bigint`; public listing stops exposing `owner_id` | `c3ab28c` |
 | C2 | `legal_parties`, `person_legal_parties`, `property_authorities`, scopes; one authorization service; publish requires a VERIFIED authority; revocation takes listings down | `49641c0` |
-| C3 | `spaces` (WHOLE_PROPERTY / ROOM); offers point at a space through a composite key; archiving takes listings down; search filters and sorts on the listed area | this commit |
-| C4 | Temporal price components; derived monthly and move-in totals | next |
-| C5 | PostGIS: exact address location vs public listing location | |
+| C3 | `spaces` (WHOLE_PROPERTY / ROOM); offers point at a space through a composite key; archiving takes listings down; search filters and sorts on the listed area | `903312c` |
+| C4 | Temporal price components with contiguous history; stored summaries (headline, monthly, move-in) recomputed in the same transaction; optimistic concurrency on price edits; flat price columns dropped | this commit |
+| C5 | PostGIS: exact address location vs public listing location | next |
 | C6 | Organizations, memberships, representation mandates (agency chain) | |
 | C7 | Conversations, messages, viewings | |
 | C8 | Files and media | |
@@ -36,6 +36,8 @@ reason, the impact, and whether domain semantics changed (spec §131).
 | 10 | No `owner_id` on Property (§110) | `properties.owner_id` kept as the *creating account* | Removing it means rewriting the short-stay path in the same cycle | Not used for authorisation on the board; authority is | No |
 | 11 | `property_type` is APARTMENT or HOUSE (§26) | Existing six lower-case types kept (apartment, studio, house, townhouse, loft, aparthotel_unit); `room` refused for new properties | Narrowing the vocabulary rewrites existing rows and the filter API for no behavioural gain; `room` is the one value that contradicts the model, and it is closed | A richer type list than the spec | No — the frozen rule (room is a Space) holds |
 | 12 | `properties.area_m2 numeric(10,2)` (§26) | `properties.area_m2` stays integer; `spaces.area_m2` is `numeric(10,2)` | Changing the property column touches every filter and existing value for no user-visible gain yet; rooms are where fractional areas matter | Whole-flat areas are whole square metres | No |
+| 13 | `marketplace.listings` is the listing aggregate (§42) | `classified_offers` plays that role; `listing_price_components.listing_id` references it | The board's offer table already carries status, space, terms and contact rules; renaming it is churn with no behavioural gain | Name only | No |
+| 14 | Price composed of any component types (§46) | The API writes rent, building fee, utilities, parking and deposit; the other types (agency, cleaning, Homies fee, sale price) are accepted by the schema but no endpoint writes them yet | Nothing on the board charges them today; SALE and agency listings arrive later | Those components cannot yet be entered | No |
 
 ## What C2 changed in behaviour
 

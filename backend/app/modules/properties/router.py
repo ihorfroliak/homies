@@ -36,7 +36,7 @@ from app.core.audit import audit
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import get_current_user, require_role
-from app.modules.properties import authority, spaces
+from app.modules.properties import authority, pricing, spaces
 from app.modules.properties.attributes import AttributeError_, load_catalogue
 from app.modules.properties.attributes import validate as validate_attributes
 from app.modules.properties.models import (
@@ -55,6 +55,8 @@ from app.modules.properties.schemas import (
     ClassifiedPage,
     ContactRevealOut,
     PropertyCreate,
+    PriceComponentOut,
+    PriceUpdate,
     PropertyOut,
     RevealQuotaOut,
     SpaceArchiveOut,
@@ -65,23 +67,21 @@ from app.modules.properties.schemas import (
 router = APIRouter(tags=["properties"])
 
 
-def _monthly_total(offer: ClassifiedOffer) -> int:
-    """What the tenant pays each month, deposit excluded (it is returned)."""
-    total = offer.rent_amount + offer.admin_fee + offer.parking_fee
-    if not offer.utilities_included:
-        total += offer.utilities_amount
-    return total
+_SUMMARY_FIELDS = {"monthly_total_estimate", "move_in_total"}
 
 
 def _public(offer: ClassifiedOffer) -> ClassifiedOut:
     return ClassifiedOut(
-        **{
-            k: getattr(offer, k)
-            for k in ClassifiedOut.model_fields
-            if k != "monthly_total_estimate"
-        },
-        monthly_total_estimate=_monthly_total(offer),
+        **{k: getattr(offer, k) for k in ClassifiedOut.model_fields if k not in _SUMMARY_FIELDS},
+        monthly_total_estimate=offer.estimated_monthly_total_minor or 0,
+        move_in_total=offer.move_in_total_minor or 0,
     )
+
+
+_PRICE_FIELDS = {
+    "rent_amount", "admin_fee", "utilities_amount", "utilities_included",
+    "parking_fee", "deposit_amount",
+}
 
 
 def _authorized_offer(
@@ -255,14 +255,20 @@ def create_classified(
         spaces.ensure_listable(space)
     except spaces.SpaceArchived:
         raise HTTPException(status.HTTP_409_CONFLICT, "That space is archived") from None
+    data = body.model_dump(exclude={"space_id"})
     offer = ClassifiedOffer(
         property_id=prop.id,
         space_id=space.id,
         owner_id=user.id,
-        **body.model_dump(exclude={"space_id"}),
+        **{k: v for k, v in data.items() if k not in _PRICE_FIELDS},
     )
     db.add(offer)
     db.flush()
+    # The price goes in as components, and the summaries are computed from
+    # them — in this transaction, so the offer never exists without either.
+    pricing.set_price(
+        db, offer, pricing.PriceInput(**{k: data[k] for k in _PRICE_FIELDS}), user.id
+    )
     audit(
         db,
         actor=user.id,
@@ -303,6 +309,46 @@ def publish_classified(
     return _public(offer)
 
 
+@router.put("/classifieds/{offer_id}/price", response_model=ClassifiedOut)
+def change_price(
+    offer_id: str,
+    body: PriceUpdate,
+    user=Depends(require_role("host")),
+    db: Session = Depends(get_db),
+):
+    """Change the price. What moved is closed and reopened; what did not keeps
+    its row, so the history records changes rather than saves.
+
+    `expected_version` is the version the owner was looking at. If someone
+    else changed the price since, this answers 409 and changes nothing: two
+    edits racing each other must not both win, and neither may silently undo
+    the other.
+    """
+    offer = _authorized_offer(db, user, offer_id, verified=False)
+    price = pricing.PriceInput(**body.model_dump(exclude={"expected_version"}))
+    try:
+        pricing.set_price(db, offer, price, user.id, expected_version=body.expected_version)
+    except pricing.VersionConflict:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "The price was changed by someone else. Reload and try again.",
+        ) from None
+    db.commit()
+    return _public(offer)
+
+
+@router.get("/classifieds/{offer_id}/price-history", response_model=list[PriceComponentOut])
+def price_history(
+    offer_id: str,
+    user=Depends(require_role("host")),
+    db: Session = Depends(get_db),
+):
+    """Every component the price has ever had, with when it applied."""
+    offer = _authorized_offer(db, user, offer_id, verified=False)
+    return pricing.history(db, offer.id)
+
+
 @router.post("/classifieds/{offer_id}/pause", response_model=ClassifiedOut)
 def pause_classified(
     offer_id: str,
@@ -337,21 +383,16 @@ SORTS = {
 
 
 def _monthly_total_sql():
-    """The tenant's real monthly cost, as SQL, so it can be filtered and sorted.
+    """The tenant's real monthly cost, so it can be filtered and sorted.
 
-    Deliberately not `rent_amount`. Two offers at 3 000 zł rent are not the same
+    Deliberately not the rent. Two offers at 3 000 zł rent are not the same
     price when one adds 600 zł of building fees and the other does not, and a
     tenant who filters "up to 3 000" and is shown a 3 600 zł flat has been
     misled by the search, not by the owner. The deposit is excluded — it comes
-    back.
+    back. Read from the stored summary, which is kept in step with the price
+    components in the transaction that changes them, and indexed.
     """
-    utilities = case(
-        (ClassifiedOffer.utilities_included.is_(True), 0),
-        else_=ClassifiedOffer.utilities_amount,
-    )
-    return ClassifiedOffer.rent_amount + ClassifiedOffer.admin_fee + (
-        ClassifiedOffer.parking_fee + utilities
-    )
+    return ClassifiedOffer.estimated_monthly_total_minor
 
 
 @router.get("/classifieds", response_model=ClassifiedPage)

@@ -7,7 +7,7 @@ would require deliberately adding the field back.
 """
 
 from decimal import Decimal
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -186,10 +186,14 @@ class ClassifiedOut(BaseModel):
     open_ended: bool
     available_from: date | None = None
     contact_mode: str
-    # What the tenant will actually pay per month, so offers can be compared
-    # without doing arithmetic in their head. Not stored: derived on read, so it
-    # can never drift from its parts.
+    # What the tenant pays each month, so offers compare without arithmetic;
+    # and what they need on the day they move in, deposit included. Both are
+    # summaries of the current price components, kept in step with them in the
+    # same transaction as every change.
     monthly_total_estimate: int
+    move_in_total: int
+    # For optimistic concurrency: a price change names the version it saw.
+    version: int
 
     model_config = {"from_attributes": True}
 
@@ -245,3 +249,30 @@ class SpaceOut(BaseModel):
 
 class SpaceArchiveOut(SpaceOut):
     paused_offers: list[str]
+
+
+class PriceUpdate(BaseModel):
+    """A new price, stated the same way as when the offer was created, plus
+    the version the owner was looking at when they edited it."""
+
+    rent_amount: int = Field(gt=0)
+    admin_fee: int = Field(ge=0, default=0)
+    utilities_amount: int = Field(ge=0, default=0)
+    utilities_included: bool = False
+    parking_fee: int = Field(ge=0, default=0)
+    deposit_amount: int = Field(ge=0, default=0)
+    expected_version: int = Field(ge=1)
+
+
+class PriceComponentOut(BaseModel):
+    component_type: str
+    component_key: str
+    amount_minor: int
+    cadence: str
+    mandatory: bool
+    refundable: bool
+    estimated: bool
+    valid_from: datetime
+    valid_to: datetime | None = None
+
+    model_config = {"from_attributes": True}
