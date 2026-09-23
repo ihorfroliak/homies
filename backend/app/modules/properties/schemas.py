@@ -7,6 +7,7 @@ would require deliberately adding the field back.
 """
 
 from decimal import Decimal
+from typing import Literal
 from datetime import date, datetime
 
 from pydantic import BaseModel, Field, model_validator
@@ -88,6 +89,9 @@ class AuthorityOut(BaseModel):
 
 
 class PropertyOut(BaseModel):
+    """Owner-facing only. It carries the exact address and coordinates, which
+    no public response may (Schema v1 §80, §116)."""
+
     id: str
     owner_id: str
     property_type: str
@@ -96,6 +100,8 @@ class PropertyOut(BaseModel):
     postcode: str
     municipality: str
     address: str
+    latitude: float | None = None
+    longitude: float | None = None
     area_m2: int
     rooms: int
     bedrooms: int
@@ -116,6 +122,9 @@ class PropertyOut(BaseModel):
 class ClassifiedCreate(BaseModel):
     # Which part of the property is on offer. Omitted means the whole flat.
     space_id: str | None = None
+    # How precisely the listing may be placed on the public map. The flat's
+    # own coordinates are shown only if the owner asks for EXACT.
+    public_location_precision: Literal["EXACT", "APPROXIMATE", "DISTRICT"] = "APPROXIMATE"
     title: str = Field(min_length=3, max_length=140)
     description: str = Field(default="", max_length=4000)
     rent_amount: int = Field(gt=0)  # minor units, ADR-0002
@@ -154,6 +163,12 @@ class ClassifiedCreate(BaseModel):
         return self
 
 
+class PublicLocation(BaseModel):
+    latitude: float
+    longitude: float
+    precision: str
+
+
 class ClassifiedOut(BaseModel):
     """Public shape. Deliberately has no phone field — see the module docstring.
 
@@ -171,6 +186,12 @@ class ClassifiedOut(BaseModel):
     # before opening the listing (Schema v1 §115).
     space_type: str
     space_label: str | None = None
+    # Where, as far as the public may know: the city and district, and a map
+    # point whose precision the owner chose. Never the street address and
+    # never the flat's own coordinates unless the owner asked for that.
+    city: str
+    district: str
+    public_location: PublicLocation | None = None
     title: str
     description: str
     status: str

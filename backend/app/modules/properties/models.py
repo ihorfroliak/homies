@@ -139,6 +139,10 @@ class ClassifiedOffer(Base):
             ["spaces.id", "spaces.property_id"],
             name="fk_classified_offers_space_same_property",
         ),
+        CheckConstraint(
+            "public_location_precision IN ('EXACT', 'APPROXIMATE', 'DISTRICT')",
+            name="ck_classified_offers_location_precision",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
@@ -153,6 +157,31 @@ class ClassifiedOffer(Base):
         lazy="joined",
         viewonly=True,
     )
+
+    # Where the listing sits on the public map — never the flat's own
+    # coordinates unless the owner chose EXACT. See location.py. On Postgres a
+    # generated `public_geog` column and a GiST index sit alongside these for
+    # viewport and radius search; they live in the migration only, because
+    # SQLite has no geography type and the fast suite never searches by area.
+    public_location_precision: Mapped[str] = mapped_column(String(16), default="APPROXIMATE")
+    public_latitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
+    public_longitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
+
+    listed_property = relationship(
+        "Property",
+        primaryjoin="ClassifiedOffer.property_id == Property.id",
+        foreign_keys="ClassifiedOffer.property_id",
+        lazy="joined",
+        viewonly=True,
+    )
+
+    @property
+    def city(self) -> str:
+        return self.listed_property.city
+
+    @property
+    def district(self) -> str:
+        return self.listed_property.district
 
     @property
     def space_type(self) -> str:

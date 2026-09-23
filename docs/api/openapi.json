@@ -311,6 +311,16 @@
             "title": "Parking Fee",
             "type": "integer"
           },
+          "public_location_precision": {
+            "default": "APPROXIMATE",
+            "enum": [
+              "EXACT",
+              "APPROXIMATE",
+              "DISTRICT"
+            ],
+            "title": "Public Location Precision",
+            "type": "string"
+          },
           "rent_amount": {
             "exclusiveMinimum": 0.0,
             "title": "Rent Amount",
@@ -371,6 +381,10 @@
             ],
             "title": "Available From"
           },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
           "contact_mode": {
             "title": "Contact Mode",
             "type": "string"
@@ -385,6 +399,10 @@
           },
           "description": {
             "title": "Description",
+            "type": "string"
+          },
+          "district": {
+            "title": "District",
             "type": "string"
           },
           "id": {
@@ -425,6 +443,16 @@
           "property_id": {
             "title": "Property Id",
             "type": "string"
+          },
+          "public_location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicLocation"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "rent_amount": {
             "title": "Rent Amount",
@@ -475,6 +503,8 @@
           "property_id",
           "space_id",
           "space_type",
+          "city",
+          "district",
           "title",
           "description",
           "status",
@@ -1189,6 +1219,7 @@
         "type": "object"
       },
       "PropertyOut": {
+        "description": "Owner-facing only. It carries the exact address and coordinates, which\nno public response may (Schema v1 §80, §116).",
         "properties": {
           "address": {
             "title": "Address",
@@ -1265,6 +1296,28 @@
             "title": "Id",
             "type": "string"
           },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
           "municipality": {
             "title": "Municipality",
             "type": "string"
@@ -1315,6 +1368,29 @@
           "attributes"
         ],
         "title": "PropertyOut",
+        "type": "object"
+      },
+      "PublicLocation": {
+        "properties": {
+          "latitude": {
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": "number"
+          },
+          "precision": {
+            "title": "Precision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude",
+          "precision"
+        ],
+        "title": "PublicLocation",
         "type": "object"
       },
       "RefreshRequest": {
@@ -3344,6 +3420,76 @@
                 }
               ],
               "title": "Space Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "bbox",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bbox"
+            }
+          },
+          {
+            "in": "query",
+            "name": "near_lat",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 90,
+                  "minimum": -90,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Near Lat"
+            }
+          },
+          {
+            "in": "query",
+            "name": "near_lon",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 180,
+                  "minimum": -180,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Near Lon"
+            }
+          },
+          {
+            "in": "query",
+            "name": "radius_m",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 50000,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Radius M"
             }
           },
           {

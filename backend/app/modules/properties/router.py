@@ -25,18 +25,20 @@ Still open: the owner-facing "who asked for my number" view. The rows exist.
 """
 
 from datetime import date, datetime, timedelta, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from prometheus_client import Counter
-from sqlalchemy import case, func, or_, select
+from sqlalchemy import case, func, literal_column, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import ColumnElement
 
 from app.core.audit import audit
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import get_current_user, require_role
-from app.modules.properties import authority, pricing, spaces
+from app.modules.properties import authority, location, pricing, spaces
 from app.modules.properties.attributes import AttributeError_, load_catalogue
 from app.modules.properties.attributes import validate as validate_attributes
 from app.modules.properties.models import (
@@ -57,6 +59,7 @@ from app.modules.properties.schemas import (
     PropertyCreate,
     PriceComponentOut,
     PriceUpdate,
+    PublicLocation,
     PropertyOut,
     RevealQuotaOut,
     SpaceArchiveOut,
@@ -67,14 +70,22 @@ from app.modules.properties.schemas import (
 router = APIRouter(tags=["properties"])
 
 
-_SUMMARY_FIELDS = {"monthly_total_estimate", "move_in_total"}
+_DERIVED_FIELDS = {"monthly_total_estimate", "move_in_total", "public_location"}
 
 
 def _public(offer: ClassifiedOffer) -> ClassifiedOut:
+    point = None
+    if offer.public_latitude is not None and offer.public_longitude is not None:
+        point = PublicLocation(
+            latitude=float(offer.public_latitude),
+            longitude=float(offer.public_longitude),
+            precision=offer.public_location_precision,
+        )
     return ClassifiedOut(
-        **{k: getattr(offer, k) for k in ClassifiedOut.model_fields if k not in _SUMMARY_FIELDS},
+        **{k: getattr(offer, k) for k in ClassifiedOut.model_fields if k not in _DERIVED_FIELDS},
         monthly_total_estimate=offer.estimated_monthly_total_minor or 0,
         move_in_total=offer.move_in_total_minor or 0,
+        public_location=point,
     )
 
 
@@ -262,6 +273,7 @@ def create_classified(
         owner_id=user.id,
         **{k: v for k, v in data.items() if k not in _PRICE_FIELDS},
     )
+    location.refresh(offer, prop)
     db.add(offer)
     db.flush()
     # The price goes in as components, and the summaries are computed from
@@ -296,6 +308,8 @@ def publish_classified(
         raise HTTPException(
             status.HTTP_409_CONFLICT, "The space this offer is for has been archived"
         ) from None
+    # Recomputed on publish, so the map reflects the property as it is now.
+    location.refresh(offer, offer.listed_property)
     offer.status = "active"
     offer.published_at = datetime.now(timezone.utc)
     audit(
@@ -366,6 +380,45 @@ def pause_classified(
 # Sorting is an allowlist, never a column name from the query string. Passing
 # user input into order_by() exposes every column in the table and, with a
 # string-built query, worse.
+# The generated geography column exists on Postgres only (see the model note),
+# so it is referenced by name rather than through the ORM.
+_PUBLIC_GEOG: ColumnElement[Any] = literal_column("classified_offers.public_geog")
+
+
+def _geo_filters(bbox, near_lat, near_lon, radius_m) -> list:
+    """Viewport and radius conditions on the public point.
+
+    Distances are geodesic (geography, metres), not degrees: a degree of
+    longitude is 70 km in Kraków and would be 111 km at the equator, and a
+    radius in degrees is a different radius in every city.
+    """
+    conditions = []
+    if bbox is not None:
+        try:
+            min_lon, min_lat, max_lon, max_lat = (float(p) for p in bbox.split(","))
+        except ValueError:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "bbox must be four numbers: minLon,minLat,maxLon,maxLat",
+            ) from None
+        if not (-180 <= min_lon < max_lon <= 180 and -90 <= min_lat < max_lat <= 90):
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY, "bbox is not a valid box"
+            )
+        envelope = func.ST_MakeEnvelope(min_lon, min_lat, max_lon, max_lat, 4326)
+        conditions.append(func.ST_Intersects(_PUBLIC_GEOG, func.geography(envelope)))
+    given = [v is not None for v in (near_lat, near_lon, radius_m)]
+    if any(given) and not all(given):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "radius search needs near_lat, near_lon and radius_m together",
+        )
+    if all(given):
+        centre = func.geography(func.ST_SetSRID(func.ST_MakePoint(near_lon, near_lat), 4326))
+        conditions.append(func.ST_DWithin(_PUBLIC_GEOG, centre, radius_m))
+    return conditions
+
+
 def _listed_area_sql():
     """The area of what is actually on offer: the room's for a room, the
     flat's otherwise. A tenant asking for "at least 20 m2" who is shown a
@@ -418,6 +471,13 @@ def list_classifieds(
     has: list[str] | None = Query(default=None),
     # WHOLE_PROPERTY or ROOM.
     space_type: str | None = None,
+    # Map search, against the PUBLIC point only. Viewport: "minLon,minLat,
+    # maxLon,maxLat". Radius: near_lat + near_lon + radius_m. Listings placed
+    # by district only have no point and are not matched by either.
+    bbox: str | None = None,
+    near_lat: float | None = Query(default=None, ge=-90, le=90),
+    near_lon: float | None = Query(default=None, ge=-180, le=180),
+    radius_m: int | None = Query(default=None, ge=1, le=50_000),
     sort: str = "newest",
     limit: int = Query(default=50, le=100),
     offset: int = Query(default=0, ge=0),
@@ -441,6 +501,7 @@ def list_classifieds(
     filters = [ClassifiedOffer.status == "active"]
     if space_type is not None:
         filters.append(Space.space_type == space_type)
+    filters.extend(_geo_filters(bbox, near_lat, near_lon, radius_m))
     if has:
         catalogue = load_catalogue(db)
         for code in has:

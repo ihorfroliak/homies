@@ -10,11 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     # CI-03: a real Postgres service so migration/concurrency/DB-guard tests run
     # against the actual engine instead of skipping. Same major version (16) as
-    # the app; plain postgres image (btree_gist is contrib, PostGIS not needed
-    # by the schema). GitHub waits on the health check before steps run.
+    # the app. PostGIS since Schema v1 C5: listings carry a geography column
+    # and the map search runs on it, so the engine the tests use must have it.
+    # Pinned by digest so the image cannot change under a green build.
+    # GitHub waits on the health check before steps run.
     services:
       postgres:
-        image: postgres:16
+        image: postgis/postgis:16-3.4@sha256:44126d872ac91993766c341e369c539e8196614321765d36a6f1bab0419a5fa5
         env:
           POSTGRES_USER: homies
           POSTGRES_PASSWORD: homies
