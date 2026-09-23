@@ -12,9 +12,9 @@ reason, the impact, and whether domain semantics changed (spec §131).
 | Cycle | Scope | State |
 |---|---|---|
 | C1 | Money columns → `bigint`; public listing stops exposing `owner_id` | `c3ab28c` |
-| C2 | `legal_parties`, `person_legal_parties`, `property_authorities`, scopes; one authorization service; publish requires a VERIFIED authority; revocation takes listings down | this commit |
-| C3 | `spaces` (WHOLE_PROPERTY / ROOM); offers point at a space | next |
-| C4 | Temporal price components; derived monthly and move-in totals | |
+| C2 | `legal_parties`, `person_legal_parties`, `property_authorities`, scopes; one authorization service; publish requires a VERIFIED authority; revocation takes listings down | `49641c0` |
+| C3 | `spaces` (WHOLE_PROPERTY / ROOM); offers point at a space through a composite key; archiving takes listings down; search filters and sorts on the listed area | this commit |
+| C4 | Temporal price components; derived monthly and move-in totals | next |
 | C5 | PostGIS: exact address location vs public listing location | |
 | C6 | Organizations, memberships, representation mandates (agency chain) | |
 | C7 | Conversations, messages, viewings | |
@@ -34,6 +34,8 @@ reason, the impact, and whether domain semantics changed (spec §131).
 | 8 | SHORT_STAY bookings deferred to Phase 3 (§97) | Existing short-stay listings, bookings, payments and ledger retained | Already built and tested; not on the Phase-1 path | Short-stay listings are still authorised by `listings.host_id`, not by property authority — **open gap, to close before short-stay is reactivated** | Yes, for short-stay only |
 | 9 | UPPER_CASE status values (§7) | New tables UPPER_CASE; pre-existing tables keep lower-case values | Rewriting existing status values is churn with a migration risk and no behavioural gain | Two casings coexist until a table is next reworked | No |
 | 10 | No `owner_id` on Property (§110) | `properties.owner_id` kept as the *creating account* | Removing it means rewriting the short-stay path in the same cycle | Not used for authorisation on the board; authority is | No |
+| 11 | `property_type` is APARTMENT or HOUSE (§26) | Existing six lower-case types kept (apartment, studio, house, townhouse, loft, aparthotel_unit); `room` refused for new properties | Narrowing the vocabulary rewrites existing rows and the filter API for no behavioural gain; `room` is the one value that contradicts the model, and it is closed | A richer type list than the spec | No — the frozen rule (room is a Space) holds |
+| 12 | `properties.area_m2 numeric(10,2)` (§26) | `properties.area_m2` stays integer; `spaces.area_m2` is `numeric(10,2)` | Changing the property column touches every filter and existing value for no user-visible gain yet; rooms are where fractional areas matter | Whole-flat areas are whole square metres | No |
 
 ## What C2 changed in behaviour
 

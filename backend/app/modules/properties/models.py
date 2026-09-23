@@ -23,6 +23,7 @@ scraping signal possible later.
 """
 
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from uuid import uuid4
 
 from sqlalchemy import (
@@ -33,14 +34,16 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     Numeric,
     String,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
 
@@ -65,6 +68,9 @@ PROPERTY_TYPES = (
     "loft",
     "aparthotel_unit",
 )
+# "room" stays readable for rows created before Spaces existed, but no new
+# property may be a room: a room is a space inside a flat (Schema v1 §135).
+CREATABLE_PROPERTY_TYPES = tuple(t for t in PROPERTY_TYPES if t != "room")
 
 
 class Property(Base):
@@ -123,11 +129,38 @@ class ClassifiedOffer(Base):
     """A free long-term listing. Homies is not a party to anything here."""
 
     __tablename__ = "classified_offers"
+    __table_args__ = (
+        # The offer's space must belong to the offer's property. Declared as a
+        # composite key rather than checked in code: a listing that points at a
+        # room in someone else's flat is exactly the kind of corruption a bug
+        # produces quietly, and it would be published under the wrong address.
+        ForeignKeyConstraint(
+            ["space_id", "property_id"],
+            ["spaces.id", "spaces.property_id"],
+            name="fk_classified_offers_space_same_property",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     property_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("properties.id"), index=True
     )
+    space_id: Mapped[str] = mapped_column(String(36), index=True)
+    space = relationship(
+        "Space",
+        primaryjoin="ClassifiedOffer.space_id == Space.id",
+        foreign_keys="ClassifiedOffer.space_id",
+        lazy="joined",
+        viewonly=True,
+    )
+
+    @property
+    def space_type(self) -> str:
+        return self.space.space_type
+
+    @property
+    def space_label(self) -> str | None:
+        return self.space.label
     owner_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
     title: Mapped[str] = mapped_column(String(140))
     description: Mapped[str] = mapped_column(String(4000), default="")
@@ -335,3 +368,66 @@ class PropertyAuthorityScope(Base):
         String(36), ForeignKey("property_authorities.id", ondelete="CASCADE"), primary_key=True
     )
     scope: Mapped[str] = mapped_column(String(32), primary_key=True)
+
+
+# --- Space (Domain Schema v1 §28) ---------------------------------------------
+#
+# The unit of inventory inside a property: the whole flat, or one room in it.
+# A room is not a property — it has no address of its own, no gmina, no owner
+# separate from the flat's — so it is modelled as a space, and a listing points
+# at a space (§42, §135 "Room is Space, not Property").
+#
+# Every property gets exactly one active WHOLE_PROPERTY space when it is
+# registered. Rooms are added as the owner needs them.
+
+SPACE_TYPES = ("WHOLE_PROPERTY", "ROOM")
+SPACE_STATUSES = ("ACTIVE", "ARCHIVED")
+
+_ONE_ACTIVE_WHOLE = "space_type = 'WHOLE_PROPERTY' AND archived_at IS NULL"
+_ACTIVE_ROOM = "space_type = 'ROOM' AND archived_at IS NULL"
+
+
+class Space(Base):
+    __tablename__ = "spaces"
+    __table_args__ = (
+        CheckConstraint(_in("space_type", SPACE_TYPES), name="ck_spaces_space_type"),
+        CheckConstraint(_in("status", SPACE_STATUSES), name="ck_spaces_status"),
+        CheckConstraint("area_m2 IS NULL OR area_m2 > 0", name="ck_spaces_area_positive"),
+        # A label names a room. The whole flat is not "Pokój 1".
+        CheckConstraint("space_type = 'ROOM' OR label IS NULL", name="ck_spaces_label_rooms_only"),
+        # The target of the listing's composite foreign key: lets the database
+        # refuse a listing whose space belongs to a different property.
+        UniqueConstraint("id", "property_id", name="uq_spaces_id_property"),
+        # At most one active whole-property unit. Two would mean the same flat
+        # could be let twice, as a whole, through two different listings.
+        Index(
+            "uq_spaces_one_active_whole",
+            "property_id",
+            unique=True,
+            postgresql_where=text(_ONE_ACTIVE_WHOLE),
+            sqlite_where=text(_ONE_ACTIVE_WHOLE),
+        ),
+        Index(
+            "uq_spaces_active_room_label",
+            "property_id",
+            "label",
+            unique=True,
+            postgresql_where=text(_ACTIVE_ROOM),
+            sqlite_where=text(_ACTIVE_ROOM),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    property_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("properties.id", ondelete="RESTRICT"), index=True
+    )
+    space_type: Mapped[str] = mapped_column(String(16))
+    label: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    area_m2: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="ACTIVE")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now
+    )
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(BigInteger, default=1)

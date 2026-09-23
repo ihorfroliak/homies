@@ -36,14 +36,16 @@ from app.core.audit import audit
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import get_current_user, require_role
-from app.modules.properties import authority
+from app.modules.properties import authority, spaces
 from app.modules.properties.attributes import AttributeError_, load_catalogue
 from app.modules.properties.attributes import validate as validate_attributes
 from app.modules.properties.models import (
     AttributeDefinition,
     ClassifiedOffer,
+    SPACE_TYPES,
     ContactReveal,
     Property,
+    Space,
 )
 from app.modules.properties.schemas import (
     AttributeOut,
@@ -55,6 +57,9 @@ from app.modules.properties.schemas import (
     PropertyCreate,
     PropertyOut,
     RevealQuotaOut,
+    SpaceArchiveOut,
+    SpaceIn,
+    SpaceOut,
 )
 
 router = APIRouter(tags=["properties"])
@@ -146,6 +151,9 @@ def create_property(
     # Registering a flat is a claim to it, recorded as an authority held by the
     # registrant's legal person — unverified until Homies checks it.
     authority.grant_owner(db, user, prop.id)
+    # And the whole flat as its first unit of inventory, in the same
+    # transaction: a property that exists without one cannot be listed.
+    spaces.create_whole(db, prop.id)
     audit(db, actor=user.id, action="property.created", entity_type="property", entity_id=prop.id)
     db.commit()
     return _property_out(db, prop)
@@ -161,6 +169,49 @@ def my_properties(user=Depends(require_role("host")), db: Session = Depends(get_
         )
     )
     return [_property_out(db, p) for p in props]
+
+
+@router.get("/properties/{property_id}/spaces", response_model=list[SpaceOut])
+def list_spaces(property_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    authority.require(db, user, property_id, "EDIT_PROPERTY")
+    return spaces.spaces_of(db, property_id)
+
+
+@router.post("/properties/{property_id}/spaces", response_model=SpaceOut, status_code=201)
+def add_room(
+    property_id: str,
+    body: SpaceIn,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Add a room that can be let on its own. The whole flat already exists as
+    a space; this is only ever a ROOM."""
+    authority.require(db, user, property_id, "EDIT_PROPERTY")
+    try:
+        room = spaces.add_room(db, property_id, body.label, body.area_m2)
+    except spaces.DuplicateRoomLabel:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "This property already has an active room with that label"
+        ) from None
+    audit(db, actor=user.id, action="space.created", entity_type="space", entity_id=room.id)
+    db.commit()
+    return room
+
+
+@router.post("/spaces/{space_id}/archive", response_model=SpaceArchiveOut)
+def archive_space(space_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    space = db.get(Space, space_id)
+    if space is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Space not found")
+    try:
+        authority.require(db, user, space.property_id, "EDIT_PROPERTY")
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_404_NOT_FOUND:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Space not found") from None
+        raise
+    paused = spaces.archive(db, space, user.id)
+    db.commit()
+    return SpaceArchiveOut(**SpaceOut.model_validate(space).model_dump(), paused_offers=paused)
 
 
 @router.get("/attributes", response_model=list[AttributeOut])
@@ -192,7 +243,24 @@ def create_classified(
     # A draft needs an authority in force, not a verified one: the owner has
     # to be able to prepare the listing while the claim is being checked.
     prop = authority.require(db, user, property_id, "PUBLISH_LISTING", verified=False)
-    offer = ClassifiedOffer(property_id=prop.id, owner_id=user.id, **body.model_dump())
+    if body.space_id is None:
+        space = spaces.whole_space(db, prop.id)
+    else:
+        space = db.get(Space, body.space_id)
+        if space is not None and space.property_id != prop.id:
+            space = None  # another property's room is, from here, no room at all
+    if space is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Space not found")
+    try:
+        spaces.ensure_listable(space)
+    except spaces.SpaceArchived:
+        raise HTTPException(status.HTTP_409_CONFLICT, "That space is archived") from None
+    offer = ClassifiedOffer(
+        property_id=prop.id,
+        space_id=space.id,
+        owner_id=user.id,
+        **body.model_dump(exclude={"space_id"}),
+    )
     db.add(offer)
     db.flush()
     audit(
@@ -216,6 +284,12 @@ def publish_classified(
     # flat the poster does not own is the scam this board would otherwise
     # carry; it is refused here, before the first deposit is wired.
     offer = _authorized_offer(db, user, offer_id, verified=True)
+    try:
+        spaces.ensure_listable(offer.space)
+    except spaces.SpaceArchived:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "The space this offer is for has been archived"
+        ) from None
     offer.status = "active"
     offer.published_at = datetime.now(timezone.utc)
     audit(
@@ -246,11 +320,19 @@ def pause_classified(
 # Sorting is an allowlist, never a column name from the query string. Passing
 # user input into order_by() exposes every column in the table and, with a
 # string-built query, worse.
+def _listed_area_sql():
+    """The area of what is actually on offer: the room's for a room, the
+    flat's otherwise. A tenant asking for "at least 20 m2" who is shown a
+    12 m2 room because the flat around it is 60 m2 has been misled by the
+    search. A room whose area was not given matches no minimum."""
+    return case((Space.space_type == "ROOM", Space.area_m2), else_=Property.area_m2)
+
+
 SORTS = {
     "newest": ClassifiedOffer.published_at.desc(),
     "price_asc": None,  # filled in below: the total, not the rent
     "price_desc": None,
-    "size_desc": Property.area_m2.desc(),
+    "size_desc": None,  # filled in below: the listed area, not the building's
 }
 
 
@@ -293,6 +375,8 @@ def list_classifieds(
     # filterable are accepted, so a typo fails loudly instead of quietly
     # matching nothing.
     has: list[str] | None = Query(default=None),
+    # WHOLE_PROPERTY or ROOM.
+    space_type: str | None = None,
     sort: str = "newest",
     limit: int = Query(default=50, le=100),
     offset: int = Query(default=0, ge=0),
@@ -305,8 +389,17 @@ def list_classifieds(
             f"sort must be one of {', '.join(sorted(SORTS))}",
         )
 
+    if space_type is not None and space_type not in SPACE_TYPES:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"space_type must be one of {', '.join(SPACE_TYPES)}",
+        )
+
     total_expr = _monthly_total_sql()
+    area_expr = _listed_area_sql()
     filters = [ClassifiedOffer.status == "active"]
+    if space_type is not None:
+        filters.append(Space.space_type == space_type)
     if has:
         catalogue = load_catalogue(db)
         for code in has:
@@ -332,7 +425,7 @@ def list_classifieds(
     if min_rooms is not None:
         filters.append(Property.rooms >= min_rooms)
     if min_area_m2 is not None:
-        filters.append(Property.area_m2 >= min_area_m2)
+        filters.append(area_expr >= min_area_m2)
     if furnished:
         filters.append(Property.furnished == furnished)
     if parking:
@@ -359,20 +452,26 @@ def list_classifieds(
             )
         )
 
-    base = select(ClassifiedOffer).join(
-        Property, Property.id == ClassifiedOffer.property_id
-    ).where(*filters)
+    base = (
+        select(ClassifiedOffer)
+        .join(Property, Property.id == ClassifiedOffer.property_id)
+        .join(Space, Space.id == ClassifiedOffer.space_id)
+        .where(*filters)
+    )
 
     order = SORTS[sort]
     if sort == "price_asc":
         order = total_expr.asc()
     elif sort == "price_desc":
         order = total_expr.desc()
+    elif sort == "size_desc":
+        order = area_expr.desc()
 
     total = db.scalar(
         select(func.count())
         .select_from(ClassifiedOffer)
         .join(Property, Property.id == ClassifiedOffer.property_id)
+        .join(Space, Space.id == ClassifiedOffer.space_id)
         .where(*filters)
     )
     rows = db.scalars(base.order_by(order).limit(limit).offset(offset))

@@ -262,7 +262,7 @@ def resolve_policy(method: str, path: str) -> Policy | None:
         return LISTING_WRITE
     if path.startswith("/v1/classifieds") and path.endswith("/contact"):
         return CONTACT_REVEAL
-    if path.startswith(("/v1/properties", "/v1/classifieds")):
+    if path.startswith(("/v1/properties", "/v1/classifieds", "/v1/spaces")):
         return PROPERTY_WRITE
     # Anything unmatched is a READ budget. A new write route that forgets to
     # register here inherits it silently, which is why every write path above is

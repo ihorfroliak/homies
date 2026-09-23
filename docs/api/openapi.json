@@ -316,6 +316,17 @@
             "title": "Rent Amount",
             "type": "integer"
           },
+          "space_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Space Id"
+          },
           "title": {
             "maxLength": 140,
             "minLength": 3,
@@ -415,6 +426,25 @@
             "title": "Rent Amount",
             "type": "integer"
           },
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          },
+          "space_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Space Label"
+          },
+          "space_type": {
+            "title": "Space Type",
+            "type": "string"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -435,6 +465,8 @@
         "required": [
           "id",
           "property_id",
+          "space_id",
+          "space_type",
           "title",
           "description",
           "status",
@@ -1258,6 +1290,145 @@
           "event"
         ],
         "title": "SimulatedWebhook",
+        "type": "object"
+      },
+      "SpaceArchiveOut": {
+        "properties": {
+          "area_m2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area M2"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "paused_offers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Paused Offers",
+            "type": "array"
+          },
+          "property_id": {
+            "title": "Property Id",
+            "type": "string"
+          },
+          "space_type": {
+            "title": "Space Type",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "property_id",
+          "space_type",
+          "status",
+          "paused_offers"
+        ],
+        "title": "SpaceArchiveOut",
+        "type": "object"
+      },
+      "SpaceIn": {
+        "properties": {
+          "area_m2": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,8}|(?=[\\d.]{1,11}0*$)\\d{0,8}\\.\\d{0,2}0*$)",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area M2"
+          },
+          "label": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label"
+        ],
+        "title": "SpaceIn",
+        "type": "object"
+      },
+      "SpaceOut": {
+        "properties": {
+          "area_m2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area M2"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "property_id": {
+            "title": "Property Id",
+            "type": "string"
+          },
+          "space_type": {
+            "title": "Space Type",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "property_id",
+          "space_type",
+          "status"
+        ],
+        "title": "SpaceOut",
         "type": "object"
       },
       "TokenPair": {
@@ -3040,6 +3211,22 @@
           },
           {
             "in": "query",
+            "name": "space_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Space Type"
+            }
+          },
+          {
+            "in": "query",
             "name": "sort",
             "required": false,
             "schema": {
@@ -4259,6 +4446,160 @@
           }
         ],
         "summary": "Create Classified",
+        "tags": [
+          "properties"
+        ]
+      }
+    },
+    "/v1/properties/{property_id}/spaces": {
+      "get": {
+        "operationId": "list_spaces_v1_properties__property_id__spaces_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "property_id",
+            "required": true,
+            "schema": {
+              "title": "Property Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SpaceOut"
+                  },
+                  "title": "Response List Spaces V1 Properties  Property Id  Spaces Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Spaces",
+        "tags": [
+          "properties"
+        ]
+      },
+      "post": {
+        "description": "Add a room that can be let on its own. The whole flat already exists as\na space; this is only ever a ROOM.",
+        "operationId": "add_room_v1_properties__property_id__spaces_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "property_id",
+            "required": true,
+            "schema": {
+              "title": "Property Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpaceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpaceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Room",
+        "tags": [
+          "properties"
+        ]
+      }
+    },
+    "/v1/spaces/{space_id}/archive": {
+      "post": {
+        "operationId": "archive_space_v1_spaces__space_id__archive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "title": "Space Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpaceArchiveOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Archive Space",
         "tags": [
           "properties"
         ]

@@ -6,11 +6,15 @@ convenience endpoint — this way the public shape cannot carry it, and a leak
 would require deliberately adding the field back.
 """
 
+from decimal import Decimal
 from datetime import date
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.modules.properties.models import MIN_CLASSIFIED_TERM_MONTHS, PROPERTY_TYPES
+from app.modules.properties.models import (
+    CREATABLE_PROPERTY_TYPES,
+    MIN_CLASSIFIED_TERM_MONTHS,
+)
 
 FURNISHED = ("full", "partial", "none")
 PARKING = ("none", "street", "spot", "garage")
@@ -55,8 +59,15 @@ class PropertyCreate(BaseModel):
 
     @model_validator(mode="after")
     def check_enums(self):
-        if self.property_type not in PROPERTY_TYPES:
-            raise ValueError(f"property_type must be one of {', '.join(PROPERTY_TYPES)}")
+        if self.property_type == "room":
+            raise ValueError(
+                "a room is not a property: register the flat, then add the room with "
+                "POST /v1/properties/{id}/spaces"
+            )
+        if self.property_type not in CREATABLE_PROPERTY_TYPES:
+            raise ValueError(
+                f"property_type must be one of {', '.join(CREATABLE_PROPERTY_TYPES)}"
+            )
         if self.furnished not in FURNISHED:
             raise ValueError(f"furnished must be one of {', '.join(FURNISHED)}")
         if self.parking not in PARKING:
@@ -103,6 +114,8 @@ class PropertyOut(BaseModel):
 
 
 class ClassifiedCreate(BaseModel):
+    # Which part of the property is on offer. Omitted means the whole flat.
+    space_id: str | None = None
     title: str = Field(min_length=3, max_length=140)
     description: str = Field(default="", max_length=4000)
     rent_amount: int = Field(gt=0)  # minor units, ADR-0002
@@ -153,6 +166,11 @@ class ClassifiedOut(BaseModel):
 
     id: str
     property_id: str
+    space_id: str
+    # WHOLE_PROPERTY or ROOM, so a tenant can tell a flat from a room in one
+    # before opening the listing (Schema v1 §115).
+    space_type: str
+    space_label: str | None = None
     title: str
     description: str
     status: str
@@ -205,3 +223,25 @@ class RevealQuotaOut(BaseModel):
     used: int
     remaining: int
     resets_in: int  # seconds until the oldest view ages out; 0 when nothing is used
+
+
+class SpaceIn(BaseModel):
+    label: str = Field(min_length=1, max_length=120)
+    area_m2: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
+
+
+class SpaceOut(BaseModel):
+    id: str
+    property_id: str
+    space_type: str
+    label: str | None = None
+    # Serialised as a number. Decimal would go out as a JSON string, and every
+    # client would have to remember to parse it.
+    area_m2: float | None = None
+    status: str
+
+    model_config = {"from_attributes": True}
+
+
+class SpaceArchiveOut(SpaceOut):
+    paused_offers: list[str]
