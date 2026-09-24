@@ -14,6 +14,31 @@
         "title": "AssignIn",
         "type": "object"
       },
+      "AttachIn": {
+        "properties": {
+          "is_cover": {
+            "default": false,
+            "title": "Is Cover",
+            "type": "boolean"
+          },
+          "media_asset_id": {
+            "title": "Media Asset Id",
+            "type": "string"
+          },
+          "sort_order": {
+            "default": 0,
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "media_asset_id"
+        ],
+        "title": "AttachIn",
+        "type": "object"
+      },
       "AttributeOut": {
         "properties": {
           "allowed_values": {
@@ -453,6 +478,14 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "media": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PublicMedia"
+            },
+            "title": "Media",
+            "type": "array"
           },
           "min_term_months": {
             "anyOf": [
@@ -1194,6 +1227,100 @@
           "scopes"
         ],
         "title": "MandateOut",
+        "type": "object"
+      },
+      "MediaAssetOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "height_px": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height Px"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "media_type": {
+            "title": "Media Type",
+            "type": "string"
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mime Type"
+          },
+          "moderation_state": {
+            "title": "Moderation State",
+            "type": "string"
+          },
+          "property_id": {
+            "title": "Property Id",
+            "type": "string"
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Bytes"
+          },
+          "space_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Space Id"
+          },
+          "width_px": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width Px"
+          }
+        },
+        "required": [
+          "id",
+          "property_id",
+          "space_id",
+          "media_type",
+          "moderation_state",
+          "width_px",
+          "height_px",
+          "size_bytes",
+          "mime_type",
+          "created_at"
+        ],
+        "title": "MediaAssetOut",
         "type": "object"
       },
       "MemberInvite": {
@@ -2039,6 +2166,56 @@
           "precision"
         ],
         "title": "PublicLocation",
+        "type": "object"
+      },
+      "PublicMedia": {
+        "properties": {
+          "height_px": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height Px"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_cover": {
+            "title": "Is Cover",
+            "type": "boolean"
+          },
+          "media_type": {
+            "title": "Media Type",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "width_px": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width Px"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "is_cover",
+          "media_type"
+        ],
+        "title": "PublicMedia",
         "type": "object"
       },
       "RefreshRequest": {
@@ -3341,6 +3518,100 @@
         "summary": "Ledger Reconciliation",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/v1/admin/media/{asset_id}/approve": {
+      "post": {
+        "operationId": "approve_v1_admin_media__asset_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "asset_id",
+            "required": true,
+            "schema": {
+              "title": "Asset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaAssetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Approve",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/v1/admin/media/{asset_id}/reject": {
+      "post": {
+        "operationId": "reject_v1_admin_media__asset_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "asset_id",
+            "required": true,
+            "schema": {
+              "title": "Asset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaAssetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reject",
+        "tags": [
+          "media"
         ]
       }
     },
@@ -5041,6 +5312,111 @@
         ]
       }
     },
+    "/v1/classifieds/{offer_id}/media": {
+      "post": {
+        "description": "Put an approved photo of this property on this listing.",
+        "operationId": "attach_v1_classifieds__offer_id__media_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Attach",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/v1/classifieds/{offer_id}/media/{asset_id}": {
+      "delete": {
+        "operationId": "detach_v1_classifieds__offer_id__media__asset_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "title": "Offer Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "asset_id",
+            "required": true,
+            "schema": {
+              "title": "Asset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Detach",
+        "tags": [
+          "media"
+        ]
+      }
+    },
     "/v1/classifieds/{offer_id}/pause": {
       "post": {
         "operationId": "pause_classified_v1_classifieds__offer_id__pause_post",
@@ -6430,6 +6806,46 @@
         ]
       }
     },
+    "/v1/media/{asset_id}": {
+      "get": {
+        "operationId": "serve_v1_media__asset_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "asset_id",
+            "required": true,
+            "schema": {
+              "title": "Asset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Serve",
+        "tags": [
+          "media"
+        ]
+      }
+    },
     "/v1/organizations": {
       "get": {
         "operationId": "my_organizations_v1_organizations_get",
@@ -6915,6 +7331,143 @@
         "summary": "Create Classified",
         "tags": [
           "properties"
+        ]
+      }
+    },
+    "/v1/properties/{property_id}/media": {
+      "get": {
+        "operationId": "list_media_v1_properties__property_id__media_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "property_id",
+            "required": true,
+            "schema": {
+              "title": "Property Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MediaAssetOut"
+                  },
+                  "title": "Response List Media V1 Properties  Property Id  Media Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Media",
+        "tags": [
+          "media"
+        ]
+      },
+      "post": {
+        "description": "Upload an image as the raw request body.\n\n`rights_declared=true` is required: the uploader states they may publish\nit. Video and 360° tours are in the model but not accepted yet — they\nneed a processing pipeline this service does not have.",
+        "operationId": "upload_media_v1_properties__property_id__media_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "property_id",
+            "required": true,
+            "schema": {
+              "title": "Property Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "media_type",
+            "required": false,
+            "schema": {
+              "default": "PHOTO",
+              "enum": [
+                "PHOTO",
+                "FLOOR_PLAN"
+              ],
+              "title": "Media Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "space_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Space Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "rights_declared",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Rights Declared",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaAssetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload Media",
+        "tags": [
+          "media"
         ]
       }
     },

@@ -172,6 +172,15 @@ class ClassifiedCreate(BaseModel):
         return self
 
 
+class PublicMedia(BaseModel):
+    id: str
+    url: str
+    is_cover: bool
+    media_type: str
+    width_px: int | None = None
+    height_px: int | None = None
+
+
 class PublicLocation(BaseModel):
     latitude: float
     longitude: float
@@ -201,6 +210,7 @@ class ClassifiedOut(BaseModel):
     city: str
     district: str
     public_location: PublicLocation | None = None
+    media: list[PublicMedia] = []
     title: str
     description: str
     status: str

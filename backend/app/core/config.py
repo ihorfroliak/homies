@@ -82,6 +82,12 @@ class Settings(BaseSettings):
     # touching conversations already open.
     conversation_daily_quota: int = 30
 
+    # Media. Local disk until a production object store is wired in behind
+    # app/modules/media/storage.py. 10 MB is ample for a phone photo and
+    # small enough that one upload cannot exhaust a worker's memory.
+    media_root: str = "var/media"
+    media_max_bytes: int = 10_000_000
+
     @field_validator("contact_reveal_daily_quota")
     @classmethod
     def _validate_reveal_quota(cls, v: int) -> int:

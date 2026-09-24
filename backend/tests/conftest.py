@@ -120,6 +120,16 @@ def _capture_verification_messages(monkeypatch):
     return SENT_MESSAGES
 
 
+@pytest.fixture(autouse=True)
+def _media_store(tmp_path):
+    """Uploaded bytes go to a per-test directory, never to the working tree."""
+    from app.modules.media import storage
+
+    storage.use(storage.LocalStorage(str(tmp_path / "media")))
+    yield
+    storage.use(None)
+
+
 def last_code() -> str:
     match = re.search(r"\b(\d{6})\b", SENT_MESSAGES[-1]["body"])
     assert match, f"no code in {SENT_MESSAGES[-1]['body']!r}"
@@ -251,6 +261,7 @@ def pg_client(pg_migrated_engine):
         # Every table a test can write to. A missing name leaks state into the
         # next test: `disputes` was absent since FIN-03 and nothing noticed.
         "notifications domain_events incidents webhook_events disputes "
+        "listing_media media_assets file_objects "
         "viewings viewing_blackouts viewing_windows viewing_settings "
         "messages conversation_participants conversations "
         "contact_reveals listing_price_components classified_offers spaces property_authority_scopes "
@@ -291,6 +302,7 @@ def pg_session(pg_migrated_engine):
         # Every table a test can write to. A missing name leaks state into the
         # next test: `disputes` was absent since FIN-03 and nothing noticed.
         "notifications domain_events incidents webhook_events disputes "
+        "listing_media media_assets file_objects "
         "viewings viewing_blackouts viewing_windows viewing_settings "
         "messages conversation_participants conversations "
         "contact_reveals listing_price_components classified_offers spaces property_authority_scopes "

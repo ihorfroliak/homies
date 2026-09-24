@@ -175,6 +175,27 @@ class ClassifiedOffer(Base):
         viewonly=True,
     )
 
+    listing_media = relationship(
+        "ListingMedia",
+        primaryjoin="ListingMedia.listing_id == ClassifiedOffer.id",
+        foreign_keys="ListingMedia.listing_id",
+        order_by="(ListingMedia.is_cover.desc(), ListingMedia.sort_order)",
+        lazy="selectin",
+        viewonly=True,
+    )
+
+    @property
+    def media(self) -> list[dict]:
+        """Approved photos only, cover first. A photo awaiting or refused
+        moderation is never part of what the public sees."""
+        return [
+            {"id": link.asset.id, "url": f"/v1/media/{link.asset.id}",
+             "is_cover": link.is_cover, "media_type": link.asset.media_type,
+             "width_px": link.asset.width_px, "height_px": link.asset.height_px}
+            for link in self.listing_media
+            if link.asset.moderation_state == "APPROVED"
+        ]
+
     @property
     def city(self) -> str:
         return self.listed_property.city
@@ -575,3 +596,8 @@ class ListingPriceComponent(Base):
         String(36), ForeignKey("users.id", ondelete="RESTRICT")
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+# Registered here so the listing_media relationship above resolves wherever
+# the property models are loaded, not only where the app wires routers.
+import app.modules.media.models  # noqa: E402, F401
