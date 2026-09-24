@@ -61,6 +61,13 @@ def _someone_waits_on_a_lock(engine) -> bool:
     return False
 
 
+class _Reached(threading.Event):
+    """Set when the publisher is held; `pid` is its PostgreSQL backend, so a
+    waiter can be shown to wait on THAT transaction (TASK-006 N-03)."""
+
+    pid: int | None = None
+
+
 def _pause_publication_at(monkeypatch, point: str):
     """Hold the publishing thread at a named point.
 
@@ -68,7 +75,7 @@ def _pause_publication_at(monkeypatch, point: str):
     property lock. "protected" — right after authorize_for_mutation has
     decided under the property lock and the chain's FOR SHARE locks (TASK-004;
     in TASK-002 this was the second `require` call)."""
-    reached = threading.Event()
+    reached = _Reached()
     resume = threading.Event()
 
     if point == "precheck":
@@ -80,6 +87,7 @@ def _pause_publication_at(monkeypatch, point: str):
             if kwargs.get("verified"):
                 calls["n"] += 1
                 if calls["n"] == 1:
+                    reached.pid = args[0].scalar(text("SELECT pg_backend_pid()"))
                     reached.set()
                     assert resume.wait(WAIT)
             return result
@@ -90,6 +98,7 @@ def _pause_publication_at(monkeypatch, point: str):
 
         def gated_decision(*args, **kwargs):
             decided(*args, **kwargs)
+            reached.pid = args[0].scalar(text("SELECT pg_backend_pid()"))
             reached.set()
             assert resume.wait(WAIT)
 

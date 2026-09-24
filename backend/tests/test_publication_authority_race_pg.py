@@ -22,7 +22,7 @@ Never: the loss reports success and a stale publication then commits.
 
 import threading
 import time
-from datetime import date, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlalchemy import Date, literal, select, text
@@ -31,7 +31,7 @@ from sqlalchemy.orm import Session
 from app.modules.identity import organizations, parties
 from app.modules.properties import authority
 from app.modules.properties.models import PropertyAuthority, PropertyAuthorityScope
-from tests.conftest import auth, register_and_login
+from tests.conftest import auth, authorization_date, register_and_login
 from tests.test_organizations import _draft, _join, _mandate, _org, _org_property
 from tests.test_publication_race_pg import _draft_listing, _pause_publication_at
 
@@ -41,16 +41,18 @@ WAIT = 15
 # --- helpers ------------------------------------------------------------------------
 
 
-def _blocked_on(engine, table: str) -> bool:
-    """True once some backend is blocked by another, running a statement on
-    `table` — the waiting relationship, not just "someone waits"."""
+def _blocked_on(engine, table: str, blocker: int | None = None) -> bool:
+    """True once some backend running a statement on `table` is blocked — by
+    the backend `blocker` when given (the publisher's, so the wait is shown to
+    be on the publication's own locks, not on anything else)."""
     deadline = time.monotonic() + WAIT
     while time.monotonic() < deadline:
         with engine.connect() as conn:
             queries = conn.scalars(text(
                 "SELECT query FROM pg_stat_activity WHERE datname = current_database() "
-                "AND cardinality(pg_blocking_pids(pid)) > 0"
-            )).all()
+                "AND cardinality(pg_blocking_pids(pid)) > 0 "
+                "AND (CAST(:b AS integer) IS NULL OR :b = ANY(pg_blocking_pids(pid)))"
+            ), {"b": blocker}).all()
         if any(table in q for q in queries):
             return True
         time.sleep(0.05)
@@ -152,19 +154,60 @@ def _loss(kind, c, engine, ctx):
                              {"p": party})
             return True
         return ("legal_parties", archive_sql)
+    # The relationship and scope rows of a chain (TASK-006 N-03). Raw SQL: no
+    # supported path changes them today, which is exactly why the guarantee
+    # must not depend on one.
+    if kind == "person_link_sql":
+        party = _holder_party(engine, ctx["prop"])
+
+        def unlink_person():
+            with engine.begin() as conn:
+                conn.execute(text(
+                    "UPDATE person_legal_parties SET linked_user_id = NULL "
+                    "WHERE legal_party_id = :p"), {"p": party})
+            return True
+        return ("person_legal_parties", unlink_person)
+    if kind == "org_link_sql":
+        def unlink_org():
+            with engine.begin() as conn:
+                conn.execute(text(
+                    "UPDATE organization_legal_parties SET organization_id = NULL "
+                    "WHERE organization_id = :o"), {"o": ctx["org"]})
+            return True
+        return ("organization_legal_parties", unlink_org)
+    if kind == "mandate_scope_sql":
+        def drop_mandate_scope():
+            with engine.begin() as conn:
+                conn.execute(text(
+                    "DELETE FROM representation_mandate_scopes "
+                    "WHERE mandate_id = :m AND scope = 'PUBLISH_LISTING'"),
+                    {"m": ctx["mandate"]})
+            return True
+        return ("representation_mandate_scopes", drop_mandate_scope)
+    if kind == "authority_scope_sql":
+        def drop_authority_scope():
+            with engine.begin() as conn:
+                conn.execute(text(
+                    "DELETE FROM property_authority_scopes WHERE scope = 'PUBLISH_LISTING' "
+                    "AND property_authority_id IN "
+                    "(SELECT id FROM property_authorities WHERE property_id = :p)"),
+                    {"p": ctx["prop"]})
+            return True
+        return ("property_authority_scopes", drop_authority_scope)
     raise AssertionError(kind)
 
 
 def _context(kind, c):
-    if kind in ("membership", "organization", "organization_sql"):
+    if kind in ("membership", "organization", "organization_sql", "org_link_sql"):
         return _org_agent(c)
-    if kind == "mandate":
+    if kind in ("mandate", "mandate_scope_sql"):
         return _representative(c)
     owner, prop, offer = _draft_listing(c)
     return {"owner": owner, "prop": prop, "offer": offer, "publisher": owner}
 
 
-LOSSES = ["membership", "mandate", "organization", "organization_sql", "party", "party_sql"]
+LOSSES = ["membership", "mandate", "organization", "organization_sql", "party", "party_sql",
+          "person_link_sql", "org_link_sql", "mandate_scope_sql", "authority_scope_sql"]
 
 
 # --- outcome A: the decision is made first; the loss waits ---------------------------
@@ -195,7 +238,8 @@ def test_a_loss_arriving_after_the_decision_waits_for_the_publication(
     try:
         assert reached.wait(WAIT), "publication never reached its protected decision"
         loser.start()
-        assert _blocked_on(pg_migrated_engine, table), f"the {kind} loss did not wait"
+        assert _blocked_on(pg_migrated_engine, table, reached.pid), \
+            f"the {kind} loss did not wait on the publication"
         assert "lost" not in result, "the loss completed while publication held its proof"
     finally:
         resume.set()
@@ -243,7 +287,7 @@ def test_a_loss_committed_before_the_decision_refuses_the_publication(
 
 
 def _tomorrow_on_the_database(monkeypatch):
-    tomorrow = date.today() + timedelta(days=1)
+    tomorrow = authorization_date() + timedelta(days=1)
     monkeypatch.setattr(authority, "decision_date", lambda db: literal(tomorrow, Date))
 
 
@@ -253,7 +297,7 @@ def test_a_mandate_expiring_before_the_decision_refuses_the_publication(
     """TASK-003 reproduction: valid through today at the pre-check; midnight
     passes before the decision. The decision reads the date then, so the
     mandate is expired and publication is refused."""
-    ctx = _representative(pg_client, effective_until=date.today())
+    ctx = _representative(pg_client, effective_until=authorization_date())
     reached, resume = _pause_publication_at(monkeypatch, "precheck")
     result: dict = {}
     publisher = _publisher_thread(pg_client, ctx, result)
@@ -274,7 +318,7 @@ def test_a_mandate_valid_at_the_decision_publishes_even_if_midnight_follows(
     """The decision is the linearisation point. A boundary crossed after it is
     the serial order "published, then expired" — legal, and the next attempt
     is refused."""
-    ctx = _representative(pg_client, effective_until=date.today())
+    ctx = _representative(pg_client, effective_until=authorization_date())
     reached, resume = _pause_publication_at(monkeypatch, "protected")
     result: dict = {}
     publisher = _publisher_thread(pg_client, ctx, result)
@@ -331,22 +375,32 @@ def _two_chains(c, engine):
         db.flush()
         db.add(PropertyAuthorityScope(property_authority_id=second.id, scope="PUBLISH_LISTING"))
         db.commit()
+    ctx["coowner"] = other
+    ctx["mandate"] = c.get("/v1/me/mandates", headers=auth(other)).json()[0]["id"]
     return ctx
 
 
+def _lose_one_of_two(c, ctx, which):
+    if which == "membership":
+        return c.post(f"/v1/organizations/{ctx['org']}/members/{ctx['agent_id']}/revoke",
+                      headers=auth(ctx["boss"])).status_code
+    return c.post(f"/v1/me/mandates/{ctx['mandate']}/revoke",
+                  headers=auth(ctx["coowner"])).status_code
+
+
+@pytest.mark.parametrize("which", ["membership", "mandate"])
 def test_a_surviving_chain_still_publishes_when_another_is_revoked_first(
-    pg_client, pg_migrated_engine, monkeypatch
+    pg_client, pg_migrated_engine, monkeypatch, which
 ):
     ctx = _two_chains(pg_client, pg_migrated_engine)
-    table, lose = _loss("membership", pg_client, pg_migrated_engine, ctx)
     reached, resume = _pause_publication_at(monkeypatch, "precheck")
     result: dict = {}
     publisher = _publisher_thread(pg_client, ctx, result)
     publisher.start()
     try:
         assert reached.wait(WAIT)
-        assert lose() is True  # the organisation chain is gone
-        assert _can_publish_now(pg_migrated_engine, pg_client, ctx)  # the mandate remains
+        assert _lose_one_of_two(pg_client, ctx, which) == 200  # one chain is gone
+        assert _can_publish_now(pg_migrated_engine, pg_client, ctx)  # the other remains
     finally:
         resume.set()
         publisher.join(WAIT)
@@ -354,27 +408,39 @@ def test_a_surviving_chain_still_publishes_when_another_is_revoked_first(
     assert _status(pg_migrated_engine, ctx["offer"]) == "active"
 
 
-def test_every_valid_chain_is_protected_not_just_one(pg_client, pg_migrated_engine, monkeypatch):
+@pytest.mark.parametrize("which", ["membership", "mandate"])
+def test_every_valid_chain_is_protected_not_just_one(
+    pg_client, pg_migrated_engine, monkeypatch, which
+):
     """With two valid chains, revoking EITHER waits for the decided publication."""
     ctx = _two_chains(pg_client, pg_migrated_engine)
-    mandate = pg_client.get("/v1/me/mandates", headers=auth(ctx["publisher"])).json()[0]["id"]
+    table = "organization_memberships" if which == "membership" else "representation_mandates"
     reached, resume = _pause_publication_at(monkeypatch, "protected")
     result: dict = {}
-    publisher = _publisher_thread(pg_client, ctx, result)
-    coowner_token = pg_client.post("/v1/auth/login", json={
-        "email": "coowner@race.example", "password": "password-123456"}).json()["access_token"]
-    revoker = threading.Thread(target=lambda: result.update(revoked=pg_client.post(
-        f"/v1/me/mandates/{mandate}/revoke", headers=auth(coowner_token)).status_code))
+    finished: list[str] = []
+
+    def publish():
+        result["publish"] = pg_client.post(f"/v1/classifieds/{ctx['offer']}/publish",
+                                           headers=auth(ctx["publisher"]))
+        finished.append("publish")
+
+    def revoke():
+        result["revoked"] = _lose_one_of_two(pg_client, ctx, which)
+        finished.append("loss")
+
+    publisher = threading.Thread(target=publish)
+    revoker = threading.Thread(target=revoke)
     publisher.start()
     try:
         assert reached.wait(WAIT)
         revoker.start()
-        assert _blocked_on(pg_migrated_engine, "representation_mandates")
+        assert _blocked_on(pg_migrated_engine, table, reached.pid)
     finally:
         resume.set()
         publisher.join(WAIT)
         if revoker.ident:
             revoker.join(WAIT)
+    assert finished == ["publish", "loss"], finished
     assert result["publish"].status_code == 200
     assert result["revoked"] == 200
 
@@ -403,7 +469,7 @@ def test_partial_scopes_on_different_chains_do_not_add_up(pg_client, pg_migrated
     with Session(pg_migrated_engine) as db:
         auth_row = PropertyAuthority(
             property_id=prop, holder_legal_party_id=party, authority_type="CO_OWNER",
-            status="ACTIVE", verification_state="VERIFIED", effective_from=date.today(),
+            status="ACTIVE", verification_state="VERIFIED", effective_from=authorization_date(),
             created_by_user_id=_uid(pg_client, boss))
         db.add(auth_row)
         db.flush()
@@ -432,8 +498,8 @@ def test_no_invalid_chain_passes_the_protected_decision(pg_client, pg_migrated_e
             assert _loss("organization", c, engine, ctx)[1]()
     elif case in ("expired_mandate", "revoked_mandate", "missing_scope"):
         if case == "expired_mandate":
-            ctx = _representative(c, effective_from=date.today() - timedelta(days=10),
-                                  effective_until=date.today() - timedelta(days=1))
+            ctx = _representative(c, effective_from=authorization_date() - timedelta(days=10),
+                                  effective_until=authorization_date() - timedelta(days=1))
         elif case == "missing_scope":
             owner, prop, offer = _draft_listing(c)
             rep = register_and_login(c, "rep@race.example", "host")

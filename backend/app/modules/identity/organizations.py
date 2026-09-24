@@ -271,14 +271,20 @@ def accept_invitation(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Locked before it is read, like revoke_member (TASK-006, N-02). Read
+    # unlocked, an admin's revoke could commit between this read and the
+    # write, and the write would turn the REVOKED row back into ACTIVE —
+    # the revoke answered 200 and the invitee got the role anyway. Locked,
+    # the two are ordered: a revoke already committed is seen here and the
+    # invitation is gone; a revoke arriving later waits and revokes the
+    # membership this accept made ACTIVE.
     membership = db.scalar(
         select(OrganizationMembership).where(
             OrganizationMembership.organization_id == organization_id,
             OrganizationMembership.user_id == user.id,
-            OrganizationMembership.status == "INVITED",
-        )
+        ).with_for_update().execution_options(populate_existing=True)
     )
-    if membership is None:
+    if membership is None or membership.status != "INVITED":
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Invitation not found")
     membership.status = "ACTIVE"
     membership.joined_at = _now()

@@ -59,7 +59,9 @@ harness.MUTANTS = [
         "id": "A05-no-protected-decision",
         "invariant": "final authorisation guard",
         "file": AUTH,
-        "old": "    _lock_proof(db, _proof(db, user.id, property_id, scope, verified=verified))\n",
+        # TASK-006 split the call into `proof = _proof(...)` / `_lock_proof`.
+        "old": ("    proof = _proof(db, user.id, property_id, scope, verified=verified)\n"
+                "    _lock_proof(db, proof)\n"),
         "new": "    return\n",
         "tests": [T + "::test_a_loss_committed_before_the_decision_refuses_the_publication"],
     },
@@ -69,33 +71,45 @@ harness.MUTANTS = [
         "file": AUTH,
         "old": '            Organization.status == "ACTIVE",\n        )\n    )\n    mandate_scopes',
         "new": "        )\n    )\n    mandate_scopes",
-        "tests": [T + "::test_a_loss_committed_before_the_decision_refuses_the_publication"
-                      "[organization]",
-                  T + "::test_no_invalid_chain_passes_the_protected_decision[suspended_org]"],
+        # Since TASK-006 the proof query checks the status too, and the
+        # decision only sees proof rows: removing one copy alone refuses with
+        # 409 instead of publishing. Both copies go (the invariant is "status
+        # is part of the chain" wherever it is evaluated). The test observes
+        # the publication itself, not can_act (which shares the mutated code).
+        "extra": [(
+            '            Organization.status == "ACTIVE",\n'
+            "            OrganizationLegalParty.legal_party_id.in_(holders),\n",
+            "            OrganizationLegalParty.legal_party_id.in_(holders),\n",
+        )],
+        "tests": [T + "::test_no_invalid_chain_passes_the_protected_decision[suspended_org]"],
     },
     {
         "id": "A07-legal-party-status-ignored",
         "invariant": "legal party status is part of the chain",
         "file": AUTH,
-        "old": ("            PropertyAuthority.holder_legal_party_id.in_("
-                "_holder_parties(user_id, scope, today)),\n"
+        # TASK-006 reformatted _chains; compound with the proof query for the
+        # same reason as A06.
+        "old": ("                _holder_parties(user_id, scope, today, within)),\n"
                 '            LegalParty.status == "ACTIVE",\n'
-                "            _in_force(today),\n        )\n    )\n    if verified:"),
-        "new": ("            PropertyAuthority.holder_legal_party_id.in_("
-                "_holder_parties(user_id, scope, today)),\n"
-                "            _in_force(today),\n        )\n    )\n    if verified:"),
-        "tests": [T + "::test_a_loss_committed_before_the_decision_refuses_the_publication"
-                      "[party]",
-                  T + "::test_no_invalid_chain_passes_the_protected_decision[inactive_party]"],
+                "            _in_force(today),\n"),
+        "new": ("                _holder_parties(user_id, scope, today, within)),\n"
+                "            _in_force(today),\n"),
+        "extra": [(
+            "        PropertyAuthority.holder_legal_party_id.in_("
+            "_holder_parties(user_id, scope, today)),\n"
+            '        LegalParty.status == "ACTIVE",\n',
+            "        PropertyAuthority.holder_legal_party_id.in_("
+            "_holder_parties(user_id, scope, today)),\n",
+        )],
+        "tests": [T + "::test_no_invalid_chain_passes_the_protected_decision[inactive_party]"],
     },
     {
         "id": "A08-expiry-on-request-clock",
         "invariant": "validity dates read at the decision (database clock)",
         "file": AUTH,
-        "old": ("    today = decision_date(db)\n    held = _chains(user.id, scope, verified=False, "
-                "today=today)"),
-        "new": ("    today = _today()\n    held = _chains(user.id, scope, verified=False, "
-                "today=today)"),
+        # TASK-006: the decision is now the `protected` evaluation.
+        "old": "    today = decision_date(db)\n    protected = _chains(",
+        "new": "    today = _today()\n    protected = _chains(",
         "extra": [(
             "    today = decision_date(db)\n    authorities = select(",
             "    today = _today()\n    authorities = select(",

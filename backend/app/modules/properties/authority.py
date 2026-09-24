@@ -21,7 +21,7 @@ from datetime import date, datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException, status
-from sqlalchemy import Date, and_, cast, func, or_, select, union
+from sqlalchemy import Date, and_, cast, false, func, or_, select, union
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import ColumnElement, Select
 
@@ -96,8 +96,13 @@ MANDATE_PROPERTY_SCOPES: dict[str, frozenset[str]] = {
 }
 
 
-def _holder_parties(user_id: str, scope: str, today: Today | None = None):
-    """Every legal party this account may act for, for this scope."""
+def _holder_parties(user_id: str, scope: str, today: Today | None = None,
+                    within: dict[str, list] | None = None):
+    """Every legal party this account may act for, for this scope.
+
+    `within` is for the protected decision only: consider only the rows a
+    locked proof names, so a link that appeared after the locks were taken
+    cannot carry the decision (TASK-006, N-01)."""
     today = _today() if today is None else today
     personal = select(PersonLegalParty.legal_party_id).where(
         PersonLegalParty.linked_user_id == user_id
@@ -138,11 +143,28 @@ def _holder_parties(user_id: str, scope: str, today: Today | None = None):
             ),
         )
     )
+    if within is not None:
+        personal = personal.where(
+            PersonLegalParty.legal_party_id.in_(within.get("person_legal_parties") or []))
+        organisational = organisational.where(
+            OrganizationMembership.id.in_(within.get("organization_memberships") or []),
+            Organization.id.in_(within.get("organizations") or []),
+            OrganizationLegalParty.legal_party_id.in_(
+                within.get("organization_legal_parties") or []),
+        )
+        # The exact (mandate, scope) rows that were locked, not merely the
+        # locked mandates: a scope row added since is not part of the proof.
+        pairs = within.get("representation_mandate_scopes") or []
+        mandated = mandated.where(or_(false(), *(
+            and_(RepresentationMandateScope.mandate_id == m,
+                 RepresentationMandateScope.scope == s) for m, s in pairs)))
     return union(personal, organisational, mandated)
 
 
-def _chains(user_id: str, scope: str, *, verified: bool, today: Today | None = None) -> Select:
-    """Property ids this account may act on with `scope`."""
+def _chains(user_id: str, scope: str, *, verified: bool, today: Today | None = None,
+            within: dict[str, list] | None = None) -> Select:
+    """Property ids this account may act on with `scope` — restricted to the
+    rows of a locked proof when `within` is given."""
     today = _today() if today is None else today
     query = (
         select(PropertyAuthority.property_id)
@@ -155,11 +177,19 @@ def _chains(user_id: str, scope: str, *, verified: bool, today: Today | None = N
             ),
         )
         .where(
-            PropertyAuthority.holder_legal_party_id.in_(_holder_parties(user_id, scope, today)),
+            PropertyAuthority.holder_legal_party_id.in_(
+                _holder_parties(user_id, scope, today, within)),
             LegalParty.status == "ACTIVE",
             _in_force(today),
         )
     )
+    if within is not None:
+        # Authority scope rows were locked as (authority, `scope`) for exactly
+        # these authorities, so filtering the authority ids is exact for them.
+        query = query.where(
+            PropertyAuthority.id.in_(within.get("property_authorities") or []),
+            LegalParty.id.in_(within.get("legal_parties") or []),
+        )
     if verified:
         query = query.where(PropertyAuthority.verification_state == "VERIFIED")
     return query
@@ -216,14 +246,29 @@ def require(
 #      the account has, not one — is locked FOR SHARE, table by table in the
 #      order below and by id within a table;
 #   3. the chains are evaluated again, after the locks, against the calendar
-#      date the database reports at that moment.
+#      date the database reports at that moment — and ONLY through the rows
+#      locked in step 2 (TASK-006, N-01).
 #
 # FOR SHARE conflicts with every UPDATE and DELETE of those rows, whoever
 # issues it: a membership or mandate revoke, an organisation suspension, a
 # legal party archival, even a direct SQL statement. Such a change either
 # committed before step 2 (and step 3 sees it) or waits until this transaction
-# ends (and is serialised after it). Two publications share the locks and do
-# not block each other. There is no global lock and no in-process lock.
+# ends (and is serialised after it).
+#
+# Why step 3 is restricted: the proof is read before it is locked, and step 2
+# can wait (on a revoke in flight, say). A chain that became valid during that
+# wait — a mandate granted, an invitation accepted — is not in the proof and
+# holds no lock. TASK-005 showed a decision carried by such a chain, which was
+# then revoked without waiting, and the listing went public with no valid
+# chain at commit. So the decision uses only locked rows: a chain gained after
+# the proof was read cannot carry this attempt (it is refused with 409, and a
+# new attempt reads a proof that includes it). One pass, no loop, nothing
+# unbounded.
+#
+# Two publications share the locks and do not block each other, except that a
+# share request queues behind an UPDATE already waiting on the same row
+# (PostgreSQL row-lock queueing) — a delay, never a cycle. There is no global
+# lock and no in-process lock.
 #
 # Lock order for a publication (never acquired in reverse by any path):
 #
@@ -377,26 +422,41 @@ def authorize_for_mutation(
     (coordination.lock_property) in this transaction, and makes its write in
     the same transaction before committing. Postcondition: at least one chain
     that grants `scope` (VERIFIED when `verified`) is valid at the database's
-    current time, and no row it rests on can change until the caller commits.
-    Otherwise the same refusals as `require`: 404 when nothing is held, 403
+    current time, every row of that chain is locked, and none can change until
+    the caller commits. The chain is found among the locked rows only; one
+    that became valid after the proof was read does not count (N-01).
+
+    Refusals: 409 when a valid chain exists now but was not in the locked
+    proof (it appeared while the locks were being taken — a new attempt will
+    use it); otherwise the same as `require`: 404 when nothing is held, 403
     when only an unverified right is.
 
     Scopes are not pooled across chains: each chain must carry `scope` on its
     own, exactly as `require` evaluates it."""
-    _lock_proof(db, _proof(db, user.id, property_id, scope, verified=verified))
+    proof = _proof(db, user.id, property_id, scope, verified=verified)
+    _lock_proof(db, proof)
     today = decision_date(db)
+    protected = _chains(user.id, scope, verified=verified, today=today, within=proof).where(
+        PropertyAuthority.property_id == property_id)
+    if proof and db.scalar(protected.limit(1)) is not None:
+        return
+    # Refused. Which refusal is decided from the state as it is now; none of
+    # it is protected, and none of it authorises anything.
+    unprotected = _chains(user.id, scope, verified=verified, today=today).where(
+        PropertyAuthority.property_id == property_id)
+    if db.scalar(unprotected.limit(1)) is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "The authority for this property changed while publishing. Try again.",
+        )
     held = _chains(user.id, scope, verified=False, today=today).where(
         PropertyAuthority.property_id == property_id)
     if db.scalar(held.limit(1)) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Property not found")
-    if verified:
-        backed = _chains(user.id, scope, verified=True, today=today).where(
-            PropertyAuthority.property_id == property_id)
-        if db.scalar(backed.limit(1)) is None:
-            raise HTTPException(
-                status.HTTP_403_FORBIDDEN,
-                "Ownership of this property has not been verified yet",
-            )
+    raise HTTPException(
+        status.HTTP_403_FORBIDDEN,
+        "Ownership of this property has not been verified yet",
+    )
 
 
 def grant_owner(

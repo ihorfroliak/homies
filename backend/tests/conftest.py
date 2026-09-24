@@ -21,6 +21,20 @@ from tests.legacy_runtime import create_legacy_test_app  # noqa: E402
 legacy_app = create_legacy_test_app()
 
 
+def authorization_date():
+    """The calendar date authority validity is judged against: the UTC date
+    (current product rule — authority._today and authority.decision_date).
+
+    Not `date.today()`, which is the machine's LOCAL date: in Poland it is a
+    day ahead of UTC between local midnight and 01:00/02:00, and a test that
+    means "yesterday, so expired" then builds a date that is still valid
+    (TASK-005 N-04). Whether validity should follow the Polish civil date is
+    an open product/legal question, not a test detail."""
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).date()
+
+
 def app_for(request):
     return legacy_app if request.node.get_closest_marker("legacy_runtime") else app
 from app.modules.identity.models import User  # noqa: E402
