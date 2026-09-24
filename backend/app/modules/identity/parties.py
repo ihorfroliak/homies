@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.modules.identity.models import (
+    PARTY_STATUSES,
     LegalParty,
     OrganizationLegalParty,
     PersonLegalParty,
@@ -54,6 +55,27 @@ def personal_party(db: Session, user: User) -> LegalParty:
         if winner is None:  # pragma: no cover — the constraint fired for another reason
             raise
         return winner
+
+
+def set_legal_party_status(db: Session, legal_party_id: str, new_status: str) -> LegalParty:
+    """Change a legal party's status — the only supported way to archive one.
+    No endpoint exposes it yet (TASK-004 adds no workflow).
+
+    Locked first; a publication resting on this party holds it FOR SHARE until
+    it commits (authority.authorize_for_mutation), so the change is ordered
+    before or after it. Any other UPDATE of the row waits the same way.
+    """
+    if new_status not in PARTY_STATUSES:
+        raise ValueError(f"unknown legal party status {new_status!r}")
+    party = db.scalar(
+        select(LegalParty).where(LegalParty.id == legal_party_id)
+        .with_for_update().execution_options(populate_existing=True)
+    )
+    if party is None:
+        raise LookupError(legal_party_id)
+    party.status = new_status
+    db.flush()
+    return party
 
 
 def has_legal_name(db: Session, legal_party_id: str) -> bool:

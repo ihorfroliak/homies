@@ -61,25 +61,39 @@ def _someone_waits_on_a_lock(engine) -> bool:
     return False
 
 
-def _pause_publication_at(monkeypatch, call_number: int):
-    """Hold the publishing thread when it has passed its `call_number`-th
-    verified authority check. Call 1 is the lock-free pre-check; call 2 is the
-    re-check made while holding the property lock."""
+def _pause_publication_at(monkeypatch, point: str):
+    """Hold the publishing thread at a named point.
+
+    "precheck" — right after the lock-free authority check, before the
+    property lock. "protected" — right after authorize_for_mutation has
+    decided under the property lock and the chain's FOR SHARE locks (TASK-004;
+    in TASK-002 this was the second `require` call)."""
     reached = threading.Event()
     resume = threading.Event()
-    calls = {"n": 0}
-    original = authority.require
 
-    def gated(*args, **kwargs):
-        result = original(*args, **kwargs)
-        if kwargs.get("verified"):
-            calls["n"] += 1
-            if calls["n"] == call_number:
-                reached.set()
-                assert resume.wait(WAIT)
-        return result
+    if point == "precheck":
+        original = authority.require
+        calls = {"n": 0}
 
-    monkeypatch.setattr(authority, "require", gated)
+        def gated(*args, **kwargs):
+            result = original(*args, **kwargs)
+            if kwargs.get("verified"):
+                calls["n"] += 1
+                if calls["n"] == 1:
+                    reached.set()
+                    assert resume.wait(WAIT)
+            return result
+
+        monkeypatch.setattr(authority, "require", gated)
+    else:
+        decided = authority.authorize_for_mutation
+
+        def gated_decision(*args, **kwargs):
+            decided(*args, **kwargs)
+            reached.set()
+            assert resume.wait(WAIT)
+
+        monkeypatch.setattr(authority, "authorize_for_mutation", gated_decision)
     return reached, resume
 
 
@@ -89,7 +103,7 @@ def test_a_revoke_committed_during_publication_wins(pg_client, pg_migrated_engin
     owner, prop, offer = _draft_listing(pg_client)
     admin = admin_login(pg_client)
     aid = _authority_id(pg_migrated_engine, prop)
-    reached, resume = _pause_publication_at(monkeypatch, 1)
+    reached, resume = _pause_publication_at(monkeypatch, "precheck")
 
     result = {}
     worker = threading.Thread(target=lambda: result.update(
@@ -117,7 +131,7 @@ def test_a_revoke_arriving_during_publication_waits_and_takes_it_down(
     owner, prop, offer = _draft_listing(pg_client)
     admin = admin_login(pg_client)
     aid = _authority_id(pg_migrated_engine, prop)
-    reached, resume = _pause_publication_at(monkeypatch, 2)
+    reached, resume = _pause_publication_at(monkeypatch, "protected")
 
     result = {}
     publisher = threading.Thread(target=lambda: result.update(
@@ -150,7 +164,7 @@ def test_archiving_the_space_during_publication_waits_and_takes_it_down(
     owner, prop, offer = _draft_listing(pg_client)
     with pg_migrated_engine.connect() as conn:
         space = conn.scalar(select(Space.id).where(Space.property_id == prop))
-    reached, resume = _pause_publication_at(monkeypatch, 2)
+    reached, resume = _pause_publication_at(monkeypatch, "protected")
 
     result = {}
     publisher = threading.Thread(target=lambda: result.update(

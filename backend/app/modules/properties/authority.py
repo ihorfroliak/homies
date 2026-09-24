@@ -18,11 +18,12 @@ right that party does not have.
 """
 
 from datetime import date, datetime, timezone
+from typing import Any
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, or_, select, union
+from sqlalchemy import Date, and_, cast, func, or_, select, union
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import Select
+from sqlalchemy.sql import ColumnElement, Select
 
 from app.core.audit import audit
 from app.modules.identity.models import (
@@ -51,7 +52,12 @@ def _today() -> date:
     return datetime.now(timezone.utc).date()
 
 
-def _in_force(today: date):
+# A calendar date, either computed in Python (ordinary reads) or evaluated by
+# the database at the moment a protected decision is made (publication).
+Today = date | ColumnElement[Any]
+
+
+def _in_force(today: Today):
     """ACTIVE and inside its dates. A revoked or expired authority authorises
     nothing new, whatever its verification state (Schema v1 §81.14)."""
     return and_(
@@ -90,9 +96,9 @@ MANDATE_PROPERTY_SCOPES: dict[str, frozenset[str]] = {
 }
 
 
-def _holder_parties(user_id: str, scope: str):
+def _holder_parties(user_id: str, scope: str, today: Today | None = None):
     """Every legal party this account may act for, for this scope."""
-    today = _today()
+    today = _today() if today is None else today
     personal = select(PersonLegalParty.legal_party_id).where(
         PersonLegalParty.linked_user_id == user_id
     )
@@ -135,8 +141,9 @@ def _holder_parties(user_id: str, scope: str):
     return union(personal, organisational, mandated)
 
 
-def _chains(user_id: str, scope: str, *, verified: bool) -> Select:
+def _chains(user_id: str, scope: str, *, verified: bool, today: Today | None = None) -> Select:
     """Property ids this account may act on with `scope`."""
+    today = _today() if today is None else today
     query = (
         select(PropertyAuthority.property_id)
         .join(LegalParty, LegalParty.id == PropertyAuthority.holder_legal_party_id)
@@ -148,9 +155,9 @@ def _chains(user_id: str, scope: str, *, verified: bool) -> Select:
             ),
         )
         .where(
-            PropertyAuthority.holder_legal_party_id.in_(_holder_parties(user_id, scope)),
+            PropertyAuthority.holder_legal_party_id.in_(_holder_parties(user_id, scope, today)),
             LegalParty.status == "ACTIVE",
-            _in_force(_today()),
+            _in_force(today),
         )
     )
     if verified:
@@ -189,6 +196,207 @@ def require(
             "Ownership of this property has not been verified yet",
         )
     return prop
+
+
+# --- the protected decision (TASK-004) ----------------------------------------
+#
+# `require` answers "may this account act?" as of the statement that asks. A
+# privileged write that commits later — publication — needs the answer to
+# still hold when it commits. TASK-003 showed it did not: a membership or a
+# mandate revoked, an organisation suspended, a legal party archived, or a
+# mandate expiring between the last check and the write, and the listing went
+# public on a chain that no longer existed.
+#
+# `authorize_for_mutation` closes that gap inside the caller's transaction:
+#
+#   1. the caller already holds the property's coordination lock
+#      (coordination.py) — this orders it against authority revoke and space
+#      archive, which take the same lock first;
+#   2. every row that makes a currently-valid chain valid — for every chain
+#      the account has, not one — is locked FOR SHARE, table by table in the
+#      order below and by id within a table;
+#   3. the chains are evaluated again, after the locks, against the calendar
+#      date the database reports at that moment.
+#
+# FOR SHARE conflicts with every UPDATE and DELETE of those rows, whoever
+# issues it: a membership or mandate revoke, an organisation suspension, a
+# legal party archival, even a direct SQL statement. Such a change either
+# committed before step 2 (and step 3 sees it) or waits until this transaction
+# ends (and is serialised after it). Two publications share the locks and do
+# not block each other. There is no global lock and no in-process lock.
+#
+# Lock order for a publication (never acquired in reverse by any path):
+#
+#   properties                        (coordination row, FOR UPDATE)
+#   legal_parties                     (chain holders)
+#   person_legal_parties              (personal link)
+#   organizations                     (organisation status)
+#   organization_legal_parties        (organisation -> its legal party)
+#   organization_memberships          (the acting user's membership)
+#   representation_mandates           (the acting user's mandates)
+#   representation_mandate_scopes
+#   property_authorities
+#   property_authority_scopes
+#   classified_offers                 (the conditional status UPDATE)
+#
+# The paths that invalidate a link each lock only the row they change
+# (membership revoke, mandate revoke, organisation/party status), or take the
+# property lock first (authority revoke, space archive). None of them holds a
+# lock publication needs while waiting for one publication holds, so no cycle
+# exists. Validity dates are compared to the database's statement time, not
+# to a Python date read earlier in the request.
+
+
+def decision_date(db: Session) -> ColumnElement[Any]:
+    """Today's UTC calendar date as the database sees it, when the statement
+    runs. The same UTC date `_today()` computes in Python, so inclusive
+    `effective_until` semantics are unchanged; only the clock moves to the
+    decision point."""
+    if db.get_bind().dialect.name == "postgresql":
+        return cast(func.timezone("UTC", func.statement_timestamp()), Date)
+    return func.date("now")  # SQLite (unit tests): 'YYYY-MM-DD' in UTC
+
+
+def _proof(db: Session, user_id: str, property_id: str, scope: str, *,
+           verified: bool) -> dict[str, list]:
+    """Ids of every row that makes a currently-valid chain valid, per table.
+
+    Read before locking; anything that changes before the lock is taken is
+    seen by the re-evaluation after it. Rows of chains that are already
+    invalid are not needed: they cannot authorise anything."""
+    today = decision_date(db)
+    authorities = select(PropertyAuthority.id, PropertyAuthority.holder_legal_party_id).join(
+        LegalParty, LegalParty.id == PropertyAuthority.holder_legal_party_id
+    ).join(
+        PropertyAuthorityScope,
+        and_(
+            PropertyAuthorityScope.property_authority_id == PropertyAuthority.id,
+            PropertyAuthorityScope.scope == scope,
+        ),
+    ).where(
+        PropertyAuthority.property_id == property_id,
+        PropertyAuthority.holder_legal_party_id.in_(_holder_parties(user_id, scope, today)),
+        LegalParty.status == "ACTIVE",
+        _in_force(today),
+    )
+    if verified:
+        authorities = authorities.where(PropertyAuthority.verification_state == "VERIFIED")
+    rows = db.execute(authorities).all()
+    authority_ids = sorted({r[0] for r in rows})
+    holders = sorted({r[1] for r in rows})
+    if not holders:
+        return {}
+
+    personal = db.scalars(select(PersonLegalParty.legal_party_id).where(
+        PersonLegalParty.linked_user_id == user_id,
+        PersonLegalParty.legal_party_id.in_(holders),
+    )).all()
+
+    roles = [role for role, scopes in ROLE_SCOPES.items() if scope in scopes]
+    organisational = db.execute(
+        select(OrganizationMembership.id, Organization.id, OrganizationLegalParty.legal_party_id)
+        .join(Organization, Organization.id == OrganizationMembership.organization_id)
+        .join(OrganizationLegalParty,
+              OrganizationLegalParty.organization_id == Organization.id)
+        .where(
+            OrganizationMembership.user_id == user_id,
+            OrganizationMembership.status == "ACTIVE",
+            OrganizationMembership.role.in_(roles),
+            Organization.status == "ACTIVE",
+            OrganizationLegalParty.legal_party_id.in_(holders),
+        )
+    ).all()
+
+    mandate_scopes = [m for m, scopes in MANDATE_PROPERTY_SCOPES.items() if scope in scopes]
+    mandated = db.execute(
+        select(RepresentationMandate.id, RepresentationMandateScope.scope)
+        .join(RepresentationMandateScope,
+              and_(RepresentationMandateScope.mandate_id == RepresentationMandate.id,
+                   RepresentationMandateScope.scope.in_(mandate_scopes)))
+        .where(
+            RepresentationMandate.representative_user_id == user_id,
+            RepresentationMandate.principal_legal_party_id.in_(holders),
+            RepresentationMandate.status == "ACTIVE",
+            RepresentationMandate.verification_state == "VERIFIED",
+            RepresentationMandate.effective_from <= today,
+            or_(RepresentationMandate.effective_until.is_(None),
+                RepresentationMandate.effective_until >= today),
+        )
+    ).all()
+
+    return {
+        "legal_parties": holders,
+        "person_legal_parties": sorted(set(personal)),
+        "organizations": sorted({r[1] for r in organisational}),
+        "organization_legal_parties": sorted({r[2] for r in organisational}),
+        "organization_memberships": sorted({r[0] for r in organisational}),
+        "representation_mandates": sorted({r[0] for r in mandated}),
+        "representation_mandate_scopes": sorted({(r[0], r[1]) for r in mandated}),
+        "property_authorities": authority_ids,
+        "property_authority_scopes": [(a, scope) for a in authority_ids],
+    }
+
+
+def _lock_proof(db: Session, proof: dict[str, list]) -> None:
+    """FOR SHARE on every proof row, in the documented order."""
+    single = (
+        ("legal_parties", LegalParty.id),
+        ("person_legal_parties", PersonLegalParty.legal_party_id),
+        ("organizations", Organization.id),
+        ("organization_legal_parties", OrganizationLegalParty.legal_party_id),
+        ("organization_memberships", OrganizationMembership.id),
+        ("representation_mandates", RepresentationMandate.id),
+    )
+    for key, column in single:
+        ids = proof.get(key) or []
+        if ids:
+            db.execute(select(column).where(column.in_(ids)).order_by(column)
+                       .with_for_update(read=True))
+    for mandate_id, mandate_scope in proof.get("representation_mandate_scopes") or []:
+        db.execute(select(RepresentationMandateScope.mandate_id).where(
+            RepresentationMandateScope.mandate_id == mandate_id,
+            RepresentationMandateScope.scope == mandate_scope,
+        ).with_for_update(read=True))
+    ids = proof.get("property_authorities") or []
+    if ids:
+        db.execute(select(PropertyAuthority.id).where(PropertyAuthority.id.in_(ids))
+                   .order_by(PropertyAuthority.id).with_for_update(read=True))
+    for authority_id, authority_scope in proof.get("property_authority_scopes") or []:
+        db.execute(select(PropertyAuthorityScope.property_authority_id).where(
+            PropertyAuthorityScope.property_authority_id == authority_id,
+            PropertyAuthorityScope.scope == authority_scope,
+        ).with_for_update(read=True))
+
+
+def authorize_for_mutation(
+    db: Session, user: User, property_id: str, scope: str, *, verified: bool = True
+) -> None:
+    """The protected authorisation decision for a privileged write.
+
+    Precondition: the caller holds the property's coordination lock
+    (coordination.lock_property) in this transaction, and makes its write in
+    the same transaction before committing. Postcondition: at least one chain
+    that grants `scope` (VERIFIED when `verified`) is valid at the database's
+    current time, and no row it rests on can change until the caller commits.
+    Otherwise the same refusals as `require`: 404 when nothing is held, 403
+    when only an unverified right is.
+
+    Scopes are not pooled across chains: each chain must carry `scope` on its
+    own, exactly as `require` evaluates it."""
+    _lock_proof(db, _proof(db, user.id, property_id, scope, verified=verified))
+    today = decision_date(db)
+    held = _chains(user.id, scope, verified=False, today=today).where(
+        PropertyAuthority.property_id == property_id)
+    if db.scalar(held.limit(1)) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Property not found")
+    if verified:
+        backed = _chains(user.id, scope, verified=True, today=today).where(
+            PropertyAuthority.property_id == property_id)
+        if db.scalar(backed.limit(1)) is None:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Ownership of this property has not been verified yet",
+            )
 
 
 def grant_owner(

@@ -30,6 +30,7 @@ from app.core.audit import audit
 from app.core.db import get_db
 from app.core.security import get_current_user
 from app.modules.identity.models import (
+    ORGANIZATION_STATUSES,
     LegalParty,
     Organization,
     OrganizationLegalParty,
@@ -119,6 +120,28 @@ def organization_party(db: Session, organization_id: str) -> OrganizationLegalPa
             OrganizationLegalParty.organization_id == organization_id
         )
     )
+
+
+def set_organization_status(db: Session, organization_id: str, new_status: str) -> Organization:
+    """Change an organisation's status — the only supported way to suspend or
+    archive one. No endpoint exposes it yet (TASK-004 adds no workflow).
+
+    The row is locked first. A publication resting on this organisation holds
+    it FOR SHARE until it commits (authority.authorize_for_mutation), so the
+    change waits for it or is seen by it. The guarantee does not depend on
+    this function: any UPDATE of the row, however issued, waits the same way.
+    """
+    if new_status not in ORGANIZATION_STATUSES:
+        raise ValueError(f"unknown organization status {new_status!r}")
+    org = db.scalar(
+        select(Organization).where(Organization.id == organization_id)
+        .with_for_update().execution_options(populate_existing=True)
+    )
+    if org is None:
+        raise LookupError(organization_id)
+    org.status = new_status
+    db.flush()
+    return org
 
 
 def active_membership(
@@ -292,11 +315,15 @@ def revoke_member(
     """Take a person's access away. The last OWNER cannot be removed: an
     organisation with nobody able to manage it is one nobody can repair."""
     _require_role(db, organization_id, user, MANAGING_ROLES)
+    # Locked before it is read (TASK-004): a publication resting on this
+    # membership holds it FOR SHARE until it commits, so the revoke either
+    # happens before that publication decides (and it is refused) or after it
+    # commits — never in between. See authority.authorize_for_mutation.
     target = db.scalar(
         select(OrganizationMembership).where(
             OrganizationMembership.organization_id == organization_id,
             OrganizationMembership.user_id == member_user_id,
-        )
+        ).with_for_update().execution_options(populate_existing=True)
     )
     if target is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found")
@@ -395,7 +422,13 @@ def revoke_mandate(
     """Only the principal can take a mandate back. To the representative and
     to anyone else, somebody else's mandate does not exist."""
     principal = personal_party(db, user)
-    mandate = db.get(RepresentationMandate, mandate_id)
+    # Locked before it is read, for the same reason as a membership revoke
+    # (TASK-004): an in-flight publication using this mandate finishes first,
+    # or sees the revocation.
+    mandate = db.scalar(
+        select(RepresentationMandate).where(RepresentationMandate.id == mandate_id)
+        .with_for_update().execution_options(populate_existing=True)
+    )
     if mandate is None or mandate.principal_legal_party_id != principal.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Mandate not found")
     if mandate.status != "REVOKED":

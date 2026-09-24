@@ -333,15 +333,25 @@ def publish_classified(
     # carry; it is refused here, before the first deposit is wired.
     #
     # The first check refuses early without taking a lock. It proves nothing
-    # about the moment of writing: an admin may revoke the authority between
-    # it and the commit (TASK-001 F-04). So the property's coordination lock
-    # is taken — the same one revoke and space archiving take — and every
-    # condition is read again under it. See properties/coordination.py.
+    # about the moment of writing: the authority, a membership, a mandate, an
+    # organisation or a legal party can lose its validity before the commit
+    # (TASK-001 F-04, TASK-003). So the property's coordination lock is taken
+    # — the one authority revoke and space archiving take — and the decision is
+    # made again by authorize_for_mutation, which locks every row of every
+    # valid chain FOR SHARE and evaluates dates on the database clock. From
+    # there to the commit nothing the decision rests on can change.
+    # See properties/coordination.py and authority.authorize_for_mutation.
     offer = _authorized_offer(db, user, offer_id, verified=True)
     prop = coordination.lock_property(db, offer.property_id)
-    offer = _authorized_offer(db, user, offer_id, verified=True)
-    if prop is None:  # unreachable: the re-check above found it
+    # lock_property expired the session: `offer` reloads as committed now.
+    if prop is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
+    try:
+        authority.authorize_for_mutation(db, user, prop.id, "PUBLISH_LISTING", verified=True)
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_404_NOT_FOUND:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found") from None
+        raise
     try:
         spaces.ensure_listable(offer.space)
     except spaces.SpaceArchived:

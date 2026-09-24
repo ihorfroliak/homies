@@ -61,8 +61,9 @@ MUTANTS = [
         "id": "M04-publish-without-recheck",
         "invariant": "publication/revoke serialisation (re-check under lock)",
         "file": "app/modules/properties/router.py",
-        "old": "    prop = coordination.lock_property(db, offer.property_id)\n    offer = _authorized_offer(db, user, offer_id, verified=True)\n",
-        "new": "    prop = coordination.lock_property(db, offer.property_id)\n",
+        # Since TASK-004 the re-check under the lock is authorize_for_mutation.
+        "old": "        authority.authorize_for_mutation(db, user, prop.id, \"PUBLISH_LISTING\", verified=True)\n",
+        "new": "        pass\n",
         "tests": [T + "test_publication_race_pg.py"],
     },
     {
@@ -184,10 +185,18 @@ MUTANTS = [
     },
     {
         "id": "M19-revoke-without-lock",
-        "invariant": "revoke takes the coordination lock",
+        "invariant": "revoke is ordered with publication",
         "file": "app/modules/properties/authority.py",
+        # Since TASK-004 two mechanisms order revoke after an in-flight
+        # publication: revoke's Property lock, and publication's FOR SHARE on
+        # the authority row. Removing only the first leaves an equivalent
+        # mutant (it survived on the TASK-004 rerun); both are removed here.
         "old": "    coordination.lock_property(db, authority.property_id)\n",
         "new": "",
+        "extra": [(
+            "                   .order_by(PropertyAuthority.id).with_for_update(read=True))\n",
+            "                   .order_by(PropertyAuthority.id))\n",
+        )],
         "tests": [T + "test_publication_race_pg.py::test_a_revoke_arriving_during_publication_waits_and_takes_it_down"],
     },
     {
