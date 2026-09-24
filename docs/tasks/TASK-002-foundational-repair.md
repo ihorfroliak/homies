@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | IN_AUDIT — implemented; awaiting targeted Codex re-audit |
+| Status | DONE except F-04 — TASK-003 accepted F-01…F-03, F-05…F-09; F-04 completed in TASK-004 (pending TASK-005) |
 | Owner (writer) | Claude Code — sole writer of the contexts below for this task |
 | Bounded contexts written | app composition (`main`), admin, properties (publication, authority revoke, location, contact reveal, listing terms, property subtype), media, engagement (conversations, viewings), tests |
 | Baseline SHA | `988b31b138436cb69ad20e5cb06e6e3be116fe64` (TASK-000) |

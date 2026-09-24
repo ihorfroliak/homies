@@ -9,10 +9,13 @@ Engineering status per area is in
 1. ~~TASK-000~~ — canonical governance and convergence. Done.
 2. ~~TASK-001~~ — Codex independent audit of `988b31b`: safe to continue with
    blocking fixes in named contexts (P1 ×5, P2 ×4). Done.
-3. **TASK-002** — foundational repair of F-01…F-09
-   ([contract](../tasks/TASK-002-foundational-repair.md)). Implemented;
-   **awaiting targeted Codex re-audit** of the exact handoff SHA.
-4. Proposed next (Claude, awaiting founder approval): the bounded
+3. ~~TASK-002~~ — foundational repair of F-01…F-09
+   ([contract](../tasks/TASK-002-foundational-repair.md)); ~~TASK-003~~ Codex
+   re-audit accepted eight closures, F-04 partially closed.
+4. **TASK-004** — atomic publication authorisation across all chains
+   ([contract](../tasks/TASK-004-atomic-publication-auth.md)). Implemented;
+   **awaiting TASK-005 targeted Codex re-audit** of the exact handoff SHA.
+5. Proposed next (Claude, awaiting founder approval): the bounded
    property type + subtype migration (APARTMENT | HOUSE + subtype, 04a §13),
    then the Phase 1A MUST_CLOSE list below.
 

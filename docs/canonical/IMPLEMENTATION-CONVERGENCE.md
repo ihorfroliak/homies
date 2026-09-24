@@ -9,6 +9,32 @@ audit ([05 §9](05-DEVELOPMENT-GOVERNANCE-v1.md)).
 Classifications: **CANONICAL_ACTIVE** · **ADAPT** · **LEGACY_DORMANT** ·
 **REFERENCE_ONLY** · **REMOVE_LATER** · **UNKNOWN**.
 
+## 00. State after TASK-003 and TASK-004 (2026-09-24)
+
+The TASK-003 Codex re-audit of `0d6c554` (report in the Codex evidence
+directory, outside the repo) **accepted F-01, F-02, F-03, F-05, F-06, F-07,
+F-08 and F-09 as CLOSED**, and found **F-04 PARTIALLY_CLOSED (P1)**: direct
+authority revoke and space archive were serialised with publication, but a
+membership revoke, mandate revoke, organisation suspension, legal-party
+archival or mandate expiry could take effect after publication's last check
+and the listing still went public.
+
+**F-04: CLOSED BY BUILDER — PENDING CODEX RE-AUDIT** (TASK-004,
+[contract](../tasks/TASK-004-atomic-publication-auth.md)). Publication now
+makes its final decision through `authority.authorize_for_mutation`: under the
+Property lock it locks every row of every currently valid chain `FOR SHARE`
+and re-evaluates the chains on the database clock, in the same transaction as
+the conditional status UPDATE. Any change to those rows — through the API, the
+new service primitives `set_organization_status` / `set_legal_party_status`,
+or raw SQL — commits before the decision (publication refused, or another
+valid chain used) or waits for the publication to commit. Evidence:
+`tests/test_publication_authority_race_pg.py` (both serial orders per loss,
+lock waits via `pg_blocking_pids`, expiry, surviving chain, no scope
+widening, negatives) and `scripts/mutation/task004_mutants.py`.
+
+C2 and C6 remain PARTIALLY_VERIFIED in the TASK-003 matrix until TASK-005
+accepts this repair.
+
 ## 0. State after TASK-002 (2026-09-24)
 
 The independent TASK-001 audit of `988b31b` returned
