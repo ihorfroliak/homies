@@ -12,10 +12,16 @@ Engineering status per area is in
 3. ~~TASK-002~~ — foundational repair of F-01…F-09
    ([contract](../tasks/TASK-002-foundational-repair.md)); ~~TASK-003~~ Codex
    re-audit accepted eight closures, F-04 partially closed.
-4. **TASK-004** — atomic publication authorisation across all chains
-   ([contract](../tasks/TASK-004-atomic-publication-auth.md)). Implemented;
-   **awaiting TASK-005 targeted Codex re-audit** of the exact handoff SHA.
-5. Proposed next (Claude, awaiting founder approval): the bounded
+4. ~~TASK-004~~ — atomic publication authorisation across all chains
+   ([contract](../tasks/TASK-004-atomic-publication-auth.md)); ~~TASK-005~~
+   independent re-audit: F-04 CLOSED, `dfa3254` = HOMIES FOUNDATION BASELINE
+   001 (C1–C8 accepted for continued Phase 1A development).
+5. **TASK-006** — authority integrity and audit-debt closure, TASK-005 N-01…N-04
+   ([contract](../tasks/TASK-006-authority-integrity-cleanup.md)). Implemented;
+   **awaiting independent review** of the N-01/N-02 concurrency closure.
+6. Next after TASK-006 (founder direction, not started): the Poland-wide,
+   Europe-ready geographic/address vertical slice.
+7. Proposed next (Claude, awaiting founder approval): the bounded
    property type + subtype migration (APARTMENT | HOUSE + subtype, 04a §13),
    then the Phase 1A MUST_CLOSE list below.
 

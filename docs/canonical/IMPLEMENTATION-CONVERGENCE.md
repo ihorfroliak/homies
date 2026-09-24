@@ -9,6 +9,34 @@ audit ([05 §9](05-DEVELOPMENT-GOVERNANCE-v1.md)).
 Classifications: **CANONICAL_ACTIVE** · **ADAPT** · **LEGACY_DORMANT** ·
 **REFERENCE_ONLY** · **REMOVE_LATER** · **UNKNOWN**.
 
+## 000. State after TASK-005 and TASK-006 (2026-09-25)
+
+The TASK-005 independent re-audit of `dfa3254` (report supplied by the
+founder, kept outside the repo) concluded **F-04 CLOSED**,
+**TASK_004_ACCEPTED_WITH_NONBLOCKING_NOTES** and
+**C1_C8_FOUNDATION_ACCEPTED_FOR_CONTINUED_PHASE_1A_DEVELOPMENT**. `dfa3254`
+is **HOMIES FOUNDATION BASELINE 001**. Production: NOT READY, NOT DEPLOYED.
+
+TASK-005 raised four new findings. TASK-006
+([contract](../tasks/TASK-006-authority-integrity-cleanup.md)) repairs them;
+each is recorded on its own:
+
+| Finding | Severity | What it was | Status |
+|---|---|---|---|
+| N-01 | P3 | A chain that became valid while publication waited for its locks was not locked, yet could carry the decision; its revoke then did not wait | **CLOSED BY BUILDER — PENDING REVIEW.** The protected decision is evaluated only through the locked proof rows; a chain gained during the wait gets 409 and is used by the next attempt |
+| N-02 | P2 | `accept_invitation` (unlocked read-modify-write) could overwrite a committed membership revoke — ACTIVE with `revoked_at` set | **CLOSED BY BUILDER — PENDING REVIEW.** Row locked FOR UPDATE before it is read; accepted only while still INVITED |
+| N-03 | P3 | Locks on `person_legal_parties`, `organization_legal_parties`, `representation_mandate_scopes`, `property_authority_scopes` were implemented but unproven by repository tests | **CLOSED BY BUILDER — PENDING REVIEW.** Both-order tests per row, waits attributed to the publisher's pid, mutants B01–B04 killed |
+| N-04 | P3 | Tests built authorisation dates from the local `date.today()` while the rule is the UTC date; three failed nightly | **CLOSED BY BUILDER — PENDING REVIEW.** `tests/conftest.authorization_date()` (UTC) where the date means the authorisation date |
+
+**UTC domain note.** Current technical rule: authority effective dates are
+evaluated against the **UTC calendar date**. This remains a controlled
+product/legal question for internationalisation (Polish civil date vs UTC); it
+has not been changed.
+
+Operational debt carried (TASK-005 notes, not changed): FOR SHARE on proof rows
+makes cosmetic updates of those rows wait for an in-flight publication, and a
+share request can queue behind a waiting UPDATE (head-of-line), never deadlock.
+
 ## 00. State after TASK-003 and TASK-004 (2026-09-24)
 
 The TASK-003 Codex re-audit of `0d6c554` (report in the Codex evidence
