@@ -208,3 +208,24 @@ Readiness ~56 → ~62.
 - [ ] Gate 2: chargeback/clawback, rate-limit, observability-стек, MFA, GitHub CI.
 - [ ] Chat 03: auth-модуль — схема БД, міграції (Alembic), реєстрація/логін/JWT.
 - [ ] GitHub Projects дошка з фазами.
+
+## 2026-09-24 — TASK-000: канон, governance, карта конвергенції
+
+**Зроблено:** `docs/canonical/` (00-AUTHORITY … 06-ROADMAP, 04 — дослівна
+Domain Schema v1, 04a — уточнення засновника, IMPLEMENTATION-CONVERGENCE);
+новий стислий `CLAUDE.md`; `AGENTS.md` для Codex (аудитор, read-only);
+`docs/tasks/` (шаблон, TASK-000, чернетка TASK-001). Чужі незакомічені зміни
+(159 шляхів) збережено без втрат у локальних гілках
+`reference/ts-drizzle-schema-v1`, `preserve/foreign-continuity-2026-09`,
+`preserve/worktree-snapshot-2026-09-24` (звірено по blob-хешах). booking,
+payments, ledger, listings позначено LEGACY_DORMANT; тест
+`test_phase1_boundaries.py` забороняє Phase-1 модулям їх імпортувати.
+Старі стратегічні документи — банер HISTORICAL.
+
+**Вивчено:** два агенти в одному брудному checkout → виправлення іншої сесії
+потрапило в мій коміт `62a4add` без атрибуції, а мої помилки mypy я тоді
+хибно списав на кеш. Звідси правило одного писаря і окремих worktree (05 §3–§4).
+
+**Далі:** TASK-001 — незалежний аудит Codex C1–C8 (C8 — security-фокус).
+Два CANONICAL DECISION REQUIRED чекають засновника (мінімальний строк
+LONG_TERM; підтип для `aparthotel_unit`).

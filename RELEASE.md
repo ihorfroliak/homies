@@ -1,5 +1,7 @@
 # RELEASE — живий трекер гейтів (Build → Verify → Gate)
 
+> **HISTORICAL — superseded** by the canonical documents (06-ROADMAP and IMPLEMENTATION-CONVERGENCE) on 2026-09-24 (TASK-000). Kept as a record; not current strategy or scope. Precedence: [00-AUTHORITY](docs/canonical/00-AUTHORITY.md).
+
 > Оновлюється після кожної значної зміни. Відповідає на 3 питання, щоб
 > команда завжди бачила найкоротший шлях до реального бізнесу.
 > План: [docs/RELEASE_PLAN.md](docs/RELEASE_PLAN.md). Останній gate-огляд:

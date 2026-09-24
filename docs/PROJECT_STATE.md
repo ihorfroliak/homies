@@ -1,5 +1,7 @@
 # PROJECT STATE
 
+> **HISTORICAL — superseded** by the canonical documents (IMPLEMENTATION-CONVERGENCE) on 2026-09-24 (TASK-000). Kept as a record; not current strategy or scope. Precedence: [00-AUTHORITY](canonical/00-AUTHORITY.md).
+
 Single place to answer "where are we right now". Updated after every completed
 micro-cycle. Companions: [BUILD_HISTORY.md](BUILD_HISTORY.md) (what happened),
 [DECISIONS.md](DECISIONS.md) (why), [RELEASE.md](../RELEASE.md) (release gate).

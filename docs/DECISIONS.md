@@ -5,6 +5,11 @@ Formal architecture decisions live in [docs/adr/](adr/); strategic/business
 decisions live in [docs/strategy/00-DECISIONS.md](strategy/00-DECISIONS.md).
 Settled decisions are not revisited without new evidence.
 
+> **2026-09-24 (TASK-000):** product and business entries dated before this
+> day rank below [02-BUSINESS-LOGIC](canonical/02-BUSINESS-LOGIC.md);
+> engineering decisions stay in force unless a canonical document says
+> otherwise. See [00-AUTHORITY](canonical/00-AUTHORITY.md).
+
 | # | Date | Decision | Why | Status |
 |---|---|---|---|---|
 | D-01 | 2026-07-05 | Modular monolith, not microservices | Solo/small team, single DB, pilot scale; bounded contexts ≠ deployment units | Settled (ADR-0001) |

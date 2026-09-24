@@ -1,5 +1,7 @@
 # Release Plan — найкоротший шлях NO-GO → GO (D8)
 
+> **HISTORICAL — superseded** by the canonical documents (02-BUSINESS-LOGIC and 06-ROADMAP) on 2026-09-24 (TASK-000). Kept as a record; not current strategy or scope. Precedence: [00-AUTHORITY](canonical/00-AUTHORITY.md).
+
 > Оптимізуємо **послідовність**, не код. Мета — не ідеальна платформа, а
 > **перше безпечне реальне бронювання** з найменшим інженерним зусиллям.
 > База — блокери D7 (`docs/reviews/2026-07-05-d7-production-readiness-board.md`).

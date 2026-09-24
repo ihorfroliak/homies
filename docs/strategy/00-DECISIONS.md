@@ -1,5 +1,7 @@
 # Strategic Decisions Log (затверджено засновником)
 
+> **HISTORICAL — superseded** by the canonical documents (01-CONSTITUTION-v2 and 02-BUSINESS-LOGIC) on 2026-09-24 (TASK-000). Kept as a record; not current strategy or scope. Precedence: [00-AUTHORITY](../canonical/00-AUTHORITY.md).
+
 | # | Рішення | Дата | Наслідки |
 |---|---|---|---|
 | D1 | **Homies — бізнес**, не портфоліо. Критерій успіху — комерційні метрики (перші реальні бронювання, contribution margin), не демо | 2026-07-05 | план будується під виручку; технології, що не наближають транзакцію — ріжуться |

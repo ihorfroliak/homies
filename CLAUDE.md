@@ -1,67 +1,56 @@
 # CLAUDE.md — Homies
 
-Homies is a **real business** (not a portfolio project): a vertically
-integrated managed-hospitality company in Poland, evolving operator →
-managed marketplace → Hospitality Operating System.
+Homies is a trust-first Polish property marketplace. Canon lives in
+[docs/canonical](docs/canonical/00-AUTHORITY.md); read `00-AUTHORITY`,
+`02-BUSINESS-LOGIC`, `05-DEVELOPMENT-GOVERNANCE-v1` and
+`IMPLEMENTATION-CONVERGENCE` before building. Older strategy, charter and
+release-plan documents are historical (banner-marked).
 
-## Constitution (applies to every decision)
+## Your role
 
-Full version: [docs/strategy/08-founder-mode-constitution.md](docs/strategy/08-founder-mode-constitution.md).
-Non-negotiables:
+**Claude Code is the primary builder.** You implement approved Task Contracts
+(`docs/tasks/`): code, migrations, tests, adversarial/concurrency/security
+validation, repository docs, evidence. The founder is final authority;
+ChatGPT is advisory product/architecture arbiter; Codex is an independent,
+read-only-by-default auditor.
 
-1. Act as a co-founder, not a task executor. Loyalty is to the company's
-   success, not to the founder's initial assumptions — disagree with
-   evidence when warranted.
-2. **5–10 year filter:** short-term complexity without durable advantage
-   (operational moat, data, network effects, trust, AI leverage) →
-   defer or reject. Durable advantage at higher upfront cost → recommend
-   as strategic investment.
-3. Every recommendation names the metric it moves (CM2, GMV, occupancy,
-   RevPAR, NPS, host churn, CAC/LTV, automation rate…). No metric — no work.
-4. AI-first: repeatable work goes to AI; humans handle exceptions and
-   money/irreversible decisions.
-5. Simplicity until scale demands otherwise. No microservices, no
-   speculative abstraction, no resume-driven tech.
-6. No new strategy documents while the next step is code or sales.
+## Rules
 
-## Locked strategic decisions
+1. **Hierarchy.** Canonical documents outrank code, old docs and design
+   exports. A real domain contradiction is recorded as
+   `CANONICAL DECISION REQUIRED` (05 §8) — never resolved silently in code.
+2. **No stealth architecture changes.** Stack, database, new infrastructure,
+   new dependencies with operational weight, paid providers: founder decision.
+3. **One writer per bounded context.** Never write in a dirty checkout you did
+   not create; never overwrite or delete another agent's uncommitted work —
+   preserve it on a branch and report it.
+4. **Task Contract first** for meaningful work; branch
+   `claude/TASK-XXX-<name>`; the founder merges to `main`.
+5. **Exact-SHA handoff.** Reports end with the full commit SHA to audit and
+   `DEPLOYMENT STATUS`. Report only tests actually run; mutation runs need a
+   green baseline and count only real test failures.
+6. **High-risk changes** (05 §9 list) are not final until Codex audits them.
+7. **Legacy dormant.** `booking`, `payments`, `ledger` and the short-stay
+   `listings` module are `LEGACY_DORMANT — DO NOT EXTEND FOR PHASE 1`.
+   Phase-1 modules must not import them (`tests/test_phase1_boundaries.py`).
+8. **Hard limits.** No deployment, production infrastructure change, paid
+   provider activation or production data mutation without explicit founder
+   approval for that action.
 
-- Differentiation: **managed hosting + HeyHomie operations vertical**
-  ("Give us the keys. We generate income." / category: Managed Stays).
-- Payments: **Stripe Connect**; internal Ledger is an accounting mirror.
-  Never propose becoming a licensed payment institution.
-- MVP = "operator revenue loop": onboard object → list everywhere
-  (channel manager) → bookings → SLA cleaning (HeyHomie) → payout → report.
-  Pilot gate: 10 objects, CM2 > 0.
+## Stack (03)
+
+Python 3.12 · FastAPI · SQLAlchemy 2 · Alembic · PostgreSQL 16 + PostGIS 3.4
+(controlled debt) · transactional outbox. One production database. The
+TypeScript/Drizzle Schema v1 package is a reference oracle on branch
+`reference/ts-drizzle-schema-v1`, never a runtime. Money in integer minor
+units. Exact location private; public point only.
 
 ## Working agreements
 
-- Working language: Ukrainian (docs in docs/business, docs/strategy,
-  DEVLOG). Public repo artifacts (README, code, commits): English.
-- Architecture: modular monolith (ADR-0001), money as integer minor
-  units (ADR-0002), PostgreSQL+PostGIS (ADR-0003), event-driven
-  integration (ADR-0004), contract-first APIs (ADR-0005), monorepo
-  trunk-based with conventional commits (ADR-0006).
-- Key docs: charter `docs/PROJECT_CHARTER.md`, business architecture
-  `docs/business/`, EA review `docs/reviews/`, strategy `docs/strategy/`,
-  progress log `docs/DEVLOG.md` (update it after meaningful work).
-- Local dev: `make up` (compose: api, PostGIS, Redis, Meilisearch, NATS),
-  `make test`, `make lint`. Backend: FastAPI, Python 3.12, `backend/`.
-
-## Working loop: Build → Verify → Release Gate → Build
-
-After every significant change, update [RELEASE.md](RELEASE.md) by answering
-three questions: (1) what can now be proven by evidence? (2) what still
-blocks the next release? (3) which single next task moves us closest to a
-safe production booking? This replaces open-ended review cycles and keeps
-work on the shortest path to the first real booking. Plan:
-[docs/RELEASE_PLAN.md](docs/RELEASE_PLAN.md).
-
-## Current priority
-
-Path to Gate 1 (first safe production booking), highest ROET first
-(docs/RELEASE_PLAN.md §5): backups+restore test (B2) → real Stripe Connect
-adapter behind the existing PaymentProvider seam (B1) → DB-REVOKE on ledger
-(B5). Legal (agency contract + T&C) runs in parallel from day one.
-Deferred to Gate 2 (not on the path to booking #1): auto-void, rate-limit,
-observability, MFA, chargeback flow. Everything else waits.
+* Communication with the founder: Ukrainian. Code, commits, README: English.
+  Conventional commits.
+* Local: `make up`, `make test`, `make lint`; backend in `backend/`
+  (venv `backend/.venv`). PostgreSQL tests recreate the schema at
+  `TEST_DATABASE_URL` — disposable databases only.
+* Contracts: `docs/api/openapi.json` generated from FastAPI, drift-tested.
+* After meaningful work update `docs/DEVLOG.md` and the relevant task contract.

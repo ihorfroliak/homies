@@ -1,5 +1,7 @@
 # Homies — Бізнес-архітектура платформи (v1.0)
 
+> **HISTORICAL — superseded** by the canonical documents (02-BUSINESS-LOGIC) on 2026-09-24 (TASK-000). Kept as a record; not current strategy or scope. Precedence: [00-AUTHORITY](../canonical/00-AUTHORITY.md).
+
 > Повна бізнес-архітектура маркетплейсу оренди житла: бізнес-модель, ролі,
 > процеси, автоматизація, модулі, дані, правила, життєві цикли, прогалини,
 > пріоритизація. UI/UX, дизайн і деталі монетизації — **свідомо поза scope**

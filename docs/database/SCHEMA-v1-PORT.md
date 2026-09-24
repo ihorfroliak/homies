@@ -7,6 +7,13 @@ TypeScript. The model is authoritative; the stack is not. This file records
 what has landed, and every place the port departs from the text, with the
 reason, the impact, and whether domain semantics changed (spec §131).
 
+> **Current disposition (2026-09-24, TASK-000).** This file is the historical
+> record of the port and is kept as written. Each deviation's current
+> disposition (ACCEPTED / CONTROLLED_DEBT / MUST_CLOSE / FROZEN_UNTIL_PHASE)
+> lives in [IMPLEMENTATION-CONVERGENCE §4](../canonical/IMPLEMENTATION-CONVERGENCE.md#4-the-22-port-deviations--disposition).
+> C8 landed as `782c833`. The C1–C8 port is a candidate pending independent
+> audit ([05 §9](../canonical/05-DEVELOPMENT-GOVERNANCE-v1.md)).
+
 ## Cycles
 
 | Cycle | Scope | State |
