@@ -60,6 +60,7 @@ def test_default_webhook_secret_prevents_startup():
     assert "WEBHOOK_SECRET" in str(e.value)
 
 
+@pytest.mark.legacy_runtime
 def test_stripe_provider_requires_its_keys():
     with pytest.raises(InsecureConfigurationError) as e:
         validate_security_config(
@@ -80,6 +81,7 @@ def test_strong_production_secrets_allow_startup():
     validate_security_config(_cfg())  # no exception
 
 
+@pytest.mark.legacy_runtime
 def test_stripe_provider_with_real_keys_allows_startup():
     """Production requires LIVE keys — a test-mode key here is refused by the
     payment-environment model (see the FIN-01 section below)."""
@@ -111,6 +113,7 @@ def _stripe_cfg(**overrides) -> Settings:
     return _cfg(**base)
 
 
+@pytest.mark.legacy_runtime
 def test_test_keys_in_production_are_refused():
     """Production must never silently run on fake money."""
     with pytest.raises(InsecureConfigurationError) as e:
@@ -118,6 +121,7 @@ def test_test_keys_in_production_are_refused():
     assert "requires live Stripe keys" in str(e.value)
 
 
+@pytest.mark.legacy_runtime
 @pytest.mark.parametrize("env", ["local", "test", "ci", "staging"])
 def test_live_keys_outside_production_are_refused(env):
     """A live key on a laptop or in staging is as dangerous as the reverse —
@@ -127,22 +131,26 @@ def test_live_keys_outside_production_are_refused(env):
     assert "live Stripe keys must never be used" in str(e.value)
 
 
+@pytest.mark.legacy_runtime
 def test_unrecognised_key_shape_is_refused():
     with pytest.raises(InsecureConfigurationError) as e:
         validate_security_config(_stripe_cfg(env="local", stripe_api_key="totally-not-a-key"))
     assert "not a recognised Stripe secret key" in str(e.value)
 
 
+@pytest.mark.legacy_runtime
 def test_webhook_secret_must_be_a_signing_secret():
     with pytest.raises(InsecureConfigurationError) as e:
         validate_security_config(_stripe_cfg(env="local", stripe_webhook_secret="not-a-whsec"))
     assert "not a Stripe signing secret" in str(e.value)
 
 
+@pytest.mark.legacy_runtime
 def test_test_mode_in_development_is_allowed():
     validate_security_config(_stripe_cfg(env="local"))  # the point of this cycle
 
 
+@pytest.mark.legacy_runtime
 def test_live_mode_in_production_is_allowed():
     validate_security_config(
         _stripe_cfg(env="production", stripe_api_key=LIVE_KEY, jwt_secret=STRONG,

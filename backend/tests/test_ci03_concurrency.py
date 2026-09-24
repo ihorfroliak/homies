@@ -6,6 +6,8 @@ constraint — the guarantees SQLite cannot model. This is the authoritative
 concurrency evidence; the SQLite suite is not.
 """
 
+import pytest
+
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
@@ -21,6 +23,9 @@ from app.modules.payments import service as payments_service
 from app.modules.payments.models import WebhookEvent
 from tests.conftest import auth, fire_webhook, register_and_login
 from tests.test_fin01_stripe_signature import event_body, sign
+
+# LEGACY_DORMANT runtime (TASK-002 R1): see tests/legacy_runtime.py.
+pytestmark = pytest.mark.legacy_runtime
 
 CI = (date.today() + timedelta(days=25)).isoformat()
 CO = (date.today() + timedelta(days=28)).isoformat()

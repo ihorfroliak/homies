@@ -2,10 +2,15 @@
 payment webhook -> confirmed -> completed -> payout. Ledger must balance
 at every step and reflect every money movement."""
 
+import pytest
+
 from datetime import date, timedelta
 
 from app.core.config import settings
 from tests.conftest import auth, fire_webhook, register_and_login
+
+# LEGACY_DORMANT runtime (TASK-002 R1): see tests/legacy_runtime.py.
+pytestmark = pytest.mark.legacy_runtime
 
 CHECK_IN = date.today() + timedelta(days=30)
 CHECK_OUT = CHECK_IN + timedelta(days=3)  # 3 nights

@@ -52,6 +52,7 @@ def _sweep(now=None):
 
 
 # 1. a pending booking receives a deadline
+@pytest.mark.legacy_runtime
 def test_pending_booking_gets_a_deadline(client):
     lid = _listing(client)
     bk = _book(client, lid, "bk01-0001")
@@ -68,6 +69,7 @@ def test_pending_booking_gets_a_deadline(client):
 
 
 # 2. a not-yet-due booking is left alone
+@pytest.mark.legacy_runtime
 def test_future_deadline_is_not_expired(client):
     lid = _listing(client)
     bk = _book(client, lid, "bk01-0002")
@@ -77,6 +79,7 @@ def test_future_deadline_is_not_expired(client):
 
 
 # 3. a due unpaid booking becomes expired
+@pytest.mark.legacy_runtime
 def test_due_booking_is_expired(client):
     lid = _listing(client)
     bk = _book(client, lid, "bk01-0003")
@@ -87,6 +90,7 @@ def test_due_booking_is_expired(client):
 
 
 # 4. a paid booking is never expired, even past its (stale) deadline
+@pytest.mark.legacy_runtime
 def test_paid_booking_is_never_expired(client, admin_token):
     lid = _listing(client)
     bk = _book(client, lid, "bk01-0004")
@@ -99,6 +103,7 @@ def test_paid_booking_is_never_expired(client, admin_token):
 
 
 # 5 & 6. idempotent: expiring twice changes nothing the second time
+@pytest.mark.legacy_runtime
 def test_expiry_is_idempotent(client):
     lid = _listing(client)
     bk = _book(client, lid, "bk01-0005")
@@ -116,6 +121,7 @@ def test_expiry_is_idempotent(client):
 # SQLite with a shared connection cannot faithfully model true thread
 # concurrency (same limitation the audit records as TST-05 / CI-03). A Postgres
 # CI service is the recommended way to also exercise real concurrency.
+@pytest.mark.legacy_runtime
 def test_two_expiry_attempts_transition_the_row_exactly_once(client):
     from sqlalchemy import update
 
@@ -141,6 +147,7 @@ def test_two_expiry_attempts_transition_the_row_exactly_once(client):
 
 
 # 8. payment-vs-expiry race: whoever commits first wins, no PAID+EXPIRED
+@pytest.mark.legacy_runtime
 def test_payment_after_expiry_is_auto_refunded(client, admin_token):
     """Expiry wins first, then a late payment success arrives. The booking must
     stay expired and the money must be refunded — never PAID+EXPIRED."""
@@ -157,6 +164,7 @@ def test_payment_after_expiry_is_auto_refunded(client, admin_token):
     assert rec["ok"] is True and rec["balances"]["booking_escrow"] == 0
 
 
+@pytest.mark.legacy_runtime
 def test_payment_before_expiry_keeps_booking_confirmed(client, admin_token):
     """Payment wins first; the sweep then finds a non-pending row and skips it."""
     lid = _listing(client)
@@ -168,6 +176,7 @@ def test_payment_before_expiry_keeps_booking_confirmed(client, admin_token):
 
 
 # 9. the sweep processes multiple bookings at once
+@pytest.mark.legacy_runtime
 def test_sweep_processes_a_batch(client):
     lid = _listing(client)
     ids = []
@@ -187,6 +196,7 @@ def test_sweep_processes_a_batch(client):
 
 
 # 10. one failing booking does not stop the batch
+@pytest.mark.legacy_runtime
 def test_one_failure_does_not_stop_the_batch(client, monkeypatch):
     lid = _listing(client)
     good = _book(client, lid, "bk01-good")
@@ -238,6 +248,7 @@ def test_ttl_config_rejects_out_of_bounds():
 
 
 # 13 & 14. metrics emitted, no ghost booking left, calendar freed
+@pytest.mark.legacy_runtime
 def test_metrics_and_calendar_freed_after_expiry(client):
     from app.modules.booking import expiry as e
 

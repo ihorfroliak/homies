@@ -16,6 +16,9 @@ from tests.conftest import (
     register_and_login,
 )
 
+# LEGACY_DORMANT runtime (TASK-002 R1): see tests/legacy_runtime.py.
+pytestmark = pytest.mark.legacy_runtime
+
 CI = (date.today() + timedelta(days=25)).isoformat()
 CO = (date.today() + timedelta(days=28)).isoformat()
 

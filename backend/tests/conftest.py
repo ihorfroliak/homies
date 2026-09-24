@@ -12,6 +12,17 @@ from sqlalchemy.pool import StaticPool  # noqa: E402
 from app.core.db import Base, get_db  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
 from app.main import app  # noqa: E402
+from tests.legacy_runtime import create_legacy_test_app  # noqa: E402
+
+# Tests marked `legacy_runtime` exercise the LEGACY_DORMANT short-stay/booking/
+# payment contexts. The Phase-1 app does not route to them (TASK-002 R1), so
+# those tests get the test-only legacy composition; every other test runs
+# against the real Phase-1 application object.
+legacy_app = create_legacy_test_app()
+
+
+def app_for(request):
+    return legacy_app if request.node.get_closest_marker("legacy_runtime") else app
 from app.modules.identity.models import User  # noqa: E402
 
 engine = create_engine(
@@ -51,7 +62,7 @@ def _seed_attribute_catalogue():
 
 
 @pytest.fixture()
-def client():
+def client(request):
     from app.core.config import settings
     from app.core.ratelimit import limiter
 
@@ -69,10 +80,11 @@ def client():
         finally:
             db.close()
 
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as c:
+    target = app_for(request)
+    target.dependency_overrides[get_db] = override_get_db
+    with TestClient(target) as c:
         yield c
-    app.dependency_overrides.clear()
+    target.dependency_overrides.clear()
     Base.metadata.drop_all(engine)
 
 
@@ -246,7 +258,7 @@ def pg_migrated_engine():
 
 
 @pytest.fixture()
-def pg_client(pg_migrated_engine):
+def pg_client(request, pg_migrated_engine):
     """A TestClient wired to the migration-built Postgres schema, so requests
     hit the real engine (row locks, exclusion constraints). Data is truncated
     between tests; the schema is preserved. Used by the CI-03 concurrency tests
@@ -285,10 +297,11 @@ def pg_client(pg_migrated_engine):
             db.close()
 
     settings.rate_limit_enabled = False
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as c:
+    target = app_for(request)
+    target.dependency_overrides[get_db] = override_get_db
+    with TestClient(target) as c:
         yield c
-    app.dependency_overrides.clear()
+    target.dependency_overrides.clear()
 
 
 @pytest.fixture()

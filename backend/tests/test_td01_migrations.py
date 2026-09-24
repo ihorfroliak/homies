@@ -23,9 +23,13 @@ BACKEND = Path(__file__).resolve().parents[1]
 def test_app_startup_does_not_create_schema():
     """Production startup must never call create_all/drop_all. The schema comes
     only from migrations (via ensure_schema)."""
+    # Startup lives in the composition module since TASK-002; main.py only
+    # instantiates it. Both are guarded.
     main_src = (BACKEND / "app" / "main.py").read_text(encoding="utf-8")
+    startup_src = (BACKEND / "app" / "composition.py").read_text(encoding="utf-8")
     assert "create_all" not in main_src
-    assert "ensure_schema" in main_src
+    assert "create_all" not in startup_src
+    assert "ensure_schema" in startup_src
     # the ops script must not create schema either
     admin_src = (BACKEND / "app" / "scripts" / "create_admin.py").read_text(encoding="utf-8")
     assert "create_all" not in admin_src

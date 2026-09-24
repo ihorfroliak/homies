@@ -53,6 +53,9 @@ target-version = "py312"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "legacy_runtime: exercises LEGACY_DORMANT short-stay/booking/payment routes via the test-only legacy composition (tests/legacy_runtime.py)",
+]
 
 # CI-04 / audit M9. Default strictness, applied to the application package only.
 # It is a real blocking gate — it already caught a production hole in

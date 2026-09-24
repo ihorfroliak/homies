@@ -30,6 +30,7 @@ from sqlalchemy.exc import DBAPIError
 
 from tests.conftest import TEST_DATABASE_URL, auth, register_and_login, verify_ownership
 
+
 # The client tools are not importable Python; they are binaries that must match
 # the server's major version. PG_BIN lets a deployment point at a pinned client
 # (commonly inside a container) when the host's is older than the server —
@@ -38,10 +39,15 @@ _PG_BIN = os.environ.get("PG_BIN") or None
 PG_DUMP = shutil.which("pg_dump", path=_PG_BIN) or shutil.which("pg_dump")
 PG_RESTORE = shutil.which("pg_restore", path=_PG_BIN) or shutil.which("pg_restore")
 
-pytestmark = pytest.mark.skipif(
-    not (TEST_DATABASE_URL and PG_DUMP and PG_RESTORE),
-    reason="needs TEST_DATABASE_URL and the pg_dump/pg_restore client tools",
-)
+pytestmark = [
+    pytest.mark.skipif(
+        not (TEST_DATABASE_URL and PG_DUMP and PG_RESTORE),
+        reason="needs TEST_DATABASE_URL and the pg_dump/pg_restore client tools",
+    ),
+    # The seeded business day goes through LEGACY_DORMANT booking routes, so it
+    # runs on the test-only legacy composition (TASK-002 R1).
+    pytest.mark.legacy_runtime,
+]
 
 LISTING = {
     "title": "Apartament przy Wiśle",

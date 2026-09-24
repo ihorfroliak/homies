@@ -6,6 +6,8 @@ evidence (endpoint 404/405) rather than pretending.
 Result matrix and gaps: docs/reviews/2026-07-06-oat-01-report.md.
 """
 
+import pytest
+
 from datetime import date, timedelta
 
 from app.core.config import settings
@@ -38,6 +40,7 @@ def _host_with_listing(client):
 
 
 # ---------- SCENARIO 1: Host onboarding -> property bookable ----------
+@pytest.mark.legacy_runtime
 def test_s1_host_onboarding_to_bookable(client):
     host, lid = _host_with_listing(client)
     listed = client.get("/v1/listings?city=Warsaw").json()
@@ -46,6 +49,7 @@ def test_s1_host_onboarding_to_bookable(client):
 
 
 # ---------- SCENARIO 2: Guest booking -> confirmed + reconciled ----------
+@pytest.mark.legacy_runtime
 def test_s2_guest_booking_confirmed_and_reconciled(client, admin_token):
     _host_with_listing(client)
     lid = client.get("/v1/listings?city=Warsaw").json()[0]["id"]
@@ -65,6 +69,7 @@ def test_s2_guest_booking_confirmed_and_reconciled(client, admin_token):
 
 
 # ---------- SCENARIO 3: Check-in (instructions, ops tasks, cleaning) ----------
+@pytest.mark.legacy_runtime
 def test_s3_checkin_is_a_dead_end(client):
     _host_with_listing(client)
     # STOP: no check-in instructions, no operations/cleaning task endpoints.
@@ -74,6 +79,7 @@ def test_s3_checkin_is_a_dead_end(client):
 
 
 # ---------- SCENARIO 4: Stay completion (payout closes; ops steps absent) ----------
+@pytest.mark.legacy_runtime
 def test_s4_completion_payout_closes_but_no_inspection(client, admin_token):
     host, lid = _host_with_listing(client)
     guest = register_and_login(client, "guest@example.com", "guest")
@@ -92,6 +98,7 @@ def test_s4_completion_payout_closes_but_no_inspection(client, admin_token):
 
 
 # ---------- SCENARIO 5: Cancellation -> refund + availability recovery ----------
+@pytest.mark.legacy_runtime
 def test_s5_cancellation_refund_no_orphan(client, admin_token):
     host, lid = _host_with_listing(client)
     guest = register_and_login(client, "guest@example.com", "guest")
@@ -130,6 +137,7 @@ def test_s8_dispute_is_a_dead_end(client):
 
 
 # ---------- SCENARIO 9: Financial closing (end-of-day reconciliation) ----------
+@pytest.mark.legacy_runtime
 def test_s9_financial_closing_reconciles(client, admin_token):
     # empty system -> everything zero
     rec0 = client.get("/v1/admin/ledger/reconciliation", headers=auth(admin_token)).json()
@@ -153,6 +161,7 @@ def test_s9_financial_closing_reconciles(client, admin_token):
 
 
 # ---------- SCENARIO 10: Founder visibility (no SQL) ----------
+@pytest.mark.legacy_runtime
 def test_s10_founder_visibility_partial(client, admin_token):
     # Money questions ARE answerable via admin endpoints (no SQL):
     balances = client.get("/v1/admin/ledger/balances", headers=auth(admin_token))

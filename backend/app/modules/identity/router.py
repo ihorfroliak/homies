@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta, timezone
 from typing import Literal
-from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -18,15 +17,12 @@ from app.core.security import (
     hash_password,
     hash_refresh_token,
     new_refresh_token,
-    require_role,
     verify_password,
 )
 from app.modules.identity import verification
-from app.modules.identity.models import HostProfile, PersonLegalParty, RefreshToken, User
+from app.modules.identity.models import PersonLegalParty, RefreshToken, User
 from app.modules.identity.parties import personal_party
 from app.modules.identity.schemas import (
-    HostOnboardingRequest,
-    HostProfileOut,
     LegalIdentityIn,
     LegalIdentityOut,
     LoginRequest,
@@ -147,34 +143,6 @@ def my_notifications(user: User = Depends(get_current_user), db: Session = Depen
          "delivered_at": n.delivered_at.isoformat() if n.delivered_at else None}
         for n in rows
     ]
-
-
-@router.post("/hosts/onboarding", response_model=HostProfileOut)
-def host_onboarding(
-    body: HostOnboardingRequest,
-    user: User = Depends(require_role("host")),
-    db: Session = Depends(get_db),
-):
-    profile = db.get(HostProfile, user.id)
-    if profile is None:
-        profile = HostProfile(user_id=user.id)
-        db.add(profile)
-    # Simulated Stripe Connect onboarding: real flow redirects to Stripe-hosted
-    # onboarding and the account id arrives via webhook.
-    profile.stripe_account_id = profile.stripe_account_id or f"acct_sim_{uuid4().hex[:16]}"
-    profile.payout_iban_masked = f"****{body.payout_iban[-4:]}"
-    profile.onboarding_state = "payout_ready"
-    audit(db, actor=user.id, action="host.onboarded", entity_type="host", entity_id=user.id)
-    db.commit()
-    return profile
-
-
-@router.get("/hosts/me", response_model=HostProfileOut)
-def host_me(user: User = Depends(require_role("host")), db: Session = Depends(get_db)):
-    profile = db.get(HostProfile, user.id)
-    if profile is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Host profile not created yet")
-    return profile
 
 
 # --- Verification -----------------------------------------------------------

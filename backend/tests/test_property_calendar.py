@@ -78,6 +78,7 @@ def _book(client, token, listing_id, key, check_in=CHECK_IN, check_out=CHECK_OUT
 # --- the defect this change closes --------------------------------------------
 
 
+@pytest.mark.legacy_runtime
 def test_two_listings_of_one_flat_cannot_sell_the_same_nights(client):
     """The whole reason the calendar moved.
 
@@ -96,6 +97,7 @@ def test_two_listings_of_one_flat_cannot_sell_the_same_nights(client):
     assert "not available" in clash.text.lower()
 
 
+@pytest.mark.legacy_runtime
 def test_different_flats_of_one_host_stay_independent(client):
     """The guard must not over-reach: two properties are two calendars."""
     host = register_and_login(client, "host-sep@example.com", "host")
@@ -107,6 +109,7 @@ def test_different_flats_of_one_host_stay_independent(client):
     assert _book(client, guest, flat_b, "sep-b").status_code == 201
 
 
+@pytest.mark.legacy_runtime
 def test_a_host_block_closes_every_offer_of_that_flat(client):
     """A flat closed for renovation is unavailable in every mode it is offered."""
     host = register_and_login(client, "host-block@example.com", "host")
@@ -126,6 +129,7 @@ def test_a_host_block_closes_every_offer_of_that_flat(client):
     assert clash.status_code == 409, clash.text
 
 
+@pytest.mark.legacy_runtime
 def test_availability_endpoint_reports_the_property_calendar(client):
     """Otherwise it would show a night as free while the flat's other listing
     has it booked — the guest finds out only at checkout."""
@@ -144,6 +148,7 @@ def test_availability_endpoint_reports_the_property_calendar(client):
     assert all(d["status"] == "booked" for d in window["days"]), window
 
 
+@pytest.mark.legacy_runtime
 def test_bookings_carry_the_property_key(client):
     from tests.conftest import TestingSession
 
@@ -157,6 +162,7 @@ def test_bookings_carry_the_property_key(client):
         assert db.get(Booking, booking_id).property_id == property_id
 
 
+@pytest.mark.legacy_runtime
 def test_availability_helper_is_keyed_on_the_property(client):
     """Guards the signature itself: passing a listing id must not answer."""
     from tests.conftest import TestingSession
@@ -176,6 +182,7 @@ def test_availability_helper_is_keyed_on_the_property(client):
 # --- listings still get a property even without one being supplied ------------
 
 
+@pytest.mark.legacy_runtime
 def test_a_listing_created_without_a_property_gets_one(client):
     """Transitional shim: existing clients do not send property_id yet."""
     from tests.conftest import TestingSession
@@ -201,6 +208,7 @@ def test_a_listing_created_without_a_property_gets_one(client):
         assert listing.property_id, "every listing must offer a physical object"
 
 
+@pytest.mark.legacy_runtime
 def test_a_host_cannot_list_against_someone_elses_property(client):
     owner = register_and_login(client, "real-owner2@example.com", "host")
     property_id = _property(client, owner)

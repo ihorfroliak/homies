@@ -19,6 +19,9 @@ from app.core.config import settings
 from app.modules.booking.schemas import MAX_NIGHTS
 from tests.conftest import auth, fire_webhook, register_and_login
 
+# LEGACY_DORMANT runtime (TASK-002 R1): see tests/legacy_runtime.py.
+pytestmark = pytest.mark.legacy_runtime
+
 NIGHTLY = 30000
 
 

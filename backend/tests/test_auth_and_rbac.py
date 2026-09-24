@@ -1,3 +1,5 @@
+
+import pytest
 from tests.conftest import auth, register_and_login
 
 
@@ -30,6 +32,7 @@ def test_register_login_me_refresh(client):
     assert resp.status_code == 401  # reuse of rotated token is rejected
 
 
+@pytest.mark.legacy_runtime
 def test_rbac_boundaries(client, admin_token):
     guest_token = register_and_login(client, "guest@example.com", "guest")
     host_token = register_and_login(client, "host@example.com", "host")

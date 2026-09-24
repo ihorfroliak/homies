@@ -5,8 +5,13 @@ non-default currency on a listing would silently corrupt escrow math and the I5
 invariant. Listing creation is the single choke point; these tests pin that only
 the configured default currency is accepted (and case-normalized)."""
 
+import pytest
+
 from app.core.config import settings
 from tests.conftest import auth, register_and_login
+
+# LEGACY_DORMANT runtime (TASK-002 R1): see tests/legacy_runtime.py.
+pytestmark = pytest.mark.legacy_runtime
 
 _LISTING = {
     "title": "Studio",

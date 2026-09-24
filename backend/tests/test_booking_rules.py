@@ -1,6 +1,11 @@
+
+import pytest
 from datetime import date, timedelta
 
 from tests.conftest import auth, register_and_login
+
+# LEGACY_DORMANT runtime (TASK-002 R1): see tests/legacy_runtime.py.
+pytestmark = pytest.mark.legacy_runtime
 
 D30 = (date.today() + timedelta(days=30)).isoformat()
 D33 = (date.today() + timedelta(days=33)).isoformat()

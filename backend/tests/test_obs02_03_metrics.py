@@ -93,6 +93,7 @@ def test_http_metrics_recorded_for_a_request(client):
     )
 
 
+@pytest.mark.legacy_runtime
 def test_route_template_not_raw_path_bounds_cardinality(client, admin_token):
     """A thousand booking ids must not mint a thousand time series."""
     for booking_id in ("aaaa1111", "bbbb2222", "cccc3333"):
