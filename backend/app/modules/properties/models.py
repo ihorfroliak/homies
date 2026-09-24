@@ -73,8 +73,26 @@ PROPERTY_TYPES = (
 CREATABLE_PROPERTY_TYPES = tuple(t for t in PROPERTY_TYPES if t != "room")
 
 
+# Coordinate integrity (TASK-001 F-07). Latitude and longitude are a pair —
+# both or neither — and inside the globe. PostGIS would otherwise wrap
+# (100, 200) into a different real place while the numeric columns kept the
+# original, so the DTO and the map search would disagree about the flat.
+# NaN and ±Infinity fall outside every BETWEEN range, so they are refused too.
+def _coordinate_checks(lat: str, lon: str, name: str) -> tuple[CheckConstraint, ...]:
+    return (
+        CheckConstraint(f"({lat} IS NULL) = ({lon} IS NULL)", name=f"ck_{name}_pair"),
+        CheckConstraint(
+            f"{lat} IS NULL OR {lat} BETWEEN -90 AND 90", name=f"ck_{name}_latitude_range"
+        ),
+        CheckConstraint(
+            f"{lon} IS NULL OR {lon} BETWEEN -180 AND 180", name=f"ck_{name}_longitude_range"
+        ),
+    )
+
+
 class Property(Base):
     __tablename__ = "properties"
+    __table_args__ = _coordinate_checks("latitude", "longitude", "properties_coordinates")
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     owner_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
@@ -120,9 +138,15 @@ class Property(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
-# 6 months is the floor for the free board. Shorter than that is a Homies
-# booking (paid, commissioned) and belongs to a different offer type.
-MIN_CLASSIFIED_TERM_MONTHS = 6
+# LONG_TERM has no mandatory six-month floor (founder decision 2026-09-24,
+# TASK-002 §23): a listing is open-ended or names a minimum of at least one
+# month. MONTHLY — the transactional product — is a later phase and not what
+# decides this. See properties/listing_rules.py.
+MIN_CLASSIFIED_TERM_MONTHS = 1
+
+
+# Statuses a listing may be published from. `archived` is terminal.
+PUBLISHABLE_FROM = ("draft", "paused", "active")
 
 
 class ClassifiedOffer(Base):
@@ -142,6 +166,9 @@ class ClassifiedOffer(Base):
         CheckConstraint(
             "public_location_precision IN ('EXACT', 'APPROXIMATE', 'DISTRICT')",
             name="ck_classified_offers_location_precision",
+        ),
+        *_coordinate_checks(
+            "public_latitude", "public_longitude", "classified_offers_public_coordinates"
         ),
     )
 
@@ -214,7 +241,8 @@ class ClassifiedOffer(Base):
     owner_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
     title: Mapped[str] = mapped_column(String(140))
     description: Mapped[str] = mapped_column(String(4000), default="")
-    # draft -> active -> paused | archived
+    # draft -> active -> paused | archived. Publication moves only
+    # PUBLISHABLE_FROM -> active, conditionally on the stored status.
     status: Mapped[str] = mapped_column(String(16), default="draft", index=True)
 
     # Price. The source of truth is `listing_price_components`, one row per
@@ -275,7 +303,14 @@ class ClassifiedOffer(Base):
         return self._current("SECURITY_DEPOSIT")
 
     # Term. Either a minimum in months (>= 6) or explicitly open-ended.
-    min_term_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    min_term_months: Mapped[int | None] = mapped_column(
+        Integer,
+        CheckConstraint(
+            "min_term_months IS NULL OR min_term_months >= 1",
+            name="ck_classified_offers_min_term_positive",
+        ),
+        nullable=True,
+    )
     open_ended: Mapped[bool] = mapped_column(Boolean, default=False)
     available_from: Mapped[date | None] = mapped_column(Date, nullable=True)
 

@@ -31,8 +31,12 @@ GRID_LON = Decimal("0.008")
 _SIX = Decimal("0.000001")
 
 
-def _cell_centre(value: Decimal, step: Decimal) -> Decimal:
+def _cell_centre(value: Decimal, step: Decimal, upper: Decimal | None = None) -> Decimal:
     index = (value / step).to_integral_value(rounding=ROUND_FLOOR)
+    # A value exactly on the upper edge (90° N, 180° E) would open a cell that
+    # lies beyond the globe; it belongs to the last cell inside it.
+    if upper is not None and index * step >= upper:
+        index -= 1
     return (index * step + step / 2).quantize(_SIX)
 
 
@@ -48,7 +52,7 @@ def public_point(
     lon = Decimal(str(longitude))
     if precision == "EXACT":
         return lat.quantize(_SIX), lon.quantize(_SIX)
-    return _cell_centre(lat, GRID_LAT), _cell_centre(lon, GRID_LON)
+    return _cell_centre(lat, GRID_LAT, Decimal(90)), _cell_centre(lon, GRID_LON, Decimal(180))
 
 
 def refresh(offer, prop) -> None:

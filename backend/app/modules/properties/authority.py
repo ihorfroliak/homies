@@ -36,6 +36,7 @@ from app.modules.identity.models import (
     User,
 )
 from app.modules.identity.parties import has_legal_name, personal_party
+from app.modules.properties import coordination
 from app.modules.properties.models import (
     AUTHORITY_SCOPES,
     OWNER_PHASE1_SCOPES,
@@ -277,7 +278,15 @@ def revoke(db: Session, authority: PropertyAuthority, actor_id: str) -> list[str
     revoked must not keep their listing on the board until they choose to
     remove it. Listings stay up only if some other verified authority can
     still publish that property. Returns the ids of the offers paused.
+
+    Takes the property's coordination lock first (properties/coordination.py),
+    the lock publication takes too. A publication already holding it finishes
+    first and its listing is then paused here; one that arrives later
+    re-checks under the lock and finds this authority revoked (TASK-001 F-04).
     """
+    coordination.lock_property(db, authority.property_id)
+    # The lock expired the session: this is the authority as committed now,
+    # so two admins revoking at once do the work once.
     if authority.status == "REVOKED":
         return []
     authority.status = "REVOKED"
@@ -285,8 +294,11 @@ def revoke(db: Session, authority: PropertyAuthority, actor_id: str) -> list[str
     authority.version += 1
     db.flush()
 
+    # "Still backed" means exactly what publication requires: in force,
+    # VERIFIED, holding PUBLISH_LISTING, held by an ACTIVE legal party.
     still_backed = db.scalar(
         select(PropertyAuthority.id)
+        .join(LegalParty, LegalParty.id == PropertyAuthority.holder_legal_party_id)
         .join(
             PropertyAuthorityScope,
             and_(
@@ -297,6 +309,7 @@ def revoke(db: Session, authority: PropertyAuthority, actor_id: str) -> list[str
         .where(
             PropertyAuthority.property_id == authority.property_id,
             PropertyAuthority.verification_state == "VERIFIED",
+            LegalParty.status == "ACTIVE",
             _in_force(_today()),
         )
         .limit(1)

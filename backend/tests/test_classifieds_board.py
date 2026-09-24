@@ -128,23 +128,23 @@ def test_attributes_survive_the_round_trip(client):
 # --- the board is long-term only ----------------------------------------------
 
 
-@pytest.mark.parametrize("months", [MIN_CLASSIFIED_TERM_MONTHS, 12, 24])
-def test_terms_from_six_months_are_accepted(client, months):
+@pytest.mark.parametrize("months", [MIN_CLASSIFIED_TERM_MONTHS, 3, 5, 6, 12, 24])
+def test_any_term_from_one_month_is_accepted(client, months):
+    """LONG_TERM has no six-month floor (founder decision 2026-09-24)."""
     token = _owner(client, f"owner{months}@example.com")
     property_id = _property(client, token)
     assert _classified(client, token, property_id, min_term_months=months).status_code == 201
 
 
-@pytest.mark.parametrize("months", [1, 3, 5])
-def test_shorter_terms_belong_to_the_paid_modes(client, months):
-    """A 3-month let is a Homies booking. Letting it in free would be a way to
-    dodge the commission by mislabelling the offer."""
+@pytest.mark.parametrize("months", [0, -1])
+def test_a_term_below_one_month_is_refused(client, months):
     token = _owner(client, f"short{months}@example.com")
     property_id = _property(client, token)
 
     resp = _classified(client, token, property_id, min_term_months=months)
     assert resp.status_code == 422, resp.text
-    assert str(MIN_CLASSIFIED_TERM_MONTHS) in resp.text
+    # No promise of a product that is not active: MONTHLY is a later phase.
+    assert "booked through Homies" not in resp.text
 
 
 def test_open_ended_offers_need_no_term(client):

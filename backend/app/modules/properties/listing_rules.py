@@ -1,0 +1,34 @@
+"""Canonical publication rules for Phase-1A listings (founder decisions, 2026-09-24).
+
+LONG_TERM is the non-transactional residential-rental mode. It is not defined
+by a minimum term: `min_term_months` is either absent (open-ended) or at least
+one month. MONTHLY stays the future transactional product and is not active.
+
+`aparthotel_unit` is, canonically, an APARTMENT with the subtype
+APARTHOTEL_UNIT — not a property type of its own and not a door into
+hospitality. Whether such a unit may be let as a residential long-term rental
+depends on the building's permitted use, and Homies has no policy for that
+yet (LEGAL/POLICY REVIEW REQUIRED). Until one exists, publication fails
+closed: the unit can be registered and prepared, never made public on the
+strength of its type alone.
+"""
+
+from fastapi import HTTPException, status
+
+from app.modules.properties.models import Property
+
+# Subtypes whose residential eligibility needs a policy nobody has written yet.
+# Today the subtype is still stored in `property_type` (legacy vocabulary);
+# the type/subtype split is its own migration (see IMPLEMENTATION-CONVERGENCE).
+PUBLICATION_POLICY_REQUIRED = frozenset({"aparthotel_unit"})
+
+MIN_TERM_MONTHS_FLOOR = 1
+
+
+def ensure_publishable(prop: Property) -> None:
+    if prop.property_type in PUBLICATION_POLICY_REQUIRED:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Aparthotel units cannot be published yet: residential-use eligibility "
+            "needs a policy that does not exist yet.",
+        )

@@ -1366,6 +1366,8 @@
           "latitude": {
             "anyOf": [
               {
+                "maximum": 90.0,
+                "minimum": -90.0,
                 "type": "number"
               },
               {
@@ -1377,6 +1379,8 @@
           "longitude": {
             "anyOf": [
               {
+                "maximum": 180.0,
+                "minimum": -180.0,
                 "type": "number"
               },
               {
@@ -5545,7 +5549,7 @@
     },
     "/v1/properties/{property_id}/classifieds": {
       "post": {
-        "description": "Post a free long-term listing against one of your properties.\n\nThe board starts at six months. Anything shorter is a Homies booking — paid\nand commissioned — and must not arrive here relabelled.",
+        "description": "Post a free long-term listing against one of your properties.\n\nA LONG_TERM listing: open-ended, or with a minimum term of at least one\nmonth. Homies is not a party to the letting.",
         "operationId": "create_classified_v1_properties__property_id__classifieds_post",
         "parameters": [
           {

@@ -52,8 +52,10 @@ class PropertyCreate(BaseModel):
     # Required, entered by the owner: the Polish tourist tax is set per gmina.
     municipality: str = Field(min_length=1, max_length=80)
     address: str = Field(min_length=1, max_length=255)
-    latitude: float | None = None
-    longitude: float | None = None
+    # Finite and on the globe; both or neither (TASK-001 F-07). The database
+    # enforces the same with CHECK constraints.
+    latitude: float | None = Field(default=None, ge=-90, le=90, allow_inf_nan=False)
+    longitude: float | None = Field(default=None, ge=-180, le=180, allow_inf_nan=False)
     area_m2: int = Field(gt=0)
     rooms: int = Field(ge=0)
     bedrooms: int = Field(ge=0, default=0)
@@ -69,6 +71,8 @@ class PropertyCreate(BaseModel):
 
     @model_validator(mode="after")
     def check_enums(self):
+        if (self.latitude is None) != (self.longitude is None):
+            raise ValueError("latitude and longitude go together: give both or neither")
         if self.property_type == "room":
             raise ValueError(
                 "a room is not a property: register the flat, then add the room with "
@@ -155,9 +159,9 @@ class ClassifiedCreate(BaseModel):
             raise ValueError(f"contact_mode must be one of {', '.join(CONTACT_MODES)}")
         if self.contact_mode == "phone" and not self.contact_phone:
             raise ValueError("contact_phone is required when contact_mode is 'phone'")
-        # The board is for long-term rental only. A shorter term is a Homies
-        # booking — paid and commissioned — and must not arrive here by
-        # mislabelling a 3-month let as a free classified.
+        # LONG_TERM is the non-transactional residential-rental mode. It is not
+        # defined by a six-month floor (founder decision 2026-09-24): the offer
+        # is open-ended or states a minimum of at least one month.
         if self.open_ended:
             if self.min_term_months is not None:
                 raise ValueError("an open-ended offer cannot also set min_term_months")
@@ -166,8 +170,8 @@ class ClassifiedCreate(BaseModel):
             raise ValueError("set min_term_months or mark the offer open_ended")
         if self.min_term_months < MIN_CLASSIFIED_TERM_MONTHS:
             raise ValueError(
-                f"the free board starts at {MIN_CLASSIFIED_TERM_MONTHS} months. "
-                "Shorter stays are booked through Homies."
+                f"min_term_months must be at least {MIN_CLASSIFIED_TERM_MONTHS}, "
+                "or mark the offer open_ended"
             )
         return self
 

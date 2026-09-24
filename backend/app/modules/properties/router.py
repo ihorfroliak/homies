@@ -25,11 +25,12 @@ Still open: the owner-facing "who asked for my number" view. The rows exist.
 """
 
 from datetime import date, datetime, timedelta, timezone
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from prometheus_client import Counter
-from sqlalchemy import case, func, literal_column, or_, select
+from sqlalchemy import case, func, literal_column, or_, select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import ColumnElement
@@ -39,10 +40,18 @@ from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import get_current_user, require_role
 from app.modules.identity import organizations
-from app.modules.properties import authority, location, pricing, spaces
+from app.modules.properties import (
+    authority,
+    coordination,
+    listing_rules,
+    location,
+    pricing,
+    spaces,
+)
 from app.modules.properties.attributes import AttributeError_, load_catalogue
 from app.modules.properties.attributes import validate as validate_attributes
 from app.modules.properties.models import (
+    PUBLISHABLE_FROM,
     AttributeDefinition,
     ClassifiedOffer,
     SPACE_TYPES,
@@ -234,6 +243,9 @@ def archive_space(space_id: str, user=Depends(get_current_user), db: Session = D
         if exc.status_code == status.HTTP_404_NOT_FOUND:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Space not found") from None
         raise
+    # Same coordination lock as publication: a publish racing this archive
+    # either lands first (and is paused here) or sees the space archived.
+    coordination.lock_property(db, space.property_id)
     paused = spaces.archive(db, space, user.id)
     db.commit()
     return SpaceArchiveOut(**SpaceOut.model_validate(space).model_dump(), paused_offers=paused)
@@ -262,8 +274,8 @@ def create_classified(
 ):
     """Post a free long-term listing against one of your properties.
 
-    The board starts at six months. Anything shorter is a Homies booking — paid
-    and commissioned — and must not arrive here relabelled.
+    A LONG_TERM listing: open-ended, or with a minimum term of at least one
+    month. Homies is not a party to the letting.
     """
     # A draft needs an authority in force, not a verified one: the owner has
     # to be able to prepare the listing while the claim is being checked.
@@ -315,17 +327,47 @@ def publish_classified(
     # Publishing is the one step that needs a VERIFIED claim. A listing for a
     # flat the poster does not own is the scam this board would otherwise
     # carry; it is refused here, before the first deposit is wired.
+    #
+    # The first check refuses early without taking a lock. It proves nothing
+    # about the moment of writing: an admin may revoke the authority between
+    # it and the commit (TASK-001 F-04). So the property's coordination lock
+    # is taken — the same one revoke and space archiving take — and every
+    # condition is read again under it. See properties/coordination.py.
     offer = _authorized_offer(db, user, offer_id, verified=True)
+    prop = coordination.lock_property(db, offer.property_id)
+    offer = _authorized_offer(db, user, offer_id, verified=True)
+    if prop is None:  # unreachable: the re-check above found it
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
     try:
         spaces.ensure_listable(offer.space)
     except spaces.SpaceArchived:
         raise HTTPException(
             status.HTTP_409_CONFLICT, "The space this offer is for has been archived"
         ) from None
+    listing_rules.ensure_publishable(prop)
+    # Conditional on the status as it is in the database now, not as it was
+    # loaded: an archived listing is never brought back by a stale request.
+    published = cast(
+        CursorResult,
+        db.execute(
+            update(ClassifiedOffer)
+            .where(
+                ClassifiedOffer.id == offer.id,
+                ClassifiedOffer.status.in_(PUBLISHABLE_FROM),
+            )
+            .values(status="active", published_at=datetime.now(timezone.utc))
+            .execution_options(synchronize_session=False)
+        ),
+    )
+    if published.rowcount != 1:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This listing can no longer be published from its current state",
+        )
+    db.refresh(offer)
     # Recomputed on publish, so the map reflects the property as it is now.
-    location.refresh(offer, offer.listed_property)
-    offer.status = "active"
-    offer.published_at = datetime.now(timezone.utc)
+    location.refresh(offer, prop)
     audit(
         db,
         actor=user.id,
