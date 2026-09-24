@@ -307,7 +307,7 @@ class ClassifiedOffer(Base):
     def deposit_amount(self) -> int:
         return self._current("SECURITY_DEPOSIT")
 
-    # Term. Either a minimum in months (>= 6) or explicitly open-ended.
+    # Term. Either a minimum in months (>= 1) or explicitly open-ended.
     min_term_months: Mapped[int | None] = mapped_column(
         Integer,
         CheckConstraint(

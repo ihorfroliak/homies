@@ -12,9 +12,12 @@ That protection is the security-relevant part of this module:
   requires an account with a *verified phone* — and `users.phone` is unique, so
   the SIM that proves one account cannot prove the next;
 * every disclosure is recorded in `ContactReveal`, and those rows are now read:
-  one account may uncover a bounded number of DIFFERENT owners per rolling 24
-  hours. The rate limiter bounds speed; this bounds the total, which is what
-  stands between a verified account and the whole board overnight.
+  one account may uncover the contact of a bounded number of DIFFERENT
+  LISTINGS per rolling 24 hours (the unit is the listing: two listings of one
+  owner count twice). The rate limiter bounds speed; this bounds the total,
+  which is what stands between a verified account and the whole board
+  overnight. The decision is serialised per viewer in the database, so
+  parallel requests and several API workers cannot exceed it.
 
 Narrower than PRODUCT_MODEL, deliberately: the model asks for a verified email
 *and* phone. Email verification exists (`/v1/me/verify/email/*`) but is not a
@@ -40,6 +43,7 @@ from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import get_current_user, require_role
 from app.modules.identity import organizations
+from app.modules.identity.models import User
 from app.modules.properties import (
     authority,
     coordination,
@@ -739,6 +743,14 @@ def reveal_contact(
         raise HTTPException(
             status.HTTP_409_CONFLICT, "This owner accepts messages only, not phone calls"
         )
+
+    # Serialise this viewer's disclosure decisions (TASK-001 F-03). Counting
+    # and then inserting is a race between two requests for two different
+    # listings: both count, both find room, both insert. The viewer's own
+    # users row is the coordination point — FOR NO KEY UPDATE, so the FK check
+    # on the ContactReveal insert (a KEY SHARE lock) is not blocked by it.
+    # Everything below, to the commit, runs with it held.
+    db.execute(select(User.id).where(User.id == user.id).with_for_update(key_share=True))
 
     already = db.scalar(
         select(ContactReveal).where(

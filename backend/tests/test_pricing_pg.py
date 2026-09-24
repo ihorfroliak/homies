@@ -173,13 +173,36 @@ def test_the_database_holds_one_current_row_per_component(pg_session):
     assert "UNIQUE" in definition and "valid_to IS NULL" in definition
 
 
-def test_a_negative_price_never_reaches_a_row(pg_session):
-    with pytest.raises(IntegrityError):
-        pg_session.execute(
-            text("INSERT INTO listing_price_components (id, listing_id, component_type, "
-                 "component_key, amount_minor, cadence, mandatory, refundable, estimated, "
-                 "valid_from, created_by_user_id, created_at) VALUES ('x', 'nope', "
-                 "'BASE_RENT', '', -1, 'MONTHLY', true, false, false, now(), 'u', now())")
-        )
-        pg_session.commit()
-    pg_session.rollback()
+def test_a_negative_price_never_reaches_a_row(pg_client, pg_migrated_engine):
+    """TASK-001 §13: the old version inserted -1 with a listing and a user that
+    did not exist, so ANY constraint made it pass — weakening the CHECK left it
+    green. Now the row is valid in every other respect (a control insert of 0
+    proves it), and the failure must be that CHECK, by name and SQLSTATE."""
+    from tests.conftest import auth, register_and_login, verify_ownership
+
+    owner = register_and_login(pg_client, "negative-price@example.com", "host")
+    prop = pg_client.post("/v1/properties", json={
+        "property_type": "apartment", "city": "Opole", "municipality": "Opole",
+        "address": "ul. Ujemna 1", "area_m2": 30, "rooms": 1, "capacity": 1,
+    }, headers=auth(owner)).json()["id"]
+    verify_ownership(pg_client, owner, prop)
+    offer = pg_client.post(f"/v1/properties/{prop}/classifieds", json={
+        "title": "Cena", "rent_amount": 100000, "min_term_months": 12,
+        "contact_mode": "message",
+    }, headers=auth(owner)).json()["id"]
+    with pg_migrated_engine.connect() as conn:
+        user_id = conn.scalar(text("SELECT id FROM users WHERE email = 'negative-price@example.com'"))
+
+    insert = text(
+        "INSERT INTO listing_price_components (id, listing_id, component_type, "
+        "component_key, amount_minor, cadence, mandatory, refundable, estimated, "
+        "valid_from, valid_to, created_by_user_id, created_at) VALUES "
+        "(gen_random_uuid()::text, :listing, 'OTHER_MANDATORY', :key, :amount, 'MONTHLY', "
+        "true, false, false, now(), now() + interval '1 day', :user, now())"
+    )
+    with pg_migrated_engine.begin() as conn:  # the control: a valid row is accepted
+        conn.execute(insert, {"listing": offer, "key": "control", "amount": 0, "user": user_id})
+    with pytest.raises(IntegrityError) as caught, pg_migrated_engine.begin() as conn:
+        conn.execute(insert, {"listing": offer, "key": "negative", "amount": -1, "user": user_id})
+    assert caught.value.orig.sqlstate == "23514"  # check_violation, not FK/unique
+    assert caught.value.orig.diag.constraint_name == "ck_listing_price_components_amount"

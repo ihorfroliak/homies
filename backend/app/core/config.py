@@ -67,8 +67,12 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
     smtp_from: str = "noreply@homies.example"
-    # Free board: how many DIFFERENT owners one account may uncover in a
-    # rolling 24 hours. The rate limiter bounds speed, not volume — at its
+    # Free board: how many DIFFERENT LISTINGS' contact numbers one account may
+    # uncover in a rolling 24 h (the unit is the listing, not the owner or the
+    # number: two listings of one owner count twice — TASK-001 §17.5; a
+    # per-provider unit is a later decision). Enforced under a per-viewer
+    # database lock, so concurrent requests cannot exceed it (TASK-001 F-03).
+    # The rate limiter bounds speed, not volume — at its
     # sustained refill one account could still take thousands of numbers a day,
     # which is the whole board. This is the ceiling on the total.
     #

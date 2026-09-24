@@ -18,15 +18,31 @@ Two rules carry the weight:
 Times are stored as UTC instants. Local wall-clock times exist only in the
 windows, and are resolved through the zone's own rules, so a window of 10:00
 stays 10:00 across the change to and from summer time.
+
+A slot is offered only if its local start time names exactly one instant
+(founder decision 2026-09-24, TASK-002 §44). On the spring-forward night
+02:00–02:59 in Warsaw does not exist, and on the fall-back night it exists
+twice; neither is offered in Phase 1. A slot's real local end must also lie
+inside its window (TASK-001 F-08).
+
+Lifecycle transitions are conditional on the viewing's current state, read
+under a row lock (TASK-001 F-06). Lock order, always:
+
+    1. viewing_settings  (capacity for the listing — confirm, request)
+    2. viewings          (the viewing being changed)
+
+Confirm takes both, in that order. Decline, cancel and outcome take only the
+viewing row, so none of them can wait on settings while holding a viewing.
 """
 
-from datetime import date, datetime, timedelta, timezone
-from typing import Literal
+from datetime import date, datetime, time, timedelta, timezone
+from typing import Literal, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, field_validator, model_validator
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from app.core.audit import audit
@@ -208,6 +224,25 @@ def _held_overlapping(db: Session, listing_id: str, start: datetime, end: dateti
     return db.scalar(query) or 0
 
 
+def unique_instant(wall: datetime, zone: ZoneInfo) -> datetime | None:
+    """The one UTC instant a local wall time names, or None.
+
+    `wall.replace(tzinfo=zone)` alone always yields *some* instant: a time in
+    the spring-forward gap silently becomes the hour after, and one in the
+    fall-back overlap silently picks the first occurrence. Both folds are
+    resolved; if they disagree, the wall time is not a single instant.
+    """
+    first = wall.replace(tzinfo=zone, fold=0)
+    second = wall.replace(tzinfo=zone, fold=1)
+    if first.utcoffset() != second.utcoffset():
+        return None
+    instant = first.astimezone(timezone.utc)
+    # Round trip: the instant, shown in the zone, is the wall time we started from.
+    if instant.astimezone(zone).replace(tzinfo=None) != wall:
+        return None
+    return instant
+
+
 def slots(db: Session, settings: ViewingSettings, first: date, days: int) -> list[datetime]:
     """Offered slot start times (UTC), in order."""
     if not settings.enabled:
@@ -234,12 +269,21 @@ def slots(db: Session, settings: ViewingSettings, first: date, days: int) -> lis
         for w in _windows_for(windows, day):
             sh, sm = _hm(w.local_start_time.strftime("%H:%M"))
             eh, em = _hm(w.local_end_time.strftime("%H:%M"))
-            cursor = datetime(day.year, day.month, day.day, sh, sm, tzinfo=zone)
-            end_local = datetime(day.year, day.month, day.day, eh, em, tzinfo=zone)
-            while cursor + step <= end_local:
-                start = cursor.astimezone(timezone.utc)
-                end = start + step
+            # Walk the window in wall-clock time; resolve each start separately.
+            cursor = datetime.combine(day, time(sh, sm))
+            window_end = datetime.combine(day, time(eh, em))
+            while cursor + step <= window_end:
+                wall = cursor
                 cursor += step
+                start = unique_instant(wall, zone)
+                if start is None:
+                    continue  # nonexistent or ambiguous local time: not offered
+                end = start + step
+                # The real end, on the clock the provider reads, must be
+                # inside the window: across a clock change a 60-minute slot
+                # can end an hour later on the wall than it began + 60.
+                if end.astimezone(zone).replace(tzinfo=None) > window_end:
+                    continue
                 if start < earliest:
                     continue
                 if any(start < b_end and end > b_start for b_start, b_end in blackouts):
@@ -370,6 +414,36 @@ def request_viewing(listing_id: str, body: ViewingRequest,
     return viewing
 
 
+def _locked(db: Session, viewing_id: str) -> Viewing:
+    """The viewing as committed now, locked for the rest of the transaction."""
+    viewing = db.scalar(
+        select(Viewing).where(Viewing.id == viewing_id).with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if viewing is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Viewing not found")
+    return viewing
+
+
+def _transition(db: Session, viewing: Viewing, allowed_from: tuple[str, ...],
+                **values) -> None:
+    """Move the viewing on only from a state it is in now, at the version
+    read under the lock. Anything else is a conflict, never an overwrite."""
+    if viewing.status not in allowed_from:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"The viewing is {viewing.status}")
+    result = cast(CursorResult, db.execute(
+        update(Viewing)
+        .where(Viewing.id == viewing.id, Viewing.status.in_(allowed_from),
+               Viewing.version == viewing.version)
+        .values(**values, version=Viewing.version + 1)
+        .execution_options(synchronize_session=False)
+    ))
+    if result.rowcount != 1:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "The viewing was changed meanwhile")
+    db.refresh(viewing)
+
+
 def _viewing_for(db: Session, user: User, viewing_id: str) -> tuple[Viewing, bool]:
     """(viewing, caller_is_provider). 404 for anyone who is neither side."""
     viewing = db.get(Viewing, viewing_id)
@@ -386,10 +460,13 @@ def _respond(db: Session, user: User, viewing_id: str, confirm: bool) -> Viewing
     viewing, provider = _viewing_for(db, user, viewing_id)
     if not provider:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Viewing not found")
+    settings = _settings(db, viewing.listing_id, lock=True) if confirm else None
+    # Re-read under the row lock: a cancel may have committed while we waited
+    # for the settings lock (TASK-001 F-06).
+    viewing = _locked(db, viewing_id)
     if viewing.status != "REQUESTED":
         raise HTTPException(status.HTTP_409_CONFLICT, f"The viewing is {viewing.status}")
     if confirm:
-        settings = _settings(db, viewing.listing_id, lock=True)
         if _aware(viewing.starts_at) <= _now():
             raise HTTPException(status.HTTP_409_CONFLICT, "That viewing time has passed")
         capacity = settings.max_concurrent_bookings if settings else 1
@@ -400,10 +477,9 @@ def _respond(db: Session, user: User, viewing_id: str, confirm: bool) -> Viewing
                                   _aware(viewing.ends_at) + clearance, exclude_id=viewing.id)
         if taken >= capacity:
             raise HTTPException(status.HTTP_409_CONFLICT, "That slot is already full")
-    viewing.status = "CONFIRMED" if confirm else "DECLINED"
-    viewing.responded_at = _now()
-    viewing.confirmed_by_user_id = user.id if confirm else None
-    viewing.version += 1
+    _transition(db, viewing, ("REQUESTED",),
+                status="CONFIRMED" if confirm else "DECLINED", responded_at=_now(),
+                confirmed_by_user_id=user.id if confirm else None)
     audit(db, actor=user.id, action=f"viewing.{viewing.status.lower()}",
           entity_type="viewing", entity_id=viewing.id)
     db.commit()
@@ -426,12 +502,9 @@ def decline(viewing_id: str, user: User = Depends(get_current_user),
 def cancel(viewing_id: str, user: User = Depends(get_current_user),
            db: Session = Depends(get_db)):
     """Either side may call it off before it happens."""
-    viewing, _ = _viewing_for(db, user, viewing_id)
-    if viewing.status not in HELD:
-        raise HTTPException(status.HTTP_409_CONFLICT, f"The viewing is {viewing.status}")
-    viewing.status = "CANCELLED"
-    viewing.cancelled_at = _now()
-    viewing.version += 1
+    _viewing_for(db, user, viewing_id)
+    viewing = _locked(db, viewing_id)
+    _transition(db, viewing, HELD, status="CANCELLED", cancelled_at=_now())
     audit(db, actor=user.id, action="viewing.cancelled", entity_type="viewing",
           entity_id=viewing.id)
     db.commit()
@@ -445,13 +518,12 @@ def record_outcome(viewing_id: str, body: OutcomeIn, user: User = Depends(get_cu
     viewing, provider = _viewing_for(db, user, viewing_id)
     if not provider:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Viewing not found")
+    viewing = _locked(db, viewing_id)
     if viewing.status != "CONFIRMED":
         raise HTTPException(status.HTTP_409_CONFLICT, f"The viewing is {viewing.status}")
     if _aware(viewing.starts_at) > _now():
         raise HTTPException(status.HTTP_409_CONFLICT, "The viewing has not happened yet")
-    viewing.status = body.outcome
-    viewing.completed_at = _now()
-    viewing.version += 1
+    _transition(db, viewing, ("CONFIRMED",), status=body.outcome, completed_at=_now())
     db.commit()
     return viewing
 

@@ -23,6 +23,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.audit import audit
@@ -219,6 +220,13 @@ def _post(db: Session, user: User, conv: Conversation, side: str, body: str) -> 
 # --- routes -------------------------------------------------------------------
 
 
+def _active_thread(db: Session, listing_id: str, requester_id: str) -> Conversation | None:
+    return db.scalar(select(Conversation).where(
+        Conversation.listing_id == listing_id, Conversation.requester_user_id == requester_id,
+        Conversation.status == "ACTIVE",
+    ))
+
+
 @router.post("/classifieds/{offer_id}/conversations", response_model=ConversationDetail,
              status_code=201)
 def start_conversation(
@@ -233,11 +241,15 @@ def start_conversation(
     if authority.can_act(db, user.id, offer.property_id, "MANAGE_MESSAGES", verified=False):
         raise HTTPException(status.HTTP_409_CONFLICT, "This is your own listing")
 
+    # Serialise this sender's conversation starts (TASK-001 F-09): looking for
+    # an existing thread, counting today's new ones and creating one are one
+    # decision. The sender's users row is the coordination point — FOR NO KEY
+    # UPDATE, so FK checks on the inserts below are not blocked by it. The
+    # partial unique index on active (listing, requester) is the backstop.
+    db.execute(select(User.id).where(User.id == user.id).with_for_update(key_share=True))
+
     # One conversation per tenant per listing: writing again continues it.
-    conv = db.scalar(select(Conversation).where(
-        Conversation.listing_id == offer.id, Conversation.requester_user_id == user.id,
-        Conversation.status == "ACTIVE",
-    ))
+    conv = _active_thread(db, offer.id, user.id)
     if conv is None:
         started = db.scalar(
             select(func.count()).select_from(Conversation).where(
@@ -251,8 +263,21 @@ def start_conversation(
                 "Daily limit of new conversations reached. Existing ones stay open.",
             )
         conv = Conversation(listing_id=offer.id, requester_user_id=user.id)
-        db.add(conv)
-        db.flush()
+        try:
+            with db.begin_nested():
+                db.add(conv)
+                db.flush()
+        except IntegrityError:
+            # Another start for the same thread won despite the lock (a write
+            # that did not come through here). Continue the thread it made.
+            existing = _active_thread(db, offer.id, user.id)
+            if existing is None:
+                raise
+            conv = existing
+            message = _post(db, user, conv, "tenant", body.body)
+            db.commit()
+            return ConversationDetail(conversation=_out(conv, "tenant"),
+                                      messages=[MessageOut.model_validate(message)])
         db.add(ConversationParticipant(conversation_id=conv.id, participant_type="USER",
                                        user_id=user.id))
         provider = _provider_participant(db, offer.property_id)
