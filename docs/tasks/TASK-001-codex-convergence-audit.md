@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | DRAFT — awaits founder approval |
+| Status | DONE — audit of `988b31b` delivered 2026-09-24 (report: Codex evidence directory `%TEMP%/homies-task001-988b31b/TASK-001-audit.md`, outside the repo); repairs in TASK-002 |
 | Owner | Codex, **read-only** |
 | Bounded contexts written | none |
 | Baseline SHA | the TASK-000 commit on `claude/TASK-000-canonical-governance`, given by the founder at handoff (code is identical to `782c833f100f1bf2e86888b664c9b30b27cbc1dd` apart from legacy docstrings and one boundary test) |

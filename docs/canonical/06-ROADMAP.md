@@ -6,10 +6,15 @@ Engineering status per area is in
 
 ## Now
 
-1. **TASK-000** — canonical governance and convergence (this baseline).
-2. **TASK-001 — Codex independent audit** of the C1–C8 port at an exact SHA,
-   with the C8 media sanitiser as a security focus
-   ([draft contract](../tasks/TASK-001-codex-convergence-audit.md)).
+1. ~~TASK-000~~ — canonical governance and convergence. Done.
+2. ~~TASK-001~~ — Codex independent audit of `988b31b`: safe to continue with
+   blocking fixes in named contexts (P1 ×5, P2 ×4). Done.
+3. **TASK-002** — foundational repair of F-01…F-09
+   ([contract](../tasks/TASK-002-foundational-repair.md)). Implemented;
+   **awaiting targeted Codex re-audit** of the exact handoff SHA.
+4. Proposed next (Claude, awaiting founder approval): the bounded
+   property type + subtype migration (APARTMENT | HOUSE + subtype, 04a §13),
+   then the Phase 1A MUST_CLOSE list below.
 
 ## Phase 1A — LONG_TERM marketplace (next build work)
 

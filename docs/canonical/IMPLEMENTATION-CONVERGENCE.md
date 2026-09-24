@@ -9,6 +9,30 @@ audit ([05 §9](05-DEVELOPMENT-GOVERNANCE-v1.md)).
 Classifications: **CANONICAL_ACTIVE** · **ADAPT** · **LEGACY_DORMANT** ·
 **REFERENCE_ONLY** · **REMOVE_LATER** · **UNKNOWN**.
 
+## 0. State after TASK-002 (2026-09-24)
+
+The independent TASK-001 audit of `988b31b` returned
+`SAFE_TO_CONTINUE_WITH_BLOCKING_FIXES_IN_NAMED_CONTEXTS` (P0 0, P1 5, P2 4).
+TASK-002 ([contract](../tasks/TASK-002-foundational-repair.md)) repaired each
+finding on branch `claude/TASK-002-foundational-repair`. **Closed by Claude
+with regression tests; an independent Codex re-audit of the exact SHA is still
+required before the closures count as accepted** (05 §9).
+
+| Finding | Repair | Regression evidence |
+|---|---|---|
+| F-01 P1 legacy runtime active | `app/composition.py` — `create_phase1_app()` routes no short-stay/booking/payment/host-payout/legacy-admin endpoint and starts only the notification worker; legacy composed only by `tests/legacy_runtime.py` | `test_phase1_runtime.py` (real app: routes, OpenAPI, 18 representative legacy requests → 404, lifespan workers, fresh interpreter loads no legacy module); `test_phase1_boundaries.py` (static, incl. `from .. import x`, importlib) |
+| F-04 P1 publish after revoke | Property row = coordination lock for publish, revoke, space archive; re-check under lock; conditional status UPDATE | `test_publication_race_pg.py` (revoke between check and write → refused; revoke during publish → waits, then pauses; archive likewise; archived not republished) |
+| F-02 P1 media metadata leak | Pillow decode → budget → orientation → sRGB → fresh image from pixels → re-encode → re-decode; old C8 files quarantined (`processing_version`) until reprocessed | `test_media_regressions.py` (TASK-001's four JPEG variants + PNG iCCP through upload → approval → attach → anonymous GET), `test_media_pipeline.py` (real-image corpus, 400 mutations) |
+| F-05 P1 unbounded body | Incremental read abandoned past the limit; decoding under a per-process slot budget | `test_media_regressions.py::test_f05_*` (chunked, false Content-Length, over HTTP) |
+| F-03 P1 contact quota race | Per-viewer `users` row lock (FOR NO KEY UPDATE) around repeat check, count, insert | `test_concurrency_r4_pg.py::test_f03_*` |
+| F-06 P2 viewing resurrection | Row re-read under lock + conditional UPDATE on (status, version); lock order settings → viewing; CHECK `ck_viewings_cancelled_state` | `test_concurrency_r4_pg.py::test_f06_*`, `::test_no_viewing_is_ever_confirmed_with_a_cancellation_time` |
+| F-07 P2 invalid coordinates | API finite/range/pair validation; DB CHECKs on exact and public point; preflighting migration; grid edge fix | `test_coordinates.py`, `test_coordinates_pg.py` (constraint names + SQLSTATE, migration refuses to guess) |
+| F-08 P2 DST slot outside window | One wall time → one instant or not offered; real local end inside window | `test_viewing_dst.py` (Warsaw winter, summer, spring-forward, fall-back) |
+| F-09 P2 conversation race | Per-sender lock; partial UNIQUE on active (listing, requester); lost insert continues the thread | `test_concurrency_r4_pg.py::test_f09_*` |
+| §13 false-positive test | Negative-price test uses valid FKs, a control row, and asserts the CHECK by name/SQLSTATE | `test_pricing_pg.py::test_a_negative_price_never_reaches_a_row` |
+
+Operational migration gate: [MIGRATION-ROLLOUT.md](../database/MIGRATION-ROLLOUT.md).
+
 ## 1. State preserved in TASK-000
 
 Before this task the shared checkout held 159 uncommitted foreign paths
@@ -53,6 +77,14 @@ secrets, image) green on each.
 | C7b | `08fc99c484a4a17aaba9630c207f3a56da352d3e` | Viewing scheduler | Candidate — **high-risk audit** (concurrency/locking) |
 | C8 | `782c833f100f1bf2e86888b664c9b30b27cbc1dd` | Files, media, moderation, sanitiser | Candidate — **REQUIRES_CODEX_SECURITY_AUDIT** (§5) |
 
+TASK-001 verdicts at `988b31b` (Codex, independent): C1 VERIFIED · C2
+PARTIALLY_VERIFIED (F-04) · C3 VERIFIED · C4 VERIFIED · C5 PARTIALLY_VERIFIED
+(F-07) · C6 VERIFIED · C7a PARTIALLY_VERIFIED (F-09) · C7b PARTIALLY_VERIFIED
+(F-06, F-08) · C8 BLOCKED (F-02, F-05). "VERIFIED" means the cycle's implemented
+invariants held under test, not full Domain Schema parity or production
+approval. Every PARTIALLY/BLOCKED item was repaired in TASK-002 (§0) and
+awaits the targeted re-audit.
+
 ## 3. Areas
 
 | Area | Current purpose | Canonical relevance | Decision | Reason | Next action | Risk if unchanged |
@@ -62,23 +94,23 @@ secrets, image) green on each.
 | spaces | WHOLE_PROPERTY / ROOM, composite FK | 1A core | **CANONICAL_ACTIVE** | Matches 04 §28 | Audit C3 | Low |
 | listings / classifieds (`classified_offers`) | The LONG_TERM listing on the free board | 1A core | **ADAPT** | Physical name "offer"; public API says "classifieds"; no texts/terms/status history/freshness/eligibility service; ≥6-month rule (§7 decision) | Listing aggregate convergence task | Terminology and missing freshness block 1A completeness |
 | pricing | Components with history, summaries, version check | 1A core | **CANONICAL_ACTIVE** | Matches 04 §46–§47 | Audit C4 | Low |
-| geolocation | Private exact point, public grid point, bbox/radius | 1A core | **CANONICAL_ACTIVE** (address model ADAPT) | Privacy split matches 04 §80 | Structured address + geo areas | Address not structured |
+| geolocation | Private exact point, public grid point, bbox/radius | 1A core | **CANONICAL_ACTIVE** (address model ADAPT) | Privacy split matches 04 §80; coordinates finite/in range/paired at API and DB since TASK-002 (F-07) | Structured address + geo areas | Address not structured |
 | organizations | Workspace, ORGANIZATION party, memberships | 1A basics | **ADAPT** | `organization_legal_parties.organization_id` is UNIQUE → hard 1:1, contrary to 04a §1 | Multi-relationship with one active primary | Agencies with several legal entities cannot be modelled |
 | mandates | Person-to-user representation | 1A | **CANONICAL_ACTIVE** | Self-granted mandate accepted (04a/§20) | Audit C6 | Low |
-| engagement — messages | Conversations, participants, messages, lead stage | 1A core | **CANONICAL_ACTIVE** | `requester_user_id` accepted | Attachments (dev. 20); audit C7a | Low |
-| engagement — viewings | Windows, blackouts, slots, confirm under lock | 1A core | **CANONICAL_ACTIVE** | Matches 04 §57–§60 | Audit C7b | Low |
-| media | File objects, assets, moderation, listing media, sanitiser | 1A core | **ADAPT** | Custom binary parser unapproved; no derivatives | C8 security audit; derivatives; vetted processing | Untrusted parsing in production |
-| contact reveal + reveal quota | Verified-phone gated disclosure of owner phone | 1A (trust/anti-scrape) | **CANONICAL_ACTIVE** | Supports trust; depends on a paid SMS provider for production | None now | Phone path unusable in prod without SMS |
+| engagement — messages | Conversations, participants, messages, lead stage | 1A core | **CANONICAL_ACTIVE** | `requester_user_id` accepted; one active thread per requester+listing enforced by lock + partial UNIQUE (TASK-002, F-09) | Attachments (dev. 20); re-audit | Low once re-audited (TASK-000's "Low" was optimistic — F-09) |
+| engagement — viewings | Windows, blackouts, slots, confirm under lock | 1A core | **CANONICAL_ACTIVE** | Matches 04 §57–§60; transitions conditional under row lock, DST-unique slots (TASK-002, F-06/F-08) | Re-audit | Low once re-audited (TASK-000's "Low" was optimistic — F-06/F-08) |
+| media | File objects, assets, moderation, listing media, processing | 1A core | **ADAPT** | Custom walker replaced by Pillow decode/re-encode with pixel budget and streaming ingress (TASK-002 R3); old files quarantined; no derivatives yet | Re-audit R3; derivatives (dev. 21); isolated processing when derivatives/scale justify it | Decoder attack surface remains (Pillow, libjpeg, zlib, lcms2) — keep pip-audit and version floor current |
+| contact reveal + reveal quota | Verified-phone gated disclosure of owner phone | 1A (trust/anti-scrape) | **CANONICAL_ACTIVE** | Supports trust; quota serialised per viewer since TASK-002 (F-03 — TASK-000's "None now" was wrong); unit = listing | Re-audit; later decide provider/number as quota unit | Phone path unusable in prod without SMS |
 | attribute catalogue | Amenity definitions, filters | 1A | **ADAPT** | 04 §34–§35 models amenities as table + join rows; current is JSON attributes validated by catalogue | Reconcile with `property_amenities` | Filter/index shape diverges from 04 |
 | trust (verification records, reports, moderation decisions, incidents) | Only media moderation and admin authority verify/revoke exist | 1A basics | **ADAPT** | Evidence record, reports, decisions missing | Trust tasks | Moderation has no audit trail of decisions |
 | safety | Nothing | 1A foundation | **UNKNOWN → build** | Not implemented | Safety foundation task | Canon principle 2 unmet |
-| admin | Users, KPIs, incidents, reconciliation, authority and media moderation | Mixed | **ADAPT** | Imports booking, ledger, payments (legacy) and properties (active) | Split Phase-1 admin from legacy admin when the admin app is built | Legacy admin surface stays reachable |
+| admin | Users, audit, notifications, authority and media moderation | Phase 1 | **CANONICAL_ACTIVE** (Phase-1 part) | Split in TASK-002 R1: `admin/router.py` is Phase-1 only; bookings/payments/ledger/KPI/incidents moved to `admin/legacy.py` (LEGACY_DORMANT, not routed) | Next.js admin app later | — |
 | events (outbox, notifications, worker) | Transactional outbox + delivery | Canonical async pattern (03 §5) | **CANONICAL_ACTIVE** (ADAPT for event catalogue) | Matches 03 | Outcome events for 1A domain | Analytics lacks server-side outcomes |
 | audit log | Append-only audit rows | Cross-cutting | **ADAPT** | `actor` is free text ("system") — no USER/SYSTEM/SERVICE type (04a §5) | Audit actor task | Automated actions indistinguishable |
 | rate limiting | Token buckets per policy | Cross-cutting | **CANONICAL_ACTIVE** | In-process store; Redis not required | None | Multi-instance multiplies limits (documented) |
-| booking | Short-stay bookings, availability, expiry | Phase 3 | **LEGACY_DORMANT** | Authorises by `listings.host_id`, not PropertyAuthority | Do not extend; KEEP/ADAPT/REWRITE audit before Phase 3 | Accidental extension into 1A |
-| listings (short-stay `listings` module) | Nightly listings, host blocks | Phase 3 | **LEGACY_DORMANT** | Same `host_id` gap | As booking | As booking |
-| payments | Stripe seam, webhooks, disputes, reconciliation | Phase 2+ | **LEGACY_DORMANT** | Phase 1 has no payments | Audit before Phase 2 | Stripe pulled into Phase 1 by habit |
+| booking | Short-stay bookings, availability, expiry | Phase 3 | **LEGACY_DORMANT** — runtime-isolated since TASK-002 R1 (TASK-000's dormant label was not true at runtime: F-01) | Authorises by `listings.host_id`, not PropertyAuthority | Do not extend; KEEP/ADAPT/REWRITE audit before Phase 3 | Accidental extension into 1A |
+| listings (short-stay `listings` module) | Nightly listings, host blocks | Phase 3 | **LEGACY_DORMANT** — runtime-isolated (TASK-002 R1) | Same `host_id` gap | As booking | As booking |
+| payments | Stripe seam, webhooks, disputes, reconciliation; host payout onboarding (`identity/host_payouts.py`) | Phase 2+ | **LEGACY_DORMANT** — runtime-isolated (TASK-002 R1) | Phase 1 has no payments | Audit before Phase 2 | Stripe pulled into Phase 1 by habit |
 | ledger | Append-only double-entry | Phase 2+ | **LEGACY_DORMANT** (engineering REFERENCE for Phase 2) | Proven, but Phase 2 needs its own spec | Audit before Phase 2 | — |
 | DB role / privileges (`ops/sql/app_role.sql`) | App role without ledger UPDATE/DELETE | Cross-cutting | **CANONICAL_ACTIVE** | Preserved engineering (03 §11) | Extend to new append-only tables (audit, moderation decisions) | — |
 | backup / restore drill | CI restore cycle, DR scripts | Cross-cutting | **CANONICAL_ACTIVE** | Preserved engineering | Offsite target needs an account | — |
@@ -97,6 +129,13 @@ secrets, image) green on each.
 fails if any Phase-1 module (properties, engagement, media, identity) imports
 booking, payments, ledger or the short-stay listings module.
 
+**TASK-001 showed that static test was not enough** (F-01: the modules were
+still routed and started from `main`). Since TASK-002 R1 the authoritative
+check is the composed application itself (`tests/test_phase1_runtime.py`);
+the static scan was widened to main, composition, admin, events and core and
+now also sees `from .. import x` and literal importlib calls. It still cannot
+see computed dynamic imports — the runtime test covers that.
+
 ## 4. The 22 port deviations — disposition
 
 Source: [SCHEMA-v1-PORT.md](../database/SCHEMA-v1-PORT.md) (history kept as
@@ -111,10 +150,10 @@ written). Dispositions per founder instruction 2026-09-24 §20.
 | 5 | Legal names nullable until verification | **ACCEPTED** | 04a |
 | 6 | Authority verification = state + audit, no evidence record | **MUST_CLOSE** | 04a §9 — before authority verification is production-complete |
 | 7 | Append-only triggers + DB privileges kept | **ACCEPTED** | Defence in depth |
-| 8 | Short-stay retained; authorised by `host_id` | **FROZEN_UNTIL_PHASE** (3) | Plus MUST_CLOSE before any reactivation: move to PropertyAuthority |
+| 8 | Short-stay retained; authorised by `host_id` | **FROZEN_UNTIL_PHASE** (3) | Plus MUST_CLOSE before any reactivation: move to PropertyAuthority. Since TASK-002 R1 the frozen code is not routed or started by the Phase-1 app (TASK-001 had shown it was) |
 | 9 | Mixed status casing | **CONTROLLED_DEBT** | — |
 | 10 | `properties.owner_id` kept as creator | **MUST_CLOSE** | Deprecate; migrate to `created_by_user_id`; never authorisation (verified: authority service does not read it) |
-| 11 | Six lower-case property types; `room` closed | **MUST_CLOSE** | APARTMENT \| HOUSE + subtype; `aparthotel_unit` mapping needs a decision (§7) |
+| 11 | Six lower-case property types; `room` closed | **MUST_CLOSE** | APARTMENT \| HOUSE + subtype. Decided 2026-09-24 (04a §13): `aparthotel_unit` = APARTMENT/APARTHOTEL_UNIT; its publication fails closed since TASK-002. The type/subtype migration itself is a separate bounded task |
 | 12 | `properties.area_m2` integer | **CONTROLLED_DEBT** | — |
 | 13 | `classified_offers` physical name | **CONTROLLED_DEBT** | Public API/domain language must still converge on Listing |
 | 14 | Only rent/fees/utilities/parking/deposit writable | **FROZEN_UNTIL_PHASE** (1B for SALE_ASKING_PRICE) | Other component types when their features exist |
@@ -125,9 +164,13 @@ written). Dispositions per founder instruction 2026-09-24 §20.
 | 19 | `requester_user_id` on conversations | **ACCEPTED** | — |
 | 20 | No message attachments | **MUST_CLOSE** | 04 §56 is Phase-1 schema; low priority, needs private file access |
 | 21 | No media variants; PHOTO/FLOOR_PLAN only | **MUST_CLOSE** | 04a §11 — derivatives before public scale |
-| 22 | Synchronous in-request image processing | **MUST_CLOSE** | Tied to the C8 audit: vetted library or isolated processing path |
+| 22 | Synchronous in-request image processing | **MUST_CLOSE → repaired, pending re-audit** | TASK-002 R3: maintained library (Pillow) with explicit budget, worker thread under a concurrency slot budget. Isolated processing deferred to the derivatives task |
 
 ## 5. C8 security flag
+
+**Superseded by TASK-002 R3.** TASK-001 confirmed the concerns below (F-02,
+F-05) and recommended `REPLACE_WITH_MAINTAINED_LIBRARY`, which R3 did. The
+replacement pipeline itself requires the targeted re-audit. Original flag:
 
 **REQUIRES_CODEX_SECURITY_AUDIT.** The custom JPEG/PNG structure walker in
 `backend/app/modules/media/sanitize.py` is not approved for production
@@ -153,6 +196,13 @@ fixed by the other session. The committed code is correct and tested. The rule
 that prevents a repeat is [05 §4](05-DEVELOPMENT-GOVERNANCE-v1.md).
 
 ## 7. CANONICAL DECISION REQUIRED
+
+**Both decided by the founder on 2026-09-24 (TASK-002 §23–§24)** and recorded
+in [04a §12–§14](04a-DOMAIN-SCHEMA-v1-CLARIFICATIONS.md): LONG_TERM has no
+six-month floor (option B); `aparthotel_unit` is an APARTMENT subtype whose
+publication fails closed pending a residential-use policy (neither option A
+nor C as written — LEGAL/POLICY REVIEW REQUIRED). The records below are kept
+as raised.
 
 ```text
 CANONICAL DECISION REQUIRED — LONG_TERM minimum term vs MONTHLY

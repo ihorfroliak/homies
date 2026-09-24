@@ -30,9 +30,13 @@ read-only-by-default auditor.
    `DEPLOYMENT STATUS`. Report only tests actually run; mutation runs need a
    green baseline and count only real test failures.
 6. **High-risk changes** (05 §9 list) are not final until Codex audits them.
-7. **Legacy dormant.** `booking`, `payments`, `ledger` and the short-stay
-   `listings` module are `LEGACY_DORMANT — DO NOT EXTEND FOR PHASE 1`.
-   Phase-1 modules must not import them (`tests/test_phase1_boundaries.py`).
+7. **Legacy dormant.** `booking`, `payments`, `ledger`, the short-stay
+   `listings` module, `admin/legacy.py` and `identity/host_payouts.py` are
+   `LEGACY_DORMANT — DO NOT EXTEND FOR PHASE 1`. The deployable app is
+   `create_phase1_app()` in `app/composition.py`; it must not route or start
+   them (`tests/test_phase1_runtime.py`), and Phase-1 code must not import
+   them (`tests/test_phase1_boundaries.py`). Legacy tests use
+   `tests/legacy_runtime.py` via the `legacy_runtime` marker.
 8. **Hard limits.** No deployment, production infrastructure change, paid
    provider activation or production data mutation without explicit founder
    approval for that action.

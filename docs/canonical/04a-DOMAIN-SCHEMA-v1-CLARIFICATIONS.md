@@ -75,3 +75,42 @@ gallery, web-large). Serving originals forever is not the target. Untrusted
 binary processing needs independent security review; prefer a well-maintained
 decoding/processing library or an isolated processing path unless a custom
 implementation is rigorously justified and independently validated.
+
+---
+
+Founder decisions of 2026-09-24 carried by TASK-002 (§23, §24, §25, §44).
+They rank with 04a.
+
+## 12. LONG_TERM and MONTHLY
+
+LONG_TERM is the **non-transactional residential-rental marketplace mode**. It
+is not defined by a mandatory six-month minimum: a LONG_TERM listing is
+open-ended or states a minimum term of at least one month. MONTHLY remains the
+future **transactional** product (Phase 2) and is not activated by this;
+nothing in Phase 1A may tell a user that shorter stays are "booked through
+Homies".
+
+## 13. APARTHOTEL_UNIT
+
+`PropertyType = APARTMENT | HOUSE`; `APARTHOTEL_UNIT` is an APARTMENT
+**subtype** and the information is preserved. The subtype does not pull
+hospitality or short-stay behaviour into Phase 1. Publication of such a unit
+**fails closed** until an explicit residential-use eligibility policy exists.
+**LEGAL/POLICY REVIEW REQUIRED** before that policy is written; Homies does not
+invent Polish legal eligibility rules. ROOM is never a property type.
+
+## 14. Viewing times across daylight-saving changes
+
+A Phase-1 viewing slot maps **one local wall time to exactly one UTC
+instant**. Nonexistent (spring-forward) wall times are not offered.
+Ambiguous (fall-back) wall times are not offered in Phase 1 until the domain
+and UI explicitly support choosing the occurrence. Correctness is preferred
+over one extra slot a year.
+
+## 15. Media processing
+
+The media trust boundary is a **maintained decoding library** (decision
+`REPLACE_WITH_MAINTAINED_LIBRARY`, from the TASK-001 audit): images are
+decoded, bounded, re-encoded without original metadata, and verified; the
+upload as received is never published. Isolated processing follows when
+derivatives or scale justify it.
