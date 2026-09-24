@@ -3,24 +3,28 @@
 The lifecycle of a photo:
 
 1. An owner (MANAGE_MEDIA on the property) uploads raw image bytes and
-   declares the right to publish them. The bytes are proved to be JPEG or
-   PNG and rebuilt without their metadata (sanitize.py) before anything is
-   stored; a file that fails is never written anywhere.
+   declares the right to publish them. The body is read incrementally and
+   abandoned the moment it passes the size limit. The bytes are decoded and
+   re-encoded without any of their metadata (sanitize.py) before anything is
+   stored; the upload as it arrived is never written anywhere, and a file
+   that fails is not written at all.
 2. The asset waits in PENDING until an admin approves it. Nothing pending is
    ever shown to the public.
 3. The owner attaches approved photos to a listing, in order, with at most
    one cover.
 4. The public fetches a photo only through `GET /v1/media/{asset_id}`, which
-   serves it only while it is approved and on at least one active listing.
-   Knowing an id is not access; a photo taken off every listing stops being
-   served.
+   serves it only while it is approved, produced by the current pipeline,
+   and on at least one active listing. Knowing an id is not access; a photo
+   taken off every listing stops being served.
 """
 
 import hashlib
+import threading
 from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -37,6 +41,46 @@ from app.modules.properties import authority
 from app.modules.properties.models import ClassifiedOffer, Space
 
 router = APIRouter(tags=["media"])
+
+# Images are decoded in a worker thread, at most this many at once per process
+# (TASK-001 F-05 was about memory: bound the body AND the decoding).
+_processing_slots = threading.BoundedSemaphore(settings.media_processing_concurrency)
+
+
+class _ProcessingBusy(Exception):
+    pass
+
+
+def _process(raw: bytes) -> sanitize.CleanImage:
+    if not _processing_slots.acquire(timeout=settings.media_processing_wait_seconds):
+        raise _ProcessingBusy
+    try:
+        return sanitize.sanitize(raw)
+    finally:
+        _processing_slots.release()
+
+
+async def _read_bounded(request: Request, limit: int) -> bytes:
+    """The request body, read chunk by chunk and abandoned past `limit`.
+
+    Content-Length is only an early refusal: it can be absent (chunked
+    encoding) or false. The byte count of what actually arrived is the limit
+    that holds — `await request.body()` would have buffered all of it first
+    (TASK-001 F-05).
+    """
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > limit:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Image is too large")
+    body = bytearray()
+    async for chunk in request.stream():
+        body.extend(chunk)
+        if len(body) > limit:
+            raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Image is too large")
+    return bytes(body)
+
+
+def is_servable(file: FileObject) -> bool:
+    return file.servable
 
 
 def _now() -> datetime:
@@ -100,16 +144,17 @@ async def upload_media(
         if space is None or space.property_id != property_id:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Space not found")
 
-    declared = request.headers.get("content-length")
-    if declared and declared.isdigit() and int(declared) > settings.media_max_bytes:
-        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Image is too large")
-    raw = await request.body()
-    if len(raw) > settings.media_max_bytes:
-        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Image is too large")
+    raw = await _read_bounded(request, settings.media_max_bytes)
     try:
-        clean = sanitize.sanitize(raw)
+        clean = await run_in_threadpool(_process, raw)
     except sanitize.RejectedImage as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
+    except _ProcessingBusy:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE, "Image processing is busy; try again shortly",
+            headers={"Retry-After": "5"},
+        ) from None
+    del raw  # the upload as it arrived is never kept
 
     backend = storage.storage()
     file = FileObject(
@@ -117,6 +162,7 @@ async def upload_media(
         storage_bucket=backend.bucket, storage_key="pending", access_class="PRIVATE",
         mime_type=clean.mime_type, size_bytes=len(clean.data),
         sha256=hashlib.sha256(clean.data).hexdigest(), state="PROCESSING",
+        processing_version=sanitize.PIPELINE_VERSION,
     )
     db.add(file)
     db.flush()
@@ -160,7 +206,12 @@ def _moderate(db: Session, asset_id: str, admin: User, state: str) -> MediaAsset
     asset.moderation_state = state
     file = db.get(FileObject, asset.file_id)
     assert file is not None
-    file.access_class = "PUBLIC" if state == "APPROVED" else "PRIVATE"
+    # Approval judges what the picture shows; it cannot make unsafe bytes
+    # safe. A quarantined file stays quarantined until it is reprocessed.
+    if state != "APPROVED":
+        file.access_class = "PRIVATE" if file.access_class != "QUARANTINE" else "QUARANTINE"
+    elif is_servable(file):
+        file.access_class = "PUBLIC"
     if state != "APPROVED":
         # A rejected photo comes off every listing it was on, cover included.
         for link in db.scalars(select(ListingMedia).where(ListingMedia.media_asset_id == asset.id)):
@@ -203,7 +254,7 @@ def attach(offer_id: str, body: AttachIn, user: User = Depends(get_current_user)
     asset = db.get(MediaAsset, body.media_asset_id)
     if asset is None or asset.property_id != offer.property_id or asset.archived_at:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Media not found")
-    if asset.moderation_state != "APPROVED" or asset.file.state != "READY":
+    if asset.moderation_state != "APPROVED" or not is_servable(asset.file):
         raise HTTPException(status.HTTP_409_CONFLICT, "Only approved photos can be shown")
 
     existing = db.get(ListingMedia, (offer.id, asset.id))
@@ -251,8 +302,12 @@ def serve(asset_id: str, db: Session = Depends(get_db)):
         .join(ClassifiedOffer, ClassifiedOffer.id == ListingMedia.listing_id)
         .where(ListingMedia.media_asset_id == asset_id, ClassifiedOffer.status == "active")
     ) if asset else 0
+    # Every condition is read from the database on every request: rejecting,
+    # restricting, detaching or pausing takes effect at once (within the
+    # 5-minute cache below for clients that already fetched it).
     if (asset is None or asset.moderation_state != "APPROVED" or asset.archived_at
-            or asset.file.state != "READY" or asset.file.access_class != "PUBLIC" or not shown):
+            or not is_servable(asset.file) or asset.file.access_class != "PUBLIC"
+            or not shown):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Media not found")
     data = storage.storage().get(asset.file.storage_key)
     return Response(

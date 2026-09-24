@@ -87,6 +87,11 @@ class Settings(BaseSettings):
     # small enough that one upload cannot exhaust a worker's memory.
     media_root: str = "var/media"
     media_max_bytes: int = 10_000_000
+    # Decoding is CPU- and memory-heavy (up to MAX_PIXELS of RGBA). At most this
+    # many images are processed at once per process; an upload that cannot get
+    # a slot within the wait answers 503 rather than queueing without bound.
+    media_processing_concurrency: int = 2
+    media_processing_wait_seconds: float = 10.0
 
     @field_validator("contact_reveal_daily_quota")
     @classmethod

@@ -214,13 +214,18 @@ class ClassifiedOffer(Base):
     @property
     def media(self) -> list[dict]:
         """Approved photos only, cover first. A photo awaiting or refused
-        moderation is never part of what the public sees."""
+        moderation, archived, or whose bytes are not servable (quarantined,
+        made by an old pipeline) is never part of what the public sees — the
+        same rule GET /v1/media/{id} applies."""
         return [
             {"id": link.asset.id, "url": f"/v1/media/{link.asset.id}",
              "is_cover": link.is_cover, "media_type": link.asset.media_type,
              "width_px": link.asset.width_px, "height_px": link.asset.height_px}
             for link in self.listing_media
             if link.asset.moderation_state == "APPROVED"
+            and link.asset.archived_at is None
+            and link.asset.file.servable
+            and link.asset.file.access_class == "PUBLIC"
         ]
 
     @property

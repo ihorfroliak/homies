@@ -1,47 +1,76 @@
-"""Make an uploaded photo safe to publish: prove what it is, strip what it says.
+"""Make an uploaded photo safe to publish: decode it, bound it, re-encode it.
 
 A photo from a phone carries EXIF, and EXIF carries the GPS position where it
-was taken — for a listing photo, the flat itself. Publishing it unaltered would
-undo everything the approximate map point protects (location.py): anyone
-could download the cover photo and read the address out of it. XMP can carry
-the same coordinates, and text chunks carry whatever the editing app wrote.
+was taken — for a listing photo, the flat itself. XMP can carry the same
+coordinates, text chunks and comments whatever the editing app wrote, and an
+ICC profile's name is free text too. Publishing any of it would undo what the
+approximate map point protects (properties/location.py).
 
-So an image is rebuilt from its own structure with only what is needed to
-display it:
+Until TASK-002 this module walked the JPEG/PNG structure and copied the
+segments it trusted. TASK-001 showed why that is not a trust boundary: after
+the first scan everything was copied verbatim (APP1 after SOS, APP2, APP14,
+bytes after a false EOI), a PNG iCCP name survived, and PNGs the walker
+accepted were not decodable at all. The parser and the browser disagreed.
 
-* the format is decided by the bytes, never by the client's Content-Type;
-* JPEG keeps its image segments and drops APP1 (Exif/XMP), APP12, APP13
-  (IPTC/Photoshop) and comments; the entropy-coded data after SOS is copied
-  unchanged;
-* PNG keeps critical and colour chunks and drops eXIf and all text/time
-  chunks; every chunk's CRC is checked.
+So now the image is **decoded by a maintained library (Pillow) and rebuilt
+from its pixels**:
 
-This is a structure walker, not a decoder: it never interprets pixel data, so
-there is nothing to decompress and no bomb to set off. Anything it cannot
-account for exactly is refused rather than guessed at.
+1. the format is decided by the decoder from the bytes — JPEG or PNG only,
+   whatever the client's Content-Type says;
+2. dimensions are checked against an explicit budget *before* pixels are
+   decoded (width, height and total pixels — 16 000 × 16 000 passes each
+   axis limit and is still refused);
+3. the pixels are fully decoded; truncated or corrupt data is a refusal;
+4. EXIF orientation is applied to the pixels, so the photo is upright
+   without keeping the EXIF that said how to rotate it;
+5. colour is normalised: an embedded ICC profile is used once to convert the
+   pixels to sRGB and is then discarded — the profile's bytes are never
+   copied (a profile we cannot use is simply dropped);
+6. a new image is built from the pixel data alone — no `info`, no EXIF, no
+   XMP, no text, no ICC — and encoded as JPEG or PNG;
+7. the output is decoded again as a check before it is accepted.
+
+Only the first frame of an animated PNG or a multi-picture JPEG is kept.
+Nothing uploaded is ever stored as it arrived.
 """
 
-import struct
-import zlib
+import io
+import warnings
 from dataclasses import dataclass
+
+from PIL import Image, ImageCms, ImageFile, ImageOps, UnidentifiedImageError
 
 JPEG = "image/jpeg"
 PNG = "image/png"
 
-_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
-MAX_DIMENSION = 16_000
+# Recorded on every file this pipeline produces (FileObject.processing_version).
+# 1 was never recorded: bytes from the C8 walker carry NULL and are quarantined.
+PIPELINE_VERSION = 2
 
-# JPEG markers that carry metadata rather than the image.
-_JPEG_DROP = {0xE1, 0xEC, 0xED, 0xFE}  # APP1, APP12, APP13, COM
-# Start-of-frame markers (the ones that carry dimensions).
-_JPEG_SOF = {0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF}
-# PNG chunks that describe how to display the image; everything else goes.
-_PNG_KEEP = {b"IHDR", b"PLTE", b"IDAT", b"IEND", b"tRNS", b"gAMA", b"cHRM", b"sRGB",
-             b"iCCP", b"sBIT", b"pHYs", b"bKGD"}
+# The processing budget (TASK-002 §29). A 12 MP phone photo is ~4000×3000;
+# 50 MP sensors reach ~8200×6200. The total-pixel cap is what bounds memory:
+# 40 MP of RGBA is ~160 MB while decoding.
+MAX_WIDTH = 10_000
+MAX_HEIGHT = 10_000
+MAX_PIXELS = 40_000_000
+JPEG_QUALITY = 88
+
+# Decoder names Pillow reports for what we accept. MPO is a JPEG with extra
+# pictures appended (some cameras); only its first picture is kept.
+_ACCEPTED = {"JPEG": JPEG, "MPO": JPEG, "PNG": PNG}
+_OUTPUT_FORMAT = {JPEG: "JPEG", PNG: "PNG"}
+_SRGB = ImageCms.createProfile("sRGB")
+
+# A truncated file must be refused, never padded with grey. This is Pillow's
+# default; set explicitly so no other import can quietly flip it.
+ImageFile.LOAD_TRUNCATED_IMAGES = False
+# Pillow's own decompression-bomb guard (warning above, error at twice this),
+# aligned with our budget so no other Image.open in the process is looser.
+Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 
 
 class RejectedImage(ValueError):
-    """The bytes are not an image this service will publish."""
+    """The upload is not an image this service will publish."""
 
 
 @dataclass(frozen=True)
@@ -52,82 +81,95 @@ class CleanImage:
     height: int
 
 
+def _check_budget(width: int, height: int) -> None:
+    if width < 1 or height < 1:
+        raise RejectedImage("the image has no pixels")
+    if width > MAX_WIDTH or height > MAX_HEIGHT:
+        raise RejectedImage(f"the image is larger than {MAX_WIDTH}×{MAX_HEIGHT} pixels")
+    if width * height > MAX_PIXELS:
+        raise RejectedImage(f"the image has more than {MAX_PIXELS:,} pixels")
+
+
+def _to_srgb(image: Image.Image, icc: bytes | None) -> Image.Image:
+    """Pixels expressed in sRGB. The profile is read, never copied."""
+    if not icc or image.mode not in ("RGB", "RGBA"):
+        return image
+    try:
+        source = ImageCms.ImageCmsProfile(io.BytesIO(icc))
+        converted = ImageCms.profileToProfile(image, source, _SRGB, outputMode=image.mode)
+    except (ImageCms.PyCMSError, OSError, ValueError, TypeError):
+        # A profile that cannot be used is dropped; the pixels stay as they are.
+        return image
+    return converted if converted is not None else image
+
+
+def _normalised_mode(image: Image.Image, mime: str) -> Image.Image:
+    if mime == JPEG:
+        if image.mode in ("L", "RGB"):
+            return image
+        return image.convert("RGB")
+    if image.mode in ("L", "LA", "RGB", "RGBA"):
+        return image
+    # Palette, 16-bit, CMYK and the rest: RGBA keeps any transparency.
+    return image.convert("RGBA")
+
+
+def _decode(data: bytes) -> tuple[Image.Image, str]:
+    with warnings.catch_warnings():
+        # Pillow warns before it errors on huge images; treat both as refusal.
+        warnings.simplefilter("error", Image.DecompressionBombWarning)
+        opened = Image.open(io.BytesIO(data), formats=["JPEG", "PNG"])
+        with opened:
+            mime = _ACCEPTED.get(opened.format or "")
+            if mime is None:
+                raise RejectedImage("only JPEG and PNG images are accepted")
+            _check_budget(*opened.size)
+            icc = opened.info.get("icc_profile")
+            opened.seek(0)
+            opened.load()
+            upright = ImageOps.exif_transpose(opened)
+            _check_budget(*upright.size)
+            pixels = _normalised_mode(_to_srgb(upright, icc), mime)
+            # A brand-new image from raw pixel bytes: nothing of the source's
+            # `info` (EXIF, XMP, ICC, text, comments) can ride along.
+            fresh = Image.frombytes(pixels.mode, pixels.size, pixels.tobytes())
+    return fresh, mime
+
+
+def _encode(image: Image.Image, mime: str) -> bytes:
+    out = io.BytesIO()
+    if mime == JPEG:
+        image.save(out, "JPEG", quality=JPEG_QUALITY, optimize=True)
+    else:
+        image.save(out, "PNG", optimize=False)
+    return out.getvalue()
+
+
+def _verify(data: bytes, mime: str, size: tuple[int, int]) -> None:
+    with Image.open(io.BytesIO(data), formats=[_OUTPUT_FORMAT[mime]]) as check:
+        check.load()
+        if check.size != size:
+            raise RejectedImage("the image could not be re-encoded faithfully")
+
+
 def sanitize(data: bytes) -> CleanImage:
-    if data.startswith(b"\xff\xd8\xff"):
-        return _jpeg(data)
-    if data.startswith(_PNG_SIGNATURE):
-        return _png(data)
-    raise RejectedImage("only JPEG and PNG images are accepted")
+    """A publishable image rebuilt from `data`, or RejectedImage.
 
-
-def _check_size(width: int, height: int) -> None:
-    if not (0 < width <= MAX_DIMENSION and 0 < height <= MAX_DIMENSION):
-        raise RejectedImage("image dimensions are out of range")
-
-
-def _jpeg(data: bytes) -> CleanImage:
-    out = bytearray(b"\xff\xd8")
-    pos = 2
-    size: tuple[int, int] | None = None
-    while True:
-        if pos + 4 > len(data) or data[pos] != 0xFF:
-            raise RejectedImage("malformed JPEG segment")
-        marker = data[pos + 1]
-        if marker == 0xFF:  # fill byte before a marker
-            pos += 1
-            continue
-        if marker == 0xD9:  # EOI with no scan: nothing to show
-            raise RejectedImage("JPEG has no image data")
-        length = struct.unpack(">H", data[pos + 2:pos + 4])[0]
-        if length < 2 or pos + 2 + length > len(data):
-            raise RejectedImage("JPEG segment runs past the end of the file")
-        segment = data[pos:pos + 2 + length]
-        if marker in _JPEG_SOF:
-            if length < 7:
-                raise RejectedImage("malformed JPEG frame header")
-            height, width = struct.unpack(">HH", data[pos + 5:pos + 9])
-            size = (width, height)
-        if marker == 0xDA:  # SOS: the rest is scan data and the trailer
-            if size is None:
-                raise RejectedImage("JPEG scan before frame header")
-            _check_size(*size)
-            out += data[pos:]
-            if not bytes(out).rstrip(b"\x00").endswith(b"\xff\xd9"):
-                raise RejectedImage("JPEG is truncated")
-            return CleanImage(bytes(out), JPEG, size[0], size[1])
-        if marker not in _JPEG_DROP:
-            out += segment
-        pos += 2 + length
-
-
-def _png(data: bytes) -> CleanImage:
-    out = bytearray(_PNG_SIGNATURE)
-    pos = len(_PNG_SIGNATURE)
-    size: tuple[int, int] | None = None
-    seen_end = False
-    while pos < len(data):
-        if pos + 12 > len(data):
-            raise RejectedImage("malformed PNG chunk")
-        length = struct.unpack(">I", data[pos:pos + 4])[0]
-        kind = data[pos + 4:pos + 8]
-        end = pos + 12 + length
-        if end > len(data):
-            raise RejectedImage("PNG chunk runs past the end of the file")
-        body = data[pos + 8:pos + 8 + length]
-        crc = struct.unpack(">I", data[pos + 8 + length:end])[0]
-        if zlib.crc32(kind + body) & 0xFFFFFFFF != crc:
-            raise RejectedImage("PNG chunk is corrupt")
-        if kind == b"IHDR":
-            if length != 13:
-                raise RejectedImage("malformed PNG header")
-            size = struct.unpack(">II", body[:8])
-        if kind in _PNG_KEEP:
-            out += data[pos:end]
-        pos = end
-        if kind == b"IEND":
-            seen_end = True
-            break
-    if size is None or not seen_end:
-        raise RejectedImage("PNG is incomplete")
-    _check_size(*size)
-    return CleanImage(bytes(out), PNG, size[0], size[1])
+    Every decoder failure is a refusal, never a 500 and never a partial file.
+    """
+    if not data:
+        raise RejectedImage("the upload is empty")
+    try:
+        image, mime = _decode(data)
+        encoded = _encode(image, mime)
+        _verify(encoded, mime, image.size)
+    except RejectedImage:
+        raise
+    except (Image.DecompressionBombError, Image.DecompressionBombWarning):
+        raise RejectedImage(f"the image has more than {MAX_PIXELS:,} pixels") from None
+    except UnidentifiedImageError:
+        raise RejectedImage("only JPEG and PNG images are accepted") from None
+    except (OSError, SyntaxError, ValueError, EOFError, IndexError, KeyError, TypeError):
+        # Truncated, corrupt or internally inconsistent image data.
+        raise RejectedImage("the image data is corrupt or incomplete") from None
+    return CleanImage(data=encoded, mime_type=mime, width=image.width, height=image.height)
