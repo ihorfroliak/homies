@@ -22,6 +22,7 @@ from app.modules.admin.router import router as admin_router
 from app.modules.booking.expiry import worker as booking_expiry_worker
 from app.modules.booking.router import router as booking_router
 from app.modules.events.worker import worker as notification_worker
+from app.modules.engagement.router import router as conversations_router
 from app.modules.identity.organizations import router as organizations_router
 from app.modules.identity.router import router as identity_router
 from app.modules.listings.router import router as listings_router
@@ -110,6 +111,7 @@ app.include_router(listings_router, prefix=API_V1)
 app.include_router(booking_router, prefix=API_V1)
 app.include_router(payments_router, prefix=API_V1)
 app.include_router(properties_router, prefix=API_V1)
+app.include_router(conversations_router, prefix=API_V1)
 app.include_router(admin_router, prefix=API_V1)
 
 

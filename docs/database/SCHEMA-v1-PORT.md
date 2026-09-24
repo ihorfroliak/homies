@@ -16,8 +16,9 @@ reason, the impact, and whether domain semantics changed (spec §131).
 | C3 | `spaces` (WHOLE_PROPERTY / ROOM); offers point at a space through a composite key; archiving takes listings down; search filters and sorts on the listed area | `903312c` |
 | C4 | Temporal price components with contiguous history; stored summaries (headline, monthly, move-in) recomputed in the same transaction; optimistic concurrency on price edits; flat price columns dropped | `dba093a` |
 | C5 | PostGIS; exact location private (`properties.exact_geog`); listings get a public point at the owner's precision (EXACT / APPROXIMATE grid cell / DISTRICT); viewport and geodesic radius search on a GiST index; public shape gains city and district | `1cf8130` |
-| C6 | Organizations with an ORGANIZATION legal party, memberships with roles, representation mandates with scopes; authorization walks all three chains of §32; registering a property for an organisation | this commit |
-| C7 | Conversations, messages, viewings | next |
+| C6 | Organizations with an ORGANIZATION legal party, memberships with roles, representation mandates with scopes; authorization walks all three chains of §32; registering a property for an organisation | `24b1857` |
+| C7a | Conversations, participants, messages; provider side = whoever holds MANAGE_MESSAGES now; lead stage and assignee hidden from the tenant; daily cap on new conversations | this commit |
+| C7b | Viewing settings, windows, blackouts, viewings | next |
 | C8 | Files and media | |
 
 ## Deviations
@@ -42,6 +43,8 @@ reason, the impact, and whether domain semantics changed (spec §131).
 | 16 | Public location precision on the listing (§42) | Same, plus a rule the spec leaves open: APPROXIMATE is the centre of a fixed ~550 m grid cell, not a random offset | A fresh random offset per publication can be averaged back to the flat; a grid cell cannot | Flats sharing a cell share a point | No |
 | 17 | Mandate status defaults to PENDING, verification to UNVERIFIED (§21) | A mandate granted by the principal's own signed-in account is ACTIVE and VERIFIED at once | That grant is the principal's consent; a mandate arriving any other way (an uploaded power of attorney) will start UNVERIFIED when that path exists | Only principals can grant, and only over their own legal person | No |
 | 18 | Organisations as mandate principals, organisation verification (§21, §62) | Mandates are granted by persons only; an organisation's registration number is recorded but not checked | Neither is on the Phase-1 path; both land with the trust cycle | An agency cannot yet delegate by mandate; it delegates by membership | No |
+| 19 | `conversations` has no requester (§53) | `requester_user_id` added | Without it a personal owner and the tenant are both USER participants, so an owner who sold the flat would remain a party able to write | Tenant fixed; provider side decided by authority at read time | No |
+| 20 | `message_attachments` (§56) | Not yet | Needs the file store (C8) | Text only | No |
 
 ## What C2 changed in behaviour
 

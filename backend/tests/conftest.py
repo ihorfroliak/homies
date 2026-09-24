@@ -251,6 +251,7 @@ def pg_client(pg_migrated_engine):
         # Every table a test can write to. A missing name leaks state into the
         # next test: `disputes` was absent since FIN-03 and nothing noticed.
         "notifications domain_events incidents webhook_events disputes "
+        "messages conversation_participants conversations "
         "contact_reveals listing_price_components classified_offers spaces property_authority_scopes "
         "property_authorities "
         "properties representation_mandate_scopes representation_mandates "
@@ -289,6 +290,7 @@ def pg_session(pg_migrated_engine):
         # Every table a test can write to. A missing name leaks state into the
         # next test: `disputes` was absent since FIN-03 and nothing noticed.
         "notifications domain_events incidents webhook_events disputes "
+        "messages conversation_participants conversations "
         "contact_reveals listing_price_components classified_offers spaces property_authority_scopes "
         "property_authorities "
         "properties representation_mandate_scopes representation_mandates "

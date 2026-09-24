@@ -14,6 +14,7 @@ from alembic import context
 from app.core.audit import AuditLog  # noqa: F401
 from app.core.db import Base
 from app.modules.booking.models import Booking  # noqa: F401
+from app.modules.engagement.models import Conversation  # noqa: F401
 from app.modules.events.models import DomainEvent, Incident, Notification  # noqa: F401
 from app.modules.identity.models import (  # noqa: F401
     HostProfile,

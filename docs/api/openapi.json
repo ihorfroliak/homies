@@ -1,6 +1,19 @@
 {
   "components": {
     "schemas": {
+      "AssignIn": {
+        "properties": {
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ],
+        "title": "AssignIn",
+        "type": "object"
+      },
       "AttributeOut": {
         "properties": {
           "allowed_values": {
@@ -575,6 +588,93 @@
         "title": "ContactRevealOut",
         "type": "object"
       },
+      "ConversationDetail": {
+        "properties": {
+          "conversation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConversationOut"
+              },
+              {
+                "$ref": "#/components/schemas/ProviderConversationOut"
+              }
+            ],
+            "title": "Conversation"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/MessageOut"
+            },
+            "title": "Messages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "conversation",
+          "messages"
+        ],
+        "title": "ConversationDetail",
+        "type": "object"
+      },
+      "ConversationOut": {
+        "description": "What both sides see.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_message_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Message At"
+          },
+          "listing_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Id"
+          },
+          "my_side": {
+            "enum": [
+              "tenant",
+              "provider"
+            ],
+            "title": "My Side",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "listing_id",
+          "status",
+          "created_at",
+          "last_message_at",
+          "my_side"
+        ],
+        "title": "ConversationOut",
+        "type": "object"
+      },
       "DayStatus": {
         "properties": {
           "date": {
@@ -1110,6 +1210,81 @@
           "status"
         ],
         "title": "MemberOut",
+        "type": "object"
+      },
+      "MessageIn": {
+        "properties": {
+          "body": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "MessageIn",
+        "type": "object"
+      },
+      "MessageOut": {
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "message_type": {
+            "title": "Message Type",
+            "type": "string"
+          },
+          "sender_organization_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sender Organization Id"
+          },
+          "sender_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sender User Id"
+          }
+        },
+        "required": [
+          "id",
+          "sender_user_id",
+          "sender_organization_id",
+          "message_type",
+          "body",
+          "created_at"
+        ],
+        "title": "MessageOut",
         "type": "object"
       },
       "OrganizationCreate": {
@@ -1649,6 +1824,94 @@
         "title": "PropertyOut",
         "type": "object"
       },
+      "ProviderConversationOut": {
+        "description": "Plus the provider's own lead-handling fields, which the tenant never\nsees: how an agency ranks a lead is not the lead's business.",
+        "properties": {
+          "assigned_to_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To User Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_message_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Message At"
+          },
+          "listing_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Id"
+          },
+          "my_side": {
+            "enum": [
+              "tenant",
+              "provider"
+            ],
+            "title": "My Side",
+            "type": "string"
+          },
+          "provider_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Stage"
+          },
+          "requester_user_id": {
+            "title": "Requester User Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "listing_id",
+          "status",
+          "created_at",
+          "last_message_at",
+          "my_side",
+          "requester_user_id",
+          "provider_stage",
+          "assigned_to_user_id"
+        ],
+        "title": "ProviderConversationOut",
+        "type": "object"
+      },
       "PublicLocation": {
         "properties": {
           "latitude": {
@@ -1905,6 +2168,19 @@
           "status"
         ],
         "title": "SpaceOut",
+        "type": "object"
+      },
+      "StageIn": {
+        "properties": {
+          "provider_stage": {
+            "title": "Provider Stage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_stage"
+        ],
+        "title": "StageIn",
         "type": "object"
       },
       "TokenPair": {
@@ -3922,6 +4198,63 @@
         ]
       }
     },
+    "/v1/classifieds/{offer_id}/conversations": {
+      "post": {
+        "operationId": "start_conversation_v1_classifieds__offer_id__conversations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Conversation",
+        "tags": [
+          "conversations"
+        ]
+      }
+    },
     "/v1/classifieds/{offer_id}/pause": {
       "post": {
         "operationId": "pause_classified_v1_classifieds__offer_id__pause_post",
@@ -4123,6 +4456,263 @@
         "summary": "Publish Classified",
         "tags": [
           "properties"
+        ]
+      }
+    },
+    "/v1/conversations": {
+      "get": {
+        "description": "Conversations you started, and those about listings you answer for.",
+        "operationId": "inbox_v1_conversations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/ConversationOut"
+                      },
+                      {
+                        "$ref": "#/components/schemas/ProviderConversationOut"
+                      }
+                    ]
+                  },
+                  "title": "Response Inbox V1 Conversations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Inbox",
+        "tags": [
+          "conversations"
+        ]
+      }
+    },
+    "/v1/conversations/{conversation_id}": {
+      "get": {
+        "operationId": "read_conversation_v1_conversations__conversation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Conversation",
+        "tags": [
+          "conversations"
+        ]
+      }
+    },
+    "/v1/conversations/{conversation_id}/assign": {
+      "post": {
+        "description": "Hand a lead to a colleague. The colleague must themselves be able to\nanswer for the listing — assigning to someone who cannot read it would\nhide the lead, not route it.",
+        "operationId": "assign_v1_conversations__conversation_id__assign_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderConversationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Assign",
+        "tags": [
+          "conversations"
+        ]
+      }
+    },
+    "/v1/conversations/{conversation_id}/messages": {
+      "post": {
+        "operationId": "send_message_v1_conversations__conversation_id__messages_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Send Message",
+        "tags": [
+          "conversations"
+        ]
+      }
+    },
+    "/v1/conversations/{conversation_id}/stage": {
+      "post": {
+        "operationId": "set_stage_v1_conversations__conversation_id__stage_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StageIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderConversationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Stage",
+        "tags": [
+          "conversations"
         ]
       }
     },

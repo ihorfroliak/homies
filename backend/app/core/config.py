@@ -76,6 +76,11 @@ class Settings(BaseSettings):
     # arranged a handful at a time. Raise it only against evidence of real
     # tenants hitting it, never to unblock a single complaint.
     contact_reveal_daily_quota: int = 20
+    # New conversations one account may start per rolling 24 hours. Messaging
+    # needs no verified phone, which makes it the cheapest channel for
+    # blasting every owner with the same scam; this bounds that without
+    # touching conversations already open.
+    conversation_daily_quota: int = 30
 
     @field_validator("contact_reveal_daily_quota")
     @classmethod

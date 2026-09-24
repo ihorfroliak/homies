@@ -70,6 +70,10 @@ LISTING_WRITE = Policy("listing_write", capacity=20, refill_per_second=0.5)
 # what it must make expensive.
 PROPERTY_WRITE = Policy("property_write", capacity=20, refill_per_second=0.5)
 CONTACT_REVEAL = Policy("contact_reveal", capacity=10, refill_per_second=0.05)
+# Messaging. Starting a conversation reaches a new stranger, so it is tight;
+# replying inside one is ordinary use.
+CONVERSATION_START = Policy("conversation_start", capacity=10, refill_per_second=0.05)
+MESSAGE_WRITE = Policy("message_write", capacity=30, refill_per_second=0.5)
 # Verification. Sending is the only route in the product that spends real
 # money per call (an SMS), which makes it the natural target of "SMS pumping":
 # a fraudster points the sender at premium-rate ranges they collect on. Hence a
@@ -266,6 +270,10 @@ def resolve_policy(method: str, path: str) -> Policy | None:
         return LISTING_WRITE
     if path.startswith("/v1/classifieds") and path.endswith("/contact"):
         return CONTACT_REVEAL
+    if path.startswith("/v1/classifieds") and path.endswith("/conversations"):
+        return CONVERSATION_START
+    if path.startswith("/v1/conversations"):
+        return MESSAGE_WRITE
     if path.startswith(("/v1/properties", "/v1/classifieds", "/v1/spaces")):
         return PROPERTY_WRITE
     # Anything unmatched is a READ budget. A new write route that forgets to
