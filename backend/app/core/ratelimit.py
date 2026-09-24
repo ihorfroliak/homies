@@ -274,6 +274,8 @@ def resolve_policy(method: str, path: str) -> Policy | None:
         return CONVERSATION_START
     if path.startswith("/v1/conversations"):
         return MESSAGE_WRITE
+    if path.startswith("/v1/viewings"):
+        return PROPERTY_WRITE
     if path.startswith(("/v1/properties", "/v1/classifieds", "/v1/spaces")):
         return PROPERTY_WRITE
     # Anything unmatched is a READ budget. A new write route that forgets to

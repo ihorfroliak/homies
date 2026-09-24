@@ -120,6 +120,38 @@
         "title": "AvailabilityOut",
         "type": "object"
       },
+      "BlackoutIn": {
+        "properties": {
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "starts_at",
+          "ends_at"
+        ],
+        "title": "BlackoutIn",
+        "type": "object"
+      },
       "BlockCreate": {
         "properties": {
           "end_date": {
@@ -1377,6 +1409,23 @@
         "title": "OrganizationOut",
         "type": "object"
       },
+      "OutcomeIn": {
+        "properties": {
+          "outcome": {
+            "enum": [
+              "COMPLETED",
+              "NO_SHOW"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outcome"
+        ],
+        "title": "OutcomeIn",
+        "type": "object"
+      },
       "PhoneVerificationStart": {
         "description": "E.164 only. A free-text number cannot be compared for uniqueness, and\nwithout uniqueness \"verified phone\" stops being one account per SIM.",
         "properties": {
@@ -1912,6 +1961,63 @@
         "title": "ProviderConversationOut",
         "type": "object"
       },
+      "ProviderViewingOut": {
+        "properties": {
+          "attendee_count": {
+            "title": "Attendee Count",
+            "type": "integer"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "listing_id": {
+            "title": "Listing Id",
+            "type": "string"
+          },
+          "requester_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requester Note"
+          },
+          "requester_user_id": {
+            "title": "Requester User Id",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "listing_id",
+          "starts_at",
+          "ends_at",
+          "status",
+          "attendee_count",
+          "requester_user_id",
+          "requester_note"
+        ],
+        "title": "ProviderViewingOut",
+        "type": "object"
+      },
       "PublicLocation": {
         "properties": {
           "latitude": {
@@ -2010,6 +2116,133 @@
           "resets_in"
         ],
         "title": "RevealQuotaOut",
+        "type": "object"
+      },
+      "SettingsIn": {
+        "properties": {
+          "booking_mode": {
+            "default": "REQUEST_APPROVAL",
+            "enum": [
+              "INSTANT_BOOKING",
+              "REQUEST_APPROVAL"
+            ],
+            "title": "Booking Mode",
+            "type": "string"
+          },
+          "buffer_after_minutes": {
+            "default": 0,
+            "maximum": 240.0,
+            "minimum": 0.0,
+            "title": "Buffer After Minutes",
+            "type": "integer"
+          },
+          "buffer_before_minutes": {
+            "default": 0,
+            "maximum": 240.0,
+            "minimum": 0.0,
+            "title": "Buffer Before Minutes",
+            "type": "integer"
+          },
+          "duration_minutes": {
+            "default": 30,
+            "maximum": 240.0,
+            "minimum": 10.0,
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "max_concurrent_bookings": {
+            "default": 1,
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Max Concurrent Bookings",
+            "type": "integer"
+          },
+          "minimum_notice_minutes": {
+            "default": 120,
+            "maximum": 20160.0,
+            "minimum": 0.0,
+            "title": "Minimum Notice Minutes",
+            "type": "integer"
+          },
+          "timezone": {
+            "default": "Europe/Warsaw",
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "title": "SettingsIn",
+        "type": "object"
+      },
+      "SettingsOut": {
+        "properties": {
+          "booking_mode": {
+            "default": "REQUEST_APPROVAL",
+            "enum": [
+              "INSTANT_BOOKING",
+              "REQUEST_APPROVAL"
+            ],
+            "title": "Booking Mode",
+            "type": "string"
+          },
+          "buffer_after_minutes": {
+            "default": 0,
+            "maximum": 240.0,
+            "minimum": 0.0,
+            "title": "Buffer After Minutes",
+            "type": "integer"
+          },
+          "buffer_before_minutes": {
+            "default": 0,
+            "maximum": 240.0,
+            "minimum": 0.0,
+            "title": "Buffer Before Minutes",
+            "type": "integer"
+          },
+          "duration_minutes": {
+            "default": 30,
+            "maximum": 240.0,
+            "minimum": 10.0,
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "listing_id": {
+            "title": "Listing Id",
+            "type": "string"
+          },
+          "max_concurrent_bookings": {
+            "default": 1,
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Max Concurrent Bookings",
+            "type": "integer"
+          },
+          "minimum_notice_minutes": {
+            "default": 120,
+            "maximum": 20160.0,
+            "minimum": 0.0,
+            "title": "Minimum Notice Minutes",
+            "type": "integer"
+          },
+          "timezone": {
+            "default": "Europe/Warsaw",
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "listing_id"
+        ],
+        "title": "SettingsOut",
         "type": "object"
       },
       "SimulatedWebhook": {
@@ -2384,6 +2617,210 @@
           "phone_verified"
         ],
         "title": "VerificationState",
+        "type": "object"
+      },
+      "ViewingOut": {
+        "properties": {
+          "attendee_count": {
+            "title": "Attendee Count",
+            "type": "integer"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "listing_id": {
+            "title": "Listing Id",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "listing_id",
+          "starts_at",
+          "ends_at",
+          "status",
+          "attendee_count"
+        ],
+        "title": "ViewingOut",
+        "type": "object"
+      },
+      "ViewingRequest": {
+        "properties": {
+          "attendee_count": {
+            "default": 1,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Attendee Count",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "starts_at"
+        ],
+        "title": "ViewingRequest",
+        "type": "object"
+      },
+      "WindowIn": {
+        "properties": {
+          "local_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Date"
+          },
+          "local_end_time": {
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "Local End Time",
+            "type": "string"
+          },
+          "local_start_time": {
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "Local Start Time",
+            "type": "string"
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "weekday": {
+            "anyOf": [
+              {
+                "maximum": 6.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekday"
+          },
+          "window_type": {
+            "enum": [
+              "WEEKLY",
+              "ONE_OFF"
+            ],
+            "title": "Window Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "window_type",
+          "local_start_time",
+          "local_end_time"
+        ],
+        "title": "WindowIn",
+        "type": "object"
+      },
+      "WindowOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "local_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Date"
+          },
+          "local_end_time": {
+            "title": "Local End Time",
+            "type": "string"
+          },
+          "local_start_time": {
+            "title": "Local Start Time",
+            "type": "string"
+          },
+          "weekday": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekday"
+          },
+          "window_type": {
+            "title": "Window Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "window_type",
+          "weekday",
+          "local_date",
+          "local_start_time",
+          "local_end_time"
+        ],
+        "title": "WindowOut",
         "type": "object"
       }
     },
@@ -4108,6 +4545,355 @@
         ]
       }
     },
+    "/v1/classifieds/{listing_id}/viewing-blackouts": {
+      "post": {
+        "operationId": "add_blackout_v1_classifieds__listing_id__viewing_blackouts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "title": "Listing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlackoutIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Blackout",
+        "tags": [
+          "viewings"
+        ]
+      }
+    },
+    "/v1/classifieds/{listing_id}/viewing-settings": {
+      "put": {
+        "operationId": "put_settings_v1_classifieds__listing_id__viewing_settings_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "title": "Listing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Put Settings",
+        "tags": [
+          "viewings"
+        ]
+      }
+    },
+    "/v1/classifieds/{listing_id}/viewing-slots": {
+      "get": {
+        "operationId": "list_slots_v1_classifieds__listing_id__viewing_slots_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "title": "Listing Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 14,
+              "maximum": 31,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Slots",
+        "tags": [
+          "viewings"
+        ]
+      }
+    },
+    "/v1/classifieds/{listing_id}/viewing-windows": {
+      "post": {
+        "operationId": "add_window_v1_classifieds__listing_id__viewing_windows_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "title": "Listing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WindowIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WindowOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Window",
+        "tags": [
+          "viewings"
+        ]
+      }
+    },
+    "/v1/classifieds/{listing_id}/viewings": {
+      "get": {
+        "operationId": "provider_viewings_v1_classifieds__listing_id__viewings_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "title": "Listing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderViewingOut"
+                  },
+                  "title": "Response Provider Viewings V1 Classifieds  Listing Id  Viewings Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Provider Viewings",
+        "tags": [
+          "viewings"
+        ]
+      },
+      "post": {
+        "operationId": "request_viewing_v1_classifieds__listing_id__viewings_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "title": "Listing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Request Viewing",
+        "tags": [
+          "viewings"
+        ]
+      }
+    },
     "/v1/classifieds/{offer_id}": {
       "get": {
         "operationId": "get_classified_v1_classifieds__offer_id__get",
@@ -5614,6 +6400,36 @@
         ]
       }
     },
+    "/v1/me/viewings": {
+      "get": {
+        "operationId": "my_viewings_v1_me_viewings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ViewingOut"
+                  },
+                  "title": "Response My Viewings V1 Me Viewings Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Viewings",
+        "tags": [
+          "viewings"
+        ]
+      }
+    },
     "/v1/organizations": {
       "get": {
         "operationId": "my_organizations_v1_organizations_get",
@@ -6253,6 +7069,206 @@
         "summary": "Archive Space",
         "tags": [
           "properties"
+        ]
+      }
+    },
+    "/v1/viewings/{viewing_id}/cancel": {
+      "post": {
+        "description": "Either side may call it off before it happens.",
+        "operationId": "cancel_v1_viewings__viewing_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "viewing_id",
+            "required": true,
+            "schema": {
+              "title": "Viewing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel",
+        "tags": [
+          "viewings"
+        ]
+      }
+    },
+    "/v1/viewings/{viewing_id}/confirm": {
+      "post": {
+        "operationId": "confirm_v1_viewings__viewing_id__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "viewing_id",
+            "required": true,
+            "schema": {
+              "title": "Viewing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Confirm",
+        "tags": [
+          "viewings"
+        ]
+      }
+    },
+    "/v1/viewings/{viewing_id}/decline": {
+      "post": {
+        "operationId": "decline_v1_viewings__viewing_id__decline_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "viewing_id",
+            "required": true,
+            "schema": {
+              "title": "Viewing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decline",
+        "tags": [
+          "viewings"
+        ]
+      }
+    },
+    "/v1/viewings/{viewing_id}/outcome": {
+      "post": {
+        "description": "What happened, recorded by the provider once the time has come.",
+        "operationId": "record_outcome_v1_viewings__viewing_id__outcome_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "viewing_id",
+            "required": true,
+            "schema": {
+              "title": "Viewing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutcomeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Outcome",
+        "tags": [
+          "viewings"
         ]
       }
     }

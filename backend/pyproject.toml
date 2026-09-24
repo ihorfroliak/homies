@@ -19,6 +19,10 @@ dependencies = [
     "email-validator>=2.1",
     "stripe>=9.0",
     "prometheus-client>=0.20",
+    # Viewings are scheduled in the listing's local time (Europe/Warsaw).
+    # zoneinfo reads the system tz database, which slim images and Windows
+    # do not ship; without this every viewing would fail to resolve a zone.
+    "tzdata>=2024.1",
 ]
 
 [project.optional-dependencies]
