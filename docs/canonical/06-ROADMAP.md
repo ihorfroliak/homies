@@ -16,12 +16,17 @@ Engineering status per area is in
    ([contract](../tasks/TASK-004-atomic-publication-auth.md)); ~~TASK-005~~
    independent re-audit: F-04 CLOSED, `dfa3254` = HOMIES FOUNDATION BASELINE
    001 (C1–C8 accepted for continued Phase 1A development).
-5. **TASK-006** — authority integrity and audit-debt closure, TASK-005 N-01…N-04
-   ([contract](../tasks/TASK-006-authority-integrity-cleanup.md)). Implemented;
-   **awaiting independent review** of the N-01/N-02 concurrency closure.
-6. Next after TASK-006 (founder direction, not started): the Poland-wide,
-   Europe-ready geographic/address vertical slice.
-7. Proposed next (Claude, awaiting founder approval): the bounded
+5. ~~TASK-006~~ — authority integrity and audit-debt closure, TASK-005 N-01…N-04
+   ([contract](../tasks/TASK-006-authority-integrity-cleanup.md)); ~~TASK-007~~
+   re-audit: N-02…N-04 closed, N-01 partially closed (N-05). HOMIES FOUNDATION
+   BASELINE 002: **candidate, not yet accepted**.
+6. **TASK-008** — final foundation concurrency and invitation hardening,
+   TASK-007 N-05…N-10 ([contract](../tasks/TASK-008-final-foundation-hardening.md)).
+   Implemented; **awaiting independent final foundation audit** (not by the
+   builder session).
+7. Next after that audit is accepted (founder direction, not started): the
+   Poland-wide, Europe-ready geographic/address vertical slice.
+8. Proposed next (Claude, awaiting founder approval): the bounded
    property type + subtype migration (APARTMENT | HOUSE + subtype, 04a §13),
    then the Phase 1A MUST_CLOSE list below.
 

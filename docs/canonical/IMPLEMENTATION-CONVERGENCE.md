@@ -9,6 +9,34 @@ audit ([05 §9](05-DEVELOPMENT-GOVERNANCE-v1.md)).
 Classifications: **CANONICAL_ACTIVE** · **ADAPT** · **LEGACY_DORMANT** ·
 **REFERENCE_ONLY** · **REMOVE_LATER** · **UNKNOWN**.
 
+## 0000. State after TASK-007 and TASK-008 (2026-09-25)
+
+The TASK-007 re-audit of `1b2458c` (report outside the repo) accepted N-02,
+N-03 and N-04 and found **N-01 PARTIALLY_CLOSED** through a new finding,
+N-05. **HOMIES FOUNDATION BASELINE 002 is a CANDIDATE — NOT YET ACCEPTED**;
+it may be accepted only after an independent review of TASK-008. Production:
+NOT READY, NOT DEPLOYED.
+
+TASK-008 ([contract](../tasks/TASK-008-final-foundation-hardening.md)) repairs
+the TASK-007 findings, each recorded on its own:
+
+| Finding | Severity | What it was | Status |
+|---|---|---|---|
+| N-05 | P3 (Baseline-002 blocker) | A proof row deleted and re-inserted under the same key while its lock waited carried the decision unlocked | **CLOSED BY BUILDER — PENDING INDEPENDENT REVIEW.** The decision is evaluated through the rows the locking statements actually returned; a replaced row → 409 with Retry-After |
+| N-06 | P3 | `within` sub-restrictions of the protected evaluation were untested | **CLOSED BY BUILDER — PENDING INDEPENDENT REVIEW.** Behavioural tests per load-bearing restriction; schema-implied ones reported as equivalent mutants |
+| N-07 | P3 | The accept lock strength (FOR UPDATE) was not pinned by any test | **CLOSED BY BUILDER — PENDING INDEPENDENT REVIEW.** Accept-vs-accept test: the second waits before acting on the row; no deadlock |
+| N-08 | P3 | The final 403 of the protected decision was never executed | **CLOSED BY BUILDER — PENDING INDEPENDENT REVIEW.** One interleaving, four outcomes (403/404/409/200) |
+| N-09 | P3, pre-existing | `invite_member` could demote a concurrently ACTIVE member to INVITED | **CLOSED BY BUILDER — PENDING INDEPENDENT REVIEW.** Row locked before read; only REVOKED → INVITED |
+| N-10 | P3, pre-existing | Two concurrent first invitations → unhandled IntegrityError (500) | **CLOSED BY BUILDER — PENDING INDEPENDENT REVIEW.** Savepointed INSERT; the loser decides on the winner's row (202) |
+
+Publish 409 contract documented in OpenAPI; the retryable authority-change 409
+alone carries `Retry-After: 0` (no machine-readable error-code convention
+exists yet — recorded debt). Revoke starvation under a continuous stream of
+publications resting on one row is carried as operational debt (TASK-007
+note). Membership lifecycle as implemented (canon 04 §20 has no transition
+table): none → INVITED; REVOKED → INVITED by explicit re-invitation; INVITED
+and ACTIVE unchanged by an invitation.
+
 ## 000. State after TASK-005 and TASK-006 (2026-09-25)
 
 The TASK-005 independent re-audit of `dfa3254` (report supplied by the
