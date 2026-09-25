@@ -65,6 +65,25 @@ def _status(engine, offer):
                            {"o": offer})
 
 
+def _backend_xid(engine, pid: int) -> str | None:
+    """The transaction id backend `pid` is running now (assigned once it has
+    written or taken row locks — the publication's FOR SHARE locks do)."""
+    with engine.connect() as conn:
+        return conn.scalar(text(
+            "SELECT backend_xid::text FROM pg_stat_activity WHERE pid = :p"), {"p": pid})
+
+
+def _transaction_open(engine, xid: str) -> bool:
+    """Whether transaction `xid` is still running — database evidence of
+    commit order, where HTTP/thread completion order is not (TASK-009 P3: a
+    later commit's response can return first). By xid, not by backend state:
+    after committing, the same backend may already run its next transaction."""
+    with engine.connect() as conn:
+        return bool(conn.scalar(text(
+            "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE backend_xid::text = :x)"),
+            {"x": xid}))
+
+
 def _uid(client, token):
     return client.get("/v1/me", headers=auth(token)).json()["id"]
 
@@ -221,22 +240,24 @@ def test_a_loss_arriving_after_the_decision_waits_for_the_publication(
     table, lose = _loss(kind, pg_client, pg_migrated_engine, ctx)
     reached, resume = _pause_publication_at(monkeypatch, "protected")
     result: dict = {}
-    finished: list[str] = []
 
     def publish():
         result["publish"] = pg_client.post(f"/v1/classifieds/{ctx['offer']}/publish",
                                            headers=auth(ctx["publisher"]))
-        finished.append("publish")
 
     def loss():
         result["lost"] = lose()
-        finished.append("loss")
+        # The loss has committed. Was the publication's transaction still open?
+        result["publisher_open_at_loss"] = _transaction_open(pg_migrated_engine,
+                                                             result["publisher_xid"])
 
     publisher = threading.Thread(target=publish)
     loser = threading.Thread(target=loss)
     publisher.start()
     try:
         assert reached.wait(WAIT), "publication never reached its protected decision"
+        result["publisher_xid"] = _backend_xid(pg_migrated_engine, reached.pid)
+        assert result["publisher_xid"], "the paused publication holds no transaction id"
         loser.start()
         assert _blocked_on(pg_migrated_engine, table, reached.pid), \
             f"the {kind} loss did not wait on the publication"
@@ -247,9 +268,11 @@ def test_a_loss_arriving_after_the_decision_waits_for_the_publication(
         if loser.ident:
             loser.join(WAIT)
 
-    # Serial order: publication (on a valid chain), then the loss. The loss
-    # never reports success before the publication it would invalidate is done.
-    assert finished == ["publish", "loss"], finished
+    # Serial order: publication (on a valid chain), then the loss. Database
+    # evidence: the loss was blocked by the publisher's backend (above), and
+    # when the loss committed that backend's transaction was already closed.
+    # (Thread completion order proves nothing: TASK-009 P3.)
+    assert result["publisher_open_at_loss"] is False
     assert result["publish"].status_code == 200, result["publish"].text
     assert result["lost"] is True
     assert _status(pg_migrated_engine, ctx["offer"]) == "active"
@@ -417,22 +440,23 @@ def test_every_valid_chain_is_protected_not_just_one(
     table = "organization_memberships" if which == "membership" else "representation_mandates"
     reached, resume = _pause_publication_at(monkeypatch, "protected")
     result: dict = {}
-    finished: list[str] = []
 
     def publish():
         result["publish"] = pg_client.post(f"/v1/classifieds/{ctx['offer']}/publish",
                                            headers=auth(ctx["publisher"]))
-        finished.append("publish")
 
     def revoke():
         result["revoked"] = _lose_one_of_two(pg_client, ctx, which)
-        finished.append("loss")
+        result["publisher_open_at_loss"] = _transaction_open(pg_migrated_engine,
+                                                             result["publisher_xid"])
 
     publisher = threading.Thread(target=publish)
     revoker = threading.Thread(target=revoke)
     publisher.start()
     try:
         assert reached.wait(WAIT)
+        result["publisher_xid"] = _backend_xid(pg_migrated_engine, reached.pid)
+        assert result["publisher_xid"], "the paused publication holds no transaction id"
         revoker.start()
         assert _blocked_on(pg_migrated_engine, table, reached.pid)
     finally:
@@ -440,7 +464,7 @@ def test_every_valid_chain_is_protected_not_just_one(
         publisher.join(WAIT)
         if revoker.ident:
             revoker.join(WAIT)
-    assert finished == ["publish", "loss"], finished
+    assert result["publisher_open_at_loss"] is False
     assert result["publish"].status_code == 200
     assert result["revoked"] == 200
 

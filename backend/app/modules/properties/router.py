@@ -35,13 +35,15 @@ from prometheus_client import Counter
 from sqlalchemy import case, func, literal_column, or_, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 from sqlalchemy.sql import ColumnElement
 
 from app.core.audit import audit
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import get_current_user, require_role
+from app.modules.geography import service as geography
+from app.modules.geography.models import Address, Locality
 from app.modules.identity import organizations
 from app.modules.identity.models import User
 from app.modules.properties import (
@@ -63,7 +65,12 @@ from app.modules.properties.models import (
     Property,
     Space,
 )
+from app.modules.properties import classification
 from app.modules.properties.schemas import (
+    AreaRef,
+    NamedRef,
+    PropertyLocationOut,
+    PublicPlace,
     AttributeOut,
     AuthorityOut,
     ClassifiedCreate,
@@ -84,7 +91,53 @@ from app.modules.properties.schemas import (
 router = APIRouter(tags=["properties"])
 
 
-_DERIVED_FIELDS = {"monthly_total_estimate", "move_in_total", "public_location"}
+_DERIVED_FIELDS = {"monthly_total_estimate", "move_in_total", "public_location", "place"}
+
+
+def _area_refs(areas) -> list[AreaRef]:
+    return [AreaRef(id=a.id, name=a.official_name, slug=a.slug, level=a.level,
+                    kind_code=a.kind_code) for a in areas]
+
+
+def _named(obj, name_attr: str) -> NamedRef | None:
+    if obj is None:
+        return None
+    return NamedRef(id=obj.id, name=getattr(obj, name_attr), slug=obj.slug)
+
+
+def _public_place(db: Session, address: Address | None) -> PublicPlace | None:
+    """The coarse, public half of an address (D-54). Built field by field
+    from reference entities only: nothing typed by the owner, nothing that
+    pinpoints a building, can reach it."""
+    if address is None:
+        return None
+    return PublicPlace(
+        country_code=address.country_code,
+        areas=_area_refs(geography.address_areas(db, address)),
+        locality=_named(address.locality, "official_name"),
+        geo_area=_named(address.geo_area, "name"),
+    )
+
+
+def _location_out(db: Session, prop: Property) -> PropertyLocationOut | None:
+    """The full structured address — owner/provider/admin surfaces only."""
+    address = prop.address_record
+    if address is None:
+        return None
+    return PropertyLocationOut(
+        country_code=address.country_code,
+        areas=_area_refs(geography.address_areas(db, address)),
+        locality=_named(address.locality, "official_name"),
+        geo_area=_named(address.geo_area, "name"),
+        postal_code=address.postal_code,
+        thoroughfare=address.thoroughfare,
+        building_number=address.building_number,
+        unit_number=prop.unit_number,
+        unstructured_text=address.unstructured_text,
+        resolution=address.resolution,
+        source=address.source,
+        verification=address.verification,
+    )
 
 
 def _public(offer: ClassifiedOffer) -> ClassifiedOut:
@@ -95,8 +148,13 @@ def _public(offer: ClassifiedOffer) -> ClassifiedOut:
             longitude=float(offer.public_longitude),
             precision=offer.public_location_precision,
         )
+    db = object_session(offer)
+    place = (
+        _public_place(db, offer.listed_property.address_record) if db is not None else None
+    )
     return ClassifiedOut(
         **{k: getattr(offer, k) for k in ClassifiedOut.model_fields if k not in _DERIVED_FIELDS},
+        place=place,
         monthly_total_estimate=offer.estimated_monthly_total_minor or 0,
         move_in_total=offer.move_in_total_minor or 0,
         public_location=point,
@@ -137,6 +195,7 @@ def _property_out(db: Session, prop: Property) -> PropertyOut:
     why Publish refuses."""
     return PropertyOut.model_validate(prop).model_copy(
         update={
+            "location": _location_out(db, prop),
             "authorities": [
                 AuthorityOut(
                     id=a.id,
@@ -162,10 +221,18 @@ def create_property(
 ):
     """Register a physical object. It exists once, whatever is later done with it.
 
-    `municipality` (gmina) is required: the Polish tourist tax is set per gmina
-    and charged per night, so a short-stay price cannot be computed without it.
+    Location: a reference locality (or area) from /v1/geo plus street, building
+    and unit gives a STRUCTURED address; free text alone is kept as typed and
+    marked UNSTRUCTURED. Classification: `category` (+ `subtype`), or the
+    legacy `property_type`.
     """
-    data = body.model_dump(exclude={"organization_id", "authority_type"})
+    legacy_type, category, subtype = classification.resolve(
+        body.property_type, body.category, body.subtype)
+    data = body.model_dump(exclude={
+        "organization_id", "authority_type", "property_type", "category", "subtype",
+        "country_code", "locality_id", "admin_area_id", "geo_area_id", "thoroughfare",
+        "building_number", "city", "address", "municipality",
+    })
     try:
         validate_attributes(db, data.get("attributes") or {})
     except AttributeError_ as exc:
@@ -181,7 +248,37 @@ def create_property(
         party = organizations.organization_party(db, body.organization_id)
         assert party is not None
         holder = party.legal_party_id
-    prop = Property(owner_id=user.id, **data)
+    try:
+        address = geography.build_address(db, geography.LocationInput(
+            country_code=body.country_code,
+            locality_id=body.locality_id,
+            admin_area_id=body.admin_area_id,
+            geo_area_id=body.geo_area_id,
+            postal_code=body.postcode,
+            thoroughfare=body.thoroughfare,
+            building_number=body.building_number,
+            unstructured_text=body.address or "",
+            locality_text=body.city or "",
+            district_text=body.district,
+        ))
+    except geography.GeographyError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
+    db.add(address)
+    db.flush()
+    street_line = " ".join(p for p in (body.thoroughfare, body.building_number) if p)
+    prop = Property(
+        owner_id=user.id,
+        address_id=address.id,
+        property_type=legacy_type,
+        category=category,
+        subtype=subtype,
+        # Legacy mirrors, so existing readers and filters keep working.
+        city=address.locality_text or body.city or "",
+        address=body.address or street_line,
+        municipality=body.municipality,
+        **{k: v for k, v in data.items() if k not in {"district"}},
+        district=address.district_text,
+    )
     db.add(prop)
     db.flush()
     # Registering a flat is a claim to it, recorded as an authority held by the
@@ -549,6 +646,12 @@ def _monthly_total_sql():
 def list_classifieds(
     city: str | None = None,
     district: str | None = None,
+    # Structured place (TASK-010): country, any administrative area (and all
+    # below it), a locality, a search area. Ids from /v1/geo.
+    country_code: str | None = Query(default=None, pattern="^[A-Z]{2}$"),
+    admin_area_id: str | None = None,
+    locality_id: str | None = None,
+    geo_area_id: str | None = None,
     # Budget is expressed against the TOTAL, which is what the tenant pays.
     max_monthly_total: int | None = Query(default=None, ge=0),
     min_monthly_total: int | None = Query(default=None, ge=0),
@@ -617,6 +720,25 @@ def list_classifieds(
         filters.append(Property.city == city)
     if district:
         filters.append(Property.district == district)
+    # Structured place filters (TASK-010). An administrative area matches
+    # everything below it; a listing whose address is unstructured matches
+    # none of them (it has no reference place to match).
+    if country_code:
+        filters.append(Property.address_id.in_(
+            select(Address.id).where(Address.country_code == country_code)))
+    if locality_id:
+        filters.append(Property.address_id.in_(
+            select(Address.id).where(Address.locality_id == locality_id)))
+    if geo_area_id:
+        filters.append(Property.address_id.in_(
+            select(Address.id).where(Address.geo_area_id == geo_area_id)))
+    if admin_area_id:
+        within = geography.descendant_area_ids(admin_area_id)
+        filters.append(Property.address_id.in_(
+            select(Address.id)
+            .outerjoin(Locality, Locality.id == Address.locality_id)
+            .where(or_(Address.admin_area_id.in_(within), Locality.admin_area_id.in_(within)))
+        ))
     if max_monthly_total is not None:
         filters.append(total_expr <= max_monthly_total)
     if min_monthly_total is not None:

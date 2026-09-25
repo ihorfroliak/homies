@@ -100,11 +100,15 @@ def test_one_property_can_carry_several_offers(client):
     assert first.json()["property_id"] == second.json()["property_id"] == property_id
 
 
-def test_municipality_is_required(client):
-    """Without the gmina the tourist tax cannot be computed for paid modes."""
+def test_municipality_is_optional_since_task_010(client):
+    """It was required only for the dormant short-stay tourist tax. A Polish
+    gmina is a country-specific concept and must not be a universal
+    requirement (07 §1, D-53); the administrative hierarchy carries it."""
     token = _owner(client)
     body = {k: v for k, v in PROPERTY.items() if k != "municipality"}
-    assert client.post("/v1/properties", json=body, headers=auth(token)).status_code == 422
+    response = client.post("/v1/properties", json=body, headers=auth(token))
+    assert response.status_code == 201, response.text
+    assert response.json()["municipality"] is None
 
 
 def test_property_type_must_be_known(client):

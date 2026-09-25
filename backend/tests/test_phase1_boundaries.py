@@ -24,7 +24,8 @@ LEGACY = ("booking", "payments", "ledger", "listings")
 
 # Files that are part of the Phase-1 process. Legacy-only files inside
 # otherwise Phase-1 packages are listed in LEGACY_FILES and excluded.
-PHASE_ONE_PACKAGES = ("identity", "properties", "engagement", "media", "admin", "events")
+PHASE_ONE_PACKAGES = ("identity", "properties", "engagement", "media", "admin", "events",
+                      "geography")
 PHASE_ONE_TOP_LEVEL = ("main.py", "composition.py", "core")
 LEGACY_FILES = {
     "modules/admin/legacy.py",

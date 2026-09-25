@@ -34,10 +34,24 @@ def _insert_property(conn, owner_id, lat, lon):
              "municipality, address, latitude, longitude, area_m2, rooms, capacity, bedrooms, "
              "bathrooms, has_elevator, furnished, parking, pets_allowed, attributes, created_at) "
              "VALUES (:id, :owner, 'apartment', 'X', '', '', 'X', 'ul. X', :lat, :lon, 40, 2, 2, "
-             "1, 1, false, 'full', 'none', false, '{}', now())"),
+             "1, 1, false, 'full', 'none', false, '{}', now())")
+        if not _has_addresses(conn) else
+        # Since TASK-010 every property references an address (NOT NULL).
+        text("WITH a AS (INSERT INTO addresses (id, country_code, unstructured_text, "
+             "created_at, updated_at) VALUES (gen_random_uuid()::text, 'PL', 'ul. X', now(), "
+             "now()) RETURNING id) "
+             "INSERT INTO properties (id, owner_id, property_type, city, district, postcode, "
+             "municipality, address, latitude, longitude, area_m2, rooms, capacity, bedrooms, "
+             "bathrooms, has_elevator, furnished, parking, pets_allowed, attributes, created_at, "
+             "address_id) SELECT :id, :owner, 'apartment', 'X', '', '', 'X', 'ul. X', :lat, "
+             ":lon, 40, 2, 2, 1, 1, false, 'full', 'none', false, '{}', now(), a.id FROM a"),
         {"id": pid, "owner": owner_id, "lat": lat, "lon": lon},
     )
     return pid
+
+
+def _has_addresses(conn) -> bool:
+    return conn.scalar(text("SELECT to_regclass('public.addresses') IS NOT NULL"))
 
 
 def _owner_id(conn):

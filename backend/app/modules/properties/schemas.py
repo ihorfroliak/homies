@@ -12,8 +12,8 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.modules.properties import classification
 from app.modules.properties.models import (
-    CREATABLE_PROPERTY_TYPES,
     MIN_CLASSIFIED_TERM_MONTHS,
 )
 
@@ -45,13 +45,33 @@ class PropertyCreate(BaseModel):
         "OWNER", "CO_OWNER", "AUTHORIZED_REPRESENTATIVE", "PROPERTY_MANAGER",
         "TENANT_WITH_SUBLET_RIGHT", "OTHER_VERIFIED_RIGHT",
     ] = "OWNER"
-    property_type: str
-    city: str = Field(min_length=1, max_length=80)
+    # Classification (classification.py): the canonical pair, or the legacy
+    # value, or both when they agree.
+    property_type: str | None = None
+    category: str | None = None
+    subtype: str | None = None
+
+    # Location (TASK-010). Structured: a reference locality (or, when no
+    # locality fits, an administrative area) from /v1/geo, plus street,
+    # building and unit. Free text is still accepted and kept as typed, but
+    # an address made only of text is UNSTRUCTURED and says so.
+    # country_code defaults to the current market for existing clients; new
+    # clients send it. It is a request default, not a model assumption.
+    country_code: str = Field(default="PL", pattern="^[A-Z]{2}$")
+    locality_id: str | None = None
+    admin_area_id: str | None = None
+    geo_area_id: str | None = None
+    thoroughfare: str | None = Field(default=None, max_length=200)
+    building_number: str | None = Field(default=None, max_length=20)
+    unit_number: str | None = Field(default=None, max_length=32)
+    # Legacy free-text fields. `city` is required only when no locality or
+    # area is given; `municipality` (a Polish gmina) is optional since
+    # TASK-010 — it only ever served the dormant short-stay tourist tax.
+    city: str | None = Field(default=None, min_length=1, max_length=80)
     district: str = ""
-    postcode: str = ""
-    # Required, entered by the owner: the Polish tourist tax is set per gmina.
-    municipality: str = Field(min_length=1, max_length=80)
-    address: str = Field(min_length=1, max_length=255)
+    postcode: str = Field(default="", max_length=12)
+    municipality: str | None = Field(default=None, max_length=80)
+    address: str | None = Field(default=None, min_length=1, max_length=255)
     # Finite and on the globe; both or neither (TASK-001 F-07). The database
     # enforces the same with CHECK constraints.
     latitude: float | None = Field(default=None, ge=-90, le=90, allow_inf_nan=False)
@@ -73,15 +93,16 @@ class PropertyCreate(BaseModel):
     def check_enums(self):
         if (self.latitude is None) != (self.longitude is None):
             raise ValueError("latitude and longitude go together: give both or neither")
-        if self.property_type == "room":
-            raise ValueError(
-                "a room is not a property: register the flat, then add the room with "
-                "POST /v1/properties/{id}/spaces"
-            )
-        if self.property_type not in CREATABLE_PROPERTY_TYPES:
-            raise ValueError(
-                f"property_type must be one of {', '.join(CREATABLE_PROPERTY_TYPES)}"
-            )
+        try:
+            classification.resolve(self.property_type, self.category, self.subtype)
+        except classification.ClassificationError as exc:
+            raise ValueError(str(exc)) from None
+        if self.locality_id and self.admin_area_id:
+            raise ValueError("give locality_id or admin_area_id, not both")
+        if not (self.locality_id or self.admin_area_id or self.city):
+            raise ValueError("give locality_id (from /v1/geo/localities) or city")
+        if not (self.address or self.building_number):
+            raise ValueError("give the street and number (address), or building_number")
         if self.furnished not in FURNISHED:
             raise ValueError(f"furnished must be one of {', '.join(FURNISHED)}")
         if self.parking not in PARKING:
@@ -101,17 +122,60 @@ class AuthorityOut(BaseModel):
     scopes: list[str]
 
 
+class NamedRef(BaseModel):
+    id: str
+    name: str
+    slug: str | None = None
+
+
+class AreaRef(NamedRef):
+    level: int
+    kind_code: str
+
+
+class PropertyLocationOut(BaseModel):
+    """The full structured address. PRIVATE: owner/provider/admin only."""
+
+    country_code: str
+    areas: list[AreaRef] = []
+    locality: NamedRef | None = None
+    geo_area: NamedRef | None = None
+    postal_code: str
+    thoroughfare: str | None = None
+    building_number: str | None = None
+    unit_number: str | None = None
+    unstructured_text: str
+    resolution: str
+    source: str
+    verification: str
+
+
+class PublicPlace(BaseModel):
+    """Where a listing is, as far as the public may know: country, official
+    areas, locality, search area. Never a street, building, unit, postal code,
+    exact point or an identifier that pinpoints a building (D-54)."""
+
+    country_code: str
+    areas: list[AreaRef] = []
+    locality: NamedRef | None = None
+    geo_area: NamedRef | None = None
+
+
 class PropertyOut(BaseModel):
     """Owner-facing only. It carries the exact address and coordinates, which
     no public response may (Schema v1 §80, §116)."""
 
     id: str
     owner_id: str
-    property_type: str
+    property_type: str | None = None
+    category: str | None = None
+    subtype: str | None = None
+    unit_number: str | None = None
+    location: PropertyLocationOut | None = None
     city: str
     district: str
     postcode: str
-    municipality: str
+    municipality: str | None = None
     address: str
     latitude: float | None = None
     longitude: float | None = None
@@ -214,6 +278,7 @@ class ClassifiedOut(BaseModel):
     city: str
     district: str
     public_location: PublicLocation | None = None
+    place: PublicPlace | None = None
     media: list[PublicMedia] = []
     title: str
     description: str

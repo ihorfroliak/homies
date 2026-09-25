@@ -15,18 +15,20 @@ strength of its type alone.
 
 from fastapi import HTTPException, status
 
+from app.modules.properties.classification import PUBLICATION_POLICY_REQUIRED
 from app.modules.properties.models import Property
 
-# Subtypes whose residential eligibility needs a policy nobody has written yet.
-# Today the subtype is still stored in `property_type` (legacy vocabulary);
-# the type/subtype split is its own migration (see IMPLEMENTATION-CONVERGENCE).
-PUBLICATION_POLICY_REQUIRED = frozenset({"aparthotel_unit"})
+# Since TASK-010 the subtype is canonical (`properties.subtype`); the legacy
+# `property_type` value is checked too, so a row classified either way fails
+# closed — neither column alone can open publication.
+LEGACY_POLICY_REQUIRED = frozenset({"aparthotel_unit"})
 
 MIN_TERM_MONTHS_FLOOR = 1
 
 
 def ensure_publishable(prop: Property) -> None:
-    if prop.property_type in PUBLICATION_POLICY_REQUIRED:
+    if (prop.subtype in PUBLICATION_POLICY_REQUIRED
+            or prop.property_type in LEGACY_POLICY_REQUIRED):
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             "Aparthotel units cannot be published yet: residential-use eligibility "

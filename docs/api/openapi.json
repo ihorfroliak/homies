@@ -1,6 +1,102 @@
 {
   "components": {
     "schemas": {
+      "AreaOut": {
+        "properties": {
+          "country_code": {
+            "title": "Country Code",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind_code": {
+            "title": "Kind Code",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          }
+        },
+        "required": [
+          "id",
+          "country_code",
+          "parent_id",
+          "level",
+          "kind_code",
+          "name",
+          "slug"
+        ],
+        "title": "AreaOut",
+        "type": "object"
+      },
+      "AreaRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind_code": {
+            "title": "Kind Code",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "level",
+          "kind_code"
+        ],
+        "title": "AreaRef",
+        "type": "object"
+      },
       "AssignIn": {
         "properties": {
           "user_id": {
@@ -364,6 +460,16 @@
             "title": "Parking Fee",
             "type": "integer"
           },
+          "place": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicPlace"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "property_id": {
             "title": "Property Id",
             "type": "string"
@@ -586,6 +692,86 @@
         "title": "ConversationOut",
         "type": "object"
       },
+      "CountryOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "default_currency": {
+            "title": "Default Currency",
+            "type": "string"
+          },
+          "is_active_market": {
+            "title": "Is Active Market",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "default_currency",
+          "is_active_market"
+        ],
+        "title": "CountryOut",
+        "type": "object"
+      },
+      "GeoAreaOut": {
+        "properties": {
+          "country_code": {
+            "title": "Country Code",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "locality_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locality Id"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          }
+        },
+        "required": [
+          "id",
+          "country_code",
+          "locality_id",
+          "kind",
+          "name",
+          "slug"
+        ],
+        "title": "GeoAreaOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -681,6 +867,54 @@
           "country_of_residence"
         ],
         "title": "LegalIdentityOut",
+        "type": "object"
+      },
+      "LocalityOut": {
+        "properties": {
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/AreaOut"
+            },
+            "title": "Areas",
+            "type": "array"
+          },
+          "country_code": {
+            "title": "Country Code",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          }
+        },
+        "required": [
+          "id",
+          "country_code",
+          "kind",
+          "name",
+          "slug",
+          "areas"
+        ],
+        "title": "LocalityOut",
         "type": "object"
       },
       "LoginRequest": {
@@ -1036,6 +1270,35 @@
         "title": "MessageOut",
         "type": "object"
       },
+      "NamedRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "NamedRef",
+        "type": "object"
+      },
       "OrganizationCreate": {
         "properties": {
           "display_name": {
@@ -1274,10 +1537,28 @@
       "PropertyCreate": {
         "properties": {
           "address": {
-            "maxLength": 255,
-            "minLength": 1,
-            "title": "Address",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "admin_area_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admin Area Id"
           },
           "area_m2": {
             "exclusiveMinimum": 0.0,
@@ -1314,16 +1595,52 @@
             "title": "Bedrooms",
             "type": "integer"
           },
+          "building_number": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Building Number"
+          },
           "capacity": {
             "default": 2,
             "minimum": 1.0,
             "title": "Capacity",
             "type": "integer"
           },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
           "city": {
-            "maxLength": 80,
-            "minLength": 1,
-            "title": "City",
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "country_code": {
+            "default": "PL",
+            "pattern": "^[A-Z]{2}$",
+            "title": "Country Code",
             "type": "string"
           },
           "district": {
@@ -1358,6 +1675,17 @@
             "title": "Furnished",
             "type": "string"
           },
+          "geo_area_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geo Area Id"
+          },
           "has_elevator": {
             "default": false,
             "title": "Has Elevator",
@@ -1376,6 +1704,17 @@
             ],
             "title": "Latitude"
           },
+          "locality_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locality Id"
+          },
           "longitude": {
             "anyOf": [
               {
@@ -1390,10 +1729,16 @@
             "title": "Longitude"
           },
           "municipality": {
-            "maxLength": 80,
-            "minLength": 1,
-            "title": "Municipality",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Municipality"
           },
           "organization_id": {
             "anyOf": [
@@ -1418,28 +1763,167 @@
           },
           "postcode": {
             "default": "",
+            "maxLength": 12,
             "title": "Postcode",
             "type": "string"
           },
           "property_type": {
-            "title": "Property Type",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Property Type"
           },
           "rooms": {
             "minimum": 0.0,
             "title": "Rooms",
             "type": "integer"
+          },
+          "subtype": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtype"
+          },
+          "thoroughfare": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thoroughfare"
+          },
+          "unit_number": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Number"
           }
         },
         "required": [
-          "property_type",
-          "city",
-          "municipality",
-          "address",
           "area_m2",
           "rooms"
         ],
         "title": "PropertyCreate",
+        "type": "object"
+      },
+      "PropertyLocationOut": {
+        "description": "The full structured address. PRIVATE: owner/provider/admin only.",
+        "properties": {
+          "areas": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AreaRef"
+            },
+            "title": "Areas",
+            "type": "array"
+          },
+          "building_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Building Number"
+          },
+          "country_code": {
+            "title": "Country Code",
+            "type": "string"
+          },
+          "geo_area": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NamedRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "locality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NamedRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "postal_code": {
+            "title": "Postal Code",
+            "type": "string"
+          },
+          "resolution": {
+            "title": "Resolution",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "thoroughfare": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thoroughfare"
+          },
+          "unit_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Number"
+          },
+          "unstructured_text": {
+            "title": "Unstructured Text",
+            "type": "string"
+          },
+          "verification": {
+            "title": "Verification",
+            "type": "string"
+          }
+        },
+        "required": [
+          "country_code",
+          "postal_code",
+          "unstructured_text",
+          "resolution",
+          "source",
+          "verification"
+        ],
+        "title": "PropertyLocationOut",
         "type": "object"
       },
       "PropertyOut": {
@@ -1477,6 +1961,17 @@
           "capacity": {
             "title": "Capacity",
             "type": "integer"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
           },
           "city": {
             "title": "City",
@@ -1531,6 +2026,16 @@
             ],
             "title": "Latitude"
           },
+          "location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PropertyLocationOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "longitude": {
             "anyOf": [
               {
@@ -1543,8 +2048,15 @@
             "title": "Longitude"
           },
           "municipality": {
-            "title": "Municipality",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Municipality"
           },
           "owner_id": {
             "title": "Owner Id",
@@ -1563,22 +2075,49 @@
             "type": "string"
           },
           "property_type": {
-            "title": "Property Type",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Property Type"
           },
           "rooms": {
             "title": "Rooms",
             "type": "integer"
+          },
+          "subtype": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtype"
+          },
+          "unit_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Number"
           }
         },
         "required": [
           "id",
           "owner_id",
-          "property_type",
           "city",
           "district",
           "postcode",
-          "municipality",
           "address",
           "area_m2",
           "rooms",
@@ -1810,6 +2349,48 @@
           "media_type"
         ],
         "title": "PublicMedia",
+        "type": "object"
+      },
+      "PublicPlace": {
+        "description": "Where a listing is, as far as the public may know: country, official\nareas, locality, search area. Never a street, building, unit, postal code,\nexact point or an identifier that pinpoints a building (D-54).",
+        "properties": {
+          "areas": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AreaRef"
+            },
+            "title": "Areas",
+            "type": "array"
+          },
+          "country_code": {
+            "title": "Country Code",
+            "type": "string"
+          },
+          "geo_area": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NamedRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "locality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NamedRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "country_code"
+        ],
+        "title": "PublicPlace",
         "type": "object"
       },
       "RefreshRequest": {
@@ -3324,6 +3905,71 @@
           },
           {
             "in": "query",
+            "name": "country_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[A-Z]{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Country Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "admin_area_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Admin Area Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "locality_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Locality Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "geo_area_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Geo Area Id"
+            }
+          },
+          {
+            "in": "query",
             "name": "max_monthly_total",
             "required": false,
             "schema": {
@@ -4733,6 +5379,229 @@
         ]
       }
     },
+    "/v1/geo/areas": {
+      "get": {
+        "description": "One level of the administrative tree: the top level of `country`, or\nthe children of `parent_id`.",
+        "operationId": "areas_v1_geo_areas_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "country",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Z]{2}$",
+              "title": "Country",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "parent_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AreaOut"
+                  },
+                  "title": "Response Areas V1 Geo Areas Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Areas",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/v1/geo/countries": {
+      "get": {
+        "operationId": "countries_v1_geo_countries_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CountryOut"
+                  },
+                  "title": "Response Countries V1 Geo Countries Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Countries",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/v1/geo/localities": {
+      "get": {
+        "description": "Autocomplete: localities whose name starts with `q`, optionally within\nan administrative area (and everything below it).",
+        "operationId": "localities_v1_geo_localities_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "country",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Z]{2}$",
+              "title": "Country",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "maxLength": 80,
+              "minLength": 1,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "admin_area_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Admin Area Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LocalityOut"
+                  },
+                  "title": "Response Localities V1 Geo Localities Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Localities",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/v1/geo/localities/{locality_id}/areas": {
+      "get": {
+        "description": "Search areas (districts, neighbourhoods) of a locality.",
+        "operationId": "locality_search_areas_v1_geo_localities__locality_id__areas_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "locality_id",
+            "required": true,
+            "schema": {
+              "title": "Locality Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GeoAreaOut"
+                  },
+                  "title": "Response Locality Search Areas V1 Geo Localities  Locality Id  Areas Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Locality Search Areas",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
     "/v1/me": {
       "get": {
         "operationId": "me_v1_me_get",
@@ -5519,7 +6388,7 @@
         ]
       },
       "post": {
-        "description": "Register a physical object. It exists once, whatever is later done with it.\n\n`municipality` (gmina) is required: the Polish tourist tax is set per gmina\nand charged per night, so a short-stay price cannot be computed without it.",
+        "description": "Register a physical object. It exists once, whatever is later done with it.\n\nLocation: a reference locality (or area) from /v1/geo plus street, building\nand unit gives a STRUCTURED address; free text alone is kept as typed and\nmarked UNSTRUCTURED. Classification: `category` (+ `subtype`), or the\nlegacy `property_type`.",
         "operationId": "create_property_v1_properties_post",
         "requestBody": {
           "content": {
@@ -6138,6 +7007,10 @@
     {
       "description": "Property photos and floor plans, moderated before they are public.",
       "name": "media"
+    },
+    {
+      "description": "Countries, administrative areas and localities: public reference data.",
+      "name": "geography"
     },
     {
       "description": "Operations surface: users, audit, notifications, property authority.",

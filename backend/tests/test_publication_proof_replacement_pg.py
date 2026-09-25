@@ -33,7 +33,9 @@ from tests.test_publication_authority_race_pg import (
     _blocked_on,
     _org_agent,
     _representative,
+    _backend_xid,
     _status,
+    _transaction_open,
 )
 from tests.test_publication_race_pg import _draft_listing, _pause_publication_at
 
@@ -198,17 +200,20 @@ def test_the_next_attempt_locks_the_replacement_and_publishes(
 
     decided, resume = _pause_publication_at(monkeypatch, "protected")
     result: dict = {}
-    order: list[str] = []
 
     def delete_again():
         with engine.begin() as conn:
             conn.execute(text(f"DELETE FROM {table} WHERE {where}"), params)
-        order.append("delete")
+        # Committed. Was the publication's transaction still open? (Database
+        # evidence of order; thread completion order is not — TASK-009 P3.)
+        result["publisher_open_at_delete"] = _transaction_open(engine, result["publisher_xid"])
 
-    publisher = _publish_async(c, ctx, result, order=order)
+    publisher = _publish_async(c, ctx, result)
     loser = threading.Thread(target=delete_again)
     try:
         assert decided.wait(WAIT), "the new attempt did not pass its decision"
+        result["publisher_xid"] = _backend_xid(engine, decided.pid)
+        assert result["publisher_xid"], "the paused publication holds no transaction id"
         loser.start()
         assert _blocked_on(engine, table, decided.pid), \
             f"the {table} row the new attempt rests on is not locked"
@@ -219,7 +224,7 @@ def test_the_next_attempt_locks_the_replacement_and_publishes(
             loser.join(WAIT)
     assert "publish_error" not in result, result.get("publish_error")
     assert result["publish"].status_code == 200, result["publish"].text
-    assert order == ["publish", "delete"], order
+    assert result["publisher_open_at_delete"] is False
     assert _status(engine, ctx["offer"]) == "active"
 
 

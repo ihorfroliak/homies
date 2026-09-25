@@ -46,6 +46,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
+from app.modules.geography.models import Address
+from app.modules.properties.classification import subtype_check_sql
 
 # JSONB where it exists so the long tail can carry a GIN index once filters are
 # built; plain JSON on SQLite so the fast unit suite still runs.
@@ -92,7 +94,16 @@ def _coordinate_checks(lat: str, lon: str, name: str) -> tuple[CheckConstraint, 
 
 class Property(Base):
     __tablename__ = "properties"
-    __table_args__ = _coordinate_checks("latitude", "longitude", "properties_coordinates")
+    __table_args__ = (
+        *_coordinate_checks("latitude", "longitude", "properties_coordinates"),
+        # Canonical classification (TASK-010, classification.py). ROOM is a
+        # Space, never a category; a subtype lives under its own category.
+        CheckConstraint("category IS NULL OR category IN ('APARTMENT', 'HOUSE')",
+                        name="ck_properties_category"),
+        CheckConstraint("subtype IS NULL OR category IS NOT NULL",
+                        name="ck_properties_subtype_needs_category"),
+        CheckConstraint(subtype_check_sql(), name="ck_properties_subtype_in_category"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     owner_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
@@ -101,11 +112,29 @@ class Property(Base):
     # recorded a type — and inventing "apartment" for them would write a fact
     # nobody established. New properties must supply it (PropertyCreate).
     property_type: Mapped[str | None] = mapped_column(String(24), index=True, nullable=True)
+    # APARTMENT | HOUSE, and an optional subtype (classification.py). NULL
+    # only for legacy rows that were never classifiable (a pre-Space "room").
+    category: Mapped[str | None] = mapped_column(String(16), index=True, nullable=True)
+    subtype: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
-    # Address. `municipality` (gmina) is required and entered by the owner: the
-    # Polish tourist tax is set per gmina and charged per night, so a short-stay
-    # price cannot be computed without it. It is not derivable from a free-text
-    # address, and a TERYT lookup would still need human confirmation.
+    # Structured, source-aware address (geography.Address), building-level and
+    # PRIVATE. One per Property today (UNIQUE); see D-53.
+    address_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("addresses.id", ondelete="RESTRICT"), unique=True
+    )
+    # The flat within the building. PRIVATE: never in a public response.
+    unit_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    address_record = relationship(
+        Address, foreign_keys=[address_id], lazy="select", viewonly=True
+    )
+
+    # Legacy free-text location (pre-TASK-010). Kept, still written, still
+    # read by existing clients and the city/district search filters; the
+    # structured truth is `address_record`. `city`/`district` mirror the
+    # locality/search-area names when the address is structured. `municipality`
+    # (a Polish gmina) was required only for the dormant short-stay tourist
+    # tax; it is optional now and, when structured, derivable from the
+    # administrative hierarchy. Deprecated for new clients — see D-53.
     city: Mapped[str] = mapped_column(String(80), index=True)
     district: Mapped[str] = mapped_column(String(80), default="", index=True)
     postcode: Mapped[str] = mapped_column(String(12), default="")

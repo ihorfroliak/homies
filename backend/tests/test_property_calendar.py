@@ -263,7 +263,14 @@ def test_the_database_itself_rejects_a_second_booking_of_the_same_flat(pg_sessio
     pg_session.add_all([owner, guest])
     pg_session.flush()
 
-    prop = Property(owner_id=owner.id, city="Warszawa", address="ul. Race 1", capacity=2)
+    from app.modules.geography.models import Address
+
+    # Since TASK-010 every Property references an Address (NOT NULL).
+    address = Address(country_code="PL", unstructured_text="ul. Race 1")
+    pg_session.add(address)
+    pg_session.flush()
+    prop = Property(owner_id=owner.id, address_id=address.id, city="Warszawa",
+                    address="ul. Race 1", capacity=2)
     pg_session.add(prop)
     pg_session.flush()
 

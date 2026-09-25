@@ -75,6 +75,31 @@ def _seed_attribute_catalogue():
         db.commit()
 
 
+def _seed_geography():
+    """Countries and reference-source namespaces, read from the migration that
+    seeds them (TASK-010) — the same rule as the attribute catalogue: one list,
+    owned by the migration."""
+    import importlib.util
+    from pathlib import Path
+
+    from app.modules.geography.models import Country, GeoSource
+
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "alembic" / "versions" / "e4f6a8b0c2d4_geography_address_classification.py"
+    )
+    spec = importlib.util.spec_from_file_location("_geo_seed", source)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    with TestingSession() as db:
+        if db.get(Country, "PL") is not None:
+            return
+        db.add_all(Country(**row) for row in module._seed_countries())
+        db.flush()
+        db.add_all(GeoSource(**row) for row in module._seed_sources())
+        db.commit()
+
+
 @pytest.fixture()
 def client(request):
     from app.core.config import settings
@@ -86,6 +111,7 @@ def client(request):
     settings.rate_limit_enabled = False
     Base.metadata.create_all(engine)
     _seed_attribute_catalogue()
+    _seed_geography()
 
     def override_get_db():
         db = TestingSession()
@@ -296,7 +322,8 @@ def pg_client(request, pg_migrated_engine):
         "organization_memberships organization_legal_parties organizations "
         "person_legal_parties legal_parties verification_codes "
         "journal_lines journal_entries ledger_accounts payments bookings "
-        "host_blocks listings host_profiles refresh_tokens audit_log users"
+        "host_blocks listings host_profiles refresh_tokens audit_log users "
+        "geo_external_refs addresses geo_areas localities admin_areas"
     ).split()
     with pg_migrated_engine.begin() as conn:
         conn.execute(text(f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"))
@@ -338,7 +365,8 @@ def pg_session(pg_migrated_engine):
         "organization_memberships organization_legal_parties organizations "
         "person_legal_parties legal_parties verification_codes "
         "journal_lines journal_entries ledger_accounts payments bookings "
-        "host_blocks listings host_profiles refresh_tokens audit_log users"
+        "host_blocks listings host_profiles refresh_tokens audit_log users "
+        "geo_external_refs addresses geo_areas localities admin_areas"
     ).split()
     with pg_migrated_engine.begin() as conn:
         conn.execute(text(f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"))

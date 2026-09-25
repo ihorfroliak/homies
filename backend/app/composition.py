@@ -55,6 +55,7 @@ TAG_DESCRIPTIONS = {
     "conversations": "Messages between a seeker and whoever manages a listing.",
     "viewings": "Viewing windows, slots and appointments.",
     "media": "Property photos and floor plans, moderated before they are public.",
+    "geography": "Countries, administrative areas and localities: public reference data.",
     "admin": "Operations surface: users, audit, notifications, property authority.",
     "ops": "Health and metrics.",
     # Legacy tags — only present when a legacy test composition includes them.
@@ -70,6 +71,7 @@ def phase1_routers() -> list[APIRouter]:
     from app.modules.admin.router import router as admin_router
     from app.modules.engagement.router import router as conversations_router
     from app.modules.engagement.viewings import router as viewings_router
+    from app.modules.geography.router import router as geography_router
     from app.modules.identity.organizations import router as organizations_router
     from app.modules.identity.router import router as identity_router
     from app.modules.media.router import router as media_router
@@ -82,6 +84,7 @@ def phase1_routers() -> list[APIRouter]:
         conversations_router,
         viewings_router,
         media_router,
+        geography_router,
         admin_router,
     ]
 
