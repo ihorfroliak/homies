@@ -44,20 +44,22 @@ harness.MUTANTS = [
         "id": "B03-mandate-scope-unprotected",
         "invariant": "representation_mandate_scopes row protection",
         "file": AUTH,
+        # TASK-008: the lock result is now consumed (.first() is not None).
         "old": ("            RepresentationMandateScope.scope == mandate_scope,\n"
-                "        ).with_for_update(read=True))\n"),
+                "        ).with_for_update(read=True)).first() is not None\n"),
         "new": ("            RepresentationMandateScope.scope == mandate_scope,\n"
-                "        ))\n"),
+                "        )).first() is not None\n"),
         "tests": [WAITS + "[mandate_scope_sql]"],
     },
     {
         "id": "B04-authority-scope-unprotected",
         "invariant": "property_authority_scopes row protection",
         "file": AUTH,
+        # TASK-008: the lock result is now consumed (.first() is not None).
         "old": ("            PropertyAuthorityScope.scope == authority_scope,\n"
-                "        ).with_for_update(read=True))\n"),
+                "        ).with_for_update(read=True)).first() is not None\n"),
         "new": ("            PropertyAuthorityScope.scope == authority_scope,\n"
-                "        ))\n"),
+                "        )).first() is not None\n"),
         "tests": [WAITS + "[authority_scope_sql]"],
     },
     # N-01: the decision may rest only on locked rows.
@@ -65,7 +67,8 @@ harness.MUTANTS = [
         "id": "B05-decision-through-unlocked-chains",
         "invariant": "protected decision uses the locked proof only",
         "file": AUTH,
-        "old": "today=today, within=proof).where(",
+        # TASK-008: the decision is restricted to the rows the locks returned.
+        "old": "today=today, within=locked).where(",
         "new": "today=today, within=None).where(",
         "tests": [GAIN],
     },

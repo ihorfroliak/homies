@@ -155,9 +155,12 @@ def _holder_parties(user_id: str, scope: str, today: Today | None = None,
         # The exact (mandate, scope) rows that were locked, not merely the
         # locked mandates: a scope row added since is not part of the proof.
         pairs = within.get("representation_mandate_scopes") or []
-        mandated = mandated.where(or_(false(), *(
-            and_(RepresentationMandateScope.mandate_id == m,
-                 RepresentationMandateScope.scope == s) for m, s in pairs)))
+        mandated = mandated.where(
+            RepresentationMandate.id.in_(within.get("representation_mandates") or []),
+            or_(false(), *(
+                and_(RepresentationMandateScope.mandate_id == m,
+                     RepresentationMandateScope.scope == s) for m, s in pairs)),
+        )
     return union(personal, organisational, mandated)
 
 
@@ -184,10 +187,13 @@ def _chains(user_id: str, scope: str, *, verified: bool, today: Today | None = N
         )
     )
     if within is not None:
-        # Authority scope rows were locked as (authority, `scope`) for exactly
-        # these authorities, so filtering the authority ids is exact for them.
+        # The locked authorities, and among them only those whose (authority,
+        # `scope`) row was itself locked: a scope row deleted and re-inserted
+        # while the lock waited is a different, unlocked row (TASK-008 N-05).
+        scoped = [a for a, s in within.get("property_authority_scopes") or [] if s == scope]
         query = query.where(
             PropertyAuthority.id.in_(within.get("property_authorities") or []),
+            PropertyAuthorityScope.property_authority_id.in_(scoped),
             LegalParty.id.in_(within.get("legal_parties") or []),
         )
     if verified:
@@ -247,7 +253,8 @@ def require(
 #      order below and by id within a table;
 #   3. the chains are evaluated again, after the locks, against the calendar
 #      date the database reports at that moment — and ONLY through the rows
-#      locked in step 2 (TASK-006, N-01).
+#      the locking statements of step 2 actually returned (TASK-006 N-01,
+#      TASK-008 N-05).
 #
 # FOR SHARE conflicts with every UPDATE and DELETE of those rows, whoever
 # issues it: a membership or mandate revoke, an organisation suspension, a
@@ -265,10 +272,20 @@ def require(
 # new attempt reads a proof that includes it). One pass, no loop, nothing
 # unbounded.
 #
-# Two publications share the locks and do not block each other, except that a
-# share request queues behind an UPDATE already waiting on the same row
-# (PostgreSQL row-lock queueing) — a delay, never a cycle. There is no global
-# lock and no in-process lock.
+# "Locked" means returned by the FOR SHARE statement, not "named in the proof".
+# A proof row deleted while its lock waited is not returned (READ COMMITTED
+# skips the deleted version), and a row re-inserted under the same key after
+# that statement took its snapshot is a different row nobody locked. TASK-007
+# showed such a replacement carrying the decision (N-05). The decision is
+# therefore evaluated through the returned rows only; a missing row makes this
+# attempt fail like any other lost link (409 if a valid chain exists now).
+#
+# Two publications share the locks and do not block each other. A share
+# request is granted even while an UPDATE is already waiting on the same row
+# (PostgreSQL grants compatible row locks ahead of a waiting writer), so a
+# continuous stream of publications resting on one row can delay a revoke of
+# that row — a delay, never a cycle, and never a lost revoke (TASK-007 note;
+# carried as operational debt). There is no global lock and no in-process lock.
 #
 # Lock order for a publication (never acquired in reverse by any path):
 #
@@ -382,8 +399,11 @@ def _proof(db: Session, user_id: str, property_id: str, scope: str, *,
     }
 
 
-def _lock_proof(db: Session, proof: dict[str, list]) -> None:
-    """FOR SHARE on every proof row, in the documented order."""
+def _lock_proof(db: Session, proof: dict[str, list]) -> dict[str, list]:
+    """FOR SHARE on every proof row, in the documented order. Returns the rows
+    the locking statements actually returned — the only rows this transaction
+    holds. A proof row that was deleted (or deleted and re-inserted under the
+    same key) while its lock waited is absent from the result (N-05)."""
     single = (
         ("legal_parties", LegalParty.id),
         ("person_legal_parties", PersonLegalParty.legal_party_id),
@@ -392,25 +412,40 @@ def _lock_proof(db: Session, proof: dict[str, list]) -> None:
         ("organization_memberships", OrganizationMembership.id),
         ("representation_mandates", RepresentationMandate.id),
     )
+    locked: dict[str, list] = {}
     for key, column in single:
         ids = proof.get(key) or []
-        if ids:
-            db.execute(select(column).where(column.in_(ids)).order_by(column)
-                       .with_for_update(read=True))
-    for mandate_id, mandate_scope in proof.get("representation_mandate_scopes") or []:
-        db.execute(select(RepresentationMandateScope.mandate_id).where(
+        locked[key] = sorted(db.scalars(
+            select(column).where(column.in_(ids)).order_by(column).with_for_update(read=True)
+        ).all()) if ids else []
+    locked["representation_mandate_scopes"] = [
+        (mandate_id, mandate_scope)
+        for mandate_id, mandate_scope in proof.get("representation_mandate_scopes") or []
+        if db.execute(select(RepresentationMandateScope.mandate_id).where(
             RepresentationMandateScope.mandate_id == mandate_id,
             RepresentationMandateScope.scope == mandate_scope,
-        ).with_for_update(read=True))
+        ).with_for_update(read=True)).first() is not None
+    ]
     ids = proof.get("property_authorities") or []
-    if ids:
-        db.execute(select(PropertyAuthority.id).where(PropertyAuthority.id.in_(ids))
-                   .order_by(PropertyAuthority.id).with_for_update(read=True))
-    for authority_id, authority_scope in proof.get("property_authority_scopes") or []:
-        db.execute(select(PropertyAuthorityScope.property_authority_id).where(
+    locked["property_authorities"] = sorted(db.scalars(
+        select(PropertyAuthority.id).where(PropertyAuthority.id.in_(ids))
+        .order_by(PropertyAuthority.id).with_for_update(read=True)
+    ).all()) if ids else []
+    locked["property_authority_scopes"] = [
+        (authority_id, authority_scope)
+        for authority_id, authority_scope in proof.get("property_authority_scopes") or []
+        if db.execute(select(PropertyAuthorityScope.property_authority_id).where(
             PropertyAuthorityScope.property_authority_id == authority_id,
             PropertyAuthorityScope.scope == authority_scope,
-        ).with_for_update(read=True))
+        ).with_for_update(read=True)).first() is not None
+    ]
+    return locked
+
+
+# The retryable publication conflict (TASK-006, TASK-008): stable text, and
+# the project's existing retry signal (Retry-After) so a client can tell it
+# from the other 409s of publish (archived space, listing state, policy).
+AUTHORITY_CHANGED = "The authority for this property changed while publishing. Try again."
 
 
 def authorize_for_mutation(
@@ -422,21 +457,23 @@ def authorize_for_mutation(
     (coordination.lock_property) in this transaction, and makes its write in
     the same transaction before committing. Postcondition: at least one chain
     that grants `scope` (VERIFIED when `verified`) is valid at the database's
-    current time, every row of that chain is locked, and none can change until
-    the caller commits. The chain is found among the locked rows only; one
-    that became valid after the proof was read does not count (N-01).
+    current time, every row of that chain was returned by a locking statement
+    of this transaction, and none can change until the caller commits. The
+    chain is found among those rows only: one that became valid after the
+    proof was read (N-01), or a proof row replaced under the same key while
+    its lock waited (N-05), does not count.
 
-    Refusals: 409 when a valid chain exists now but was not in the locked
-    proof (it appeared while the locks were being taken — a new attempt will
-    use it); otherwise the same as `require`: 404 when nothing is held, 403
-    when only an unverified right is.
+    Refusals: 409 with Retry-After when a valid chain exists now but was not
+    among the locked rows (it appeared, or was replaced, while the locks were
+    being taken — a new attempt reads and locks it); otherwise the same as
+    `require`: 404 when nothing is held, 403 when only an unverified right is.
 
     Scopes are not pooled across chains: each chain must carry `scope` on its
     own, exactly as `require` evaluates it."""
     proof = _proof(db, user.id, property_id, scope, verified=verified)
-    _lock_proof(db, proof)
+    locked = _lock_proof(db, proof)
     today = decision_date(db)
-    protected = _chains(user.id, scope, verified=verified, today=today, within=proof).where(
+    protected = _chains(user.id, scope, verified=verified, today=today, within=locked).where(
         PropertyAuthority.property_id == property_id)
     if proof and db.scalar(protected.limit(1)) is not None:
         return
@@ -446,8 +483,7 @@ def authorize_for_mutation(
         PropertyAuthority.property_id == property_id)
     if db.scalar(unprotected.limit(1)) is not None:
         raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "The authority for this property changed while publishing. Try again.",
+            status.HTTP_409_CONFLICT, AUTHORITY_CHANGED, headers={"Retry-After": "0"},
         )
     held = _chains(user.id, scope, verified=False, today=today).where(
         PropertyAuthority.property_id == property_id)

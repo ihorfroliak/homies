@@ -322,7 +322,34 @@ def create_classified(
     return _public(offer)
 
 
-@router.post("/classifieds/{offer_id}/publish", response_model=ClassifiedOut)
+@router.post(
+    "/classifieds/{offer_id}/publish",
+    response_model=ClassifiedOut,
+    responses={
+        403: {"description": "The caller's authority on the property is not VERIFIED "
+                             "(at the pre-check, or lost between it and the protected "
+                             "decision)."},
+        404: {"description": "Offer not found, or the caller holds no authority on its "
+                             "property — deliberately indistinguishable."},
+        409: {
+            "description": (
+                "Conflict. RETRYABLE only when the response carries `Retry-After`: the "
+                "authority chain changed while the protected decision was being taken "
+                "(detail: \"" + authority.AUTHORITY_CHANGED + "\"); send a new request, "
+                "which re-reads and locks the current chain. NOT retryable (no "
+                "`Retry-After`): the space was archived; the listing can no longer be "
+                "published from its current state; the property type is not publishable "
+                "under current policy."
+            ),
+            "headers": {
+                "Retry-After": {
+                    "description": "Only on the retryable authority-change conflict; 0.",
+                    "schema": {"type": "integer"},
+                }
+            },
+        },
+    },
+)
 def publish_classified(
     offer_id: str,
     user=Depends(require_role("host")),

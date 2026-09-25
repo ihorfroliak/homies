@@ -59,9 +59,10 @@ harness.MUTANTS = [
         "id": "A05-no-protected-decision",
         "invariant": "final authorisation guard",
         "file": AUTH,
-        # TASK-006 split the call into `proof = _proof(...)` / `_lock_proof`.
+        # TASK-006 split the call into `proof = _proof(...)` / `_lock_proof`;
+        # TASK-008 makes _lock_proof return the rows it locked.
         "old": ("    proof = _proof(db, user.id, property_id, scope, verified=verified)\n"
-                "    _lock_proof(db, proof)\n"),
+                "    locked = _lock_proof(db, proof)\n"),
         "new": "    return\n",
         "tests": [T + "::test_a_loss_committed_before_the_decision_refuses_the_publication"],
     },

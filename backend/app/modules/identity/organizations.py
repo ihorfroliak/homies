@@ -242,27 +242,61 @@ def invite_member(
     _require_role(db, organization_id, user, MANAGING_ROLES)
     invitee = _user_by_email(db, body.email)
     if invitee is not None and invitee.id != user.id:
-        existing = db.scalar(
-            select(OrganizationMembership).where(
-                OrganizationMembership.organization_id == organization_id,
-                OrganizationMembership.user_id == invitee.id,
-            )
-        )
-        if existing is None:
-            db.add(OrganizationMembership(
-                organization_id=organization_id, user_id=invitee.id, role=body.role,
-                status="INVITED", invited_by_user_id=user.id,
-            ))
-        elif existing.status == "REVOKED":
-            existing.status = "INVITED"
-            existing.role = body.role
-            existing.revoked_at = None
-            existing.invited_by_user_id = user.id
-            existing.version += 1
+        _invite(db, organization_id, invitee.id, body.role, user.id)
         audit(db, actor=user.id, action="organization.member_invited",
               entity_type="organization", entity_id=organization_id)
         db.commit()
     return ACCEPTED
+
+
+def _locked_membership(
+    db: Session, organization_id: str, user_id: str
+) -> OrganizationMembership | None:
+    return db.scalar(
+        select(OrganizationMembership).where(
+            OrganizationMembership.organization_id == organization_id,
+            OrganizationMembership.user_id == user_id,
+        ).with_for_update().execution_options(populate_existing=True)
+    )
+
+
+def _invite(db: Session, organization_id: str, invitee_id: str, role: str,
+            actor_id: str) -> None:
+    """The membership lifecycle an invitation may drive (TASK-008 N-09/N-10).
+
+    * no row      → INVITED;
+    * REVOKED     → INVITED again, with the new role: an explicit re-invitation
+                    by a manager — under UNIQUE(organization, user) the only way
+                    back in;
+    * INVITED or ACTIVE → left exactly as it is. An invitation never demotes a
+                    member and never changes a pending invitation's role.
+
+    The row is locked before it is read, like accept and revoke: read unlocked,
+    an ACTIVE membership committed in between (re-invite + accept) was written
+    back to INVITED (TASK-007). Two first invitations racing both see no row;
+    the database's unique index lets one INSERT win, and the other decides on
+    the winner's row instead of failing with a 500."""
+    existing = _locked_membership(db, organization_id, invitee_id)
+    if existing is None:
+        try:
+            with db.begin_nested():
+                db.add(OrganizationMembership(
+                    organization_id=organization_id, user_id=invitee_id, role=role,
+                    status="INVITED", invited_by_user_id=actor_id,
+                ))
+                db.flush()
+            return
+        except IntegrityError:
+            # The concurrent invitation committed first; its row decides.
+            existing = _locked_membership(db, organization_id, invitee_id)
+            if existing is None:  # pragma: no cover — the constraint fired for another reason
+                raise
+    if existing.status == "REVOKED":
+        existing.status = "INVITED"
+        existing.role = role
+        existing.revoked_at = None
+        existing.invited_by_user_id = actor_id
+        existing.version += 1
 
 
 @router.post("/organizations/{organization_id}/membership/accept", response_model=MemberOut)

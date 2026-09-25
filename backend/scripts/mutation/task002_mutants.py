@@ -193,9 +193,10 @@ MUTANTS = [
         # mutant (it survived on the TASK-004 rerun); both are removed here.
         "old": "    coordination.lock_property(db, authority.property_id)\n",
         "new": "",
+        # TASK-008 reshaped the authority-row lock (its result is now kept).
         "extra": [(
-            "                   .order_by(PropertyAuthority.id).with_for_update(read=True))\n",
-            "                   .order_by(PropertyAuthority.id))\n",
+            "        .order_by(PropertyAuthority.id).with_for_update(read=True)\n",
+            "        .order_by(PropertyAuthority.id)\n",
         )],
         "tests": [T + "test_publication_race_pg.py::test_a_revoke_arriving_during_publication_waits_and_takes_it_down"],
     },
