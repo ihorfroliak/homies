@@ -7,7 +7,10 @@ instruction (TASK-000).
 
 1. Founder explicit current decision
 2. Homies Product & Engineering Constitution v2 — [01](01-CONSTITUTION-v2.md)
-3. Canonical Business Logic — [02](02-BUSINESS-LOGIC.md)
+3. Canonical Business Logic — [02](02-BUSINESS-LOGIC.md), with the Product &
+   Growth Doctrine — [07](07-PRODUCT-GROWTH-DOCTRINE.md) (added 2026-09-25,
+   TASK-010: how material product decisions are judged; refines, never
+   contradicts, 02)
 4. System Architecture v1.1 — [03](03-SYSTEM-ARCHITECTURE-v1.1.md)
 5. Domain Schema v1 + approved clarifications — [04](04-DOMAIN-SCHEMA-v1.md), [04a](04a-DOMAIN-SCHEMA-v1-CLARIFICATIONS.md)
 6. Development Governance — [05](05-DEVELOPMENT-GOVERNANCE-v1.md)
@@ -56,3 +59,4 @@ over the corresponding file, with this table updated.
 | 04 | Founder-supplied Domain Schema v1, byte-for-byte, SHA-256 `fd9c1fe707e84cd4c5e15f06127f4f4fbd64a1fad126e3c3153f8c744a0eb990` | Yes (spec text) |
 | 04a | Founder instruction 2026-09-24 §20–§21 | Yes, for what it covers |
 | 05 | Founder instruction 2026-09-24 | Yes |
+| 07 | Founder instruction 2026-09-25 (TASK-010 Part A) | Yes, for what it covers |

@@ -20,15 +20,27 @@ Engineering status per area is in
    ([contract](../tasks/TASK-006-authority-integrity-cleanup.md)); ~~TASK-007~~
    re-audit: N-02…N-04 closed, N-01 partially closed (N-05). HOMIES FOUNDATION
    BASELINE 002: **candidate, not yet accepted**.
-6. **TASK-008** — final foundation concurrency and invitation hardening,
-   TASK-007 N-05…N-10 ([contract](../tasks/TASK-008-final-foundation-hardening.md)).
-   Implemented; **awaiting independent final foundation audit** (not by the
-   builder session).
-7. Next after that audit is accepted (founder direction, not started): the
-   Poland-wide, Europe-ready geographic/address vertical slice.
-8. Proposed next (Claude, awaiting founder approval): the bounded
-   property type + subtype migration (APARTMENT | HOUSE + subtype, 04a §13),
-   then the Phase 1A MUST_CLOSE list below.
+6. ~~TASK-008~~ — final foundation concurrency and invitation hardening
+   ([contract](../tasks/TASK-008-final-foundation-hardening.md)); ~~TASK-009~~
+   two independent final audits (Codex, Claude Code):
+   **HOMIES FOUNDATION BASELINE 002 = `3623184` — ACCEPTED** for continued
+   Phase 1A development (not production readiness).
+7. **TASK-010** — Poland-wide geography, structured address and property
+   classification + Product & Growth Doctrine (07) + TASK-009 audit archive
+   ([contract](../tasks/TASK-010-geography-address-property-classification.md)).
+   Builder complete; **awaiting adjudication** (targeted audit recommended).
+8. Next Phase-1A product vertical slice: chosen by the founder after TASK-010
+   is adjudicated.
+
+Carried-forward maintenance (not a task on its own, done when the files are
+next touched): E01/E02/E03 PostgreSQL regression tests and mutation-review
+wording; replace HTTP-completion-order assertions with database evidence.
+
+Hooks enabled by TASK-010 for later tasks (not scheduled): reference-data
+import of the full Polish registers (TERYT/PRG) with release versioning;
+address normalisation/geocoding behind a provider seam (no paid provider);
+duplicate address/property detection; Building entity; area boundary search;
+SEO location routes from slugs; regional liquidity metrics.
 
 ## Phase 1A — LONG_TERM marketplace (next build work)
 
@@ -39,7 +51,7 @@ awaits founder approval; each item becomes a Task Contract:
 1. Audit actor type (USER / SYSTEM / SERVICE) and versioned legal-document
    acceptance — small, cross-cutting, cheaper before more code depends on them.
 2. Property authority verification evidence record (trust).
-3. Structured address and geographic areas; property type = APARTMENT | HOUSE
+3. **(TASK-010, builder — pending adjudication)** Structured address and geographic areas; property type = APARTMENT | HOUSE
    + subtype; deprecate `properties.owner_id`.
 4. Listing aggregate convergence: Listing terminology in the public API,
    listing texts, rental terms, status history, freshness

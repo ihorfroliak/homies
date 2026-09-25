@@ -9,6 +9,93 @@ audit ([05 §9](05-DEVELOPMENT-GOVERNANCE-v1.md)).
 Classifications: **CANONICAL_ACTIVE** · **ADAPT** · **LEGACY_DORMANT** ·
 **REFERENCE_ONLY** · **REMOVE_LATER** · **UNKNOWN**.
 
+## FOUNDATION BASELINE 002 — ACCEPTED (2026-09-25)
+
+| | |
+|---|---|
+| SHA | `36231840ee52d6185e73fda07e54eab33ffe41f3` |
+| Accepted after | TASK-008 builder implementation · TASK-009 Codex independent audit · TASK-009 Claude Code independent audit |
+| Verdict (both audits) | `TASK_008_ACCEPTED_WITH_NONBLOCKING_NOTES` · `HOMIES_FOUNDATION_BASELINE_002_ACCEPTED` |
+| Findings | P0 0 · P1 0 · P2 0 (P3/NOTE only, below) |
+| Accepted for | continued Phase 1A development |
+| Not equivalent to | production readiness — **NOT ASSESSED / NOT READY**; **NOT DEPLOYED** |
+| Evidence (verbatim) | [Codex report](../reviews/2026-09-25-task009-codex-final-foundation-audit.md) · [Claude Code report](../reviews/2026-09-25-task009-claude-final-foundation-audit.md) |
+| Decision | [D-56](../DECISIONS.md) |
+
+Earlier sections of this map are the history that led here and are kept as
+written. Where they say "pending re-audit", the TASK-009 audits and this
+acceptance are the outcome.
+
+### Foundation freeze
+
+Not reopened or redesigned without concrete new evidence: C1–C8; F-01…F-09
+(incl. F-04); N-01…N-10; atomic publication authorisation; membership
+lifecycle protections; authority proof locking; Listing lifecycle CAS;
+media/privacy foundation. A new concrete correctness issue may still be
+reported.
+
+### Nonblocking foundation debt (carried forward, not reopened)
+
+**Protected-proof regression evidence** — conservative final adjudication:
+
+| Restriction | Adjudication | Basis |
+|---|---|---|
+| E01 (mandate id) | **LOAD-BEARING** | Codex and Claude Code both killed it with raw-SQL probes |
+| E02 (organization id) | **LOAD-BEARING** | same |
+| E03 (legal-party id) | **TREAT AS LOAD-BEARING** | Claude Code killed it (FK re-pointing); Codex found it redundant under the current schema |
+| E04 (authority id) | currently schema-redundant / equivalent | both; depends on the property FK, the FOR UPDATE coordination lock and the scope FK |
+
+The accepted code **retains all four restrictions** — no live defect. Do not
+remove any of them because an earlier mutation review called it equivalent.
+Required maintenance: direct PostgreSQL regression tests for E01/E02/E03, and
+corrected equivalence wording in the TASK-008 mutation review.
+
+**Test-evidence debt (P3):** HTTP/thread response completion order is not
+proof of PostgreSQL commit order (`test_publication_proof_replacement_pg.py`,
+`test_publication_authority_race_pg.py`). When next touched, assert database
+blocking, blocker PID, transaction state, committed state or explicit gates
+instead. No foundation repair cycle is opened for it.
+
+**Other nonblocking debt:** possible revoke starvation under sustained
+publication traffic; no project-wide machine-readable error-code convention;
+manager revoked mid-invite race; legal-name update vs admin verification
+race; raw/direct Space mutation bypasses the Property coordination lock (the
+API path is serialised); organization ↔ LegalParty cardinality (UNIQUE vs 04a
+§1); automatic `Retry-After: 0` retries must eventually be capped; production
+DR drill; production-readiness work. Codex verified Python 3.12 targeted
+behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
+during TASK-009 — this is **not** production DR verification.
+
+## TASK-010 — geography, address, classification (2026-09-25, builder)
+
+**CLOSED BY BUILDER — PENDING ADJUDICATION** (ChatGPT/founder; targeted
+independent audit recommended). [Contract](../tasks/TASK-010-geography-address-property-classification.md).
+
+| Area | Classification | State |
+|---|---|---|
+| geography (`app/modules/geography`) | **CANONICAL_ACTIVE (candidate)** | Country (ISO alpha-2) → AdministrativeArea (any depth, country `kind_code`, cycle-proof trigger) → Locality; GeoArea search-area seam; GeoSource + GeoExternalRef for official ids; idempotent import seam; `/v1/geo` read API. PostGIS boundary/centroid columns exist, empty |
+| addresses | **CANONICAL_ACTIVE (candidate)** | Structured, building-level, source-aware; Property-owned 1:1; unit on Property; exact point unchanged on Property. Existing properties backfilled UNSTRUCTURED (country PL, text as typed) — resolving them against reference data is future work |
+| properties — classification | **CANONICAL_ACTIVE (candidate)** | category APARTMENT \| HOUSE + subtype; legacy `property_type` kept and mapped; ROOM refused; APARTHOTEL_UNIT fail-closed. Closes deviation #11 in substance (the legacy column remains) |
+| properties — legacy location columns | **ADAPT** (deprecated, still written/read) | `city`/`district` mirror structured names; `municipality` optional |
+| public listing DTO | **CANONICAL_ACTIVE** | adds `place` (country, areas, locality, search area); no street/building/unit/postal code |
+| search | **ADAPT** | adds `country_code`, `admin_area_id` (descendants), `locality_id`, `geo_area_id`; no ranking, no full search engine |
+| Building entity | **not built** (decision D-55) | the address model does not prevent one building → many apartments |
+| Reference data | **not ingested** | no national dataset imported; only country PL and source namespaces are seeded |
+
+Deviation #15 (structured address / geo areas): **closed by builder** in
+substance; deviation #11 (property type + subtype): **closed by builder**,
+legacy column retained. Both pending adjudication.
+
+Foundation test-evidence debt (TASK-009 P3) is **retired for the three race
+tests TASK-010 touched** (`test_publication_authority_race_pg.py`,
+`test_publication_proof_replacement_pg.py`): commit order is now proven by
+the paused publisher's transaction id (`pg_stat_activity.backend_xid`)
+having ended when the competitor commits, alongside the unchanged
+`pg_blocking_pids` and committed-state evidence. Still carrying the debt
+(untouched by TASK-010, green): `test_membership_accept_race_pg.py`
+(`finished == ["accept", "revoke"]`) and `test_publication_chain_gain_race_pg.py`
+(branches on `order.index`). No foundation production code changed.
+
 ## 0000. State after TASK-007 and TASK-008 (2026-09-25)
 
 The TASK-007 re-audit of `1b2458c` (report outside the repo) accepted N-02,

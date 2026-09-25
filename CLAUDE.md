@@ -1,7 +1,9 @@
 # CLAUDE.md — Homies
 
-Homies is a trust-first Polish property marketplace. Canon lives in
-[docs/canonical](docs/canonical/00-AUTHORITY.md); read `00-AUTHORITY`,
+Homies is a trust-first residential property marketplace — market: Poland;
+architecture target: Europe (launch locally, model nationally, architect
+internationally). Canon lives in
+[docs/canonical](docs/canonical/00-AUTHORITY.md); read `00-AUTHORITY`, `07-PRODUCT-GROWTH-DOCTRINE`,
 `02-BUSINESS-LOGIC`, `05-DEVELOPMENT-GOVERNANCE-v1` and
 `IMPLEMENTATION-CONVERGENCE` before building. Older strategy, charter and
 release-plan documents are historical (banner-marked).
