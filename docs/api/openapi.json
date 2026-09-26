@@ -326,7 +326,6 @@
           "public_location_precision": {
             "default": "APPROXIMATE",
             "enum": [
-              "EXACT",
               "APPROXIMATE",
               "DISTRICT"
             ],
@@ -1645,6 +1644,7 @@
           },
           "district": {
             "default": "",
+            "maxLength": 80,
             "title": "District",
             "type": "string"
           },

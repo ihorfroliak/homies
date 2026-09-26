@@ -68,7 +68,7 @@ class PropertyCreate(BaseModel):
     # area is given; `municipality` (a Polish gmina) is optional since
     # TASK-010 — it only ever served the dormant short-stay tourist tax.
     city: str | None = Field(default=None, min_length=1, max_length=80)
-    district: str = ""
+    district: str = Field(default="", max_length=80)
     postcode: str = Field(default="", max_length=12)
     municipality: str | None = Field(default=None, max_length=80)
     address: str | None = Field(default=None, min_length=1, max_length=255)
@@ -199,9 +199,10 @@ class PropertyOut(BaseModel):
 class ClassifiedCreate(BaseModel):
     # Which part of the property is on offer. Omitted means the whole flat.
     space_id: str | None = None
-    # How precisely the listing may be placed on the public map. The flat's
-    # own coordinates are shown only if the owner asks for EXACT.
-    public_location_precision: Literal["EXACT", "APPROXIMATE", "DISTRICT"] = "APPROXIMATE"
+    # How coarsely the listing is placed on the public map. The flat's own
+    # coordinates are never public — there is no EXACT (D-58); asking for it
+    # is a 422.
+    public_location_precision: Literal["APPROXIMATE", "DISTRICT"] = "APPROXIMATE"
     title: str = Field(min_length=3, max_length=140)
     description: str = Field(default="", max_length=4000)
     rent_amount: int = Field(gt=0)  # minor units, ADR-0002

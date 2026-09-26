@@ -126,8 +126,17 @@ def build_address(db: Session, loc: LocationInput) -> Address:
         geo = db.get(GeoArea, loc.geo_area_id)
         if geo is None or geo.status != "ACTIVE" or geo.country_code != loc.country_code:
             raise GeographyError("area not found")
-        if geo.locality_id and locality is not None and geo.locality_id != locality.id:
-            raise GeographyError("that area belongs to another locality")
+        # A search area bound to a locality must lie inside every place the
+        # address also names (TASK-011 GEO-01). One bound to no locality is
+        # country-wide by its own meaning and fits any place in its country.
+        if geo.locality_id is not None:
+            if locality is not None and geo.locality_id != locality.id:
+                raise GeographyError("that area belongs to another locality")
+            if loc.admin_area_id:
+                bound = db.get(Locality, geo.locality_id)
+                within = set(db.scalars(descendant_area_ids(loc.admin_area_id)))
+                if bound is None or bound.admin_area_id not in within:
+                    raise GeographyError("that area lies outside the chosen administrative area")
     structured = bool(loc.locality_id or loc.admin_area_id)
     return Address(
         country_code=loc.country_code,
@@ -138,8 +147,11 @@ def build_address(db: Session, loc: LocationInput) -> Address:
         thoroughfare=(loc.thoroughfare or "").strip() or None,
         building_number=(loc.building_number or "").strip() or None,
         unstructured_text=loc.unstructured_text.strip(),
-        locality_text=(locality.official_name if locality else loc.locality_text).strip(),
-        district_text=(geo.name if geo is not None else loc.district_text).strip(),
+        # Typed text only for what the address does not reference (D-57): a
+        # referenced name is read from its reference, never copied — a copy
+        # would go stale on the next rename and could not hold every valid name.
+        locality_text="" if locality is not None else loc.locality_text.strip(),
+        district_text="" if geo is not None else loc.district_text.strip(),
         resolution="STRUCTURED" if structured else "UNSTRUCTURED",
         source="USER_INPUT",
         verification="UNVERIFIED",
@@ -176,6 +188,22 @@ class LocalityRow:
     slug: str | None = None
 
 
+# The reference model's own limits (models.py). A row beyond them is refused
+# by name here, not by a database error half-way through an import.
+_LIMITS = {"external_id": 64, "kind_code": 40, "kind": 12, "source_kind": 40,
+           "official_name": 200, "slug": 120}
+
+
+def _check_row(row) -> None:
+    for field, limit in _LIMITS.items():
+        value = getattr(row, field, None)
+        if value is not None and len(value) > limit:
+            raise GeographyError(
+                f"{row.external_id[:64]}: {field} longer than {limit} characters")
+    if not row.official_name.strip():
+        raise GeographyError(f"{row.external_id[:64]}: official_name is empty")
+
+
 def _by_ref(db: Session, source: str, external_id: str, column):
     ref = db.scalar(select(GeoExternalRef).where(
         GeoExternalRef.source_code == source, GeoExternalRef.external_id == external_id))
@@ -194,6 +222,8 @@ def import_areas(db: Session, country_code: str, source_code: str,
     if db.get(GeoSource, source_code) is None:
         raise GeographyError(f"unknown source {source_code!r}")
     pending = list(rows)
+    for row in pending:
+        _check_row(row)
     applied = 0
     while pending:
         progressed = False
@@ -236,6 +266,9 @@ def import_localities(db: Session, country_code: str, source_code: str,
                       rows: Iterable[LocalityRow]) -> int:
     if db.get(GeoSource, source_code) is None:
         raise GeographyError(f"unknown source {source_code!r}")
+    rows = list(rows)
+    for row in rows:
+        _check_row(row)
     applied = 0
     for row in rows:
         area_id = _by_ref(db, row.area_source_code, row.area_external_id, "admin_area_id")

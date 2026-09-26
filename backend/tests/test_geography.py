@@ -232,6 +232,14 @@ def test_a_search_area_of_another_locality_is_refused(client, geo):
     assert response.status_code == 422 and "another locality" in response.text
 
 
+@pytest.mark.parametrize("area, status", [("mazowieckie", 422), ("malopolskie", 201)])
+def test_a_search_area_must_lie_inside_the_chosen_admin_area(client, geo, area, status):
+    """TASK-011 GEO-01 (the PostgreSQL proof is in test_geography_repair_pg.py)."""
+    owner = register_and_login(client, f"geo01-{area}@example.com", "host")
+    response = _structured(client, owner, geo, locality_id=None, admin_area_id=geo[area])
+    assert response.status_code == status, response.text
+
+
 # --- classification ---------------------------------------------------------------------
 
 
@@ -346,3 +354,21 @@ def test_search_by_country_region_locality_and_area(client, geo):
     assert ids(locality_id=geo["warszawa"]) == {warsaw}
     assert ids(geo_area_id=geo["kazimierz"]) == {krakow}
     assert ids(admin_area_id=geo["zabierzow"]) == set()
+
+
+
+def test_a_rename_is_what_display_and_the_city_filter_follow(client, geo):
+    """TASK-011 GEO-03: the reference, not a copy of its old name, is the
+    authority for a structured record (D-57)."""
+    offer = _published(client, geo, "rename@example.com")
+    with TestingSession() as db:
+        service.import_localities(db, "PL", SOURCE, [service.LocalityRow(
+            "L-KRK", SOURCE, "1261011", "CITY", "Renamed locality", "96", "krakow")])
+        db.commit()
+    public = client.get(f"/v1/classifieds/{offer}").json()
+    assert public["city"] == public["place"]["locality"]["name"] == "Renamed locality"
+    found = {o["id"] for o in client.get("/v1/classifieds",
+                                         params={"city": "Renamed locality"}).json()["items"]}
+    stale = {o["id"] for o in client.get("/v1/classifieds",
+                                         params={"city": "Kraków"}).json()["items"]}
+    assert offer in found and offer not in stale

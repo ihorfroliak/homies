@@ -2,8 +2,8 @@
 
 A public listing says where, as far as the public may know: city, district and
 a map point at the precision the owner chose. It never carries the street
-address, and never the flat's own coordinates unless the owner asked for
-EXACT. The tests plant distinctive coordinates and then look for them in every
+address, and never the flat's own coordinates — there is no EXACT and no owner
+opt-in (D-58, TASK-010R). The tests plant distinctive coordinates and then look for them in every
 public response — the way a leak would actually be found.
 """
 
@@ -98,12 +98,21 @@ def test_district_precision_shows_no_point_at_all(client, owner):
     assert "52.2" not in _all_public_text(client, offer_id)
 
 
-def test_exact_is_shown_only_when_the_owner_chose_it(client, owner):
-    offer_id = _listed(client, owner, precision="EXACT")
-    point = client.get(f"/v1/classifieds/{offer_id}").json()["public_location"]
-    assert (point["latitude"], point["longitude"], point["precision"]) == (
-        EXACT_LAT, EXACT_LON, "EXACT"
-    )
+def test_exact_cannot_be_chosen_there_is_no_owner_opt_in(client, owner):
+    """D-58: public exact residential coordinates are prohibited."""
+    prop = client.post("/v1/properties", json=PROPERTY, headers=auth(owner)).json()
+    verify_ownership(client, owner, prop["id"])
+    refused = client.post(f"/v1/properties/{prop['id']}/classifieds",
+                          json={**OFFER, "public_location_precision": "EXACT"},
+                          headers=auth(owner))
+    assert refused.status_code == 422, refused.text
+
+
+def test_an_unknown_precision_fails_safe_to_the_grid():
+    """A stale or unexpected stored value must never mean "exact"."""
+    assert location.public_point(EXACT_LAT, EXACT_LON, "EXACT") == location.public_point(
+        EXACT_LAT, EXACT_LON, "APPROXIMATE")
+    assert location.PRECISIONS == ("APPROXIMATE", "DISTRICT")
 
 
 def test_the_owner_still_sees_their_own_coordinates(client, owner):

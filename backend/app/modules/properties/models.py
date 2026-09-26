@@ -128,18 +128,38 @@ class Property(Base):
         Address, foreign_keys=[address_id], lazy="select", viewonly=True
     )
 
-    # Legacy free-text location (pre-TASK-010). Kept, still written, still
-    # read by existing clients and the city/district search filters; the
-    # structured truth is `address_record`. `city`/`district` mirror the
-    # locality/search-area names when the address is structured. `municipality`
-    # (a Polish gmina) was required only for the dormant short-stay tourist
-    # tax; it is optional now and, when structured, derivable from the
-    # administrative hierarchy. Deprecated for new clients — see D-53.
+    # Legacy free-text location (pre-TASK-010). Kept for existing clients and
+    # for records whose address is UNSTRUCTURED / LEGACY_BACKFILL. The authority
+    # rule (D-57, TASK-010R): what the address references — locality, search
+    # area — is read from the reference entity (`display_city`,
+    # `display_district`, and the city/district filters); these columns are
+    # only the fallback for what it does not reference, and hold "" otherwise.
+    # Rows written before TASK-010R may still carry a copied name; it is never
+    # read while the reference exists. `municipality` (a Polish gmina) was
+    # required only for the dormant short-stay tourist tax; optional now
+    # (D-53).
     city: Mapped[str] = mapped_column(String(80), index=True)
     district: Mapped[str] = mapped_column(String(80), default="", index=True)
     postcode: Mapped[str] = mapped_column(String(12), default="")
     municipality: Mapped[str | None] = mapped_column(String(80), nullable=True)
     address: Mapped[str] = mapped_column(String(255))
+
+    @property
+    def display_city(self) -> str:
+        """The referenced locality's current name, else the typed city (D-57)."""
+        record = self.address_record
+        if record is not None and record.locality is not None:
+            return record.locality.official_name
+        return self.city
+
+    @property
+    def display_district(self) -> str:
+        """The referenced search area's current name, else the typed district."""
+        record = self.address_record
+        if record is not None and record.geo_area is not None:
+            return record.geo_area.name
+        return self.district
+
     # Plain decimals, not PostGIS: CI runs stock postgres:16 and a geometry
     # column would break the migration there. This is also the shape external
     # pricing APIs ask for.
@@ -193,7 +213,8 @@ class ClassifiedOffer(Base):
             name="fk_classified_offers_space_same_property",
         ),
         CheckConstraint(
-            "public_location_precision IN ('EXACT', 'APPROXIMATE', 'DISTRICT')",
+            # No EXACT: public exact residential coordinates are prohibited (D-58).
+            "public_location_precision IN ('APPROXIMATE', 'DISTRICT')",
             name="ck_classified_offers_location_precision",
         ),
         *_coordinate_checks(
@@ -215,7 +236,7 @@ class ClassifiedOffer(Base):
     )
 
     # Where the listing sits on the public map — never the flat's own
-    # coordinates unless the owner chose EXACT. See location.py. On Postgres a
+    # coordinates (D-58; there is no owner opt-in). See location.py. On Postgres a
     # generated `public_geog` column and a GiST index sit alongside these for
     # viewport and radius search; they live in the migration only, because
     # SQLite has no geography type and the fast suite never searches by area.
@@ -259,11 +280,11 @@ class ClassifiedOffer(Base):
 
     @property
     def city(self) -> str:
-        return self.listed_property.city
+        return self.listed_property.display_city
 
     @property
     def district(self) -> str:
-        return self.listed_property.district
+        return self.listed_property.display_district
 
     @property
     def space_type(self) -> str:

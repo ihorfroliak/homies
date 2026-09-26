@@ -32,7 +32,7 @@ from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from prometheus_client import Counter
-from sqlalchemy import case, func, literal_column, or_, select, update
+from sqlalchemy import and_, case, func, literal_column, or_, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, object_session
@@ -43,7 +43,7 @@ from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import get_current_user, require_role
 from app.modules.geography import service as geography
-from app.modules.geography.models import Address, Locality
+from app.modules.geography.models import Address, GeoArea, Locality
 from app.modules.identity import organizations
 from app.modules.identity.models import User
 from app.modules.properties import (
@@ -195,6 +195,9 @@ def _property_out(db: Session, prop: Property) -> PropertyOut:
     why Publish refuses."""
     return PropertyOut.model_validate(prop).model_copy(
         update={
+            # The reference wins over the legacy mirror (D-57).
+            "city": prop.display_city,
+            "district": prop.display_district,
             "location": _location_out(db, prop),
             "authorities": [
                 AuthorityOut(
@@ -272,8 +275,10 @@ def create_property(
         property_type=legacy_type,
         category=category,
         subtype=subtype,
-        # Legacy mirrors, so existing readers and filters keep working.
-        city=address.locality_text or body.city or "",
+        # Legacy mirrors hold only what the address does not reference
+        # (D-57): "" when a locality / search area is referenced — read from
+        # the reference instead, so no copy can go stale or overflow.
+        city=address.locality_text,
         address=body.address or street_line,
         municipality=body.municipality,
         **{k: v for k, v in data.items() if k not in {"district"}},
@@ -716,10 +721,25 @@ def list_classifieds(
             # SQLAlchemy is the thing that knows the difference. An earlier
             # version compared the literal 'true' and matched nothing on SQLite.
             filters.append(Property.attributes[code].as_boolean().is_(True))
+    # city / district (D-57): a structured record matches on its referenced
+    # locality / search area's current name; the typed mirror is consulted
+    # only for records that do not reference one, so a stale copy never wins.
     if city:
-        filters.append(Property.city == city)
+        filters.append(or_(
+            Property.address_id.in_(
+                select(Address.id).join(Locality, Locality.id == Address.locality_id)
+                .where(Locality.official_name == city)),
+            and_(Property.city == city, Property.address_id.in_(
+                select(Address.id).where(Address.locality_id.is_(None)))),
+        ))
     if district:
-        filters.append(Property.district == district)
+        filters.append(or_(
+            Property.address_id.in_(
+                select(Address.id).join(GeoArea, GeoArea.id == Address.geo_area_id)
+                .where(GeoArea.name == district)),
+            and_(Property.district == district, Property.address_id.in_(
+                select(Address.id).where(Address.geo_area_id.is_(None)))),
+        ))
     # Structured place filters (TASK-010). An administrative area matches
     # everything below it; a listing whose address is unstructured matches
     # none of them (it has no reference place to match).
