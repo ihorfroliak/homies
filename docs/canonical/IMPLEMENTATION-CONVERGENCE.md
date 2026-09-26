@@ -66,6 +66,32 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
+## TASK-011 → TASK-010R — targeted geography/privacy repair (2026-09-26)
+
+History: TASK-010 candidate `e87352a9862408e76e7ebee08b846dab728d4dac` →
+independent **TASK-011** (Codex) → **TASK_010_REQUIRES_TARGETED_FIXES**
+(P0 0 / P1 0 / P2 3 / P3 0; [archived verbatim](../reviews/2026-09-26-task011-codex-task010-audit.md)).
+Gates: migration ACCEPTED, Europe-readiness ACCEPTED (data model only),
+classification ACCEPTED, doctrine ACCEPTED; privacy boundary NEEDS_FIX
+(EXACT decision), geography model NEEDS_FIX.
+
+| Finding | Severity | State |
+|---|---|---|
+| GEO-01 contradictory admin area + locality-bound GeoArea accepted/published | P2 | **CLOSED BY BUILDER** (TASK-010R) — pending re-audit |
+| GEO-02 valid reference names overflow compatibility columns → HTTP 500 | P2 | **CLOSED BY BUILDER** (TASK-010R) — pending re-audit |
+| GEO-03 authoritative rename leaves public display/search stale | P2 | **CLOSED BY BUILDER** (TASK-010R) — pending re-audit |
+| Public EXACT (inherited owner opt-in) | canonical decision | **ADJUDICATED: PROHIBITED** (D-58, 04a §16); implemented in TASK-010R — pending re-audit |
+
+Structured-vs-legacy authority rule: D-57 / 04a §17. **TASK-010 is NOT
+accepted yet**: it becomes acceptable only after a narrow independent
+re-audit of the TASK-010R SHA. Foundation Baseline 002 unchanged and still
+accepted. Production: NOT DEPLOYED. [Contract](../tasks/TASK-010R-geography-correctness-privacy.md).
+
+| Area | Classification | State after TASK-010R |
+|---|---|---|
+| legacy location mirrors (`properties.city/district`, address typed text) | **ADAPT** (fallback only) | hold typed text only for a part the address does not reference; never read while a reference exists |
+| public listing location | **CANONICAL_ACTIVE** | APPROXIMATE grid point or DISTRICT (no point); no public EXACT at API, code or DB level |
+
 ## TASK-010 — geography, address, classification (2026-09-25, builder)
 
 **CLOSED BY BUILDER — PENDING ADJUDICATION** (ChatGPT/founder; targeted

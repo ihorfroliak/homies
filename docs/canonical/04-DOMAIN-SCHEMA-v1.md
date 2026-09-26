@@ -1933,6 +1933,10 @@ APPROXIMATE
 DISTRICT
 ```
 
+> Clarified by 04a §16 (D-58, TASK-010R): `EXACT` is **withdrawn for public
+> use** — public exact residential coordinates are prohibited, with no owner
+> opt-in. Only APPROXIMATE and DISTRICT are valid.
+
 Critical check:
 
 ```text

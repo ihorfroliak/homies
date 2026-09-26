@@ -114,3 +114,34 @@ The media trust boundary is a **maintained decoding library** (decision
 decoded, bounded, re-encoded without original metadata, and verified; the
 upload as received is never published. Isolated processing follows when
 derivatives or scale justify it.
+
+## 16. Public location precision — no public EXACT
+
+Decision D-58 (product arbiter, TASK-010R, after the TASK-011 audit). **Exact
+location is private.** The exact residential coordinate is private /
+authorized data, stored on the Property. A public listing never exposes it:
+public residential location is a privacy-reduced representation only —
+APPROXIMATE (the deterministic grid cell's centre) or DISTRICT (no point).
+**There is no owner opt-in exception** for anonymous/public exact coordinates.
+The `EXACT` value of the location-precision enum in 04 is withdrawn for
+public use: a new request for it is refused (422), the database refuses to
+store it, and any stored EXACT offer was converted to APPROXIMATE with its
+public point recomputed (the private point untouched). This supersedes the
+opt-in EXACT behaviour implemented since C5.
+
+## 17. Structured geography vs legacy location mirrors
+
+Decision D-57 (TASK-010R, closing TASK-011 GEO-02/GEO-03). For a
+**STRUCTURED** record the reference entities — Country, AdministrativeArea,
+Locality, GeoArea — are authoritative: public display, owner display and the
+city/district compatibility filters read their **current** names. For an
+**UNSTRUCTURED / LEGACY_BACKFILL** record, or for any part an address does not
+reference, the legacy free-text mirror (`properties.city`, `district`, and
+the typed text on the address) is the fallback. A referenced name is never
+copied into a mirror (mirrors hold "" for it), so no copy can go stale on a
+rename or overflow a narrower column; a mirror that still holds a copied name
+is never read while the reference exists. A locality-bound GeoArea must lie
+inside every place the address names (its locality, or the chosen
+administrative area's subtree); a GeoArea bound to no locality is
+country-wide by its own meaning. The same rule governs the eventual removal
+of the mirrors.

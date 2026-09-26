@@ -45,7 +45,9 @@ User → valid RepresentationMandate → LegalParty → PropertyAuthority
 **Money.** Integer minor units, never float.
 
 **Address.** Exact internal location and public location are distinct; the
-exact address never leaks through a public listing.
+exact address never leaks through a public listing, and neither does the
+exact coordinate — public location is privacy-reduced only, with no owner
+opt-in exception (04a §16, D-58).
 
 **Safety.** No universal `safe` flag: PropertySafetyProfile, typed
 requirements, hazards, versioned attestations, evidence, incidents.

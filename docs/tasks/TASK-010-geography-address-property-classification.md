@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | IN_REVIEW — builder complete; ChatGPT/founder adjudication pending; independent audit recommended (below) |
+| Status | TASK-011 (Codex, 2026-09-26): **TASK_010_REQUIRES_TARGETED_FIXES** (GEO-01/02/03, P2) — repair in [TASK-010R](TASK-010R-geography-correctness-privacy.md); not accepted yet |
 | Owner (writer) | Claude Code |
 | Baseline | **Foundation Baseline 002** `36231840ee52d6185e73fda07e54eab33ffe41f3` (accepted) |
 | Branch | `claude/TASK-010-geography-address-property-classification` |
@@ -133,7 +133,8 @@ drift. Mutation: `scripts/mutation/task010_mutants.py`.
 
 ## Independent audit
 
-Recommended, not foundation-mandatory: the change is additive and touches a
-05 §9 item (exact address / private data) and a data-transforming migration.
-A targeted audit of the public-leakage boundary and the migration is
-proportionate.
+~~Recommended, not foundation-mandatory~~ — corrected after TASK-011: the
+change touches a 05 §9 item (exact address / private data) and a
+data-transforming migration, so an independent audit is **required**, not
+optional. It took place as TASK-011
+([archive](../reviews/2026-09-26-task011-codex-task010-audit.md)).
