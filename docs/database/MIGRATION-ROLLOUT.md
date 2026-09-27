@@ -18,6 +18,9 @@ rollout of the current chain must plan for.
 | `a7c9e1f3b5d2` | TASK-002 R2 | Coordinate preflight (**refuses** invalid positions), edge public-point recompute, six CHECKs (each scans its table under ACCESS EXCLUSIVE). |
 | `b8d0f2a4c6e1` | TASK-002 R2 | Min-term preflight (refuses < 1), one CHECK. |
 | `c1e3a5b7d9f2` | TASK-002 R3 | Adds `file_objects.processing_version`; **quarantines** every existing PROPERTY_MEDIA file (UPDATE). Downgrade leaves them quarantined by design. |
+| `e4f6a8b0c2d4` | TASK-010 | Geography tables, one UNSTRUCTURED address per property (per-row backfill), `address_id` NOT NULL + UNIQUE. |
+| `a7c9e1f3b5d7` | TASK-010R | Converts stored public EXACT offers to APPROXIMATE (grid recomputed in SQL); CHECK re-created. |
+| `b8d0f2a4c6e8` | TASK-012 | Status preflight (**refuses** unknown statuses), adds `last_confirmed_available_at` backfilled from `published_at`, status CHECK, index. **Changes no status.** |
 | `d3f5b7a9c1e4` | TASK-002 R4 | Preflights (refuses duplicate active threads / incoherent viewings), partial UNIQUE index (blocks writes on `conversations` while building), one CHECK on `viewings`. |
 
 `alembic/env.py` runs an upgrade in one transaction, so every lock taken by an
@@ -49,3 +52,14 @@ early revision is held until the whole `upgrade head` commits.
    before the window, by running the same SELECTs read-only in advance.
 7. **After R3:** run `python -m app.scripts.reprocess_media` so quarantined
    photos are re-encoded; until then they are not served.
+8. **Before TASK-012 (`b8d0f2a4c6e8`) reaches real inventory:** run
+   `python -m app.scripts.listing_freshness preflight` against the target
+   (after the migration, before traffic) and record the count and list in the
+   release notes. Every active listing whose last publication/confirmation is
+   older than 21 days leaves the public board the moment the new code serves
+   (the visibility rule is evaluated on read, D-59/D-62); owners see those
+   listings as needing confirmation in `GET /v1/me/classifieds`. Decide
+   explicitly whether to notify owners or to run the release with a
+   temporary longer policy — do not let supply disappear unnoticed. Then run
+   `python -m app.scripts.listing_freshness sweep` (or enable
+   `listing_freshness_worker_enabled`) so statuses and reminder events follow.

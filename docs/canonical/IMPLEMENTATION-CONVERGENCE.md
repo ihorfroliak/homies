@@ -66,6 +66,32 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
+## TASK-012 — listing freshness, availability, quality (2026-09-27, builder)
+
+**CLOSED BY BUILDER — PENDING ADJUDICATION / AUDIT.** Starts from the
+accepted TASK-010 slice `ed9cf1b`. [Contract](../tasks/TASK-012-listing-freshness-availability-quality.md).
+
+| Area | Classification | State |
+|---|---|---|
+| freshness (`properties/freshness.py`) | **CANONICAL_ACTIVE (candidate)** | `last_confirmed_available_at` (04 §43); policy 14/7/21 days, derived `reconfirm_at`/`stale_at` (04a §18); one public-visibility rule on the DB clock, used by all seven public paths |
+| listing lifecycle | **ADAPT** | adds canonical `stale`; status CHECK; confirm/reactivate endpoint; pause refuses archived. Lower-case status names still differ from 04's (Listing aggregate convergence, roadmap 1A-4) |
+| freshness sweep | **CANONICAL_ACTIVE (candidate)** | idempotent, skip-locked conditional UPDATE; CLI + BackgroundWorker (off by default); no new scheduler stack |
+| availability | **ADAPT** | existing `available_from` / `min_term_months` / `open_ended`; `PUT …/availability` with CAS; NULL = unknown (D-64); `maximum_lease_months`, `available_until` (04 §44) not built |
+| owner quality guidance | **CANONICAL_ACTIVE (candidate)** | derived, deterministic, owner-only (`GET /v1/me/classifieds`) |
+| reminder delivery | **not built** | events only (D-65) |
+
+## TASK-010 — ACCEPTED (2026-09-27)
+
+History: TASK-010 candidate `e87352a` → **TASK-011** (Codex):
+TASK_010_REQUIRES_TARGETED_FIXES (GEO-01/02/03 P2; public EXACT decision) →
+**TASK-010R** `ed9cf1b` → **TASK-011R** (Codex, narrow re-audit):
+**TASK_010R_ACCEPTED_WITH_NONBLOCKING_NOTES**, P0–P3 0, NOTE 2 →
+**TASK_010_PHASE_1A_SLICE_ACCEPTED at `ed9cf1b49f70716bd214a3212b2e7497ca5078ec`**
+(D-66; [archive](../reviews/2026-09-27-task011r-codex-task010r-audit.md)).
+GEO-01/02/03 and PUBLIC_EXACT: **CLOSED**; private exact preservation,
+migration, privacy boundary: **ACCEPTED**. Notes N11R-01/N11R-02 fixed in
+TASK-012. Not production readiness. Production: NOT DEPLOYED.
+
 ## TASK-011 → TASK-010R — targeted geography/privacy repair (2026-09-26)
 
 History: TASK-010 candidate `e87352a9862408e76e7ebee08b846dab728d4dac` →

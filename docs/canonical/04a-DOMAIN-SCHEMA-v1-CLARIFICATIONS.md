@@ -145,3 +145,28 @@ inside every place the address names (its locality, or the chosen
 administrative area's subtree); a GeoArea bound to no locality is
 country-wide by its own meaning. The same rule governs the eventual removal
 of the mirrors.
+
+## 18. Listing freshness — derived dates, one visibility rule
+
+Decisions D-59–D-62, D-65 (TASK-012). The only stored freshness fact is
+`last_confirmed_available_at` (04 §43): when someone with authority last
+confirmed the offer is still current. Publication counts as confirmation. 04
+§43's `reconfirm_at` and `stale_at` are **derived, not stored**:
+`reconfirm_at = last + CONFIRMATION_VALID_FOR`, `stale_at = last +
+AUTO_PAUSE_AFTER`, evaluated at the database decision time, with the policy
+(Phase 1A: 14 days, +7 grace = 21) kept in one mutable place. 04 §127's
+search rule therefore reads `status = active AND last_confirmed_available_at >
+now − AUTO_PAUSE_AFTER`, and the same rule gates every public path. The
+`stale` status (04 §43 STALE) is written only by the freshness maintenance
+sweep; `stale → active` only through an authorised confirmation or
+publication with every publication check; `archived` is terminal. "Confirmed
+current" is not identity or property verification and is never labelled so.
+
+## 19. Move-in availability — unknown is unknown
+
+Decision D-64 (TASK-012). `available_from = NULL` means the move-in date was
+not given — **never** "available now". Such a listing may appear in the
+general board, is shown as unknown, is recommended to add a date, and is not
+matched by an explicit `available_by` filter. No date is inferred or
+migrated in. Whether a known date means "now" is derived on the database's
+UTC date, never stored.

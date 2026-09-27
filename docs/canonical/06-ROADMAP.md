@@ -28,9 +28,11 @@ Engineering status per area is in
 7. **TASK-010** — Poland-wide geography, structured address and property
    classification + Product & Growth Doctrine (07) + TASK-009 audit archive
    ([contract](../tasks/TASK-010-geography-address-property-classification.md)).
-   Builder complete; **awaiting adjudication** (targeted audit recommended).
-8. Next Phase-1A product vertical slice: chosen by the founder after TASK-010
-   is adjudicated.
+   → TASK-011 (targeted fixes) → TASK-010R → TASK-011R: **ACCEPTED** at
+   `ed9cf1b` (Phase-1A slice; not production readiness).
+8. **TASK-012** — listing freshness, long-term availability, owner quality
+   guidance ([contract](../tasks/TASK-012-listing-freshness-availability-quality.md)).
+   Builder complete; awaiting adjudication and independent audit.
 
 Carried-forward maintenance (not a task on its own, done when the files are
 next touched): E01/E02/E03 PostgreSQL regression tests and mutation-review
@@ -51,11 +53,12 @@ awaits founder approval; each item becomes a Task Contract:
 1. Audit actor type (USER / SYSTEM / SERVICE) and versioned legal-document
    acceptance — small, cross-cutting, cheaper before more code depends on them.
 2. Property authority verification evidence record (trust).
-3. **(TASK-010, builder — pending adjudication)** Structured address and geographic areas; property type = APARTMENT | HOUSE
+3. **(TASK-010 — accepted)** Structured address and geographic areas; property type = APARTMENT | HOUSE
    + subtype; deprecate `properties.owner_id`.
 4. Listing aggregate convergence: Listing terminology in the public API,
-   listing texts, rental terms, status history, freshness
-   (reconfirm/stale/expiry), publication eligibility service.
+   listing texts, rental terms, status history, ~~freshness
+   (reconfirm/stale)~~ (TASK-012; expiry not built), publication eligibility
+   service.
 5. Saved property, saved search.
 6. Reports and moderation basics; incidents.
 7. Safety foundation: safety profile, typed requirements, hazards, versioned
