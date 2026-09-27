@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | IN_REVIEW — builder complete; narrow independent re-audit required (05 §9: exact location / private data, data-transforming migration) |
+| Status | **ACCEPTED** — TASK-011R: TASK_010R_ACCEPTED_WITH_NONBLOCKING_NOTES; TASK_010_PHASE_1A_SLICE_ACCEPTED at `ed9cf1b` ([archive](../reviews/2026-09-27-task011r-codex-task010r-audit.md)) |
 | Owner (writer) | Claude Code |
 | Starting SHA | TASK-010 candidate `e87352a9862408e76e7ebee08b846dab728d4dac` |
 | Foundation | Baseline 002 `36231840ee52d6185e73fda07e54eab33ffe41f3` (accepted, untouched) |

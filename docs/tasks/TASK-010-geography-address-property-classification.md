@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | TASK-011 (Codex, 2026-09-26): **TASK_010_REQUIRES_TARGETED_FIXES** (GEO-01/02/03, P2) — repair in [TASK-010R](TASK-010R-geography-correctness-privacy.md); not accepted yet |
+| Status | TASK-011 (Codex, 2026-09-26): **TASK_010_REQUIRES_TARGETED_FIXES** (GEO-01/02/03, P2) — repair in [TASK-010R](TASK-010R-geography-correctness-privacy.md) → TASK-011R: **ACCEPTED** at `ed9cf1b` (2026-09-27) |
 | Owner (writer) | Claude Code |
 | Baseline | **Foundation Baseline 002** `36231840ee52d6185e73fda07e54eab33ffe41f3` (accepted) |
 | Branch | `claude/TASK-010-geography-address-property-classification` |
