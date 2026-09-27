@@ -114,9 +114,9 @@ def test_publication_counts_as_confirmation(client, owner):
     offer = _published(client, owner)
     row = _row(offer)
     assert row.last_confirmed_available_at is not None, "publication did not confirm"
-    stamp = freshness._aware(row.last_confirmed_available_at)
+    stamp = freshness.to_utc(row.last_confirmed_available_at)
     assert before - timedelta(seconds=5) <= stamp <= datetime.now(timezone.utc) + timedelta(seconds=5)
-    assert freshness._aware(row.published_at) == stamp
+    assert freshness.to_utc(row.published_at) == stamp
     public = client.get(f"/v1/classifieds/{offer}").json()
     assert public["freshness"] == "FRESH" and public["confirmed_on"] == stamp.date().isoformat()
 

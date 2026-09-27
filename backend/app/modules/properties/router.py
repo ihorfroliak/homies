@@ -154,7 +154,9 @@ def _move_in(offer: ClassifiedOffer, now: datetime) -> Literal["UNKNOWN", "NOW",
     """UNKNOWN when no date was given — never read as "available now" (D-64)."""
     if offer.available_from is None:
         return "UNKNOWN"
-    return "NOW" if offer.available_from <= now.date() else "FROM_DATE"
+    # "Today" is the UTC date of the database decision instant (D-67) — not
+    # the session's, the host's or the client's.
+    return "NOW" if offer.available_from <= freshness.utc_date(now) else "FROM_DATE"
 
 
 def _public(offer: ClassifiedOffer, now: datetime | None = None) -> ClassifiedOut:
@@ -178,7 +180,7 @@ def _public(offer: ClassifiedOffer, now: datetime | None = None) -> ClassifiedOu
         **{k: getattr(offer, k) for k in ClassifiedOut.model_fields if k not in _DERIVED_FIELDS},
         place=place,
         move_in=_move_in(offer, now),
-        confirmed_on=freshness._aware(last).date() if last is not None else None,
+        confirmed_on=freshness.utc_date(last) if last is not None else None,
         freshness=freshness.state(last, now),
         monthly_total_estimate=offer.estimated_monthly_total_minor or 0,
         move_in_total=offer.move_in_total_minor or 0,
@@ -756,7 +758,7 @@ def my_classifieds(user=Depends(require_role("host")), db: Session = Depends(get
             published_at=offer.published_at,
             freshness_detail=FreshnessOut(
                 state=freshness.state(last, now),
-                last_confirmed_available_at=last,
+                last_confirmed_available_at=freshness.to_utc(last) if last else None,
                 reconfirm_at=freshness.reconfirm_at(last),
                 stale_at=freshness.stale_at(last),
                 confirmation_valid_days=freshness.CONFIRMATION_VALID_FOR.days,

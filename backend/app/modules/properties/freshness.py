@@ -26,14 +26,14 @@ never touched.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Literal
 
-from sqlalchemy import and_, bindparam, func, literal, select, update
+from sqlalchemy import and_, func, literal, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import ColumnElement
-from sqlalchemy.types import DateTime, Interval
+from sqlalchemy.types import DateTime
 
 from app.modules.events import service as events
 from app.modules.properties.models import ClassifiedOffer
@@ -57,37 +57,63 @@ LISTING_RECONFIRMATION_DUE = "ListingReconfirmationDue"
 LISTING_AUTO_PAUSED_STALE = "ListingAutoPausedStale"
 
 
-# --- the clock -------------------------------------------------------------------------
+# --- the clock and the temporal boundary (TASK-012R, D-67) -------------------------------
+#
+# The same stored instant and the same decision instant must give the same
+# answer whatever TimeZone the database session uses. So:
+# * every instant is normalised to UTC before Python compares, adds, takes a
+#   date or builds an identity from it (a datetime carrying the session's
+#   ZoneInfo subtracts as WALL time across DST);
+# * SQL subtracts a pure elapsed duration (seconds), never a day-bearing
+#   interval (timestamptz − '21 days' moves by wall-clock days in the session
+#   zone);
+# * "today" is the UTC date of the database decision instant.
+# The database clock stays the authority; only its representation is fixed.
 
 
-def _aware(value: datetime) -> datetime:
-    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+def to_utc(value: datetime) -> datetime:
+    """The same instant in UTC. A naive value (SQLite) is UTC by convention."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def utc_date(value: datetime) -> date:
+    return to_utc(value).date()
+
+
+def canonical_instant(value: datetime) -> str:
+    """One spelling per instant, for identities and payloads."""
+    return to_utc(value).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
 
 def db_now(db: Session) -> datetime:
-    """The database's current time — the authoritative decision instant. On
-    SQLite (unit tests only) the process clock in UTC stands in."""
+    """The database's current time — the authoritative decision instant — in
+    UTC. On SQLite (unit tests only) the process clock in UTC stands in."""
     if db.get_bind().dialect.name == "postgresql":
         value = db.scalar(select(func.statement_timestamp()))
         assert value is not None
-        return _aware(value)
+        return to_utc(value)
     return datetime.now(timezone.utc)
 
 
 def _now_sql(db: Session, as_of: datetime | None) -> ColumnElement[Any]:
     if as_of is not None:
-        return literal(as_of, DateTime(timezone=True))
+        return literal(to_utc(as_of), DateTime(timezone=True))
     if db.get_bind().dialect.name == "postgresql":
         return func.statement_timestamp()
     return literal(datetime.now(timezone.utc), DateTime(timezone=True))
 
 
 def _minus(db: Session, now: ColumnElement[Any], delta: timedelta) -> ColumnElement[Any]:
+    """`now − delta` as elapsed time. On PostgreSQL the interval carries only
+    seconds (make_interval(secs => …)), which timestamptz arithmetic applies
+    as an exact duration in every session zone."""
     if db.get_bind().dialect.name == "postgresql":
-        return now - bindparam(None, delta, type_=Interval())
+        return now - func.make_interval(0, 0, 0, 0, 0, 0, delta.total_seconds())
     # SQLite has no interval arithmetic; the bound instant is computed here.
     value = getattr(now, "value", None)
-    base = value if isinstance(value, datetime) else datetime.now(timezone.utc)
+    base = to_utc(value) if isinstance(value, datetime) else datetime.now(timezone.utc)
     return literal(base - delta, DateTime(timezone=True))
 
 
@@ -98,7 +124,7 @@ def state(last_confirmed: datetime | None, now: datetime) -> State | None:
     """FRESH / RECONFIRM_DUE / STALE, or None when never confirmed."""
     if last_confirmed is None:
         return None
-    age = _aware(now) - _aware(last_confirmed)
+    age = to_utc(now) - to_utc(last_confirmed)  # elapsed, never wall-clock
     if age < CONFIRMATION_VALID_FOR:
         return FRESH
     if age < AUTO_PAUSE_AFTER:
@@ -107,11 +133,11 @@ def state(last_confirmed: datetime | None, now: datetime) -> State | None:
 
 
 def reconfirm_at(last_confirmed: datetime | None) -> datetime | None:
-    return None if last_confirmed is None else _aware(last_confirmed) + CONFIRMATION_VALID_FOR
+    return None if last_confirmed is None else to_utc(last_confirmed) + CONFIRMATION_VALID_FOR
 
 
 def stale_at(last_confirmed: datetime | None) -> datetime | None:
-    return None if last_confirmed is None else _aware(last_confirmed) + AUTO_PAUSE_AFTER
+    return None if last_confirmed is None else to_utc(last_confirmed) + AUTO_PAUSE_AFTER
 
 
 # --- the one public-visibility rule -------------------------------------------------------
@@ -143,7 +169,7 @@ def _payload(offer_id: str, property_id: str, last_confirmed: datetime | None) -
         "listing_id": offer_id,
         "property_id": property_id,
         "last_confirmed_available_at": (
-            _aware(last_confirmed).isoformat() if last_confirmed else None),
+            canonical_instant(last_confirmed) if last_confirmed else None),
         "confirmation_valid_days": CONFIRMATION_VALID_FOR.days,
         "auto_pause_after_days": AUTO_PAUSE_AFTER.days,
     }
@@ -154,7 +180,10 @@ def emit(db: Session, event_type: str, offer_id: str, property_id: str,
     """Emit once per (event, listing, confirmation cycle). A concurrent
     duplicate loses on the unique dedup key inside a savepoint, so it can never
     abort the caller's transaction."""
-    stamp = _aware(last_confirmed).isoformat() if last_confirmed else "none"
+    # The cycle's identity is the instant, not its spelling: an offset-bearing
+    # isoformat() of the same instant read under another session zone would
+    # be a second "cycle" (TASK-012A F12A-01C).
+    stamp = canonical_instant(last_confirmed) if last_confirmed else "none"
     key = f"{event_type}:{offer_id}:{stamp}"[:96]
     try:
         with db.begin_nested():
@@ -239,6 +268,6 @@ def preflight(db: Session, as_of: datetime | None = None) -> list[dict]:
         .order_by(ClassifiedOffer.last_confirmed_available_at)
     ).all()
     return [{"listing_id": r[0], "property_id": r[1],
-             "published_at": _aware(r[2]).isoformat() if r[2] else None,
-             "last_confirmed_available_at": _aware(r[3]).isoformat() if r[3] else None}
+             "published_at": canonical_instant(r[2]) if r[2] else None,
+             "last_confirmed_available_at": canonical_instant(r[3]) if r[3] else None}
             for r in rows]

@@ -21,7 +21,9 @@ def _connect_args(url: str) -> dict:
     Found by the OBS-01 readiness test hanging against a down database.
     """
     if url.startswith("postgresql"):
-        return {"connect_timeout": 3}
+        # Sessions start in UTC (TASK-012R, defence in depth only): business
+        # rules normalise instants themselves and stay correct in any zone.
+        return {"connect_timeout": 3, "options": "-c timezone=UTC"}
     return {}
 
 
