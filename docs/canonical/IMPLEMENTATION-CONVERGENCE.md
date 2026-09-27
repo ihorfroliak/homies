@@ -66,6 +66,22 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
+## TASK-012 → TASK-012A → TASK-012R — UTC temporal repair (2026-09-27)
+
+History: TASK-012 candidate `c4c8bfac7f59a0930d9403d1100f35dccf003ae6` →
+independent **TASK-012A** (Codex): **TASK_012_REQUIRES_TARGETED_FIXES**, P0 0 /
+P1 0 / **P2 1** / P3 0 ([archived verbatim](../reviews/2026-09-27-task012a-codex-task012-audit.md)).
+Accepted by the audit: concurrency, migration, quality, privacy/security (and
+NULL availability, CAS updates). Needs fix: freshness, public visibility,
+availability (UTC date), events (dedup) — one grouped finding:
+
+| Finding | Severity | State |
+|---|---|---|
+| F12A-01 session-TimeZone-dependent temporal invariants: (A) DST moves the 14/21-day lines, (B) move-in NOW/FROM_DATE on the session date, (C) one reminder cycle emitted twice across zones | P2 | **CLOSED BY BUILDER** (TASK-012R) — pending narrow re-audit |
+
+Canonical temporal invariant: D-67 / 04a §20. **TASK-012 is NOT accepted.**
+[Contract](../tasks/TASK-012R-utc-temporal-invariants.md). Production: NOT DEPLOYED.
+
 ## TASK-012 — listing freshness, availability, quality (2026-09-27, builder)
 
 **CLOSED BY BUILDER — PENDING ADJUDICATION / AUDIT.** Starts from the

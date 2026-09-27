@@ -170,3 +170,17 @@ general board, is shown as unknown, is recommended to add a date, and is not
 matched by an explicit `available_by` filter. No date is inferred or
 migrated in. Whether a known date means "now" is derived on the database's
 UTC date, never stored.
+
+## 20. Time: instants, elapsed durations, UTC dates
+
+Decision D-67 (TASK-012R, after TASK-012A F12A-01). The same stored instant
+and the same decision instant must produce the same business result whatever
+TimeZone a PostgreSQL session uses. Policy windows expressed in days (the
+freshness 14/21 days of §18) are **elapsed durations** — 14 × 24 h, 21 × 24 h
+— and are never computed by calendar-day arithmetic, so a DST change cannot
+move them. Application code treats every instant as UTC before subtracting,
+adding, taking a date or building an identity from it; "today", where a rule
+needs one (move-in, §19), is the UTC date of the database decision instant;
+an identity derived from an instant (an event's dedup key) uses one canonical
+UTC spelling. The database clock remains the authority; forcing sessions to
+UTC is defence in depth, never the reason a rule is correct.
