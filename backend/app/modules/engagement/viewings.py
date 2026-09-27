@@ -55,7 +55,7 @@ from app.modules.engagement.models import (
     ViewingWindow,
 )
 from app.modules.identity.models import User
-from app.modules.properties import authority
+from app.modules.properties import authority, freshness
 from app.modules.properties.models import ClassifiedOffer
 
 router = APIRouter(tags=["viewings"])
@@ -361,7 +361,7 @@ def list_slots(listing_id: str, start: date | None = None,
                days: int = Query(default=14, ge=1, le=MAX_SLOT_DAYS),
                user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     offer = _listing(db, listing_id)
-    if offer.status != "active":
+    if not freshness.is_public(offer, freshness.db_now(db)):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
     settings = _settings(db, listing_id)
     if settings is None:
@@ -376,7 +376,7 @@ def list_slots(listing_id: str, start: date | None = None,
 def request_viewing(listing_id: str, body: ViewingRequest,
                     user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     offer = _listing(db, listing_id)
-    if offer.status != "active":
+    if not freshness.is_public(offer, freshness.db_now(db)):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
     if _is_provider(db, user, offer):
         raise HTTPException(status.HTTP_409_CONFLICT, "This is your own listing")

@@ -37,7 +37,7 @@ from app.core.security import get_current_user, require_role
 from app.modules.identity.models import User
 from app.modules.media import sanitize, storage
 from app.modules.media.models import FileObject, ListingMedia, MediaAsset
-from app.modules.properties import authority
+from app.modules.properties import authority, freshness
 from app.modules.properties.models import ClassifiedOffer, Space
 
 router = APIRouter(tags=["media"])
@@ -300,7 +300,7 @@ def serve(asset_id: str, db: Session = Depends(get_db)):
     shown = db.scalar(
         select(func.count()).select_from(ListingMedia)
         .join(ClassifiedOffer, ClassifiedOffer.id == ListingMedia.listing_id)
-        .where(ListingMedia.media_asset_id == asset_id, ClassifiedOffer.status == "active")
+        .where(ListingMedia.media_asset_id == asset_id, freshness.public_clause(db))
     ) if asset else 0
     # Every condition is read from the database on every request: rejecting,
     # restricting, detaching or pausing takes effect at once (within the

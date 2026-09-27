@@ -28,7 +28,7 @@ Still open: the owner-facing "who asked for my number" view. The rows exist.
 """
 
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from prometheus_client import Counter
@@ -49,14 +49,18 @@ from app.modules.identity.models import User
 from app.modules.properties import (
     authority,
     coordination,
+    freshness,
     listing_rules,
     location,
     pricing,
+    quality,
     spaces,
 )
 from app.modules.properties.attributes import AttributeError_, load_catalogue
 from app.modules.properties.attributes import validate as validate_attributes
 from app.modules.properties.models import (
+    CONFIRMABLE_FROM,
+    PAUSABLE_FROM,
     PUBLISHABLE_FROM,
     AttributeDefinition,
     ClassifiedOffer,
@@ -72,9 +76,14 @@ from app.modules.properties.schemas import (
     PropertyLocationOut,
     PublicPlace,
     AttributeOut,
+    AvailabilityUpdate,
     AuthorityOut,
     ClassifiedCreate,
     ClassifiedOut,
+    ClassifiedOwnerOut,
+    FreshnessOut,
+    QualityCheckOut,
+    QualityOut,
     ClassifiedPage,
     ContactRevealOut,
     PropertyCreate,
@@ -91,7 +100,8 @@ from app.modules.properties.schemas import (
 router = APIRouter(tags=["properties"])
 
 
-_DERIVED_FIELDS = {"monthly_total_estimate", "move_in_total", "public_location", "place"}
+_DERIVED_FIELDS = {"monthly_total_estimate", "move_in_total", "public_location", "place",
+                   "move_in", "confirmed_on", "freshness"}
 
 
 def _area_refs(areas) -> list[AreaRef]:
@@ -140,7 +150,16 @@ def _location_out(db: Session, prop: Property) -> PropertyLocationOut | None:
     )
 
 
-def _public(offer: ClassifiedOffer) -> ClassifiedOut:
+def _move_in(offer: ClassifiedOffer, now: datetime) -> Literal["UNKNOWN", "NOW", "FROM_DATE"]:
+    """UNKNOWN when no date was given — never read as "available now" (D-64)."""
+    if offer.available_from is None:
+        return "UNKNOWN"
+    return "NOW" if offer.available_from <= now.date() else "FROM_DATE"
+
+
+def _public(offer: ClassifiedOffer, now: datetime | None = None) -> ClassifiedOut:
+    """`now` is the request's decision instant from the database clock; pass
+    it when serialising many offers so the clock is read once, not per row."""
     point = None
     if offer.public_latitude is not None and offer.public_longitude is not None:
         point = PublicLocation(
@@ -152,9 +171,15 @@ def _public(offer: ClassifiedOffer) -> ClassifiedOut:
     place = (
         _public_place(db, offer.listed_property.address_record) if db is not None else None
     )
+    if now is None:
+        now = freshness.db_now(db) if db is not None else datetime.now(timezone.utc)
+    last = offer.last_confirmed_available_at
     return ClassifiedOut(
         **{k: getattr(offer, k) for k in ClassifiedOut.model_fields if k not in _DERIVED_FIELDS},
         place=place,
+        move_in=_move_in(offer, now),
+        confirmed_on=freshness._aware(last).date() if last is not None else None,
+        freshness=freshness.state(last, now),
         monthly_total_estimate=offer.estimated_monthly_total_minor or 0,
         move_in_total=offer.move_in_total_minor or 0,
         public_location=point,
@@ -488,6 +513,9 @@ def publish_classified(
             status.HTTP_409_CONFLICT, "The space this offer is for has been archived"
         ) from None
     listing_rules.ensure_publishable(prop)
+    # Publication counts as confirmation (D-59); both stamps are the database
+    # clock's, read at the decision.
+    now = freshness.db_now(db)
     # Conditional on the status as it is in the database now, not as it was
     # loaded: an archived listing is never brought back by a stale request.
     published = cast(
@@ -498,7 +526,7 @@ def publish_classified(
                 ClassifiedOffer.id == offer.id,
                 ClassifiedOffer.status.in_(PUBLISHABLE_FROM),
             )
-            .values(status="active", published_at=datetime.now(timezone.utc))
+            .values(status="active", published_at=now, last_confirmed_available_at=now)
             .execution_options(synchronize_session=False)
         ),
     )
@@ -571,9 +599,178 @@ def pause_classified(
     # Taking a listing down needs no verification: a holder whose claim is
     # still unchecked must always be able to stop showing it.
     offer = _authorized_offer(db, user, offer_id, verified=False)
-    offer.status = "paused"
+    # Conditional on the stored status: an archived listing is never turned
+    # back into a paused one, which a later publish could bring back.
+    paused = cast(CursorResult, db.execute(
+        update(ClassifiedOffer)
+        .where(ClassifiedOffer.id == offer.id, ClassifiedOffer.status.in_(PAUSABLE_FROM))
+        .values(status="paused")
+        .execution_options(synchronize_session=False)
+    ))
+    if paused.rowcount != 1:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "This listing is archived")
+    db.commit()
+    db.refresh(offer)
+    return _public(offer)
+
+
+@router.post(
+    "/classifieds/{offer_id}/confirm",
+    response_model=ClassifiedOut,
+    responses={
+        403: {"description": "The caller's authority on the property is not VERIFIED."},
+        404: {"description": "Offer not found, or the caller holds no authority on its "
+                             "property — deliberately indistinguishable."},
+        409: {"description": (
+            "Not confirmable: the listing is a draft, paused or archived; or, when it is "
+            "stale, it no longer passes a publication check (space archived, property "
+            "type not publishable). RETRYABLE only with `Retry-After` (authority chain "
+            "changed during the decision), as for publish."
+        )},
+    },
+)
+def confirm_classified(
+    offer_id: str,
+    user=Depends(require_role("host")),
+    db: Session = Depends(get_db),
+):
+    """"This listing is still current" — one action for the owner or agent.
+
+    On an active listing it renews the confirmation (D-59). On a listing the
+    freshness sweep made `stale` it is also the way back: the listing becomes
+    active again, but only through every check publication makes — a verified
+    authority decided under the same locks, a listable space, a publishable
+    property type (D-61). Draft, paused and archived listings are refused;
+    publishing is a separate, explicit act. Confirming changes no content, so
+    the price-edit `version` is not bumped.
+    """
+    offer = _authorized_offer(db, user, offer_id, verified=True)
+    prop = coordination.lock_property(db, offer.property_id)
+    if prop is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
+    try:
+        authority.authorize_for_mutation(db, user, prop.id, "PUBLISH_LISTING", verified=True)
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_404_NOT_FOUND:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found") from None
+        raise
+    # The row lock, after the property lock and the proof locks (the order
+    # publication uses): from here the status cannot move under us — not by
+    # the sweep, not by a pause.
+    prior = db.scalar(
+        select(ClassifiedOffer.status).where(ClassifiedOffer.id == offer.id).with_for_update()
+    )
+    if prior not in CONFIRMABLE_FROM:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Only a published or stale listing can be confirmed as current",
+        )
+    try:
+        spaces.ensure_listable(offer.space)
+    except spaces.SpaceArchived:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "The space this offer is for has been archived"
+        ) from None
+    listing_rules.ensure_publishable(prop)
+    now = freshness.db_now(db)
+    db.execute(
+        update(ClassifiedOffer)
+        .where(ClassifiedOffer.id == offer.id, ClassifiedOffer.status == prior)
+        .values(status="active", last_confirmed_available_at=now)
+        .execution_options(synchronize_session=False)
+    )
+    db.refresh(offer)
+    reactivated = prior == "stale"
+    if reactivated:
+        location.refresh(offer, prop)
+    audit(
+        db,
+        actor=user.id,
+        action="classified.reactivated" if reactivated else "classified.confirmed",
+        entity_type="classified_offer",
+        entity_id=offer.id,
+    )
+    freshness.emit(
+        db,
+        freshness.LISTING_REACTIVATED if reactivated else freshness.LISTING_CONFIRMED,
+        offer.id, prop.id, now,
+    )
     db.commit()
     return _public(offer)
+
+
+@router.put("/classifieds/{offer_id}/availability", response_model=ClassifiedOut)
+def change_availability(
+    offer_id: str,
+    body: AvailabilityUpdate,
+    user=Depends(require_role("host")),
+    db: Session = Depends(get_db),
+):
+    """Move-in date and term (D-64). `available_from: null` means the date is
+    not given. Guarded by `expected_version` like a price change. Changing
+    availability is not a confirmation: that stays one explicit act."""
+    offer = _authorized_offer(db, user, offer_id, verified=False)
+    changed = cast(CursorResult, db.execute(
+        update(ClassifiedOffer)
+        .where(ClassifiedOffer.id == offer.id,
+               ClassifiedOffer.version == body.expected_version,
+               ClassifiedOffer.status != "archived")
+        .values(available_from=body.available_from, min_term_months=body.min_term_months,
+                open_ended=body.open_ended, version=ClassifiedOffer.version + 1)
+        .execution_options(synchronize_session=False)
+    ))
+    if changed.rowcount != 1:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "The listing was changed by someone else, or is archived. Reload and try again.",
+        )
+    audit(db, actor=user.id, action="classified.availability_changed",
+          entity_type="classified_offer", entity_id=offer.id)
+    db.commit()
+    db.refresh(offer)
+    return _public(offer)
+
+
+@router.get("/me/classifieds", response_model=list[ClassifiedOwnerOut])
+def my_classifieds(user=Depends(require_role("host")), db: Session = Depends(get_db)):
+    """Every listing this account may manage, in any status — including the
+    ones the public can no longer see — with its freshness and what would
+    improve it."""
+    now = freshness.db_now(db)
+    offers = db.scalars(
+        select(ClassifiedOffer)
+        .where(ClassifiedOffer.property_id.in_(
+            authority.authorized_property_ids(user.id, "PUBLISH_LISTING")))
+        .order_by(ClassifiedOffer.created_at.desc())
+    )
+    out = []
+    for offer in offers:
+        last = offer.last_confirmed_available_at
+        verdict = quality.assess(db, user.id, offer, offer.listed_property, now)
+        out.append(ClassifiedOwnerOut(
+            **_public(offer, now).model_dump(),
+            published_at=offer.published_at,
+            freshness_detail=FreshnessOut(
+                state=freshness.state(last, now),
+                last_confirmed_available_at=last,
+                reconfirm_at=freshness.reconfirm_at(last),
+                stale_at=freshness.stale_at(last),
+                confirmation_valid_days=freshness.CONFIRMATION_VALID_FOR.days,
+                auto_pause_after_days=freshness.AUTO_PAUSE_AFTER.days,
+            ),
+            quality=QualityOut(
+                completeness_percent=verdict.completeness_percent,
+                missing_required=verdict.missing_required,
+                recommended_improvements=verdict.recommended_improvements,
+                checks=[QualityCheckOut(code=c.code, required=c.required, passed=c.passed)
+                        for c in verdict.checks],
+            ),
+        ))
+    return out
 
 
 # Sorting is an allowlist, never a column name from the query string. Passing
@@ -703,7 +900,8 @@ def list_classifieds(
 
     total_expr = _monthly_total_sql()
     area_expr = _listed_area_sql()
-    filters = [ClassifiedOffer.status == "active"]
+    # The one public-visibility rule: active AND not stale (D-59).
+    filters = [freshness.public_clause(db)]
     if space_type is not None:
         filters.append(Space.space_type == space_type)
     filters.extend(_geo_filters(bbox, near_lat, near_lon, radius_m))
@@ -776,13 +974,9 @@ def list_classifieds(
     if has_elevator is not None:
         filters.append(Property.has_elevator.is_(has_elevator))
     if available_by is not None:
-        # A missing date means "available now", so it must not be filtered out.
-        filters.append(
-            or_(
-                ClassifiedOffer.available_from.is_(None),
-                ClassifiedOffer.available_from <= available_by,
-            )
-        )
+        # A missing date is NOT "available now" (D-64): only listings that
+        # state a date on or before the one asked for match.
+        filters.append(ClassifiedOffer.available_from <= available_by)
     if max_term_months is not None:
         # An open-ended offer commits the tenant to nothing, so it satisfies any
         # "I can stay at most N months" filter.
@@ -816,8 +1010,9 @@ def list_classifieds(
         .where(*filters)
     )
     rows = db.scalars(base.order_by(order).limit(limit).offset(offset))
+    now = freshness.db_now(db)
     return ClassifiedPage(
-        items=[_public(o) for o in rows],
+        items=[_public(o, now) for o in rows],
         total=int(total or 0),
         limit=limit,
         offset=offset,
@@ -827,9 +1022,11 @@ def list_classifieds(
 @router.get("/classifieds/{offer_id}", response_model=ClassifiedOut)
 def get_classified(offer_id: str, db: Session = Depends(get_db)):
     offer = db.get(ClassifiedOffer, offer_id)
-    if offer is None or offer.status != "active":
+    now = freshness.db_now(db)
+    # A stale listing answers exactly like an unpublished one (D-59).
+    if offer is None or not freshness.is_public(offer, now):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
-    return _public(offer)
+    return _public(offer, now)
 
 
 QUOTA_WINDOW = timedelta(hours=24)
@@ -914,7 +1111,7 @@ def reveal_contact(
             "Verify your phone number before contacting owners",
         )
     offer = db.get(ClassifiedOffer, offer_id)
-    if offer is None or offer.status != "active":
+    if offer is None or not freshness.is_public(offer, freshness.db_now(db)):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
     if offer.contact_mode != "phone" or not offer.contact_phone:
         # The owner chose messages. Saying so is not a leak, and pretending the

@@ -275,7 +275,8 @@ class ClassifiedOut(BaseModel):
     space_label: str | None = None
     # Where, as far as the public may know: the city and district, and a map
     # point whose precision the owner chose. Never the street address and
-    # never the flat's own coordinates unless the owner asked for that.
+    # never the flat's own coordinates — the public point is APPROXIMATE (grid
+    # centre) or absent (DISTRICT); there is no owner opt-in (D-58).
     city: str
     district: str
     public_location: PublicLocation | None = None
@@ -294,7 +295,17 @@ class ClassifiedOut(BaseModel):
     other_costs: str
     min_term_months: int | None = None
     open_ended: bool
+    # The move-in date as the owner gave it. None means NOT GIVEN — never
+    # "available now" (D-64). `move_in` says the same in words:
+    # UNKNOWN (no date), NOW (the date has passed), FROM_DATE (a future date).
     available_from: date | None = None
+    move_in: Literal["UNKNOWN", "NOW", "FROM_DATE"] = "UNKNOWN"
+    # Freshness (D-59): the day the offer was last confirmed as still current
+    # by someone with authority over the property — "confirmed current", which
+    # is NOT identity or property verification. FRESH, or RECONFIRM_DUE while
+    # the owner is being asked; a STALE listing is never public.
+    confirmed_on: date | None = None
+    freshness: Literal["FRESH", "RECONFIRM_DUE", "STALE"] | None = None
     contact_mode: str
     # What the tenant pays each month, so offers compare without arithmetic;
     # and what they need on the day they move in, deposit included. Both are
@@ -306,6 +317,67 @@ class ClassifiedOut(BaseModel):
     version: int
 
     model_config = {"from_attributes": True}
+
+
+class QualityCheckOut(BaseModel):
+    code: str
+    required: bool
+    passed: bool
+
+
+class QualityOut(BaseModel):
+    """Owner guidance (D-63): required = what publishing demands; recommended
+    = what makes the listing better. Deterministic; never used for ranking."""
+
+    completeness_percent: int
+    missing_required: list[str]
+    recommended_improvements: list[str]
+    checks: list[QualityCheckOut]
+
+
+class FreshnessOut(BaseModel):
+    """Owner view of freshness. `reconfirm_at` / `stale_at` are derived from
+    the last confirmation and the current policy, not stored (D-60)."""
+
+    state: Literal["FRESH", "RECONFIRM_DUE", "STALE"] | None
+    last_confirmed_available_at: datetime | None
+    reconfirm_at: datetime | None
+    stale_at: datetime | None
+    confirmation_valid_days: int
+    auto_pause_after_days: int
+
+
+class ClassifiedOwnerOut(ClassifiedOut):
+    """What the owner/agent sees of their own listing, in any status."""
+
+    published_at: datetime | None = None
+    freshness_detail: FreshnessOut
+    quality: QualityOut
+
+
+class AvailabilityUpdate(BaseModel):
+    """Move-in date and term. `expected_version` as for a price change: an
+    edit made against an older version loses with 409 instead of overwriting."""
+
+    expected_version: int
+    available_from: date | None = None
+    min_term_months: int | None = None
+    open_ended: bool = False
+
+    @model_validator(mode="after")
+    def check_term(self):
+        if self.open_ended:
+            if self.min_term_months is not None:
+                raise ValueError("an open-ended offer cannot also set min_term_months")
+            return self
+        if self.min_term_months is None:
+            raise ValueError("set min_term_months or mark the offer open_ended")
+        if self.min_term_months < MIN_CLASSIFIED_TERM_MONTHS:
+            raise ValueError(
+                f"min_term_months must be at least {MIN_CLASSIFIED_TERM_MONTHS}, "
+                "or mark the offer open_ended"
+            )
+        return self
 
 
 class ClassifiedPage(BaseModel):

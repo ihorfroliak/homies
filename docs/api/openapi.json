@@ -220,6 +220,48 @@
         "title": "AuthorityOut",
         "type": "object"
       },
+      "AvailabilityUpdate": {
+        "description": "Move-in date and term. `expected_version` as for a price change: an\nedit made against an older version loses with 409 instead of overwriting.",
+        "properties": {
+          "available_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available From"
+          },
+          "expected_version": {
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "min_term_months": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Term Months"
+          },
+          "open_ended": {
+            "default": false,
+            "title": "Open Ended",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "AvailabilityUpdate",
+        "type": "object"
+      },
       "BlackoutIn": {
         "properties": {
           "ends_at": {
@@ -396,6 +438,18 @@
             "title": "City",
             "type": "string"
           },
+          "confirmed_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed On"
+          },
           "contact_mode": {
             "title": "Contact Mode",
             "type": "string"
@@ -415,6 +469,22 @@
           "district": {
             "title": "District",
             "type": "string"
+          },
+          "freshness": {
+            "anyOf": [
+              {
+                "enum": [
+                  "FRESH",
+                  "RECONFIRM_DUE",
+                  "STALE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Freshness"
           },
           "id": {
             "title": "Id",
@@ -442,6 +512,16 @@
           "monthly_total_estimate": {
             "title": "Monthly Total Estimate",
             "type": "integer"
+          },
+          "move_in": {
+            "default": "UNKNOWN",
+            "enum": [
+              "UNKNOWN",
+              "NOW",
+              "FROM_DATE"
+            ],
+            "title": "Move In",
+            "type": "string"
           },
           "move_in_total": {
             "title": "Move In Total",
@@ -552,6 +632,245 @@
           "version"
         ],
         "title": "ClassifiedOut",
+        "type": "object"
+      },
+      "ClassifiedOwnerOut": {
+        "description": "What the owner/agent sees of their own listing, in any status.",
+        "properties": {
+          "admin_fee": {
+            "title": "Admin Fee",
+            "type": "integer"
+          },
+          "available_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available From"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "confirmed_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed On"
+          },
+          "contact_mode": {
+            "title": "Contact Mode",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "deposit_amount": {
+            "title": "Deposit Amount",
+            "type": "integer"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "district": {
+            "title": "District",
+            "type": "string"
+          },
+          "freshness": {
+            "anyOf": [
+              {
+                "enum": [
+                  "FRESH",
+                  "RECONFIRM_DUE",
+                  "STALE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Freshness"
+          },
+          "freshness_detail": {
+            "$ref": "#/components/schemas/FreshnessOut"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "media": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PublicMedia"
+            },
+            "title": "Media",
+            "type": "array"
+          },
+          "min_term_months": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Term Months"
+          },
+          "monthly_total_estimate": {
+            "title": "Monthly Total Estimate",
+            "type": "integer"
+          },
+          "move_in": {
+            "default": "UNKNOWN",
+            "enum": [
+              "UNKNOWN",
+              "NOW",
+              "FROM_DATE"
+            ],
+            "title": "Move In",
+            "type": "string"
+          },
+          "move_in_total": {
+            "title": "Move In Total",
+            "type": "integer"
+          },
+          "open_ended": {
+            "title": "Open Ended",
+            "type": "boolean"
+          },
+          "other_costs": {
+            "title": "Other Costs",
+            "type": "string"
+          },
+          "parking_fee": {
+            "title": "Parking Fee",
+            "type": "integer"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicPlace"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "property_id": {
+            "title": "Property Id",
+            "type": "string"
+          },
+          "public_location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicLocation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/QualityOut"
+          },
+          "rent_amount": {
+            "title": "Rent Amount",
+            "type": "integer"
+          },
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          },
+          "space_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Space Label"
+          },
+          "space_type": {
+            "title": "Space Type",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "utilities_amount": {
+            "title": "Utilities Amount",
+            "type": "integer"
+          },
+          "utilities_included": {
+            "title": "Utilities Included",
+            "type": "boolean"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "property_id",
+          "space_id",
+          "space_type",
+          "city",
+          "district",
+          "title",
+          "description",
+          "status",
+          "rent_amount",
+          "currency",
+          "admin_fee",
+          "utilities_amount",
+          "utilities_included",
+          "parking_fee",
+          "deposit_amount",
+          "other_costs",
+          "open_ended",
+          "contact_mode",
+          "monthly_total_estimate",
+          "move_in_total",
+          "version",
+          "freshness_detail",
+          "quality"
+        ],
+        "title": "ClassifiedOwnerOut",
         "type": "object"
       },
       "ClassifiedPage": {
@@ -717,6 +1036,81 @@
           "is_active_market"
         ],
         "title": "CountryOut",
+        "type": "object"
+      },
+      "FreshnessOut": {
+        "description": "Owner view of freshness. `reconfirm_at` / `stale_at` are derived from\nthe last confirmation and the current policy, not stored (D-60).",
+        "properties": {
+          "auto_pause_after_days": {
+            "title": "Auto Pause After Days",
+            "type": "integer"
+          },
+          "confirmation_valid_days": {
+            "title": "Confirmation Valid Days",
+            "type": "integer"
+          },
+          "last_confirmed_available_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Confirmed Available At"
+          },
+          "reconfirm_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reconfirm At"
+          },
+          "stale_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale At"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "FRESH",
+                  "RECONFIRM_DUE",
+                  "STALE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          }
+        },
+        "required": [
+          "state",
+          "last_confirmed_available_at",
+          "reconfirm_at",
+          "stale_at",
+          "confirmation_valid_days",
+          "auto_pause_after_days"
+        ],
+        "title": "FreshnessOut",
         "type": "object"
       },
       "GeoAreaOut": {
@@ -2391,6 +2785,67 @@
           "country_code"
         ],
         "title": "PublicPlace",
+        "type": "object"
+      },
+      "QualityCheckOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "required",
+          "passed"
+        ],
+        "title": "QualityCheckOut",
+        "type": "object"
+      },
+      "QualityOut": {
+        "description": "Owner guidance (D-63): required = what publishing demands; recommended\n= what makes the listing better. Deterministic; never used for ranking.",
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/QualityCheckOut"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "completeness_percent": {
+            "title": "Completeness Percent",
+            "type": "integer"
+          },
+          "missing_required": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Required",
+            "type": "array"
+          },
+          "recommended_improvements": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recommended Improvements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "completeness_percent",
+          "missing_required",
+          "recommended_improvements",
+          "checks"
+        ],
+        "title": "QualityOut",
         "type": "object"
       },
       "RefreshRequest": {
@@ -4691,6 +5146,121 @@
         ]
       }
     },
+    "/v1/classifieds/{offer_id}/availability": {
+      "put": {
+        "description": "Move-in date and term (D-64). `available_from: null` means the date is\nnot given. Guarded by `expected_version` like a price change. Changing\navailability is not a confirmation: that stays one explicit act.",
+        "operationId": "change_availability_v1_classifieds__offer_id__availability_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AvailabilityUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassifiedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Change Availability",
+        "tags": [
+          "properties"
+        ]
+      }
+    },
+    "/v1/classifieds/{offer_id}/confirm": {
+      "post": {
+        "description": "\"This listing is still current\" — one action for the owner or agent.\n\nOn an active listing it renews the confirmation (D-59). On a listing the\nfreshness sweep made `stale` it is also the way back: the listing becomes\nactive again, but only through every check publication makes — a verified\nauthority decided under the same locks, a listable space, a publishable\nproperty type (D-61). Draft, paused and archived listings are refused;\npublishing is a separate, explicit act. Confirming changes no content, so\nthe price-edit `version` is not bumped.",
+        "operationId": "confirm_classified_v1_classifieds__offer_id__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassifiedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The caller's authority on the property is not VERIFIED."
+          },
+          "404": {
+            "description": "Offer not found, or the caller holds no authority on its property — deliberately indistinguishable."
+          },
+          "409": {
+            "description": "Not confirmable: the listing is a draft, paused or archived; or, when it is stale, it no longer passes a publication check (space archived, property type not publishable). RETRYABLE only with `Retry-After` (authority chain changed during the decision), as for publish."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Confirm Classified",
+        "tags": [
+          "properties"
+        ]
+      }
+    },
     "/v1/classifieds/{offer_id}/contact": {
       "post": {
         "description": "Disclose the owner's phone number to a verified account, and record it.\n\nA *verified phone* is the gate, not merely sign-in. An address costs a\nscraper nothing; a SIM costs money, and `users.phone` is unique, so the\ncost is paid per account rather than once. Every number taken still leaves\na row naming who took it. Anonymous and unverified visitors get the message\nchannel instead.\n\nEmail verification is deliberately NOT a second gate here: it adds a round\ntrip for the tenant and nothing an automated collector cannot buy in bulk.\nTightening that is a product call, not a technical gap.",
@@ -5625,6 +6195,37 @@
         "summary": "Me",
         "tags": [
           "identity"
+        ]
+      }
+    },
+    "/v1/me/classifieds": {
+      "get": {
+        "description": "Every listing this account may manage, in any status — including the\nones the public can no longer see — with its freshness and what would\nimprove it.",
+        "operationId": "my_classifieds_v1_me_classifieds_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ClassifiedOwnerOut"
+                  },
+                  "title": "Response My Classifieds V1 Me Classifieds Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Classifieds",
+        "tags": [
+          "properties"
         ]
       }
     },

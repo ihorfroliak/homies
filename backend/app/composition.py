@@ -91,6 +91,7 @@ def phase1_routers() -> list[APIRouter]:
 
 def phase1_workers() -> list[BackgroundWorker]:
     from app.modules.events.worker import worker as notification_worker
+    from app.modules.properties.freshness_worker import worker as freshness_worker
 
     return [
         BackgroundWorker(
@@ -98,7 +99,15 @@ def phase1_workers() -> list[BackgroundWorker]:
             start=notification_worker.start,
             stop=notification_worker.stop,
             enabled=lambda: settings.notification_worker_enabled,
-        )
+        ),
+        # TASK-012: records `stale` and reminder events. Off by default; the
+        # public rule never waits for it (see properties/freshness.py).
+        BackgroundWorker(
+            name="listing-freshness",
+            start=freshness_worker.start,
+            stop=freshness_worker.stop,
+            enabled=lambda: settings.listing_freshness_worker_enabled,
+        ),
     ]
 
 

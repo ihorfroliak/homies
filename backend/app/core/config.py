@@ -61,6 +61,12 @@ class Settings(BaseSettings):
     notification_worker_batch: int = 20
     notification_stale_processing_seconds: int = 60  # reclaim stuck PROCESSING
     notification_worker_enabled: bool = True  # disabled in tests (deterministic)
+    # Listing freshness sweep (TASK-012). Off by default: visibility is decided
+    # on read; the sweep only records `stale` and reminder events. The CLI
+    # `python -m app.scripts.listing_freshness sweep` does the same on demand.
+    listing_freshness_worker_enabled: bool = False
+    listing_freshness_interval_seconds: float = 3600.0
+    listing_freshness_batch: int = 500
     email_provider: str = "stub"  # stub | smtp
     smtp_host: str = ""
     smtp_port: int = 587

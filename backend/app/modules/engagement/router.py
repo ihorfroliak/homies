@@ -42,7 +42,7 @@ from app.modules.identity.models import (
     PersonLegalParty,
     User,
 )
-from app.modules.properties import authority
+from app.modules.properties import authority, freshness
 from app.modules.properties.models import ClassifiedOffer, PropertyAuthority
 
 router = APIRouter(tags=["conversations"])
@@ -236,7 +236,9 @@ def start_conversation(
     db: Session = Depends(get_db),
 ):
     offer = db.get(ClassifiedOffer, offer_id)
-    if offer is None or offer.status != "active":
+    # The one public-visibility rule (freshness.py): a stale listing takes no
+    # new conversation, exactly like an unpublished one.
+    if offer is None or not freshness.is_public(offer, freshness.db_now(db)):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
     if authority.can_act(db, user.id, offer.property_id, "MANAGE_MESSAGES", verified=False):
         raise HTTPException(status.HTTP_409_CONFLICT, "This is your own listing")

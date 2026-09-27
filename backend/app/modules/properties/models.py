@@ -194,8 +194,16 @@ class Property(Base):
 MIN_CLASSIFIED_TERM_MONTHS = 1
 
 
-# Statuses a listing may be published from. `archived` is terminal.
-PUBLISHABLE_FROM = ("draft", "paused", "active")
+# Lifecycle (lower-case in this code; 04 §43 spells them PUBLISHED, STALE, …):
+# draft → active → paused | stale | archived. `stale` is set only by the
+# freshness sweep (TASK-012, D-61); `archived` is terminal.
+OFFER_STATUSES = ("draft", "active", "paused", "stale", "archived")
+PUBLISHABLE_FROM = ("draft", "paused", "active", "stale")
+# What an owner's "confirm it is still current" may act on.
+CONFIRMABLE_FROM = ("active", "stale")
+# What a manual pause may act on — never an archived listing, which a later
+# publish would otherwise bring back.
+PAUSABLE_FROM = ("draft", "active", "stale", "paused")
 
 
 class ClassifiedOffer(Base):
@@ -212,6 +220,12 @@ class ClassifiedOffer(Base):
             ["spaces.id", "spaces.property_id"],
             name="fk_classified_offers_space_same_property",
         ),
+        CheckConstraint(
+            "status IN ('draft', 'active', 'paused', 'stale', 'archived')",
+            name="ck_classified_offers_status",
+        ),
+        # The public-visibility rule and the freshness sweep both read these two.
+        Index("ix_classified_offers_status_confirmed", "status", "last_confirmed_available_at"),
         CheckConstraint(
             # No EXACT: public exact residential coordinates are prohibited (D-58).
             "public_location_precision IN ('APPROXIMATE', 'DISTRICT')",
@@ -296,7 +310,7 @@ class ClassifiedOffer(Base):
     owner_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
     title: Mapped[str] = mapped_column(String(140))
     description: Mapped[str] = mapped_column(String(4000), default="")
-    # draft -> active -> paused | archived. Publication moves only
+    # draft -> active -> paused | stale | archived. Publication moves only
     # PUBLISHABLE_FROM -> active, conditionally on the stored status.
     status: Mapped[str] = mapped_column(String(16), default="draft", index=True)
 
@@ -378,6 +392,13 @@ class ClassifiedOffer(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # When someone with authority last confirmed the offer is still current
+    # (04 §43). Publication counts as confirmation. Everything else about
+    # freshness — due, stale, public or not — is derived from this, the
+    # policy and the database clock: see freshness.py.
+    last_confirmed_available_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class ContactReveal(Base):

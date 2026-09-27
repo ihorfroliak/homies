@@ -129,7 +129,8 @@ def test_phase1_startup_starts_no_legacy_worker(monkeypatch):
     monkeypatch.setattr(booking_expiry_worker, "stop", lambda: None)
 
     fresh = create_phase1_app()
-    assert fresh.state.worker_names == ("notifications",)
+    # The freshness sweep is registered but off by default (TASK-012).
+    assert fresh.state.worker_names == ("notifications", "listing-freshness")
     with TestClient(fresh):
         assert fresh.state.started_workers == ("notifications",)
     assert started == ["notifications"]
