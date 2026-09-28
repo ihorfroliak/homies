@@ -401,6 +401,56 @@ class ClassifiedOffer(Base):
     last_confirmed_available_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Public eligibility episodes (TASK-014, publicity.py). 0 = never public;
+    # +1 on every not-public → public transition — decided by the public rule
+    # (freshness.is_public), not by the status label, so a listing whose
+    # confirmation silently expired and is then confirmed starts a new
+    # episode. Never incremented on public → public (a reconfirmation, a
+    # republish of an active listing). `public_since` is the database instant
+    # the current (or last) episode began.
+    public_generation: Mapped[int] = mapped_column(
+        BigInteger,
+        CheckConstraint("public_generation >= 0",
+                        name="ck_classified_offers_public_generation_nonnegative"),
+        default=0, server_default="0",
+    )
+    public_since: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+
+
+class ListingPublicGeneration(Base):
+    """One row per public episode of a listing (TASK-014): the durable work
+    identity `(listing_id, public_generation)` for saved-search alerts.
+
+    Written in the same transaction as the transition that opened the episode
+    and its `ListingBecamePublic` event (publicity.py), so an episode can
+    never exist without its work item or the other way round. The alert
+    worker (app/modules/alerts) owns the processing columns; acknowledging
+    generation N touches only N's row, never N+1's.
+    """
+
+    __tablename__ = "listing_public_generations"
+    __table_args__ = (
+        CheckConstraint("public_generation >= 1", name="ck_listing_public_generations_positive"),
+        CheckConstraint(
+            "alert_status IN ('pending', 'processing', 'done', 'superseded')",
+            name="ck_listing_public_generations_alert_status",
+        ),
+        Index("ix_listing_public_generations_pending", "alert_status", "became_public_at"),
+    )
+
+    listing_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("classified_offers.id"), primary_key=True
+    )
+    public_generation: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    became_public_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    event_id: Mapped[str] = mapped_column(String(36))
+    alert_status: Mapped[str] = mapped_column(String(12), default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str] = mapped_column(String(255), default="")
 
 
 class ContactReveal(Base):

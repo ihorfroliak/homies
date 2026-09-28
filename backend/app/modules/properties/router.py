@@ -52,6 +52,7 @@ from app.modules.properties import (
     listing_rules,
     location,
     pricing,
+    publicity,
     search,
     quality,
     spaces,
@@ -524,19 +525,14 @@ def publish_classified(
     now = freshness.db_now(db)
     # Conditional on the status as it is in the database now, not as it was
     # loaded: an archived listing is never brought back by a stale request.
-    published = cast(
-        CursorResult,
-        db.execute(
-            update(ClassifiedOffer)
-            .where(
-                ClassifiedOffer.id == offer.id,
-                ClassifiedOffer.status.in_(PUBLISHABLE_FROM),
-            )
-            .values(status="active", published_at=now, last_confirmed_available_at=now)
-            .execution_options(synchronize_session=False)
-        ),
+    # Through the one public-transition seam (TASK-014): a new public episode
+    # — generation, event and alert work item — only if it was not public.
+    published = publicity.make_public(
+        db, offer.id, allowed_from=PUBLISHABLE_FROM,
+        values={"status": "active", "published_at": now, "last_confirmed_available_at": now},
+        now=now,
     )
-    if published.rowcount != 1:
+    if not published.applied:
         db.rollback()
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -682,11 +678,12 @@ def confirm_classified(
         ) from None
     listing_rules.ensure_publishable(prop)
     now = freshness.db_now(db)
-    db.execute(
-        update(ClassifiedOffer)
-        .where(ClassifiedOffer.id == offer.id, ClassifiedOffer.status == prior)
-        .values(status="active", last_confirmed_available_at=now)
-        .execution_options(synchronize_session=False)
+    # The same seam as publication (TASK-014): confirming a listing that was
+    # still public keeps its episode; confirming one that was not — stale, or
+    # `active` whose confirmation silently expired — opens a new one.
+    publicity.make_public(
+        db, offer.id, allowed_from=(prior,),
+        values={"status": "active", "last_confirmed_available_at": now}, now=now,
     )
     db.refresh(offer)
     reactivated = prior == "stale"

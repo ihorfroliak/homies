@@ -56,6 +56,8 @@ TAG_DESCRIPTIONS = {
     "viewings": "Viewing windows, slots and appointments.",
     "media": "Property photos and floor plans, moderated before they are public.",
     "geography": "Countries, administrative areas and localities: public reference data.",
+    "saved": "A user's saved listings and saved searches (TASK-014).",
+    "notifications": "A user's inbox, notification preferences and unsubscribe (TASK-014).",
     "admin": "Operations surface: users, audit, notifications, property authority.",
     "ops": "Health and metrics.",
     # Legacy tags — only present when a legacy test composition includes them.
@@ -76,6 +78,8 @@ def phase1_routers() -> list[APIRouter]:
     from app.modules.identity.router import router as identity_router
     from app.modules.media.router import router as media_router
     from app.modules.properties.router import router as properties_router
+    from app.modules.saved.router import router as saved_router
+    from app.modules.alerts.router import router as alerts_router
 
     return [
         identity_router,
@@ -85,12 +89,15 @@ def phase1_routers() -> list[APIRouter]:
         viewings_router,
         media_router,
         geography_router,
+        saved_router,
+        alerts_router,
         admin_router,
     ]
 
 
 def phase1_workers() -> list[BackgroundWorker]:
     from app.modules.events.worker import worker as notification_worker
+    from app.modules.alerts.worker import worker as alert_worker
     from app.modules.properties.freshness_worker import worker as freshness_worker
 
     return [
@@ -107,6 +114,14 @@ def phase1_workers() -> list[BackgroundWorker]:
             start=freshness_worker.start,
             stop=freshness_worker.stop,
             enabled=lambda: settings.listing_freshness_worker_enabled,
+        ),
+        # TASK-014: new public listing episodes → saved-search matches →
+        # deliveries (revalidated at send time) → inbox / email.
+        BackgroundWorker(
+            name="saved-search-alerts",
+            start=alert_worker.start,
+            stop=alert_worker.stop,
+            enabled=lambda: settings.saved_search_worker_enabled,
         ),
     ]
 

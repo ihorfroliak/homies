@@ -67,6 +67,17 @@ class Settings(BaseSettings):
     listing_freshness_worker_enabled: bool = False
     listing_freshness_interval_seconds: float = 3600.0
     listing_freshness_batch: int = 500
+    # Saved searches & alerts (TASK-014). The worker evaluates new public
+    # listing episodes and sends alerts after send-time revalidation.
+    saved_search_worker_enabled: bool = True
+    saved_search_worker_interval_seconds: float = 5.0
+    saved_search_work_batch: int = 20
+    saved_search_delivery_batch: int = 50
+    saved_search_reconcile_every: int = 60  # passes
+    saved_listings_per_user: int = 500
+    saved_searches_per_user: int = 50
+    # Where links in alert emails point (the web app). Public, not a secret.
+    public_web_base_url: str = "http://localhost:3000"
     email_provider: str = "stub"  # stub | smtp
     smtp_host: str = ""
     smtp_port: int = 587

@@ -28,7 +28,7 @@ from app.core.config import settings
 from app.core.db import SessionLocal
 from app.modules.events import metrics
 from app.modules.events.models import Notification
-from app.modules.events.providers import channel_for
+from app.modules.events.providers import DeliveryResult, channel_for
 from app.modules.events.templates import render
 
 log = logging.getLogger("homies.notifications")
@@ -85,15 +85,42 @@ def claim_batch(db: Session, limit: int) -> list[Notification]:
     return list(rows)
 
 
+def recipient_address(db: Session, notif: Notification, *,
+                      require_verified: bool = False) -> str | None:
+    """Where this notification goes, resolved at SEND time (TASK-014, Phase-A
+    defect): email → the recipient account's CURRENT email address (never a
+    value cached in the queue, never the user id); any other channel → none.
+
+    These are transactional account messages, for which the identity canon
+    requires no verified address; PRODUCT alerts do (alerts/delivery.py,
+    04a §22) and pass `require_verified`."""
+    if notif.channel != "email" or not notif.recipient_user_id:
+        return None
+    from app.modules.identity.models import User
+
+    user = db.get(User, notif.recipient_user_id)
+    if user is None or not user.email:
+        return None
+    if require_verified and user.email_verified_at is None:
+        return None
+    return user.email
+
+
 def deliver_one(db: Session, notif: Notification) -> str:
     channel = channel_for(notif.channel)
     msg = render(notif.template_id or notif.event_type, notif.locale,
                  {"correlation_id": notif.correlation_id, **(notif.payload or {})})
     notif.attempts += 1
-    result = channel.send(
-        to=notif.recipient_user_id, subject=msg["subject"], body=msg["body"],
-        idem_key=notif.id,  # stable per notification -> idempotent redelivery
-    )
+    to = recipient_address(db, notif)
+    if notif.channel == "email" and to is None:
+        # No account address to send to: permanent, never retried, never sent
+        # to anything else.
+        result = DeliveryResult(ok=False, transient=False, error="no recipient email address")
+    else:
+        result = channel.send(
+            to=to, subject=msg["subject"], body=msg["body"],
+            idem_key=notif.id,  # stable per notification -> idempotent redelivery
+        )
     if result.ok:
         delivered_at = _now()
         notif.status = "delivered"

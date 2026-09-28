@@ -29,8 +29,11 @@ from app.modules.payments.models import Payment, WebhookEvent  # noqa: F401
 from app.modules.properties.models import (  # noqa: F401
     ClassifiedOffer,
     ContactReveal,
+    ListingPublicGeneration,
     Property,
 )
+from app.modules.saved.models import SavedListing, SavedSearch  # noqa: F401
+from app.modules.alerts.models import AlertDelivery, SavedSearchMatch  # noqa: F401
 
 config = context.config
 

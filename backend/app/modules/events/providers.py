@@ -38,7 +38,10 @@ class StubEmailChannel:
     good enough until real SMTP/SendGrid keys exist."""
 
     def send(self, to, subject, body, idem_key) -> DeliveryResult:
-        log.info("email[stub] to=%s subj=%s idem=%s", to, subject, idem_key)
+        # Never the address itself in a log line (TASK-014 privacy): whether
+        # there was one is all an operator needs to see.
+        log.info("email[stub] recipient=%s subj=%s idem=%s",
+                 "present" if to else "missing", subject, idem_key)
         return DeliveryResult(ok=True)
 
 

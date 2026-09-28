@@ -46,14 +46,15 @@ def area_path(db: Session, area_id: str | None) -> list[AdministrativeArea]:
     return list(reversed(path))
 
 
-def descendant_area_ids(area_id: str | Iterable[str]):
+def descendant_area_ids(area_id: str | Iterable[str], name: str = "area_tree"):
     """A selectable of the area(s) and every area below them (one recursive
-    CTE, seeded with all of them). Works on PostgreSQL and SQLite."""
+    CTE, seeded with all of them). Works on PostgreSQL and SQLite. `name`
+    lets several of them live in one statement (TASK-014 alert matching)."""
     seeds = [area_id] if isinstance(area_id, str) else list(area_id)
     tree = (
         select(AdministrativeArea.id)
         .where(AdministrativeArea.id.in_(seeds))
-        .cte("area_tree", recursive=True)
+        .cte(name, recursive=True)
     )
     tree = tree.union_all(
         select(AdministrativeArea.id).where(AdministrativeArea.parent_id == tree.c.id)

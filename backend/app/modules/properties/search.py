@@ -38,7 +38,7 @@ import re
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, NoReturn
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode
 
 from fastapi import Depends, HTTPException, Query, status
 from prometheus_client import Counter
@@ -178,8 +178,21 @@ class SearchQuery:
         return sorted({name for name, _ in self.params() if name != "sort"})
 
 
+class InvalidSearchQuery(ValueError):
+    """The query is structurally invalid. Live search answers 422; a stored
+    saved-search query becomes INVALID (TASK-014) — never a broader search."""
+
+
 def _refuse(detail: str) -> NoReturn:
-    raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail)
+    raise InvalidSearchQuery(detail)
+
+
+def _bounded(name: str, value, low, high) -> None:
+    # The same bounds the HTTP layer declares (Query ge/le), re-checked here so
+    # a query that did not come through FastAPI (a stored saved search) is held
+    # to exactly the same contract.
+    if value is not None and not (low <= value <= high):
+        _refuse(f"{name} must be between {low} and {high}")
 
 
 def _budget(name: str, values: list[str] | None, limit: int = MAX_VALUES_PER_DIMENSION) -> list[str]:
@@ -292,6 +305,70 @@ def search_query(
     db: Session = Depends(get_db),
 ) -> SearchQuery:
     """Parse and validate the canonical discovery query (shared by list and map)."""
+    try:
+        return build_query(
+            db, country_code=country_code, admin_area_id=admin_area_id,
+            locality_id=locality_id, geo_area_id=geo_area_id, city=city, district=district,
+            bbox=bbox, near_lat=near_lat, near_lon=near_lon, radius_m=radius_m,
+            category=category, subtype=subtype, space_type=space_type, min_rooms=min_rooms,
+            min_area_m2=min_area_m2, furnished=furnished, parking=parking,
+            pets_allowed=pets_allowed, has_elevator=has_elevator, has=has,
+            min_rent=min_rent, max_rent=max_rent, min_monthly_total=min_monthly_total,
+            max_monthly_total=max_monthly_total, max_move_in_total=max_move_in_total,
+            available_by=available_by, max_term_months=max_term_months, sort=sort,
+        )
+    except InvalidSearchQuery as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
+
+
+def build_query(
+    db: Session,
+    *,
+    country_code: str | None = None,
+    admin_area_id: list[str] | None = None,
+    locality_id: list[str] | None = None,
+    geo_area_id: list[str] | None = None,
+    city: str | None = None,
+    district: str | None = None,
+    bbox: str | None = None,
+    near_lat: float | None = None,
+    near_lon: float | None = None,
+    radius_m: int | None = None,
+    category: list[str] | None = None,
+    subtype: list[str] | None = None,
+    space_type: list[str] | None = None,
+    min_rooms: int | None = None,
+    min_area_m2: int | None = None,
+    furnished: str | None = None,
+    parking: str | None = None,
+    pets_allowed: bool | None = None,
+    has_elevator: bool | None = None,
+    has: list[str] | None = None,
+    min_rent: int | None = None,
+    max_rent: int | None = None,
+    min_monthly_total: int | None = None,
+    max_monthly_total: int | None = None,
+    max_move_in_total: int | None = None,
+    available_by: date | None = None,
+    max_term_months: int | None = None,
+    sort: str = DEFAULT_SORT,
+) -> SearchQuery:
+    """The ONE place a SearchQuery is validated and built (TASK-014): the live
+    list and map (through `search_query`) and every stored saved search
+    (through `parse_query_string`) go through it, so a saved search can never
+    mean something different from the same search typed today. Raises
+    InvalidSearchQuery."""
+    _bounded("near_lat", near_lat, -90, 90)
+    _bounded("near_lon", near_lon, -180, 180)
+    _bounded("radius_m", radius_m, 1, 50_000)
+    _bounded("min_rooms", min_rooms, 0, MAX_ROOMS)
+    _bounded("min_area_m2", min_area_m2, 0, MAX_AREA_M2)
+    for money_name, money in (("min_rent", min_rent), ("max_rent", max_rent),
+                              ("min_monthly_total", min_monthly_total),
+                              ("max_monthly_total", max_monthly_total),
+                              ("max_move_in_total", max_move_in_total)):
+        _bounded(money_name, money, 0, MAX_MONEY_MINOR)
+    _bounded("max_term_months", max_term_months, 0, MAX_TERM_MONTHS)
     if country_code == "":
         country_code = None
     if country_code is not None and not re.fullmatch(r"[A-Z]{2}", country_code):
@@ -373,6 +450,95 @@ def search_query(
     return query
 
 
+# --- stored queries (TASK-014) -------------------------------------------------------------
+#
+# A saved search persists `SearchQuery.canonical()` — the TASK-013 canonical
+# query, nothing else. Reading it back goes through `build_query`, the same
+# validation the live list and map use. The parser is STRICTER than the HTTP
+# layer on purpose: an unknown parameter name or a scalar given twice is an
+# error, never silently dropped — dropping a criterion would broaden a stored
+# search and notify on listings the user never asked for.
+
+REPEATABLE = frozenset({"admin_area_id", "locality_id", "geo_area_id", "category", "subtype",
+                        "space_type", "has"})
+_INT = frozenset({"radius_m", "min_rooms", "min_area_m2", "min_rent", "max_rent",
+                  "min_monthly_total", "max_monthly_total", "max_move_in_total",
+                  "max_term_months"})
+_FLOAT = frozenset({"near_lat", "near_lon"})
+_BOOL = frozenset({"pets_allowed", "has_elevator"})
+_TEXT = frozenset({"country_code", "city", "district", "bbox", "furnished", "parking", "sort"})
+QUERY_PARAMETERS = REPEATABLE | _INT | _FLOAT | _BOOL | _TEXT | {"available_by"}
+_TRUE = frozenset({"true", "1", "yes", "on"})
+_FALSE = frozenset({"false", "0", "no", "off"})
+
+
+def _convert(name: str, value: str):
+    if name in _INT:
+        if not re.fullmatch(r"[0-9]{1,20}", value):
+            _refuse(f"{name} must be a whole number")
+        return int(value)
+    if name in _FLOAT:
+        try:
+            number = float(value)
+        except ValueError:
+            _refuse(f"{name} must be a number")
+        if not math.isfinite(number):
+            _refuse(f"{name} must be a finite number")
+        return number
+    if name in _BOOL:
+        if value.lower() in _TRUE:
+            return True
+        if value.lower() in _FALSE:
+            return False
+        _refuse(f"{name} must be true or false")
+    if name == "available_by":
+        if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", value):
+            _refuse("available_by must be a date (YYYY-MM-DD)")
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            _refuse("available_by must be a date (YYYY-MM-DD)")
+    return value
+
+
+def parse_query_string(db: Session, raw: str) -> SearchQuery:
+    """A URL query string (a stored canonical query, or the query of a search
+    page being saved) → the validated SearchQuery. Raises InvalidSearchQuery."""
+    if len(raw) > MAX_CANONICAL_LENGTH:
+        _refuse(f"the query is longer than {MAX_CANONICAL_LENGTH} characters")
+    try:
+        pairs = parse_qsl(raw, keep_blank_values=True, strict_parsing=bool(raw),
+                          max_num_fields=MAX_VALUES_PER_DIMENSION * len(QUERY_PARAMETERS))
+    except ValueError:
+        _refuse("the query is not a valid URL query string")
+    values: dict[str, Any] = {}
+    for name, value in pairs:
+        if name not in QUERY_PARAMETERS:
+            _refuse(f"'{name}' is not a search parameter")
+        _no_nul(name, value)
+        if name in REPEATABLE:
+            values.setdefault(name, []).append(value)
+            continue
+        if name in values:
+            _refuse(f"{name} is given more than once")
+        values[name] = None if value == "" else _convert(name, value)
+    if values.get("sort") is None:
+        values.pop("sort", None)
+    return build_query(db, **values)
+
+
+def check_references(db: Session, q: SearchQuery) -> None:
+    """Every place a stored query names still exists and is ACTIVE. Live
+    search simply finds nothing for a retired id; a saved search that silently
+    matched nothing (or, worse, were rewritten without it) would lie to its
+    owner — so it is reported INVALID instead (TASK-014)."""
+    for model, ids in ((AdministrativeArea, q.admin_area_ids), (Locality, q.locality_ids),
+                       (GeoArea, q.geo_area_ids)):
+        if ids and db.scalar(select(func.count()).select_from(model).where(
+                model.id.in_(ids), model.status == "ACTIVE")) != len(ids):
+            _refuse(f"a {model.__tablename__} id in the query no longer exists or is retired")
+
+
 # --- SQL ---------------------------------------------------------------------------------
 
 
@@ -386,7 +552,9 @@ def _addresses_where(*conditions) -> ColumnElement[bool]:
     return Property.address_id.in_(select(Address.id).where(*conditions))
 
 
-def filters(db: Session, q: SearchQuery) -> list[ColumnElement[bool]]:
+def filters(db: Session, q: SearchQuery, *, tag: str = "") -> list[ColumnElement[bool]]:
+    # `tag` only names the recursive CTE, so several queries' predicates can
+    # share one statement (TASK-014 alert matching); live search passes none.
     # 1. Public eligibility: the one rule every public path uses (D-59).
     out: list[ColumnElement[bool]] = [freshness.public_clause(db)]
 
@@ -394,7 +562,7 @@ def filters(db: Session, q: SearchQuery) -> list[ColumnElement[bool]]:
     if q.country_code:
         out.append(_addresses_where(Address.country_code == q.country_code))
     if q.admin_area_ids:
-        within = geography.descendant_area_ids(q.admin_area_ids)
+        within = geography.descendant_area_ids(q.admin_area_ids, name=f"area_tree{tag}")
         out.append(Property.address_id.in_(
             select(Address.id)
             .outerjoin(Locality, Locality.id == Address.locality_id)
@@ -499,6 +667,34 @@ def order_by(q: SearchQuery) -> list:
         "available_soonest": ClassifiedOffer.available_from.asc().nulls_last(),
     }[q.sort]
     return [key, ClassifiedOffer.id.asc()]
+
+
+EVALUATION_CHUNK = 200
+
+
+def evaluate_for_listing(db: Session, listing_id: str,
+                         queries: list[SearchQuery]) -> list[bool]:
+    """Which of `queries` the ONE listing satisfies right now (TASK-014).
+
+    The same `filters()` — public eligibility first — that the list and map
+    use, evaluated as boolean columns over the listing's single joined row:
+    one statement per chunk of queries, never one statement per saved search
+    and never a scan of the board. A listing that is not (or no longer) public
+    satisfies nothing."""
+    out: list[bool] = []
+    for start in range(0, len(queries), EVALUATION_CHUNK):
+        chunk = queries[start:start + EVALUATION_CHUNK]
+        columns = [and_(*filters(db, q, tag=f"_{start + i}")).label(f"m{start + i}")
+                   for i, q in enumerate(chunk)]
+        row = db.execute(
+            from_clause(select(*columns).select_from(ClassifiedOffer))
+            .where(ClassifiedOffer.id == listing_id)
+        ).one_or_none()
+        if row is None:
+            out.extend([False] * len(chunk))
+        else:
+            out.extend(bool(v) for v in row)
+    return out
 
 
 def count_matching(db: Session, q: SearchQuery, *extra) -> int:

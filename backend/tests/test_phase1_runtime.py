@@ -114,6 +114,7 @@ def test_phase1_startup_starts_no_legacy_worker(monkeypatch):
 
     from app import composition
     from app.core.config import settings
+    from app.modules.alerts.worker import worker as alert_worker
     from app.modules.booking.expiry import worker as booking_expiry_worker
     from app.modules.events.worker import worker as notification_worker
 
@@ -127,13 +128,17 @@ def test_phase1_startup_starts_no_legacy_worker(monkeypatch):
     monkeypatch.setattr(notification_worker, "stop", lambda: None)
     monkeypatch.setattr(booking_expiry_worker, "start", lambda: started.append("booking-expiry"))
     monkeypatch.setattr(booking_expiry_worker, "stop", lambda: None)
+    monkeypatch.setattr(alert_worker, "start", lambda: started.append("saved-search-alerts"))
+    monkeypatch.setattr(alert_worker, "stop", lambda: None)
 
     fresh = create_phase1_app()
-    # The freshness sweep is registered but off by default (TASK-012).
-    assert fresh.state.worker_names == ("notifications", "listing-freshness")
+    # The freshness sweep is registered but off by default (TASK-012); the
+    # saved-search alert worker (TASK-014) is on by default.
+    assert fresh.state.worker_names == ("notifications", "listing-freshness",
+                                        "saved-search-alerts")
     with TestClient(fresh):
-        assert fresh.state.started_workers == ("notifications",)
-    assert started == ["notifications"]
+        assert fresh.state.started_workers == ("notifications", "saved-search-alerts")
+    assert started == ["notifications", "saved-search-alerts"]
 
 
 def test_phase1_process_does_not_load_legacy_modules():
