@@ -154,6 +154,18 @@ def test_b_two_searches_one_user_one_delivery(pg_client, sessions, geo, owner):
         db.add(AlertDelivery(user_id=user_id, listing_id=oid, public_generation=1,
                              channel="IN_APP", category="PRODUCT", status="pending"))
     assert caught.value.orig.diag.constraint_name == "uq_alert_deliveries_user_episode_channel"
+    # The search-match identity is the table's own key, not a check in code.
+    sid = next(iter(_ids_of(sessions, oid)))
+    with pytest.raises(IntegrityError) as caught, sessions.begin() as db:
+        db.add(SavedSearchMatch(saved_search_id=sid, listing_id=oid, public_generation=1,
+                                user_id=user_id))
+    assert caught.value.orig.diag.constraint_name == "saved_search_matches_pkey"
+
+
+def _ids_of(sessions, oid):
+    with sessions() as db:
+        return {m.saved_search_id for m in db.scalars(
+            select(SavedSearchMatch).where(SavedSearchMatch.listing_id == oid))}
 
 
 # --- C: generation identity -------------------------------------------------------------------

@@ -201,3 +201,61 @@ stated. Every sort ends on the listing id; the search state is the canonical
 URL query. 04 §127's search rule is implemented by this model.
 
 **Input contract (D-76, TASK-013R).** A discovery query is validated before any SQL: finite numbers inside documented bounds, NUL-free bounded text and ids, catalogue values for controlled vocabularies, bounded repetition and a bounded canonical query. Invalid is 422; valid and unmatched is an empty 200. The canonical query is deterministic: empty optional values are absent, repeated values de-duplicated and sorted, −0.0 written as 0.0, text kept as given. The map's `total`, `with_point` and `without_point` come from one aggregate and always add up.
+
+## 22. Saved Listing, Saved Search and alerts (TASK-014)
+
+Decisions D-78…D-82. Founder / Product-Arbiter decision, TASK-014 Phase B
+(2026-09-28).
+
+**Saved Listing — deliberate supersession.** For Phase 1A a renter saves the
+**Listing** — the marketplace offer they saw — `SavedListing (user_id,
+listing_id)`, unique per pair. This **supersedes** 04 §51
+`engagement.saved_properties (user_id, property_id)` ("Save Property rather
+than transient Listing") and 04 §81 invariant 20 ("Saved Property targets
+Property, not transient Listing") **for Phase 1A**. Those texts are kept as
+written in 04; this clarification ranks with 04 and wins for Phase 1A. A save
+never follows later Listings of the same Property; *Follow Property / Follow
+Home* may become a separate, later concept. A save outlives the listing's
+public life: once the listing is not public the save answers a tombstone
+(`saved_id`, `listing_id`, `saved_at`, `availability_status =
+NO_LONGER_AVAILABLE`) — no cached title, price, media, place, owner or
+contact. `saved_at` is the database instant.
+
+**Saved Search — one search language.** A saved search stores exactly the
+TASK-013 canonical query (`SearchQuery.canonical()`, D-72/D-76) with a
+`query_schema_version` and `query_fingerprint = SHA-256(version, canonical
+query)`, unique per user (the duplicate rule). 04 §52's versioned `criteria
+jsonb` is realised as this versioned canonical string: there is no second
+criteria format. Stored queries are re-validated through the live
+validation; one that no longer validates (a place retired or gone, a
+catalogue value withdrawn, an unsupported schema version, an unknown
+parameter) is **INVALID** — explicit, never matched, never silently
+broadened. A search with zero current results is a first-class save.
+
+**Alert scope (TASK-014).** A saved-search alert means exactly: *a listing
+became publicly eligible in a NEW public generation, after the search's
+baseline, and currently matches the search.* The baseline is the database
+instant of saving (or of changing the query): listings already matching then
+are shown, never notified — no initial flood, no backfill. `public_generation`
+counts public-eligibility episodes by the §18 rule (not the status label):
+0 never public; +1 on every not-public → public transition (first
+publication, republication after pause, stale → active, confirmation after
+silent freshness expiry); never on public → public. **Deferred alert
+families** (not TASK-014): price change, availability-date change, attribute
+or media edits while continuously public; following a Property.
+
+**Notification category PRODUCT.** Saved-search alerts are user-requested,
+optional and unsubscribable — classified **PRODUCT**. This is Homies
+**product policy, not a legal conclusion**, and PRODUCT is **not** marketing
+consent. Preferences (04 §71) default PRODUCT on for IN_APP and EMAIL; any
+channel can be turned off without deleting a search. PRODUCT email goes only
+to a **verified** email address, resolved at send time; transactional account
+email resolves the account's current address at send time (no verification
+requirement stated by the identity canon). A queued alert is not authority to
+send: it is re-validated at send time and otherwise ends `suppressed`.
+Unsubscribe is a bearer capability (256-bit random token, only its hash
+stored, generic response).
+
+**Account status limitation.** Phase 1A has no account deletion/status
+model; for alerts "account valid" means *the user exists* (plus a verified
+email for EMAIL). No parallel account lifecycle is introduced.

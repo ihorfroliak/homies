@@ -22,7 +22,7 @@ from app.modules.events.models import Notification
 from app.modules.events.providers import DeliveryResult
 from app.modules.geography.models import Locality
 from app.modules.identity.models import User
-from app.modules.properties.models import ListingPublicGeneration
+from app.modules.properties.models import ClassifiedOffer, ListingPublicGeneration
 from tests.conftest import (
     TestingSession,
     auth,
@@ -482,3 +482,24 @@ def test_transactional_email_resolves_the_address_at_send_time(client, smtp):
         assert events_worker.deliver_one(db, orphan) == "dead"
         assert orphan.last_error == "no recipient email address"
     assert [m["To"] for m in smtp] == ["renamed@example.com"]
+
+
+def test_evaluation_never_matches_a_listing_that_is_not_public(client, owner, geo):
+    """The canonical evaluation carries the public rule itself — it does not
+    rely on its callers having checked (paused and silently expired alike)."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.modules.properties import search as search_module
+
+    live = _listing(client, owner, geo)
+    paused = _listing(client, owner, geo)
+    expired = _listing(client, owner, geo)
+    client.post(f"/v1/classifieds/{paused}/pause", headers=auth(owner))
+    with TestingSession() as db:
+        db.execute(update(ClassifiedOffer).where(ClassifiedOffer.id == expired).values(
+            last_confirmed_available_at=datetime.now(timezone.utc) - timedelta(days=22)))
+        db.commit()
+        q = search_module.parse_query_string(db, f"locality_id={geo['krakow']}")
+        everything = search_module.parse_query_string(db, "")
+        for oid, public in ((live, True), (paused, False), (expired, False)):
+            assert search_module.evaluate_for_listing(db, oid, [q, everything]) == [public, public]
