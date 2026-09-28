@@ -34,9 +34,11 @@ Engineering status per area is in
    guidance ([contract](../tasks/TASK-012-listing-freshness-availability-quality.md))
    → TASK-012A → TASK-012R → TASK-012RA: **ACCEPTED** at `879bf56`.
 9. **TASK-013** — search, map & marketplace discovery
-   ([contract](../tasks/TASK-013-search-map-marketplace-discovery.md)). Builder
-   complete; awaiting adjudication and independent audit. Next proposed:
-   TASK-014 Saved Search / alerts (the canonical query of D-72 is its key).
+   ([contract](../tasks/TASK-013-search-map-marketplace-discovery.md))
+   → TASK-013A → TASK-013R: **ACCEPTED** at `3f324b6` (D-77).
+10. **TASK-014** — saved listings, saved search & alerts
+    ([contract](../tasks/TASK-014-saved-listings-saved-search-alerts.md)).
+    Builder complete; awaiting adjudication and independent audit (TASK-014A).
 
 Carried-forward maintenance (not a task on its own, done when the files are
 next touched): E01/E02/E03 PostgreSQL regression tests and mutation-review
@@ -63,7 +65,8 @@ awaits founder approval; each item becomes a Task Contract:
    listing texts, rental terms, status history, ~~freshness
    (reconfirm/stale)~~ (TASK-012; expiry not built), publication eligibility
    service.
-5. Saved property, saved search.
+5. ~~Saved property, saved search.~~ Saved **listing** (04a §22 supersedes Saved Property
+   for Phase 1A) and saved search with alerts — TASK-014 (candidate).
 6. Reports and moderation basics; incidents.
 7. Safety foundation: safety profile, typed requirements, hazards, versioned
    attestations.

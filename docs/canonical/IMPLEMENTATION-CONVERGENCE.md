@@ -66,6 +66,32 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
+## TASK-014 — saved listings, saved search & alerts (2026-09-28, builder)
+
+Candidate on `claude/TASK-014-saved-search-alerts`, started from the accepted
+TASK-013 baseline `3f324b6ddff6c7557894eb5f65736729d956f7eb` (D-77).
+**Not accepted** — TASK-014A independent audit pending. **Production: NOT
+READY, NOT DEPLOYED.** Contract:
+[TASK-014](../tasks/TASK-014-saved-listings-saved-search-alerts.md);
+decisions D-78…D-82; 04a §22.
+
+| Area | State |
+|---|---|
+| Saved Listing | `saved_listings (user, listing)` — **supersedes Saved Property for Phase 1A** (04a §22, D-78); tombstone for non-public listings |
+| Saved Search | TASK-013 canonical query + schema version + SHA-256 fingerprint; INVALID never broadened (D-79) |
+| Public generation | `classified_offers.public_generation`/`public_since`; every public transition through `publicity.make_public` with `ListingBecamePublic` + work item atomically (D-80) |
+| Alerts | PostgreSQL work items → anchor-narrowed candidates → canonical match → UNIQUE matches → UNIQUE per-user-channel deliveries → send-time revalidation (D-82) |
+| Notifications | PRODUCT category (product policy, not legal/marketing consent); `notification_preferences`; inbox `user_notifications` at `/v1/me/inbox`; hashed 256-bit unsubscribe tokens (D-81) |
+| SMTP recipient | Phase-A defect fixed: address resolved at send time, never the user id (D-81) |
+| Deferred | digest; alert families while continuously public; Follow Property; email locale; retention/purge |
+
+| Component | Classification |
+|---|---|
+| `app/modules/saved` (saved listings, saved searches, stored-query validation) | **CANONICAL_ACTIVE** (candidate) |
+| `app/modules/alerts` (work, matches, deliveries, inbox, preferences, unsubscribe, worker) | **CANONICAL_ACTIVE** (candidate) |
+| `app/modules/properties/publicity.py` | **CANONICAL_ACTIVE** (candidate) — the one public-transition seam |
+| booking-era `GET /v1/me/notifications` feed | **LEGACY_DORMANT** shape, kept unchanged; the inbox is `/v1/me/inbox` |
+
 ## TASK-013 → TASK-013A → TASK-013R — search validation & map count (2026-09-28, builder)
 
 History: TASK-013 candidate `56567d24bd764563bc21707c0c027e637a206e16` → independent **TASK-013A** (Codex): **TASK_013_REQUIRES_TARGETED_FIXES**, P0 0 / P1 0 / **P2 1** / P3 1 ([archived verbatim](../reviews/2026-09-28-task013a-codex-task013-audit.md)) → **TARGETED FIX REQUIRED** → TASK-013R on `claude/TASK-013R-search-validation-map-count`, **pending narrow re-audit (TASK-013RA)**. **TASK-013 is NOT accepted.** Accepted by TASK-013A and not reopened: public eligibility, geography, spatial privacy, price semantics, availability, sort/pagination, query count, indexes/migration, URL-state concept, archive integrity.
