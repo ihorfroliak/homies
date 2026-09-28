@@ -20,6 +20,7 @@ STRONG_ALT = "W" * 40
 def _cfg(**overrides) -> Settings:
     base = {
         "env": "production",
+        "database_url": "postgresql+psycopg://homies_app:x@db.internal:5432/homies",
         "jwt_secret": STRONG,
         "webhook_secret": STRONG_ALT,
         "payment_provider": "simulation",
@@ -79,6 +80,16 @@ def test_all_problems_are_reported_together():
 # --- must start -------------------------------------------------------------
 def test_strong_production_secrets_allow_startup():
     validate_security_config(_cfg())  # no exception
+
+
+def test_the_development_database_url_prevents_startup():
+    """PR-001: an unset DATABASE_URL must not fall back to the repository's
+    local default (and its published password) outside development."""
+    from app.core.config import Settings as S
+
+    with pytest.raises(InsecureConfigurationError, match="DATABASE_URL") as caught:
+        validate_security_config(_cfg(database_url=S.model_fields["database_url"].default))
+    assert "homies:homies" not in str(caught.value)
 
 
 @pytest.mark.legacy_runtime

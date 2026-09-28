@@ -8,5 +8,7 @@ See docs/adr/0001-modular-monolith.md and docs/canonical/IMPLEMENTATION-CONVERGE
 """
 
 from app.composition import create_phase1_app
+from app.core.logging_config import configure_logging
 
+configure_logging()  # the deployed process only; tests keep pytest's capture (PR-001)
 app = create_phase1_app()

@@ -209,6 +209,29 @@ tests:
                 A guest or host was not told something. These do not retry again.
 
   - interval: 1m
+    name: NotificationBacklogGrowing fires on a sustained undelivered outbox only
+    input_series:
+      - series: 'homies_notification_queue_depth{status="pending"}'
+        values: "10 60 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90"
+      - series: 'homies_notification_queue_depth{status="failed"}'
+        values: "0 0 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30"
+      - series: 'homies_notification_queue_depth{status="delivered"}'
+        values: "900 900 900 900 900 900 900 900 900 900 900 900 900 900 900 900 900 900 900 900"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: NotificationBacklogGrowing
+        exp_alerts: []
+      - eval_time: 18m
+        alertname: NotificationBacklogGrowing
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+            exp_annotations:
+              summary: "120 notifications waiting in the outbox"
+              description: >-
+                The notification worker is not keeping up or not running. Check its logs and homies_notifications_failed_total.
+
+  - interval: 1m
     name: BookingExpiryBacklogGrowing fires past 20 held bookings
     input_series:
       - series: "homies_booking_expiry_backlog"

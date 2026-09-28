@@ -159,6 +159,19 @@ groups:
           description: >-
             A guest or host was not told something. These do not retry again.
 
+      - alert: NotificationBacklogGrowing
+        # PR-001: the outbox depth was published (worker) but nothing watched
+        # it. A stopped or failing worker shows up here as undelivered rows
+        # piling up, before anything is dead-lettered.
+        expr: sum(homies_notification_queue_depth{status=~"pending|failed"}) > 100
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "{{ $value | printf \"%.0f\" }} notifications waiting in the outbox"
+          description: >-
+            The notification worker is not keeping up or not running. Check its logs and homies_notifications_failed_total.
+
       - alert: BookingExpiryBacklogGrowing
         # BK-01: the sweep frees dates held by unpaid bookings. A growing
         # backlog means held inventory nobody can book.

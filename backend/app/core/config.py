@@ -11,10 +11,9 @@ BOOKING_TTL_MAX_SECONDS = 86_400  # 24h
 class Settings(BaseSettings):
     env: str = "local"
     database_url: str = "postgresql+psycopg://homies:homies@localhost:5433/homies"
-    redis_url: str = "redis://localhost:6379/0"
-    meili_url: str = "http://localhost:7700"
-    meili_master_key: str = "dev-master-key"
-    nats_url: str = "nats://localhost:4222"
+    # REDIS_URL, MEILI_URL, MEILI_MASTER_KEY and NATS_URL were removed in PR-001:
+    # nothing read them (03 §5–§7). Setting them in an environment is harmless —
+    # unknown variables are ignored.
 
     # Auth
     jwt_secret: str = "dev-only-secret-change-me-0123456789abcdef"  # >=32 bytes for HS256
@@ -220,6 +219,11 @@ def validate_security_config(cfg: "Settings | None" = None) -> None:
 
     _check("JWT_SECRET", cfg.jwt_secret)
     _check("WEBHOOK_SECRET", cfg.webhook_secret, min_length=16)
+    # PR-001: an unset DATABASE_URL silently fell back to the repository's
+    # local-development URL (with its published password). A production-like
+    # process must be told where its database is.
+    if cfg.database_url == Settings.model_fields["database_url"].default:
+        problems.append("DATABASE_URL is the repository's local-development default")
 
     if cfg.payment_provider == "stripe":
         _check("STRIPE_API_KEY", cfg.stripe_api_key, min_length=16)
