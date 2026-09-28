@@ -193,9 +193,17 @@ def test_a_confirmation_waiting_behind_the_sweep_reactivates_the_listing(
     assert _status(pg_migrated_engine, offer) == "active"
     with pg_migrated_engine.connect() as conn:
         events = conn.execute(text(
-            "SELECT event_type FROM domain_events WHERE correlation_id = :o ORDER BY occurred_at"),
+            "SELECT event_type FROM domain_events WHERE correlation_id = :o "
+            "AND event_type <> 'ListingBecamePublic' ORDER BY occurred_at"),
+            {"o": offer}).scalars().all()
+        episodes = conn.execute(text(
+            "SELECT dedup_key FROM domain_events WHERE correlation_id = :o "
+            "AND event_type = 'ListingBecamePublic' ORDER BY occurred_at"),
             {"o": offer}).scalars().all()
     assert events == [freshness.LISTING_AUTO_PAUSED_STALE, freshness.LISTING_REACTIVATED]
+    # TASK-014: publication opened episode 1; the reactivation of the stale
+    # listing opened episode 2 — exactly once, behind the sweep's lock.
+    assert episodes == [f"ListingBecamePublic:{offer}:1", f"ListingBecamePublic:{offer}:2"]
 
 
 # --- nothing resurrects an archived listing -------------------------------------------------

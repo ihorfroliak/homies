@@ -42,7 +42,7 @@ from urllib.parse import parse_qsl, urlencode
 
 from fastapi import Depends, HTTPException, Query, status
 from prometheus_client import Counter
-from sqlalchemy import Select, and_, case, func, literal_column, or_, select
+from sqlalchemy import Select, and_, case, func, literal_column, or_, select, true
 from sqlalchemy.orm import Session, contains_eager
 from sqlalchemy.sql import ColumnElement
 
@@ -321,9 +321,41 @@ def search_query(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
 
 
+class QueryContext:
+    """Reference data a batch of stored queries is validated against, read
+    once per batch instead of once per query (TASK-014: thousands of saved
+    searches per new listing must cost a fixed number of reads). Live search
+    passes no context and reads exactly as before."""
+
+    def __init__(self, db: Session):
+        self.db = db
+        self._catalogue: dict | None = None
+        self._places: dict[tuple[str, str], tuple[str, str] | None] = {}
+
+    def catalogue(self) -> dict:
+        if self._catalogue is None:
+            self._catalogue = load_catalogue(self.db)
+        return self._catalogue
+
+    def prefetch(self, model, ids) -> None:
+        missing = [i for i in set(ids) if (model.__tablename__, i) not in self._places]
+        for start in range(0, len(missing), 1_000):
+            chunk = missing[start:start + 1_000]
+            found = {r[0]: (r[1], r[2]) for r in self.db.execute(
+                select(model.id, model.country_code, model.status).where(model.id.in_(chunk)))}
+            for i in chunk:
+                self._places[(model.__tablename__, i)] = found.get(i)
+
+    def place(self, model, place_id: str) -> tuple[str, str] | None:
+        """(country_code, status) of a referenced place, or None if absent."""
+        self.prefetch(model, [place_id])
+        return self._places[(model.__tablename__, place_id)]
+
+
 def build_query(
     db: Session,
     *,
+    ctx: QueryContext | None = None,
     country_code: str | None = None,
     admin_area_id: list[str] | None = None,
     locality_id: list[str] | None = None,
@@ -414,7 +446,7 @@ def build_query(
 
     codes = _ids("has", has, max_length=MAX_ATTRIBUTE_CODE_LENGTH, limit=MAX_ATTRIBUTE_CODES)
     if codes:
-        catalogue = load_catalogue(db)
+        catalogue = ctx.catalogue() if ctx is not None else load_catalogue(db)
         for code in codes:
             definition = catalogue.get(code)
             if definition is None or not definition.filterable:
@@ -428,8 +460,13 @@ def build_query(
         # contradiction, not an unlucky search.
         for model, ids in ((AdministrativeArea, admin_ids), (Locality, locality_ids),
                            (GeoArea, geo_ids)):
-            if ids and db.scalar(select(func.count()).select_from(model).where(
-                    model.id.in_(ids), model.country_code != country_code)):
+            if ctx is not None:
+                places = [ctx.place(model, i) for i in ids]
+                elsewhere = any(p is not None and p[0] != country_code for p in places)
+            else:
+                elsewhere = bool(ids and db.scalar(select(func.count()).select_from(model).where(
+                    model.id.in_(ids), model.country_code != country_code)))
+            if elsewhere:
                 _refuse(f"a {model.__tablename__} id given is not in {country_code}")
 
     query = SearchQuery(
@@ -501,7 +538,8 @@ def _convert(name: str, value: str):
     return value
 
 
-def parse_query_string(db: Session, raw: str) -> SearchQuery:
+def parse_query_string(db: Session, raw: str,
+                       ctx: QueryContext | None = None) -> SearchQuery:
     """A URL query string (a stored canonical query, or the query of a search
     page being saved) → the validated SearchQuery. Raises InvalidSearchQuery."""
     if len(raw) > MAX_CANONICAL_LENGTH:
@@ -524,18 +562,25 @@ def parse_query_string(db: Session, raw: str) -> SearchQuery:
         values[name] = None if value == "" else _convert(name, value)
     if values.get("sort") is None:
         values.pop("sort", None)
-    return build_query(db, **values)
+    return build_query(db, ctx=ctx, **values)
 
 
-def check_references(db: Session, q: SearchQuery) -> None:
+def check_references(db: Session, q: SearchQuery, ctx: QueryContext | None = None) -> None:
     """Every place a stored query names still exists and is ACTIVE. Live
     search simply finds nothing for a retired id; a saved search that silently
     matched nothing (or, worse, were rewritten without it) would lie to its
     owner — so it is reported INVALID instead (TASK-014)."""
     for model, ids in ((AdministrativeArea, q.admin_area_ids), (Locality, q.locality_ids),
                        (GeoArea, q.geo_area_ids)):
-        if ids and db.scalar(select(func.count()).select_from(model).where(
-                model.id.in_(ids), model.status == "ACTIVE")) != len(ids):
+        if not ids:
+            continue
+        if ctx is not None:
+            places = [ctx.place(model, i) for i in ids]
+            active = sum(1 for p in places if p is not None and p[1] == "ACTIVE")
+        else:
+            active = db.scalar(select(func.count()).select_from(model).where(
+                model.id.in_(ids), model.status == "ACTIVE")) or 0
+        if active != len(ids):
             _refuse(f"a {model.__tablename__} id in the query no longer exists or is retired")
 
 
@@ -552,11 +597,14 @@ def _addresses_where(*conditions) -> ColumnElement[bool]:
     return Property.address_id.in_(select(Address.id).where(*conditions))
 
 
-def filters(db: Session, q: SearchQuery, *, tag: str = "") -> list[ColumnElement[bool]]:
+def filters(db: Session, q: SearchQuery, *, tag: str = "",
+            public: bool = True) -> list[ColumnElement[bool]]:
     # `tag` only names the recursive CTE, so several queries' predicates can
     # share one statement (TASK-014 alert matching); live search passes none.
     # 1. Public eligibility: the one rule every public path uses (D-59).
-    out: list[ColumnElement[bool]] = [freshness.public_clause(db)]
+    # `public=False` only for evaluate_for_listing, which applies this very
+    # clause once to the whole statement instead of once per query.
+    out: list[ColumnElement[bool]] = [freshness.public_clause(db)] if public else []
 
     # 2. Geography. Unstructured addresses match no structured filter.
     if q.country_code:
@@ -676,25 +724,33 @@ def evaluate_for_listing(db: Session, listing_id: str,
                          queries: list[SearchQuery]) -> list[bool]:
     """Which of `queries` the ONE listing satisfies right now (TASK-014).
 
-    The same `filters()` — public eligibility first — that the list and map
-    use, evaluated as boolean columns over the listing's single joined row:
-    one statement per chunk of queries, never one statement per saved search
-    and never a scan of the board. A listing that is not (or no longer) public
-    satisfies nothing."""
-    out: list[bool] = []
-    for start in range(0, len(queries), EVALUATION_CHUNK):
-        chunk = queries[start:start + EVALUATION_CHUNK]
-        columns = [and_(*filters(db, q, tag=f"_{start + i}")).label(f"m{start + i}")
-                   for i, q in enumerate(chunk)]
+    The same `filters()` the list and map use, evaluated as boolean columns
+    over the listing's single joined row: one statement per chunk of distinct
+    queries — never one statement per saved search and never a scan of the
+    board. The public-eligibility clause is the statement's WHERE (once, not
+    once per query): a listing that is not public returns no row and
+    satisfies nothing. Identical canonical queries are evaluated once."""
+    distinct: dict[str, int] = {}
+    unique: list[SearchQuery] = []
+    for q in queries:
+        key = q.canonical()
+        if key not in distinct:
+            distinct[key] = len(unique)
+            unique.append(q)
+    verdict: list[bool] = []
+    for start in range(0, len(unique), EVALUATION_CHUNK):
+        chunk = unique[start:start + EVALUATION_CHUNK]
+        columns = [and_(true(), *filters(db, q, tag=f"_{start + i}", public=False))
+                   .label(f"m{start + i}") for i, q in enumerate(chunk)]
         row = db.execute(
             from_clause(select(*columns).select_from(ClassifiedOffer))
-            .where(ClassifiedOffer.id == listing_id)
+            .where(ClassifiedOffer.id == listing_id, freshness.public_clause(db))
         ).one_or_none()
         if row is None:
-            out.extend([False] * len(chunk))
+            verdict.extend([False] * len(chunk))
         else:
-            out.extend(bool(v) for v in row)
-    return out
+            verdict.extend(bool(v) for v in row)
+    return [verdict[distinct[q.canonical()]] for q in queries]
 
 
 def count_matching(db: Session, q: SearchQuery, *extra) -> int:

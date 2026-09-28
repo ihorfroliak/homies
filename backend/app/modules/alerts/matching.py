@@ -118,9 +118,10 @@ def process_generation(db: Session, listing_id: str, generation: int) -> Outcome
     found = candidates(db, offer, work.became_public_at)
     metrics.CANDIDATES.observe(len(found))
     valid: list[tuple[SavedSearch, search.SearchQuery]] = []
+    ctx = saved_service.batch_context(db, found)
     for s in found:
         try:
-            valid.append((s, saved_service.load_query(db, s)))
+            valid.append((s, saved_service.load_query(db, s, ctx)))
         except InvalidSearchQuery:
             # INVALID never matches: no broadened search, no guessed criterion.
             metrics.INVALID_QUERIES.inc()

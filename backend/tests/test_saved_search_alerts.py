@@ -16,14 +16,13 @@ from app.modules.alerts.models import (
     AlertDelivery,
     SavedSearchMatch,
     UnsubscribeToken,
-    UserNotification,
 )
 from app.modules.events import worker as events_worker
 from app.modules.events.models import Notification
 from app.modules.events.providers import DeliveryResult
 from app.modules.geography.models import Locality
 from app.modules.identity.models import User
-from app.modules.properties.models import ClassifiedOffer, ListingPublicGeneration
+from app.modules.properties.models import ListingPublicGeneration
 from tests.conftest import (
     TestingSession,
     auth,
@@ -31,7 +30,12 @@ from tests.conftest import (
     register_and_login,
     verify_ownership,
 )
-from tests.test_geography import geo  # noqa: F401 — fixture
+from tests.saved_support import load_geo
+
+
+@pytest.fixture
+def geo(client):
+    return load_geo(TestingSession)
 
 PROPERTY = {"category": "APARTMENT", "area_m2": 50, "rooms": 2, "capacity": 2}
 OFFER = {"title": "Alert", "rent_amount": 250000, "min_term_months": 12,

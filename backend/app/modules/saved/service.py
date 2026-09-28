@@ -54,14 +54,38 @@ def prepare_query(db: Session, raw: str) -> SearchQuery:
     return q
 
 
-def load_query(db: Session, saved: SavedSearch) -> SearchQuery:
+def load_query(db: Session, saved: SavedSearch,
+               ctx: search.QueryContext | None = None) -> SearchQuery:
     """The stored query, re-validated now. Raises InvalidSearchQuery."""
     if saved.query_schema_version not in SUPPORTED_SCHEMA_VERSIONS:
         raise InvalidSearchQuery(
             f"query schema version {saved.query_schema_version} is not supported")
-    q = search.parse_query_string(db, saved.canonical_query)
-    search.check_references(db, q)
+    q = search.parse_query_string(db, saved.canonical_query, ctx)
+    search.check_references(db, q, ctx)
     return q
+
+
+_PLACE_PARAMETERS = {"admin_area_id": AdministrativeArea, "locality_id": Locality,
+                     "geo_area_id": GeoArea}
+
+
+def batch_context(db: Session, searches: list[SavedSearch]) -> search.QueryContext:
+    """One validation context for many stored queries: every place they name
+    is read with one query per place table, the catalogue once."""
+    ctx = search.QueryContext(db)
+    wanted: dict = {model: set() for model in _PLACE_PARAMETERS.values()}
+    for s in searches:
+        try:
+            pairs = parse_qsl(s.canonical_query, max_num_fields=2_000)
+        except ValueError:
+            continue  # load_query reports it INVALID
+        for name, value in pairs:
+            if name in _PLACE_PARAMETERS and len(value) <= search.MAX_ID_LENGTH:
+                wanted[_PLACE_PARAMETERS[name]].add(value)
+    for model, ids in wanted.items():
+        if ids:
+            ctx.prefetch(model, ids)
+    return ctx
 
 
 def query_state(db: Session, saved: SavedSearch) -> tuple[SearchQuery | None, str | None]:

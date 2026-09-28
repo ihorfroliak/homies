@@ -13,7 +13,12 @@ from app.modules.properties.models import AttributeDefinition
 from app.modules.saved import service
 from app.modules.saved.models import SavedSearch
 from tests.conftest import TestingSession, auth, register_and_login, verify_ownership
-from tests.test_geography import geo  # noqa: F401 — fixture
+from tests.saved_support import load_geo
+
+
+@pytest.fixture
+def geo(client):
+    return load_geo(TestingSession)
 
 
 @pytest.fixture
