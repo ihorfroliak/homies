@@ -119,6 +119,17 @@ discoverability), a new public spatial surface where the privacy boundary
 
 Python 3.12 and CI not run.
 
+## TASK-013A → TASK-013R (2026-09-28)
+
+TASK-013A (Codex, [archived verbatim](../reviews/2026-09-28-task013a-codex-task013-audit.md)): **TASK_013_REQUIRES_TARGETED_FIXES** — F13A-01 (P2), F13A-02 (P3), F13A-03 (note). TASK-013R, from exactly `56567d24bd764563bc21707c0c027e637a206e16`, on `claude/TASK-013R-search-validation-map-count`:
+
+* **Reproduced first** on the candidate (both surfaces): `10**100` and out-of-column-range integers for rent/monthly/move-in totals, rooms, area and term → PostgreSQL `NumericValueOutOfRange`; NUL in `city`, `district`, `locality_id`, `admin_area_id`, `geo_area_id` → `DataError` (both an HTTP 500 in a deployed process); `furnished=INVALID`, `parking=INVALID` → 200 with zero results.
+* **Repair (D-76):** validation before SQL — bounds, NUL, lengths, catalogue values, repetition budgets, canonical-length backstop; normalization of the canonical query; the map partition from one aggregate (`search.count_map_partition`).
+* **Not changed:** public eligibility, spatial model (public point only), price semantics, sorting/paging, the index migration `d0f2b4c6e8a1` (untouched), no new migration.
+* Tests: `tests/test_search_validation.py` (SQLite) and `tests/test_search_validation_pg.py` (PostgreSQL: the 500-inputs, partition, deterministic publication-between-statements interleaving, cap 499/500/501, 21×24h cutoff on counts, public-point counts). Mutants V01–V06 and S01–S12 re-run: see the TASK-013R report.
+
+Pending: narrow independent re-audit (TASK-013RA). TASK-013 is **not accepted**; TASK-014 Phase B stays blocked.
+
 ## Known debt
 
 * Owner view (`/v1/me/classifieds`) still ~2 queries per listing (not the

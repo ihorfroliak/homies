@@ -23,8 +23,18 @@ a viewport or radius can reveal no more than the grid cell already shown.
 Invalid or contradictory queries (unknown values, a subtype outside the
 chosen categories, min > max, places in another country than `country_code`)
 answer 422. Merely unlikely combinations answer an empty page.
+
+Every value is validated before any SQL is built (TASK-013R, F13A-01/F13A-03,
+D-76): numbers are finite and inside explicit bounds the database can hold,
+text and ids carry no NUL and have bounded length, controlled vocabularies are
+checked against their catalogue, repeated values and the canonical query are
+budgeted. A structurally invalid query is 422; a valid one that matches nothing
+is 200 with no results. Database errors are never translated into 422 — known
+invalid input simply never reaches the database.
 """
 
+import math
+import re
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, NoReturn
@@ -43,6 +53,7 @@ from app.modules.properties import freshness
 from app.modules.properties.attributes import load_catalogue
 from app.modules.properties.classification import CATEGORIES, SUBTYPES
 from app.modules.properties.models import SPACE_TYPES, ClassifiedOffer, Property, Space
+from app.modules.properties.schemas import FURNISHED, PARKING
 
 ALL_SUBTYPES = {s: c for c, group in SUBTYPES.items() for s in group}
 
@@ -51,6 +62,25 @@ ALL_SUBTYPES = {s: c for c, group in SUBTYPES.items() for s in group}
 SORTS = ("newest", "price_asc", "price_desc", "size_desc", "available_soonest")
 DEFAULT_SORT = "newest"
 MAP_CAP = 500
+
+# --- bounds and input budgets (TASK-013R, D-76) --------------------------------------------
+# Numbers: finite, and far above any real listing, far below what the columns
+# hold (money bigint, the rest int4) — "unusual" still passes, "impossible" is 422.
+MAX_MONEY_MINOR = 10**12          # 10 000 000 000.00 PLN; a sale price fits easily
+MAX_ROOMS = 100
+MAX_AREA_M2 = 100_000
+MAX_TERM_MONTHS = 1_200           # 100 years
+# Text and ids: a place name as long as a reference place name may be
+# (localities.official_name, geo_areas.name: 200 — GEO-02, TASK-010R); ids are
+# UUIDs (36); attribute codes as long as the catalogue key (48).
+MAX_TEXT_LENGTH = 200
+MAX_ID_LENGTH = 36
+MAX_ATTRIBUTE_CODE_LENGTH = 48
+# Repetition: values given for one dimension (before de-duplication), and the
+# canonical query that TASK-014 will persist as a saved-search key.
+MAX_VALUES_PER_DIMENSION = 25
+MAX_ATTRIBUTE_CODES = 20
+MAX_CANONICAL_LENGTH = 16_384
 
 _PUBLIC_GEOG: ColumnElement[Any] = literal_column("classified_offers.public_geog")
 
@@ -152,8 +182,60 @@ def _refuse(detail: str) -> NoReturn:
     raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail)
 
 
-def _one_of(name: str, values: list[str] | None, allowed) -> tuple[str, ...]:
+def _budget(name: str, values: list[str] | None, limit: int = MAX_VALUES_PER_DIMENSION) -> list[str]:
     values = values or []
+    if len(values) > limit:
+        _refuse(f"at most {limit} {name} values may be given")
+    return values
+
+
+def _no_nul(name: str, value: str) -> None:
+    # PostgreSQL text cannot hold NUL; such a value is malformed, not a miss.
+    if "\x00" in value:
+        _refuse(f"{name} contains a NUL character")
+
+
+def _text(name: str, value: str | None) -> str | None:
+    """Optional free text: empty means absent; otherwise bounded, no NUL.
+    The value is otherwise kept exactly as given (no Unicode rewriting)."""
+    if value is None or value == "":
+        return None
+    _no_nul(name, value)
+    if len(value) > MAX_TEXT_LENGTH:
+        _refuse(f"{name} is longer than {MAX_TEXT_LENGTH} characters")
+    return value
+
+
+def _ids(name: str, values: list[str] | None, max_length: int = MAX_ID_LENGTH,
+         limit: int = MAX_VALUES_PER_DIMENSION) -> tuple[str, ...]:
+    """A repeatable reference dimension: budgeted, each value bounded and
+    NUL-free, empty values dropped, duplicates collapsed, sorted."""
+    kept = set()
+    for value in _budget(name, values, limit):
+        if value == "":
+            continue
+        _no_nul(name, value)
+        if len(value) > max_length:
+            _refuse(f"a {name} value is longer than {max_length} characters")
+        kept.add(value)
+    return tuple(sorted(kept))
+
+
+def _choice(name: str, value: str | None, allowed) -> str | None:
+    if value is None or value == "":
+        return None
+    if value not in allowed:
+        _refuse(f"{name} must be one of {', '.join(allowed)}")
+    return value
+
+
+def _finite(value: float) -> float:
+    # -0.0 and 0.0 are the same place; one canonical spelling (D-72).
+    return value + 0.0
+
+
+def _one_of(name: str, values: list[str] | None, allowed) -> tuple[str, ...]:
+    values = _budget(name, values)
     bad = sorted(set(values) - set(allowed))
     if bad:
         _refuse(f"{name} must be one of {', '.join(sorted(allowed))}; got {', '.join(bad)}")
@@ -168,7 +250,7 @@ def _range(name: str, low: int | None, high: int | None) -> None:
 def search_query(
     # Structured place (ids from /v1/geo). Repeatable: values of one
     # dimension are alternatives (OR); dimensions combine with AND.
-    country_code: str | None = Query(default=None, pattern="^[A-Z]{2}$"),
+    country_code: str | None = None,
     admin_area_id: list[str] | None = Query(default=None),
     locality_id: list[str] | None = Query(default=None),
     geo_area_id: list[str] | None = Query(default=None),
@@ -184,8 +266,8 @@ def search_query(
     category: list[str] | None = Query(default=None),
     subtype: list[str] | None = Query(default=None),
     space_type: list[str] | None = Query(default=None),
-    min_rooms: int | None = Query(default=None, ge=0),
-    min_area_m2: int | None = Query(default=None, ge=0),
+    min_rooms: int | None = Query(default=None, ge=0, le=MAX_ROOMS),
+    min_area_m2: int | None = Query(default=None, ge=0, le=MAX_AREA_M2),
     furnished: str | None = None,
     parking: str | None = None,
     pets_allowed: bool | None = None,
@@ -197,19 +279,27 @@ def search_query(
     # every mandatory monthly charge the owner stated (utilities may be an
     # estimate or not stated — see `utilities_basis`). Move-in total = first
     # month + mandatory one-offs, refundable deposit included.
-    min_rent: int | None = Query(default=None, ge=0),
-    max_rent: int | None = Query(default=None, ge=0),
-    min_monthly_total: int | None = Query(default=None, ge=0),
-    max_monthly_total: int | None = Query(default=None, ge=0),
-    max_move_in_total: int | None = Query(default=None, ge=0),
+    min_rent: int | None = Query(default=None, ge=0, le=MAX_MONEY_MINOR),
+    max_rent: int | None = Query(default=None, ge=0, le=MAX_MONEY_MINOR),
+    min_monthly_total: int | None = Query(default=None, ge=0, le=MAX_MONEY_MINOR),
+    max_monthly_total: int | None = Query(default=None, ge=0, le=MAX_MONEY_MINOR),
+    max_move_in_total: int | None = Query(default=None, ge=0, le=MAX_MONEY_MINOR),
     # "I can move in by this date": listings stating a date on or before it.
     # A listing that gave no date never matches (D-64).
     available_by: date | None = None,
-    max_term_months: int | None = Query(default=None, ge=0),
+    max_term_months: int | None = Query(default=None, ge=0, le=MAX_TERM_MONTHS),
     sort: str = DEFAULT_SORT,
     db: Session = Depends(get_db),
 ) -> SearchQuery:
     """Parse and validate the canonical discovery query (shared by list and map)."""
+    if country_code == "":
+        country_code = None
+    if country_code is not None and not re.fullmatch(r"[A-Z]{2}", country_code):
+        _refuse("country_code must be two capital letters (ISO 3166-1 alpha-2)")
+    city = _text("city", city)
+    district = _text("district", district)
+    furnished = _choice("furnished", furnished, FURNISHED)
+    parking = _choice("parking", parking, PARKING)
     if sort not in SORTS:
         _refuse(f"sort must be one of {', '.join(SORTS)}")
     categories = _one_of("category", category, CATEGORIES)
@@ -224,19 +314,28 @@ def search_query(
 
     box = None
     if bbox is not None:
+        if len(bbox) > 200:
+            _refuse("bbox must be four numbers: minLon,minLat,maxLon,maxLat")
         try:
             min_lon, min_lat, max_lon, max_lat = (float(p) for p in bbox.split(","))
         except ValueError:
             _refuse("bbox must be four numbers: minLon,minLat,maxLon,maxLat")
+        if not all(math.isfinite(v) for v in (min_lon, min_lat, max_lon, max_lat)):
+            _refuse("bbox must be four finite numbers")
         if not (-180 <= min_lon < max_lon <= 180 and -90 <= min_lat < max_lat <= 90):
             _refuse("bbox is not a valid box")
-        box = (min_lon, min_lat, max_lon, max_lat)
+        box = (_finite(min_lon), _finite(min_lat), _finite(max_lon), _finite(max_lat))
     given = [v is not None for v in (near_lat, near_lon, radius_m)]
     if any(given) and not all(given):
         _refuse("radius search needs near_lat, near_lon and radius_m together")
-    near = (near_lat, near_lon, radius_m) if all(given) else None
+    near = None
+    if all(given):
+        assert near_lat is not None and near_lon is not None
+        if not (math.isfinite(near_lat) and math.isfinite(near_lon)):
+            _refuse("near_lat and near_lon must be finite numbers")
+        near = (_finite(near_lat), _finite(near_lon), radius_m)
 
-    codes = tuple(sorted(set(has or [])))
+    codes = _ids("has", has, max_length=MAX_ATTRIBUTE_CODE_LENGTH, limit=MAX_ATTRIBUTE_CODES)
     if codes:
         catalogue = load_catalogue(db)
         for code in codes:
@@ -244,9 +343,9 @@ def search_query(
             if definition is None or not definition.filterable:
                 _refuse(f"'{code}' is not a filterable attribute — see GET /v1/attributes")
 
-    admin_ids = tuple(sorted(set(admin_area_id or [])))
-    locality_ids = tuple(sorted(set(locality_id or [])))
-    geo_ids = tuple(sorted(set(geo_area_id or [])))
+    admin_ids = _ids("admin_area_id", admin_area_id)
+    locality_ids = _ids("locality_id", locality_id)
+    geo_ids = _ids("geo_area_id", geo_area_id)
     if country_code:
         # A place in another country than the one asked for is a
         # contradiction, not an unlucky search.
@@ -256,7 +355,7 @@ def search_query(
                     model.id.in_(ids), model.country_code != country_code)):
                 _refuse(f"a {model.__tablename__} id given is not in {country_code}")
 
-    return SearchQuery(
+    query = SearchQuery(
         country_code=country_code, admin_area_ids=admin_ids, locality_ids=locality_ids,
         geo_area_ids=geo_ids, city=city, district=district, bbox=box,
         near=near,  # type: ignore[arg-type]
@@ -267,6 +366,11 @@ def search_query(
         max_monthly_total=max_monthly_total, max_move_in_total=max_move_in_total,
         available_by=available_by, max_term_months=max_term_months, sort=sort,
     )
+    # A backstop the budgets above already keep far away; it bounds the
+    # saved-search key TASK-014 will persist (F13A-03).
+    if len(query.canonical()) > MAX_CANONICAL_LENGTH:
+        _refuse(f"the query is longer than {MAX_CANONICAL_LENGTH} characters")
+    return query
 
 
 # --- SQL ---------------------------------------------------------------------------------
@@ -401,6 +505,25 @@ def count_matching(db: Session, q: SearchQuery, *extra) -> int:
     stmt = from_clause(select(func.count()).select_from(ClassifiedOffer)).where(
         *filters(db, q), *extra)
     return int(db.scalar(stmt) or 0)
+
+
+def has_public_point() -> ColumnElement[bool]:
+    """The one predicate for "this listing has a map marker"."""
+    return ClassifiedOffer.public_latitude.is_not(None)
+
+
+def count_map_partition(db: Session, q: SearchQuery) -> tuple[int, int]:
+    """(total, with_point) of the matching universe from ONE aggregate
+    statement (TASK-013R, F13A-02): one snapshot, one decision instant, so
+    with_point can never exceed total and without_point = total - with_point
+    is non-negative by construction — two separate counts could straddle a
+    concurrent publication."""
+    stmt = from_clause(
+        select(func.count(), func.count().filter(has_public_point()))
+        .select_from(ClassifiedOffer)
+    ).where(*filters(db, q))
+    total, with_point = db.execute(stmt).one()
+    return int(total), int(with_point)
 
 
 def bucket(n: int) -> str:

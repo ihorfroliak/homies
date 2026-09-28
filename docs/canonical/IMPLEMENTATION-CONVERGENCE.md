@@ -66,6 +66,17 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
+## TASK-013 → TASK-013A → TASK-013R — search validation & map count (2026-09-28, builder)
+
+History: TASK-013 candidate `56567d24bd764563bc21707c0c027e637a206e16` → independent **TASK-013A** (Codex): **TASK_013_REQUIRES_TARGETED_FIXES**, P0 0 / P1 0 / **P2 1** / P3 1 ([archived verbatim](../reviews/2026-09-28-task013a-codex-task013-audit.md)) → **TARGETED FIX REQUIRED** → TASK-013R on `claude/TASK-013R-search-validation-map-count`, **pending narrow re-audit (TASK-013RA)**. **TASK-013 is NOT accepted.** Accepted by TASK-013A and not reopened: public eligibility, geography, spatial privacy, price semantics, availability, sort/pagination, query count, indexes/migration, URL-state concept, archive integrity.
+
+| Finding | Severity | State |
+|---|---|---|
+| F13A-01 invalid anonymous query values reach PostgreSQL → HTTP 500 | P2 | **CLOSED BY BUILDER** (TASK-013R) — validated before SQL (D-76); reproduced first on `56567d2` |
+| F13A-02 map `without_point` negative under a concurrent publication | P3 | **CLOSED BY BUILDER** — one aggregate statement; deterministic interleaving test |
+| F13A-03 no URL/input budgets or normalization | NOTE | **CLOSED BY BUILDER** — budgets and normalization (D-76) before TASK-014 persists canonical queries |
+| regression-environment clock (Docker wall clock moving backwards) | NOTE | environment, not code; JWT validation unchanged |
+
 ## TASK-013 — search, map & marketplace discovery (2026-09-28, builder)
 
 **CLOSED BY BUILDER — PENDING ADJUDICATION / AUDIT.** Starts from the

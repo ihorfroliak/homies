@@ -844,9 +844,11 @@ def map_classifieds(
     marker per listing at its PUBLIC point, capped and in the same order.
     Clustering is the client's (D-71): public points are already ~550 m grid
     cells, so listings in one cell share a marker position."""
-    has_point = ClassifiedOffer.public_latitude.is_not(None)
-    total = search.count_matching(db, q)
-    with_point = search.count_matching(db, q, has_point)
+    has_point = search.has_public_point()
+    # One aggregate for the partition (F13A-02). The marker rows below are a
+    # separate statement; ordinary READ COMMITTED drift between them is
+    # accepted, impossible counts within one response are not.
+    total, with_point = search.count_map_partition(db, q)
     rows = db.execute(
         search.select_matching(
             db, q,

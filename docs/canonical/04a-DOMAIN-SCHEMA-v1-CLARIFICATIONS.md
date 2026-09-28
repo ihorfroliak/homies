@@ -199,3 +199,5 @@ filters name their money — base rent, stated monthly total, move-in total —
 and the response says whether utilities are included, estimated or not
 stated. Every sort ends on the listing id; the search state is the canonical
 URL query. 04 §127's search rule is implemented by this model.
+
+**Input contract (D-76, TASK-013R).** A discovery query is validated before any SQL: finite numbers inside documented bounds, NUL-free bounded text and ids, catalogue values for controlled vocabularies, bounded repetition and a bounded canonical query. Invalid is 422; valid and unmatched is an empty 200. The canonical query is deterministic: empty optional values are absent, repeated values de-duplicated and sorted, −0.0 written as 0.0, text kept as given. The map's `total`, `with_point` and `without_point` come from one aggregate and always add up.
