@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | TASK-012A (Codex, 2026-09-27): **TASK_012_REQUIRES_TARGETED_FIXES** — F12A-01 (P2, session-TimeZone-dependent temporal invariants); repair in [TASK-012R](TASK-012R-utc-temporal-invariants.md); **not accepted** |
+| Status | TASK-012A (Codex, 2026-09-27): **TASK_012_REQUIRES_TARGETED_FIXES** — F12A-01 (P2, session-TimeZone-dependent temporal invariants); repair in [TASK-012R](TASK-012R-utc-temporal-invariants.md) → TASK-012RA: **ACCEPTED** at `879bf56` (2026-09-28) |
 | Owner (writer) | Claude Code |
 | Accepted starting SHA | `ed9cf1b49f70716bd214a3212b2e7497ca5078ec` (TASK-010 Phase-1A slice, accepted by TASK-011R) |
 | Branch | `claude/TASK-012-listing-freshness-availability-quality` |

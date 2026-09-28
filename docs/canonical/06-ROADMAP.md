@@ -31,8 +31,12 @@ Engineering status per area is in
    → TASK-011 (targeted fixes) → TASK-010R → TASK-011R: **ACCEPTED** at
    `ed9cf1b` (Phase-1A slice; not production readiness).
 8. **TASK-012** — listing freshness, long-term availability, owner quality
-   guidance ([contract](../tasks/TASK-012-listing-freshness-availability-quality.md)).
-   Builder complete; awaiting adjudication and independent audit.
+   guidance ([contract](../tasks/TASK-012-listing-freshness-availability-quality.md))
+   → TASK-012A → TASK-012R → TASK-012RA: **ACCEPTED** at `879bf56`.
+9. **TASK-013** — search, map & marketplace discovery
+   ([contract](../tasks/TASK-013-search-map-marketplace-discovery.md)). Builder
+   complete; awaiting adjudication and independent audit. Next proposed:
+   TASK-014 Saved Search / alerts (the canonical query of D-72 is its key).
 
 Carried-forward maintenance (not a task on its own, done when the files are
 next touched): E01/E02/E03 PostgreSQL regression tests and mutation-review

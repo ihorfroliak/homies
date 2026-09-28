@@ -66,6 +66,29 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
+## TASK-013 — search, map & marketplace discovery (2026-09-28, builder)
+
+**CLOSED BY BUILDER — PENDING ADJUDICATION / AUDIT.** Starts from the
+accepted TASK-012 slice `879bf56`. [Contract](../tasks/TASK-013-search-map-marketplace-discovery.md).
+
+| Area | Classification | State |
+|---|---|---|
+| discovery query (`properties/search.py`) | **CANONICAL_ACTIVE (candidate)** | one `SearchQuery` for list and map; D-68 |
+| public map (`GET /v1/classifieds/map`) | **CANONICAL_ACTIVE (candidate)** | light projection, public point only, cap 500, with/without-point counts |
+| public place N+1 | **CLOSED** | 10/49/105 SELECTs (limit 1/10/24) at `879bf56` → 8/9/9 |
+| provider / agency-fee facets | **deferred** | needs canonical `provider_legal_party_id` and a recordable agency fee |
+| clustering | **deferred** | public grid points; client-side clustering; server-side when evidence demands |
+| dedicated search infrastructure | **not introduced** | D-74 |
+
+## TASK-012 — ACCEPTED (2026-09-28)
+
+History: TASK-012 `c4c8bfa` → **TASK-012A**: TASK_012_REQUIRES_TARGETED_FIXES
+(F12A-01, P2) → **TASK-012R** `879bf56` → **TASK-012RA**:
+**TASK_012R_ACCEPTED_WITH_NONBLOCKING_NOTES**, F12A-01 CLOSED, P0–P3 0 →
+**TASK_012_PHASE_1A_SLICE_ACCEPTED at `879bf56cd7bb497fd77d8140fc1443fe9d61c1fe`**
+(D-75; [archive](../reviews/2026-09-28-task012ra-codex-task012r-audit.md)). Not
+production readiness. Production: NOT DEPLOYED.
+
 ## TASK-012 → TASK-012A → TASK-012R — UTC temporal repair (2026-09-27)
 
 History: TASK-012 candidate `c4c8bfac7f59a0930d9403d1100f35dccf003ae6` →

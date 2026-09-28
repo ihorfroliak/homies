@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | IN_REVIEW — builder complete; narrow independent re-audit of F12A-01 required |
+| Status | **ACCEPTED** — TASK-012RA: TASK_012R_ACCEPTED_WITH_NONBLOCKING_NOTES; TASK_012_PHASE_1A_SLICE_ACCEPTED at `879bf56` ([archive](../reviews/2026-09-28-task012ra-codex-task012r-audit.md)) |
 | Owner (writer) | Claude Code |
 | Starting SHA | TASK-012 candidate `c4c8bfac7f59a0930d9403d1100f35dccf003ae6` |
 | Accepted parent | `ed9cf1b49f70716bd214a3212b2e7497ca5078ec` (TASK-010 slice) |

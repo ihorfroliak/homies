@@ -184,3 +184,18 @@ needs one (move-in, §19), is the UTC date of the database decision instant;
 an identity derived from an instant (an event's dedup key) uses one canonical
 UTC spelling. The database clock remains the authority; forcing sessions to
 UTC is defence in depth, never the reason a rule is correct.
+
+## 21. Discovery — one query, the public point, honest money
+
+Decisions D-68–D-74 (TASK-013). Public search and the public map answer one
+canonical query (`SearchQuery`): dimensions combine with AND, repeated values
+of one dimension with OR; contradictions are validation errors, unlikely
+combinations empty results. Every result satisfies the single
+public-visibility rule of §18. Anonymous spatial discovery (viewport,
+radius) uses **only the public, privacy-reduced point** — never the exact
+residential point (§16). The map is a lighter projection of the list's own
+result set and says how many matching listings have no public point. Money
+filters name their money — base rent, stated monthly total, move-in total —
+and the response says whether utilities are included, estimated or not
+stated. Every sort ends on the listing id; the search state is the canonical
+URL query. 04 §127's search rule is implemented by this model.
