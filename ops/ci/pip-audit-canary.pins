@@ -1,0 +1,5 @@
+# PR-001R F2 canary: a deliberately old pin with published advisories.
+# Never installed by anything. CI audits it and REQUIRES pip-audit to report it,
+# proving the audit inspects the exact pins it is given rather than resolving a
+# newer release. Not named requirements*.txt so dependency tooling ignores it.
+urllib3==1.26.4

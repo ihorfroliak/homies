@@ -25,13 +25,17 @@ not a readiness one. Schema drift is not re-checked here either: startup already
 refuses to boot unless migrations are at head (D-35).
 """
 
+import asyncio
 import time
 from dataclasses import dataclass
 
+import psycopg
 from prometheus_client import Gauge
 from sqlalchemy import text
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.core.config import settings
 from app.core.db import engine
 
 # OBS-06: /readyz answers an orchestrator, but Prometheus cannot read an HTTP
@@ -46,12 +50,21 @@ DATABASE_CHECKED_AT = Gauge(
 )
 
 # The probe must fail fast. An orchestrator re-probes every few seconds; a probe
-# that blocks on a *hung* (rather than refused) database holds a pool connection
-# and stacks up behind itself until the pool is exhausted — at which point the
-# probe has caused the outage it was meant to report. Enforced server-side via
-# SET LOCAL, so it reverts with the transaction and never leaks onto the pooled
-# connection. SQLite (tests) has no equivalent and needs none.
+# that blocks on a *hung* (rather than refused) database stacks up behind itself
+# and, on the application pool, would exhaust it — at which point the probe has
+# caused the outage it was meant to report.
+#
+# PR-001R F11: server-side `statement_timeout` and `connect_timeout` were not
+# enough. A *frozen* server (paused VM/container, stalled process) still has a
+# kernel that completes TCP handshakes and acknowledges data, so no TCP timeout
+# fires, and a warm pooled connection's `pool_pre_ping` then waits for a reply
+# for ever. Readiness therefore does not use the application pool at all on
+# PostgreSQL: each probe opens one fresh connection, bounded end to end by a
+# client-side wall-clock deadline, and closes it. A stuck probe cannot hold an
+# application connection, and the deadline holds whatever the server does.
 PROBE_STATEMENT_TIMEOUT_MS = 2000
+PROBE_CONNECT_TIMEOUT_S = 2  # libpq minimum is 2
+PROBE_DEADLINE_S = 3.0
 
 
 @dataclass(frozen=True)
@@ -63,15 +76,22 @@ class CheckResult:
     error: str | None = None
 
 
-def check_database() -> CheckResult:
-    """Round-trip the real connection pool with a bounded `SELECT 1`."""
+def check_database(database_url: str | None = None) -> CheckResult:
+    """A bounded `SELECT 1` against the application's database.
+
+    PostgreSQL: a fresh, dedicated connection under a wall-clock deadline
+    (never the application pool). Anything else (SQLite in tests): the
+    application engine, which cannot hang on a network.
+    """
+    url = database_url or settings.database_url
     started = time.perf_counter()
     try:
-        with engine.connect() as conn, conn.begin():
-            if conn.dialect.name == "postgresql":
-                conn.execute(text(f"SET LOCAL statement_timeout = {PROBE_STATEMENT_TIMEOUT_MS}"))
-            conn.execute(text("SELECT 1"))
-    except SQLAlchemyError as exc:
+        if url.startswith("postgresql"):
+            _probe_postgres(url)
+        else:
+            with engine.connect() as conn, conn.begin():
+                conn.execute(text("SELECT 1"))
+    except (SQLAlchemyError, psycopg.Error, OSError, TimeoutError) as exc:
         _publish(up=False)
         return CheckResult(
             ok=False,
@@ -80,6 +100,45 @@ def check_database() -> CheckResult:
         )
     _publish(up=True)
     return CheckResult(ok=True, latency_ms=round((time.perf_counter() - started) * 1000, 2))
+
+
+def _libpq_url(url: str) -> str:
+    """The SQLAlchemy URL as a libpq URI (driver suffix dropped, query kept)."""
+    return make_url(url).set(drivername="postgresql").render_as_string(hide_password=False)
+
+
+def _probe_postgres(url: str) -> None:
+    """Run the async probe on a private event loop in the calling thread.
+
+    /readyz is a sync endpoint, so this runs on a threadpool worker; the
+    deadline bounds how long that worker is held. A selector loop is asked for
+    explicitly because psycopg's async connection cannot run on Windows'
+    default proactor loop — the probe then behaves the same on a developer
+    machine as in the Linux image.
+    """
+    asyncio.run(_probe_postgres_async(_libpq_url(url)), loop_factory=asyncio.SelectorEventLoop)
+
+
+async def _probe_postgres_async(conninfo: str) -> None:
+    conn: psycopg.AsyncConnection | None = None
+
+    async def probe() -> None:
+        nonlocal conn
+        conn = await psycopg.AsyncConnection.connect(
+            conninfo,
+            autocommit=True,
+            connect_timeout=PROBE_CONNECT_TIMEOUT_S,
+            options=f"-c statement_timeout={PROBE_STATEMENT_TIMEOUT_MS}",
+            application_name="homies-readiness",
+        )
+        await conn.execute("SELECT 1")
+
+    try:
+        await asyncio.wait_for(probe(), PROBE_DEADLINE_S)
+    finally:
+        if conn is not None:
+            # Closes the socket locally; it does not wait for a frozen server.
+            await conn.close()
 
 
 def _publish(*, up: bool) -> None:

@@ -21,9 +21,9 @@ this is the outline staging must exercise. Database recovery details:
 | Elevated 5xx | HTTP metrics | `homies_http_requests_total` | 5xx ratio (`HighServerErrorRate`) | page | rule **yes**; destination **no** |
 | Latency | HTTP histogram | `homies_http_request_duration_seconds` | p95 (`HighRequestLatency`) | ticket | rule **yes** |
 | Migration / startup failure | process exits; readiness never green | container logs (`SchemaNotMigratedError`, `InsecureConfigurationError`, `LedgerPrivilegeError`) + `up` | deploy step fails; instance never ready | deploy pipeline + page | **no** pipeline exists |
-| Notification worker failure | outbox growth, dead letters | `homies_notification_queue_depth`, `homies_notifications_dead_total` | pending+failed > 100 for 15 m (`NotificationBacklogGrowing`, PR-001); any dead (`NotificationsDeadLettered`) | ticket | rules **yes**; no worker heartbeat metric |
+| Notification backlog | outbox depth as last reported by a running worker | `homies_notification_queue_depth` (DB-wide, same on every replica), `homies_notifications_dead_total` | `sum(max by (status)(…pending|failed)) > 100` for 15 m (`NotificationBacklogGrowing`; replica-safe, PR-001R F6); any dead (`NotificationsDeadLettered`) | ticket | rules **yes** |
 | Freshness sweep stopped | — | — | (off by default; visibility never depends on it) | ticket | **no** metric |
-| Queue/outbox backlog | as worker | as above | as above | ticket | **yes** (PR-001) |
+| Notification worker stopped | — | the queue gauge is refreshed by the worker itself, so a stopped worker freezes or drops it | needs a worker heartbeat | ticket | **no** (observability track) |
 | Disk / storage | node metrics | node-exporter / provider | < 15 % free | page | **no** (no infrastructure) |
 | Backup failure | job exit / artifact age | backup job metrics | no successful backup in 26 h | page | **no** (no scheduled job) |
 | Restore verification failure | drill result | CI restore drills; scheduled staging drill | drill red | ticket | CI **yes**; scheduled **no** |

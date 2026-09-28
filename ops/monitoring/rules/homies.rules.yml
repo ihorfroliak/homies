@@ -160,17 +160,22 @@ groups:
             A guest or host was not told something. These do not retry again.
 
       - alert: NotificationBacklogGrowing
-        # PR-001: the outbox depth was published (worker) but nothing watched
-        # it. A stopped or failing worker shows up here as undelivered rows
-        # piling up, before anything is dead-lettered.
-        expr: sum(homies_notification_queue_depth{status=~"pending|failed"}) > 100
+        # PR-001: the outbox depth was published but nothing watched it.
+        # PR-001R F6: the gauge is a DATABASE-wide count that every replica
+        # running the worker reports identically, so a plain sum() multiplied
+        # it by the replica count. max by (status) takes each status once.
+        # What this detects: a backlog seen by a running worker. It does NOT
+        # detect a stopped worker — the gauge is refreshed by the worker
+        # itself, so with no worker it is frozen or absent. Worker liveness
+        # needs a heartbeat (observability track).
+        expr: sum(max by (status) (homies_notification_queue_depth{status=~"pending|failed"})) > 100
         for: 15m
         labels:
           severity: ticket
         annotations:
           summary: "{{ $value | printf \"%.0f\" }} notifications waiting in the outbox"
           description: >-
-            The notification worker is not keeping up or not running. Check its logs and homies_notifications_failed_total.
+            More than 100 pending or failed notifications for 15 minutes, as last reported by a running worker. Check the worker logs and homies_notifications_failed_total.
 
       - alert: BookingExpiryBacklogGrowing
         # BK-01: the sweep frees dates held by unpaid bookings. A growing

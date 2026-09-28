@@ -37,7 +37,13 @@ class SchemaNotMigratedError(RuntimeError):
 def alembic_config() -> Config:
     cfg = Config(str(BACKEND_DIR / "alembic.ini"))
     cfg.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
-    cfg.set_main_option("sqlalchemy.url", settings.database_url)
+    # configparser treats '%' as interpolation: a percent-encoded password made
+    # this raise a ValueError whose text is the whole URL, password included.
+    cfg.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
+    # Called inside the running application: its logging is already configured
+    # (app/core/logging_config.py), and alembic.ini's fileConfig would replace
+    # the root handlers and disable every existing logger (PR-001R F5).
+    cfg.attributes["configure_logger"] = False
     return cfg
 
 

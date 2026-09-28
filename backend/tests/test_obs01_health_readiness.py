@@ -4,9 +4,11 @@ The previous /healthz asserted `status == "ok"` against a hardcoded literal, so
 it passed with the database on fire. These tests are written to fail if the
 split is removed or inverted.
 
-`check_database()` deliberately uses the real module-level engine (that is the
-point — it exercises the actual connection pool), so these tests point that
-engine at an in-memory SQLite rather than overriding the `get_db` dependency.
+On SQLite `check_database()` uses the module-level engine, so these tests
+point that engine at an in-memory SQLite rather than overriding `get_db`. On
+PostgreSQL it never touches that pool (PR-001R F11): the PostgreSQL path is
+covered here against local sockets that refuse or never answer, and against a
+real PostgreSQL behind a freezable proxy in test_readiness_faults_pg.py.
 """
 
 import pytest
@@ -30,6 +32,7 @@ def database_up(monkeypatch):
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
     monkeypatch.setattr(health, "engine", probe_engine)
+    monkeypatch.setattr(settings, "database_url", "sqlite://")
     return probe_engine
 
 
@@ -47,6 +50,7 @@ def database_down(monkeypatch):
         )
 
     monkeypatch.setattr(health.engine, "connect", _boom)
+    monkeypatch.setattr(settings, "database_url", "sqlite://")
 
 
 def test_readyz_reports_ready_when_database_answers(database_up):
@@ -98,31 +102,85 @@ def test_probes_are_exempt_from_rate_limiting():
     assert rl.resolve_policy("GET", "/healthz") is None
 
 
-def test_probe_bounds_the_query_on_postgres(monkeypatch):
-    """A hung query must not hold a pool connection indefinitely."""
-    executed: list[str] = []
+def test_the_postgres_url_becomes_a_libpq_uri_with_its_parameters():
+    uri = health._libpq_url(
+        "postgresql+psycopg://homies_app:p%40ss@db.internal:6432/homies?sslmode=require")
+    assert uri == "postgresql://homies_app:p%40ss@db.internal:6432/homies?sslmode=require"
 
-    class _Ctx:
-        def __enter__(self):
-            return self
 
-        def __exit__(self, *a):
-            return False
+def test_a_refused_postgres_connection_is_a_fast_503(monkeypatch):
+    """Stopped database: nothing listens. Fails at once, on the probe's own
+    connection — the application engine is never asked."""
+    import socket
 
-    class _FakeConn(_Ctx):
-        dialect = type("D", (), {"name": "postgresql"})()
+    monkeypatch.setattr(health.engine, "connect", _must_not_use_the_app_pool)
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]  # closed again before the probe: refused
+    result = health.check_database(f"postgresql+psycopg://u:s3cret@127.0.0.1:{port}/x")
+    assert result.ok is False and result.error == "OperationalError"
+    assert result.latency_ms < health.PROBE_DEADLINE_S * 1000
 
-        def execute(self, stmt):
-            executed.append(str(stmt))
 
-        def begin(self):
-            return _Ctx()
+def test_a_postgres_that_accepts_but_never_answers_is_a_bounded_503(monkeypatch):
+    """A frozen server: the kernel completes the TCP handshake, the server
+    never speaks. No TCP timeout can end this; the probe's deadline must."""
+    import socket
+    import threading
+    import time
 
-    monkeypatch.setattr(health.engine, "connect", lambda: _FakeConn())
+    monkeypatch.setattr(health.engine, "connect", _must_not_use_the_app_pool)
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(8)
+    held: list[socket.socket] = []
+    stop = threading.Event()
 
-    assert health.check_database().ok is True
-    assert any("statement_timeout" in s for s in executed), executed
-    assert any("SELECT 1" in s for s in executed), executed
+    def accept_and_ignore():
+        listener.settimeout(0.2)
+        while not stop.is_set():
+            try:
+                held.append(listener.accept()[0])
+            except OSError:
+                continue
+
+    thread = threading.Thread(target=accept_and_ignore, daemon=True)
+    thread.start()
+    try:
+        started = time.monotonic()
+        result = health.check_database(
+            f"postgresql+psycopg://u:s3cret@127.0.0.1:{listener.getsockname()[1]}/x")
+        elapsed = time.monotonic() - started
+    finally:
+        stop.set()
+        thread.join(2)
+        for conn in held:
+            conn.close()
+        listener.close()
+    assert result.ok is False
+    # psycopg reports its connect deadline as ConnectionTimeout (an
+    # OperationalError); the wall-clock deadline as TimeoutError.
+    assert result.error in {"OperationalError", "ConnectionTimeout", "TimeoutError"}
+    assert elapsed < health.PROBE_DEADLINE_S + 1.0, elapsed
+    assert held, "the probe really connected and was then ignored"
+
+
+def test_readyz_body_never_carries_the_postgres_url(monkeypatch):
+    import socket
+
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    monkeypatch.setattr(settings, "database_url",
+                        f"postgresql+psycopg://homies_app:s3cret@127.0.0.1:{port}/homies")
+    resp = client.get("/readyz")
+    assert resp.status_code == 503
+    for leak in ("s3cret", "postgresql", "homies_app", str(port)):
+        assert leak not in resp.text
+
+
+def _must_not_use_the_app_pool(*args, **kwargs):
+    raise AssertionError("readiness on PostgreSQL must not use the application pool")
 
 
 def test_postgres_connections_bound_the_tcp_connect():

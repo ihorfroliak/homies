@@ -211,11 +211,11 @@ tests:
   - interval: 1m
     name: NotificationBacklogGrowing fires on a sustained undelivered outbox only
     input_series:
-      - series: 'homies_notification_queue_depth{status="pending"}'
+      - series: 'homies_notification_queue_depth{instance="api-1", status="pending"}'
         values: "10 60 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90"
-      - series: 'homies_notification_queue_depth{status="failed"}'
+      - series: 'homies_notification_queue_depth{instance="api-1", status="failed"}'
         values: "0 0 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30"
-      - series: 'homies_notification_queue_depth{status="delivered"}'
+      - series: 'homies_notification_queue_depth{instance="api-1", status="delivered"}'
         values: "900 900 900 900 900 900 900 900 900 900 900 900 900 900 900 900 900 900 900 900"
     alert_rule_test:
       - eval_time: 10m
@@ -229,7 +229,72 @@ tests:
             exp_annotations:
               summary: "120 notifications waiting in the outbox"
               description: >-
-                The notification worker is not keeping up or not running. Check its logs and homies_notifications_failed_total.
+                More than 100 pending or failed notifications for 15 minutes, as last reported by a running worker. Check the worker logs and homies_notifications_failed_total.
+
+  - interval: 1m
+    name: NotificationBacklogGrowing threshold is strictly above 100
+    input_series:
+      - series: 'homies_notification_queue_depth{instance="api-1", status="pending"}'
+        values: "100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100"
+    alert_rule_test:
+      - eval_time: 19m
+        alertname: NotificationBacklogGrowing
+        exp_alerts: []
+
+  - interval: 1m
+    name: NotificationBacklogGrowing at 101 waits the full 15 minutes
+    input_series:
+      - series: 'homies_notification_queue_depth{instance="api-1", status="pending"}'
+        values: "101 101 101 101 101 101 101 101 101 101 101 101 101 101 101 101 101 101 101 101"
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: NotificationBacklogGrowing
+        exp_alerts: []
+      - eval_time: 16m
+        alertname: NotificationBacklogGrowing
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+            exp_annotations:
+              summary: "101 notifications waiting in the outbox"
+              description: >-
+                More than 100 pending or failed notifications for 15 minutes, as last reported by a running worker. Check the worker logs and homies_notifications_failed_total.
+
+  - interval: 1m
+    name: NotificationBacklogGrowing counts a database-wide backlog once across replicas
+    # Three replicas each report the same 60 pending + 0 failed. A sum over
+    # replicas would read 180 and page; the backlog is 60.
+    input_series:
+      - series: 'homies_notification_queue_depth{instance="api-1", status="pending"}'
+        values: "60 60 60 60 60 60 60 60 60 60 60 60 60 60 60 60 60 60 60 60"
+      - series: 'homies_notification_queue_depth{instance="api-2", status="pending"}'
+        values: "60 60 60 60 60 60 60 60 60 60 60 60 60 60 60 60 60 60 60 60"
+      - series: 'homies_notification_queue_depth{instance="api-3", status="pending"}'
+        values: "60 60 60 60 60 60 60 60 60 60 60 60 60 60 60 60 60 60 60 60"
+      - series: 'homies_notification_queue_depth{instance="api-1", status="failed"}'
+        values: "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
+      - series: 'homies_notification_queue_depth{instance="api-2", status="failed"}'
+        values: "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
+    alert_rule_test:
+      - eval_time: 19m
+        alertname: NotificationBacklogGrowing
+        exp_alerts: []
+
+  - interval: 1m
+    name: NotificationBacklogGrowing ignores delivered, processing and dead rows
+    input_series:
+      - series: 'homies_notification_queue_depth{instance="api-1", status="delivered"}'
+        values: "5000 5000 5000 5000 5000 5000 5000 5000 5000 5000 5000 5000 5000 5000 5000 5000 5000 5000 5000 5000"
+      - series: 'homies_notification_queue_depth{instance="api-1", status="processing"}'
+        values: "500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500"
+      - series: 'homies_notification_queue_depth{instance="api-1", status="dead"}'
+        values: "500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500"
+      - series: 'homies_notification_queue_depth{instance="api-1", status="pending"}'
+        values: "5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5"
+    alert_rule_test:
+      - eval_time: 19m
+        alertname: NotificationBacklogGrowing
+        exp_alerts: []
 
   - interval: 1m
     name: BookingExpiryBacklogGrowing fires past 20 held bookings

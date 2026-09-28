@@ -1,5 +1,11 @@
+import logging
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import ArgumentError
+
+log = logging.getLogger("homies.config")
 
 # BK-01: bounds for the unpaid-booking TTL. Below the floor an accidental tiny
 # value would expire real customers mid-checkout; above the ceiling inventory
@@ -9,6 +15,10 @@ BOOKING_TTL_MAX_SECONDS = 86_400  # 24h
 
 
 class Settings(BaseSettings):
+    # "local" only when nothing says otherwise, for a developer's shell. The
+    # production image sets ENV=production (backend/Dockerfile, PR-001R F3), so
+    # a container started without ENV is production-like and fails closed; an
+    # implicit "local" is announced at startup (validate_security_config).
     env: str = "local"
     database_url: str = "postgresql+psycopg://homies:homies@localhost:5433/homies"
     # REDIS_URL, MEILI_URL, MEILI_MASTER_KEY and NATS_URL were removed in PR-001:
@@ -185,6 +195,46 @@ class InsecureConfigurationError(RuntimeError):
     """
 
 
+# The repository's development database as this repository publishes it — the
+# Settings default, ops/docker-compose.yml and the CI service all use it.
+DEV_DATABASE_CREDENTIALS = ("homies", "homies")
+DEV_DATABASE_NAME = "homies"
+DEV_DATABASE_HOST_PORT = 5433  # compose maps the dev database to localhost:5433
+LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+def development_database_problems(database_url: str) -> list[str]:
+    """Why DATABASE_URL is recognisably the repository's development
+    database, or not PostgreSQL at all (PR-001R F4).
+
+    Compared on the parsed URL, so spelling does not matter: driver suffix,
+    percent-encoding, query parameters, `localhost` vs `127.0.0.1`. What it
+    guarantees, exactly: a production-like process refuses (1) a URL that is not
+    PostgreSQL or does not parse, (2) the published development credentials
+    `homies`/`homies` on any host, (3) the development database `homies` on a
+    loopback host at the development port 5433, whatever the credentials. It is
+    not a general database-security policy: any other URL passes, and whether
+    it points at the right database is the deployment's responsibility.
+    Messages name the rule, never the value.
+    """
+    try:
+        url = make_url(database_url)
+    except (ArgumentError, ValueError):
+        return ["DATABASE_URL is not a valid database URL"]
+    if not url.drivername.startswith("postgresql"):
+        return ["DATABASE_URL does not point to PostgreSQL"]
+    problems: list[str] = []
+    if (url.username, url.password) == DEV_DATABASE_CREDENTIALS:
+        problems.append("DATABASE_URL uses the repository's published development credentials")
+    if (
+        (url.host or "").lower() in LOOPBACK_HOSTS
+        and url.port == DEV_DATABASE_HOST_PORT
+        and url.database == DEV_DATABASE_NAME
+    ):
+        problems.append("DATABASE_URL points at the repository's local development database")
+    return problems
+
+
 def validate_security_config(cfg: "Settings | None" = None) -> None:
     """Single source of truth for security-critical configuration.
 
@@ -193,6 +243,12 @@ def validate_security_config(cfg: "Settings | None" = None) -> None:
     """
     cfg = cfg or settings
     problems: list[str] = []
+
+    if "env" not in cfg.model_fields_set:
+        # Not an error — a developer's shell — but never silent (PR-001R F3).
+        log.warning(
+            "ENV is not set: running as env='%s' (local development). Deployed "
+            "images set ENV=production; set ENV explicitly anywhere else.", cfg.env)
 
     # Payment-environment agreement is checked in EVERY environment: a live
     # Stripe key on a developer laptop is as dangerous as a test key in
@@ -219,11 +275,9 @@ def validate_security_config(cfg: "Settings | None" = None) -> None:
 
     _check("JWT_SECRET", cfg.jwt_secret)
     _check("WEBHOOK_SECRET", cfg.webhook_secret, min_length=16)
-    # PR-001: an unset DATABASE_URL silently fell back to the repository's
-    # local-development URL (with its published password). A production-like
-    # process must be told where its database is.
-    if cfg.database_url == Settings.model_fields["database_url"].default:
-        problems.append("DATABASE_URL is the repository's local-development default")
+    # PR-001 / PR-001R F4: a production-like process must be told where its
+    # database is, and must not be pointed at the repository's development one.
+    problems.extend(development_database_problems(cfg.database_url))
 
     if cfg.payment_provider == "stripe":
         _check("STRIPE_API_KEY", cfg.stripe_api_key, min_length=16)

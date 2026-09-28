@@ -8,7 +8,9 @@
   2026-07 drill (legacy booking/ledger focus).
 * `backend/tests/test_dr_restore_pg.py` — CI restore cycle, legacy data.
 * **`backend/tests/test_dr_restore_phase1_pg.py` (PR-001)** — the Phase-1A
-  drill, run on every CI build with PostgreSQL:
+  drill, run on every CI build with PostgreSQL (mandatory since PR-001R: with
+  `HOMIES_REQUIRE_RESTORE_DRILL=1`, set in CI, a missing database or client
+  tool fails the run instead of skipping both drills):
   1. create synthetic data through the real API and import seams — reference
      geography, structured addresses, properties with exact points, spaces,
      published listings with price components, one listing past its

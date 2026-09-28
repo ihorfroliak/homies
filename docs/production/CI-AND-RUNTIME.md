@@ -37,11 +37,28 @@ recreate the schema — never point `TEST_DATABASE_URL` at a database you keep.
 
 | Job | Gates |
 |---|---|
-| backend | Python 3.12; pinned install; runtime versions printed; **single Alembic head**; ruff; mypy; `alembic upgrade head` on PostGIS 16-3.4 (digest-pinned service, health-checked) with PostgreSQL 16 / PostGIS asserted; full test suite with coverage (SQLite + PostgreSQL suites incl. OpenAPI drift and both restore drills); coverage ≥ 80 %; pip-audit of declared deps |
-| image | production image builds and carries `alembic/` |
+| backend | Python 3.12 (asserted); pinned install **proven equal to `constraints.txt`** (PR-001R F2); runtime versions printed and `pg_dump`/`pg_restore` required; **single Alembic head**; ruff; mypy; `alembic upgrade head` on PostGIS 16-3.4 (digest-pinned service, health-checked) with PostgreSQL 16 / PostGIS asserted; full test suite with coverage (SQLite + PostgreSQL suites incl. OpenAPI drift and both restore drills, **mandatory** via `HOMIES_REQUIRE_RESTORE_DRILL=1`, skips listed with `-rs`); coverage ≥ 80 %; `pip-audit -r constraints.txt --no-deps --disable-pip` (the shipped pins, no resolution) and a canary that must be flagged |
+| image | production image builds, carries `alembic/`, runs Python 3.12 and defaults to `ENV=production` (PR-001R F3/F8) |
 | secrets | gitleaks over full history |
 | monitoring | promtool config/rules/unit tests; amtool |
 | contracts | Spectral (OpenAPI), AsyncAPI validation |
 
 Triggers (PR-001): pushes to `main` and `claude/**`, pull requests, manual.
-Newer pushes cancel older runs of the same ref. No secrets are needed.
+On a task branch a newer push cancels the older run; on `main` every commit
+keeps its own run and record (PR-001R F10). No secrets are needed.
+
+## Runtime drift guard (PR-001R F8)
+
+The image job asserts Python 3.12; Dependabot ignores `python` minor/major
+bumps for the backend image (a move to 3.13/3.14 is a deliberate cycle with its
+own evidence). The already-open Dependabot branch proposing `python:3.14-slim`
+should be closed by the founder. `requires-python` stays `>=3.12`.
+
+## Dependency audit (PR-001R F2)
+
+What is tested, audited and shipped is one set: `constraints.txt`. CI proves
+the installed environment equals it; the production image installs from it
+(all 37 runtime packages verified at their pins); `pip-audit` reads it with
+`--no-deps --disable-pip`, so it inspects each pin as written. The canary
+`ops/ci/pip-audit-canary.pins` (an old `urllib3`, never installed) must be
+flagged — if the audit ever resolved to newer releases instead, CI goes red.

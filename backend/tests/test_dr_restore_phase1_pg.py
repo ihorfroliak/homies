@@ -31,13 +31,19 @@ from app.modules.geography.models import GeoArea, GeoSource
 from app.modules.properties import freshness
 from app.modules.properties.models import ClassifiedOffer
 from tests.conftest import TEST_DATABASE_URL, auth, register_and_login, verify_ownership
-from tests.test_dr_restore_pg import PG_DUMP, PG_RESTORE, _libpq, _run, _with_database
+# Importing it also applies its HOMIES_REQUIRE_RESTORE_DRILL check (PR-001R F7).
+from tests.test_dr_restore_pg import (
+    DRILL_AVAILABLE,
+    DRILL_SKIP_REASON,
+    PG_DUMP,
+    PG_RESTORE,
+    _libpq,
+    _run,
+    _with_database,
+)
 from tests.test_geography import PL_AREAS, PL_LOCALITIES, SOURCE
 
-pytestmark = pytest.mark.skipif(
-    not (TEST_DATABASE_URL and PG_DUMP and PG_RESTORE),
-    reason="needs TEST_DATABASE_URL and the pg_dump/pg_restore client tools",
-)
+pytestmark = pytest.mark.skipif(not DRILL_AVAILABLE, reason=DRILL_SKIP_REASON)
 
 # Tables whose every row must come back identical.
 TABLES = ("countries", "geo_sources", "admin_areas", "localities", "geo_areas",
@@ -86,7 +92,10 @@ def _seed(pg_client, pg_session):
 
 
 def _rows(conn, table):
-    return conn.execute(text(f"SELECT * FROM {table} ORDER BY 1")).all()  # noqa: S608
+    # Sorted on the whole row, not on the first column: tables with a
+    # composite key (property_authority_scopes) tie on column 1, and tied rows
+    # come back in no defined order — the comparison was order-flaky (PR-001R).
+    return sorted(conn.execute(text(f"SELECT * FROM {table}")).all(), key=repr)  # noqa: S608
 
 
 def _public_ids(url):

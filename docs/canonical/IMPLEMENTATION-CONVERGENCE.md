@@ -66,6 +66,31 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
+## PR-001 → PR-001A → PR-001R — targeted runtime & CI repair (2026-09-28, builder)
+
+History: PR-001 candidate `4416e2b14b007ba50aab41cad8e23deea32c4678` →
+independent **PR-001A** (Codex): **PR_001_REQUIRES_TARGETED_FIXES**, P0 0 /
+P1 0 / P2 4 / P3 7 → **TARGETED FIX REQUIRED** → PR-001R on
+`claude/PR-001R-runtime-ci-repair`, **pending narrow re-audit (PR-001RA)**.
+The full PR-001A report was not available to the builder; only the verdict is
+recorded ([verdict record](../reviews/2026-09-28-pr001a-verdict-record.md)).
+**PR-001 is NOT accepted. Production: NOT READY, NOT DEPLOYED.**
+
+| Finding | State after PR-001R |
+|---|---|
+| F1 unhandled 500 loses request id (P2) | **CLOSED BY BUILDER** — caught in the outermost middleware: generic 500 + `X-Request-ID`, logged once under the id |
+| F2 CI audits an unpinned resolution (P2) | **CLOSED BY BUILDER** — `pip-audit -r constraints.txt --no-deps --disable-pip`; installed set proven equal to the pins; canary must be flagged |
+| F3 missing ENV fails open as local (P2) | **CLOSED BY BUILDER** — image `ENV=production`; implicit `local` announced |
+| F11 readiness hangs on a warm pool (P2) | **CLOSED BY BUILDER** — fresh dedicated connection under a wall-clock deadline; proven on real PostgreSQL incl. frozen-after-warm-pool |
+| F4 dev DATABASE_URL guard exact-string | **CLOSED BY BUILDER** — parsed-URL rules, documented guarantee |
+| F5 Alembic wipes logging | **CLOSED BY BUILDER** |
+| F6 backlog alert × replicas; worker-death claim | **CLOSED BY BUILDER** — `max by (status)`; claim removed; heartbeat → observability track |
+| F7 restore drill can skip in CI | **CLOSED BY BUILDER** — `HOMIES_REQUIRE_RESTORE_DRILL=1` |
+| F8 runtime drift | **CLOSED BY BUILDER** — image asserts 3.12; Dependabot ignores python minor/major |
+| F9 canonical TASK-012 heading lost | **CLOSED BY BUILDER** — restored byte-identical to `879bf56` |
+| F10 main CI runs cancelled | **CLOSED BY BUILDER** — per-commit group on `main` |
+| N1 / N5 / N7 | **CLOSED BY BUILDER** — `fullmatch`; README stack; real 429 test |
+
 ## PR-001 — CI, runtime & production-readiness baseline (2026-09-28, builder)
 
 Independent engineering track on the accepted `879bf56` (no TASK-013/014
@@ -83,6 +108,7 @@ code). **Production: NOT READY, NOT DEPLOYED.** Measured baseline and gaps:
 | restore drill | Phase-1A backup→destroy→restore drill in CI |
 | open decisions | RPO/RTO; alert destination; schema-compatibility policy for rollback/rolling deploys; hosting |
 
+## TASK-012 → TASK-012A → TASK-012R — UTC temporal repair (2026-09-27)
 
 History: TASK-012 candidate `c4c8bfac7f59a0930d9403d1100f35dccf003ae6` →
 independent **TASK-012A** (Codex): **TASK_012_REQUIRES_TARGETED_FIXES**, P0 0 /
