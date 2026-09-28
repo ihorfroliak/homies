@@ -72,8 +72,7 @@ History: PR-001 candidate `4416e2b14b007ba50aab41cad8e23deea32c4678` →
 independent **PR-001A** (Codex): **PR_001_REQUIRES_TARGETED_FIXES**, P0 0 /
 P1 0 / P2 4 / P3 7 → **TARGETED FIX REQUIRED** → PR-001R on
 `claude/PR-001R-runtime-ci-repair`, **pending narrow re-audit (PR-001RA)**.
-The full PR-001A report was not available to the builder; only the verdict is
-recorded ([verdict record](../reviews/2026-09-28-pr001a-verdict-record.md)).
+[Archived verbatim](../reviews/2026-09-28-pr001a-codex-pr001-audit.md); [verdict record and disposition](../reviews/2026-09-28-pr001a-verdict-record.md).
 **PR-001 is NOT accepted. Production: NOT READY, NOT DEPLOYED.**
 
 | Finding | State after PR-001R |

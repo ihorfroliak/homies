@@ -1,13 +1,15 @@
 # PR-001A — verdict record (not the audit report)
 
 **Provenance.** Independent audit PR-001A (Codex) of the PR-001 candidate
-`4416e2b14b007ba50aab41cad8e23deea32c4678`. The complete audit report was
-**not available** to the builder when PR-001R started: it was not in the
-repository, in the audit's working directories, or in the prompt. It is
-therefore **not archived here**, and nothing below reconstructs it. This file
-records only what the founder's PR-001R task contract (2026-09-28) states about
-the verdict. When the full report is supplied it is archived verbatim beside
-this file, as `2026-09-28-pr001a-codex-pr001-audit.md` (byte-exact, `-text`).
+`4416e2b14b007ba50aab41cad8e23deea32c4678`. The complete report was not found
+when PR-001R started (not in the repository, the prompt or the Codex working
+folders searched first); it was later located in the auditor's evidence
+directory `homies-audit-evidence/PR-001A/FINAL-REPORT.md` (outside the repository)
+(27 656 bytes, sha256 `2cd3dfe54dd7ffcdf8bce2a8e41fe3b0cae5148acc8b171e48842f877193d061`;
+the auditor recorded no hash of its own) and is **archived verbatim** as
+[`2026-09-28-pr001a-codex-pr001-audit.md`](2026-09-28-pr001a-codex-pr001-audit.md)
+(byte-exact, `-text`). The table below was written from the PR-001R contract
+before the report was found and was then checked against it: it matches.
 
 **State.** `PR-001 → PR-001A → TARGETED FIX REQUIRED`. PR-001 is **not
 accepted**.
@@ -31,5 +33,5 @@ accepted**.
 | N5 | README presents Redis/Meilisearch/NATS as current | note | PR-001R |
 | N7 | test named for rate limiting did not exercise a 429 | note | PR-001R |
 
-Findings the contract numbers but does not describe here are not listed; see
-the full report once archived.
+Not repaired in PR-001R (not in its contract; see the report): F8's build-isolation
+`pip`/`setuptools` and `postgresql-client-16` minor pinning; notes N2, N3, N4, N6, N8.
