@@ -69,7 +69,7 @@ def _saved_out(db: Session, saves: list[SavedListing]) -> list[SavedListingOut]:
         offers = {o.id: _public(o, now) for o in rows}
     return [
         SavedListingOut(
-            saved_id=s.id, listing_id=s.listing_id, saved_at=s.saved_at,
+            saved_id=s.id, listing_id=s.listing_id, saved_at=freshness.to_utc(s.saved_at),
             availability_status="AVAILABLE" if s.listing_id in offers else "NO_LONGER_AVAILABLE",
             # A tombstone carries nothing of the listing: no title, price,
             # media, place, owner or contact — not even from a cache.
@@ -171,8 +171,9 @@ def _search_out(db: Session, s: SavedSearch, *, with_count: bool) -> SavedSearch
         query_schema_version=s.query_schema_version,
         query_state="VALID" if q is not None else "INVALID", invalid_reason=reason,
         market_country_code=s.market_country_code, status=s.status,  # type: ignore[arg-type]
-        notifications_enabled=s.notifications_enabled, created_at=s.created_at,
-        updated_at=s.updated_at, baseline_at=s.baseline_at, version=s.version,
+        notifications_enabled=s.notifications_enabled,
+        created_at=freshness.to_utc(s.created_at), updated_at=freshness.to_utc(s.updated_at),
+        baseline_at=freshness.to_utc(s.baseline_at), version=s.version,
         match_count=search.count_matching(db, q) if (with_count and q is not None) else None,
     )
 
