@@ -61,23 +61,25 @@ harness.MUTANTS = [
     {
         "id": "R05-city-filter-reads-the-stale-mirror",
         "invariant": "GEO-03: structured search follows the reference, not the mirror",
-        "file": ROUTER,
+        # Moved into the shared discovery model in TASK-013.
+        "file": "app/modules/properties/search.py",
         "old": ("            Property.address_id.in_(\n"
                 "                select(Address.id).join(Locality, Locality.id == Address.locality_id)\n"
-                "                .where(Locality.official_name == city)),\n"
-                "            and_(Property.city == city, Property.address_id.in_(\n"
-                "                select(Address.id).where(Address.locality_id.is_(None)))),\n"),
-        "new": "            Property.city == city,\n",
+                "                .where(Locality.official_name == q.city)),\n"
+                "            and_(Property.city == q.city,\n"
+                "                 _addresses_where(Address.locality_id.is_(None))),\n"),
+        "new": "            Property.city == q.city,\n",
         "tests": [PG + "::test_geo03_a_stale_mirror_never_overrides_the_reference",
                   API + "::test_a_rename_is_what_display_and_the_city_filter_follow"],
     },
     {
         "id": "R06-district-filter-mirror-wins",
         "invariant": "GEO-03: a stale district mirror never matches a structured record",
-        "file": ROUTER,
-        "old": ("            and_(Property.district == district, Property.address_id.in_(\n"
-                "                select(Address.id).where(Address.geo_area_id.is_(None)))),\n"),
-        "new": "            Property.district == district,\n",
+        # Moved into the shared discovery model in TASK-013.
+        "file": "app/modules/properties/search.py",
+        "old": ("            and_(Property.district == q.district,\n"
+                "                 _addresses_where(Address.geo_area_id.is_(None))),\n"),
+        "new": "            Property.district == q.district,\n",
         "tests": [PG + "::test_geo03_a_stale_mirror_never_overrides_the_reference"],
     },
     {

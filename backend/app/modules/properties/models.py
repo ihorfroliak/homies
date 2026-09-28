@@ -226,6 +226,8 @@ class ClassifiedOffer(Base):
         ),
         # The public-visibility rule and the freshness sweep both read these two.
         Index("ix_classified_offers_status_confirmed", "status", "last_confirmed_available_at"),
+        # Base-rent filter (TASK-013; the monthly total already has its index).
+        Index("ix_classified_offers_primary_price_minor", "primary_price_minor"),
         CheckConstraint(
             # No EXACT: public exact residential coordinates are prohibited (D-58).
             "public_location_precision IN ('APPROXIMATE', 'DISTRICT')",

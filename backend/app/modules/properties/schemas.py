@@ -307,6 +307,10 @@ class ClassifiedOut(BaseModel):
     confirmed_on: date | None = None
     freshness: Literal["FRESH", "RECONFIRM_DUE", "STALE"] | None = None
     contact_mode: str
+    # How honest the monthly total is about utilities (D-69): INCLUDED in
+    # the rent, ESTIMATED (a stated figure, added to the total) or NOT_STATED
+    # (the total is then a lower bound — nothing is invented for them).
+    utilities_basis: Literal["INCLUDED", "ESTIMATED", "NOT_STATED"] = "NOT_STATED"
     # What the tenant pays each month, so offers compare without arithmetic;
     # and what they need on the day they move in, deposit included. Both are
     # summaries of the current price components, kept in step with them in the
@@ -380,6 +384,41 @@ class AvailabilityUpdate(BaseModel):
         return self
 
 
+class MapPoint(BaseModel):
+    """One map marker: a light projection of a listing, never the full card.
+    The point is the PUBLIC, privacy-reduced one (D-70)."""
+
+    id: str
+    latitude: float
+    longitude: float
+    precision: str
+    rent_amount: int | None
+    monthly_total_estimate: int | None
+    currency: str
+    space_type: str
+    category: str | None
+    freshness: Literal["FRESH", "RECONFIRM_DUE", "STALE"] | None
+
+
+class MapPage(BaseModel):
+    """The same matching universe as the list (D-71), projected for a map.
+
+    `total` = listings matching the query (as the list's `total`);
+    `with_point` of them have a public point; `without_point` are placed by
+    district only and so appear in the list but cannot appear on a map.
+    `points` holds up to `cap` of the `with_point` ones in the query's sort
+    order; `truncated` says there are more."""
+
+    points: list[MapPoint]
+    total: int
+    with_point: int
+    without_point: int
+    truncated: bool
+    cap: int
+    query: str
+    sort: str
+
+
 class ClassifiedPage(BaseModel):
     """A page of the board plus the count the UI needs to say "Show 124 places".
 
@@ -392,6 +431,11 @@ class ClassifiedPage(BaseModel):
     total: int
     limit: int
     offset: int
+    # The query as canonical URL parameters (stable names, sorted values,
+    # defaults omitted) — what a shareable link, a saved search or an SEO
+    # page will be keyed on (D-72).
+    query: str = ""
+    sort: str = "newest"
 
 
 class ContactRevealOut(BaseModel):

@@ -159,10 +159,12 @@ harness.MUTANTS = [
     {
         "id": "F12-null-available-from-matches-available-by",
         "invariant": "an unknown move-in date is not 'available now'",
-        "file": ROUTER,
-        "old": "        filters.append(ClassifiedOffer.available_from <= available_by)\n",
-        "new": ("        filters.append(or_(ClassifiedOffer.available_from.is_(None),\n"
-                "                           ClassifiedOffer.available_from <= available_by))\n"),
+        # Moved into the shared discovery model in TASK-013.
+        "file": "app/modules/properties/search.py",
+        "old": ("        out.append(ClassifiedOffer.available_from <= q.available_by)"
+                "  # NULL never matches\n"),
+        "new": ("        out.append(or_(ClassifiedOffer.available_from.is_(None),\n"
+                "                       ClassifiedOffer.available_from <= q.available_by))\n"),
         "tests": [SEARCH + "::test_an_offer_with_no_start_date_is_unknown_not_available_now",
                   API + "::test_move_in_is_derived_now_or_later_or_unknown"],
     },
@@ -175,8 +177,8 @@ harness.MUTANTS = [
                 "                f\"min_term_months must be at least {MIN_CLASSIFIED_TERM_MONTHS}, \"\n"
                 "                \"or mark the offer open_ended\"\n"
                 "            )\n"
-                "        return self\n\n\nclass ClassifiedPage"),
-        "new": "        return self\n\n\nclass ClassifiedPage",
+                "        return self\n\n\nclass MapPoint"),
+        "new": "        return self\n\n\nclass MapPoint",
         "tests": [API + "::test_availability_is_validated"],
     },
     {

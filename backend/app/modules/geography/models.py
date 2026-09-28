@@ -322,6 +322,8 @@ class Address(Base):
         Index("ix_addresses_locality", "locality_id"),
         Index("ix_addresses_admin_area", "admin_area_id"),
         Index("ix_addresses_country", "country_code"),
+        # Search-area filter (TASK-013; EXPLAIN showed a seq scan without it).
+        Index("ix_addresses_geo_area", "geo_area_id"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)

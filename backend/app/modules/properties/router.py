@@ -27,23 +27,22 @@ collector cannot buy in bulk. Tightening it is a product call, not a gap.
 Still open: the owner-facing "who asked for my number" view. The rows exist.
 """
 
-from datetime import date, datetime, timedelta, timezone
-from typing import Any, Literal, cast
+from datetime import datetime, timedelta, timezone
+from typing import Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from prometheus_client import Counter
-from sqlalchemy import and_, case, func, literal_column, or_, select, update
+from sqlalchemy import select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, object_session
-from sqlalchemy.sql import ColumnElement
+from sqlalchemy.orm import Session, contains_eager, object_session, selectinload
 
 from app.core.audit import audit
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import get_current_user, require_role
 from app.modules.geography import service as geography
-from app.modules.geography.models import Address, GeoArea, Locality
+from app.modules.geography.models import Address
 from app.modules.identity import organizations
 from app.modules.identity.models import User
 from app.modules.properties import (
@@ -53,10 +52,11 @@ from app.modules.properties import (
     listing_rules,
     location,
     pricing,
+    search,
     quality,
     spaces,
 )
-from app.modules.properties.attributes import AttributeError_, load_catalogue
+from app.modules.properties.attributes import AttributeError_
 from app.modules.properties.attributes import validate as validate_attributes
 from app.modules.properties.models import (
     CONFIRMABLE_FROM,
@@ -64,7 +64,6 @@ from app.modules.properties.models import (
     PUBLISHABLE_FROM,
     AttributeDefinition,
     ClassifiedOffer,
-    SPACE_TYPES,
     ContactReveal,
     Property,
     Space,
@@ -85,6 +84,8 @@ from app.modules.properties.schemas import (
     QualityCheckOut,
     QualityOut,
     ClassifiedPage,
+    MapPage,
+    MapPoint,
     ContactRevealOut,
     PropertyCreate,
     PriceComponentOut,
@@ -101,7 +102,7 @@ router = APIRouter(tags=["properties"])
 
 
 _DERIVED_FIELDS = {"monthly_total_estimate", "move_in_total", "public_location", "place",
-                   "move_in", "confirmed_on", "freshness"}
+                   "move_in", "confirmed_on", "freshness", "utilities_basis"}
 
 
 def _area_refs(areas) -> list[AreaRef]:
@@ -180,6 +181,9 @@ def _public(offer: ClassifiedOffer, now: datetime | None = None) -> ClassifiedOu
         **{k: getattr(offer, k) for k in ClassifiedOut.model_fields if k not in _DERIVED_FIELDS},
         place=place,
         move_in=_move_in(offer, now),
+        utilities_basis=(
+            "INCLUDED" if offer.utilities_included
+            else "ESTIMATED" if offer.utilities_amount > 0 else "NOT_STATED"),
         confirmed_on=freshness.utc_date(last) if last is not None else None,
         freshness=freshness.state(last, now),
         monthly_total_estimate=offer.estimated_monthly_total_minor or 0,
@@ -775,249 +779,101 @@ def my_classifieds(user=Depends(require_role("host")), db: Session = Depends(get
     return out
 
 
-# Sorting is an allowlist, never a column name from the query string. Passing
-# user input into order_by() exposes every column in the table and, with a
-# string-built query, worse.
-# The generated geography column exists on Postgres only (see the model note),
-# so it is referenced by name rather than through the ORM.
-_PUBLIC_GEOG: ColumnElement[Any] = literal_column("classified_offers.public_geog")
+def _page_options(stmt):
+    """Load what a page of results renders in a fixed number of queries — not
+    one per row (TASK-013): property → address → locality and search area.
+    Media and price components already load per page (selectin)."""
+    return stmt.options(
+        contains_eager(ClassifiedOffer.listed_property)
+        .selectinload(Property.address_record)
+        .options(selectinload(Address.locality), selectinload(Address.geo_area))
+    )
 
 
-def _geo_filters(bbox, near_lat, near_lon, radius_m) -> list:
-    """Viewport and radius conditions on the public point.
-
-    Distances are geodesic (geography, metres), not degrees: a degree of
-    longitude is 70 km in Kraków and would be 111 km at the equator, and a
-    radius in degrees is a different radius in every city.
-    """
-    conditions = []
-    if bbox is not None:
-        try:
-            min_lon, min_lat, max_lon, max_lat = (float(p) for p in bbox.split(","))
-        except ValueError:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                "bbox must be four numbers: minLon,minLat,maxLon,maxLat",
-            ) from None
-        if not (-180 <= min_lon < max_lon <= 180 and -90 <= min_lat < max_lat <= 90):
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY, "bbox is not a valid box"
-            )
-        envelope = func.ST_MakeEnvelope(min_lon, min_lat, max_lon, max_lat, 4326)
-        conditions.append(func.ST_Intersects(_PUBLIC_GEOG, func.geography(envelope)))
-    given = [v is not None for v in (near_lat, near_lon, radius_m)]
-    if any(given) and not all(given):
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "radius search needs near_lat, near_lon and radius_m together",
-        )
-    if all(given):
-        centre = func.geography(func.ST_SetSRID(func.ST_MakePoint(near_lon, near_lat), 4326))
-        conditions.append(func.ST_DWithin(_PUBLIC_GEOG, centre, radius_m))
-    return conditions
-
-
-def _listed_area_sql():
-    """The area of what is actually on offer: the room's for a room, the
-    flat's otherwise. A tenant asking for "at least 20 m2" who is shown a
-    12 m2 room because the flat around it is 60 m2 has been misled by the
-    search. A room whose area was not given matches no minimum."""
-    return case((Space.space_type == "ROOM", Space.area_m2), else_=Property.area_m2)
-
-
-SORTS = {
-    "newest": ClassifiedOffer.published_at.desc(),
-    "price_asc": None,  # filled in below: the total, not the rent
-    "price_desc": None,
-    "size_desc": None,  # filled in below: the listed area, not the building's
-}
-
-
-def _monthly_total_sql():
-    """The tenant's real monthly cost, so it can be filtered and sorted.
-
-    Deliberately not the rent. Two offers at 3 000 zł rent are not the same
-    price when one adds 600 zł of building fees and the other does not, and a
-    tenant who filters "up to 3 000" and is shown a 3 600 zł flat has been
-    misled by the search, not by the owner. The deposit is excluded — it comes
-    back. Read from the stored summary, which is kept in step with the price
-    components in the transaction that changes them, and indexed.
-    """
-    return ClassifiedOffer.estimated_monthly_total_minor
+def _preload_places(db: Session, offers) -> list:
+    """Every administrative area the page's public `place` shows, ancestors
+    included, in one query. Returned so the caller keeps them alive."""
+    ids = set()
+    for offer in offers:
+        record = offer.listed_property.address_record
+        if record is None:
+            continue
+        ids.add(record.locality.admin_area_id if record.locality is not None
+                else record.admin_area_id)
+    return geography.preload_area_paths(db, ids)
 
 
 @router.get("/classifieds", response_model=ClassifiedPage)
 def list_classifieds(
-    city: str | None = None,
-    district: str | None = None,
-    # Structured place (TASK-010): country, any administrative area (and all
-    # below it), a locality, a search area. Ids from /v1/geo.
-    country_code: str | None = Query(default=None, pattern="^[A-Z]{2}$"),
-    admin_area_id: str | None = None,
-    locality_id: str | None = None,
-    geo_area_id: str | None = None,
-    # Budget is expressed against the TOTAL, which is what the tenant pays.
-    max_monthly_total: int | None = Query(default=None, ge=0),
-    min_monthly_total: int | None = Query(default=None, ge=0),
-    min_rooms: int | None = Query(default=None, ge=0),
-    min_area_m2: int | None = Query(default=None, ge=0),
-    furnished: str | None = None,
-    parking: str | None = None,
-    pets_allowed: bool | None = None,
-    has_elevator: bool | None = None,
-    # "I can move by this date" — offers available then or sooner, plus those
-    # with no date set, which means available now.
-    available_by: date | None = None,
-    max_term_months: int | None = Query(default=None, ge=0),
-    # Repeatable: ?has=dishwasher&has=balcony. Only codes the catalogue marks
-    # filterable are accepted, so a typo fails loudly instead of quietly
-    # matching nothing.
-    has: list[str] | None = Query(default=None),
-    # WHOLE_PROPERTY or ROOM.
-    space_type: str | None = None,
-    # Map search, against the PUBLIC point only. Viewport: "minLon,minLat,
-    # maxLon,maxLat". Radius: near_lat + near_lon + radius_m. Listings placed
-    # by district only have no point and are not matched by either.
-    bbox: str | None = None,
-    near_lat: float | None = Query(default=None, ge=-90, le=90),
-    near_lon: float | None = Query(default=None, ge=-180, le=180),
-    radius_m: int | None = Query(default=None, ge=1, le=50_000),
-    sort: str = "newest",
-    limit: int = Query(default=50, le=100),
-    offset: int = Query(default=0, ge=0),
+    q: search.SearchQuery = Depends(search.search_query),
+    limit: int = Query(default=50, ge=1, le=100),
+    # Offset paging, bounded (D-71): deterministic under the id tie-breaker;
+    # deep paging past 10 000 is not a Phase-1A use and is refused.
+    offset: int = Query(default=0, ge=0, le=10_000),
     db: Session = Depends(get_db),
 ):
-    """Search the free board. Only active offers, and never a phone number."""
-    if sort not in SORTS:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"sort must be one of {', '.join(sorted(SORTS))}",
-        )
-
-    if space_type is not None and space_type not in SPACE_TYPES:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"space_type must be one of {', '.join(SPACE_TYPES)}",
-        )
-
-    total_expr = _monthly_total_sql()
-    area_expr = _listed_area_sql()
-    # The one public-visibility rule: active AND not stale (D-59).
-    filters = [freshness.public_clause(db)]
-    if space_type is not None:
-        filters.append(Space.space_type == space_type)
-    filters.extend(_geo_filters(bbox, near_lat, near_lon, radius_m))
-    if has:
-        catalogue = load_catalogue(db)
-        for code in has:
-            definition = catalogue.get(code)
-            if definition is None or not definition.filterable:
-                raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    f"'{code}' is not a filterable attribute — see GET /v1/attributes",
-                )
-            # as_boolean() rather than a text comparison: SQLite's
-            # JSON_EXTRACT yields 1/0 while Postgres yields a JSON boolean, and
-            # SQLAlchemy is the thing that knows the difference. An earlier
-            # version compared the literal 'true' and matched nothing on SQLite.
-            filters.append(Property.attributes[code].as_boolean().is_(True))
-    # city / district (D-57): a structured record matches on its referenced
-    # locality / search area's current name; the typed mirror is consulted
-    # only for records that do not reference one, so a stale copy never wins.
-    if city:
-        filters.append(or_(
-            Property.address_id.in_(
-                select(Address.id).join(Locality, Locality.id == Address.locality_id)
-                .where(Locality.official_name == city)),
-            and_(Property.city == city, Property.address_id.in_(
-                select(Address.id).where(Address.locality_id.is_(None)))),
-        ))
-    if district:
-        filters.append(or_(
-            Property.address_id.in_(
-                select(Address.id).join(GeoArea, GeoArea.id == Address.geo_area_id)
-                .where(GeoArea.name == district)),
-            and_(Property.district == district, Property.address_id.in_(
-                select(Address.id).where(Address.geo_area_id.is_(None)))),
-        ))
-    # Structured place filters (TASK-010). An administrative area matches
-    # everything below it; a listing whose address is unstructured matches
-    # none of them (it has no reference place to match).
-    if country_code:
-        filters.append(Property.address_id.in_(
-            select(Address.id).where(Address.country_code == country_code)))
-    if locality_id:
-        filters.append(Property.address_id.in_(
-            select(Address.id).where(Address.locality_id == locality_id)))
-    if geo_area_id:
-        filters.append(Property.address_id.in_(
-            select(Address.id).where(Address.geo_area_id == geo_area_id)))
-    if admin_area_id:
-        within = geography.descendant_area_ids(admin_area_id)
-        filters.append(Property.address_id.in_(
-            select(Address.id)
-            .outerjoin(Locality, Locality.id == Address.locality_id)
-            .where(or_(Address.admin_area_id.in_(within), Locality.admin_area_id.in_(within)))
-        ))
-    if max_monthly_total is not None:
-        filters.append(total_expr <= max_monthly_total)
-    if min_monthly_total is not None:
-        filters.append(total_expr >= min_monthly_total)
-    if min_rooms is not None:
-        filters.append(Property.rooms >= min_rooms)
-    if min_area_m2 is not None:
-        filters.append(area_expr >= min_area_m2)
-    if furnished:
-        filters.append(Property.furnished == furnished)
-    if parking:
-        filters.append(Property.parking == parking)
-    if pets_allowed is not None:
-        filters.append(Property.pets_allowed.is_(pets_allowed))
-    if has_elevator is not None:
-        filters.append(Property.has_elevator.is_(has_elevator))
-    if available_by is not None:
-        # A missing date is NOT "available now" (D-64): only listings that
-        # state a date on or before the one asked for match.
-        filters.append(ClassifiedOffer.available_from <= available_by)
-    if max_term_months is not None:
-        # An open-ended offer commits the tenant to nothing, so it satisfies any
-        # "I can stay at most N months" filter.
-        filters.append(
-            or_(
-                ClassifiedOffer.open_ended.is_(True),
-                ClassifiedOffer.min_term_months <= max_term_months,
-            )
-        )
-
-    base = (
-        select(ClassifiedOffer)
-        .join(Property, Property.id == ClassifiedOffer.property_id)
-        .join(Space, Space.id == ClassifiedOffer.space_id)
-        .where(*filters)
-    )
-
-    order = SORTS[sort]
-    if sort == "price_asc":
-        order = total_expr.asc()
-    elif sort == "price_desc":
-        order = total_expr.desc()
-    elif sort == "size_desc":
-        order = area_expr.desc()
-
-    total = db.scalar(
-        select(func.count())
-        .select_from(ClassifiedOffer)
-        .join(Property, Property.id == ClassifiedOffer.property_id)
-        .join(Space, Space.id == ClassifiedOffer.space_id)
-        .where(*filters)
-    )
-    rows = db.scalars(base.order_by(order).limit(limit).offset(offset))
+    """Search the board. One query model with the map (`/classifieds/map`):
+    only publicly eligible listings, never a phone number, never an exact
+    location. Dimensions combine with AND; repeated values of one dimension
+    with OR."""
+    total = search.count_matching(db, q)
+    rows = list(db.scalars(
+        _page_options(search.select_matching(db, q))
+        .order_by(*search.order_by(q)).limit(limit).offset(offset)
+    ))
+    areas = _preload_places(db, rows)  # noqa: F841 — keeps the preloaded areas alive
     now = freshness.db_now(db)
+    search.record("list", q, total)
     return ClassifiedPage(
         items=[_public(o, now) for o in rows],
-        total=int(total or 0),
+        total=total,
         limit=limit,
         offset=offset,
+        query=q.canonical(),
+        sort=q.sort,
+    )
+
+
+@router.get("/classifieds/map", response_model=MapPage)
+def map_classifieds(
+    q: search.SearchQuery = Depends(search.search_query),
+    limit: int = Query(default=search.MAP_CAP, ge=1, le=search.MAP_CAP),
+    db: Session = Depends(get_db),
+):
+    """The same search as `/classifieds`, projected for a map: one light
+    marker per listing at its PUBLIC point, capped and in the same order.
+    Clustering is the client's (D-71): public points are already ~550 m grid
+    cells, so listings in one cell share a marker position."""
+    has_point = ClassifiedOffer.public_latitude.is_not(None)
+    total = search.count_matching(db, q)
+    with_point = search.count_matching(db, q, has_point)
+    rows = db.execute(
+        search.select_matching(
+            db, q,
+            ClassifiedOffer.id, ClassifiedOffer.public_latitude, ClassifiedOffer.public_longitude,
+            ClassifiedOffer.public_location_precision, ClassifiedOffer.primary_price_minor,
+            ClassifiedOffer.estimated_monthly_total_minor, ClassifiedOffer.currency,
+            Space.space_type, Property.category, ClassifiedOffer.last_confirmed_available_at,
+        ).where(has_point).order_by(*search.order_by(q)).limit(limit)
+    ).all()
+    now = freshness.db_now(db)
+    search.record("map", q, total)
+    return MapPage(
+        points=[
+            MapPoint(
+                id=r[0], latitude=float(r[1]), longitude=float(r[2]), precision=r[3],
+                rent_amount=r[4], monthly_total_estimate=r[5], currency=r[6],
+                space_type=r[7], category=r[8], freshness=freshness.state(r[9], now),
+            )
+            for r in rows
+        ],
+        total=total,
+        with_point=with_point,
+        without_point=total - with_point,
+        truncated=with_point > len(rows),
+        cap=limit,
+        query=q.canonical(),
+        sort=q.sort,
     )
 
 

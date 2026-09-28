@@ -111,9 +111,10 @@ harness.MUTANTS = [
     {
         "id": "G10-region-search-direct-children-only",
         "invariant": "a region filter covers every area beneath it, at any depth",
-        "file": "app/modules/properties/router.py",
-        "old": "        within = geography.descendant_area_ids(admin_area_id)\n",
-        "new": "        within = [admin_area_id]\n",
+        # The region filter moved into the shared discovery model (TASK-013).
+        "file": "app/modules/properties/search.py",
+        "old": "        within = geography.descendant_area_ids(q.admin_area_ids)\n",
+        "new": "        within = list(q.admin_area_ids)\n",
         "tests": [API + "::test_search_by_country_region_locality_and_area"],
     },
 ]

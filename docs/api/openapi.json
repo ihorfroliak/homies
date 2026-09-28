@@ -598,6 +598,16 @@
             "title": "Utilities Amount",
             "type": "integer"
           },
+          "utilities_basis": {
+            "default": "NOT_STATED",
+            "enum": [
+              "INCLUDED",
+              "ESTIMATED",
+              "NOT_STATED"
+            ],
+            "title": "Utilities Basis",
+            "type": "string"
+          },
           "utilities_included": {
             "title": "Utilities Included",
             "type": "boolean"
@@ -835,6 +845,16 @@
             "title": "Utilities Amount",
             "type": "integer"
           },
+          "utilities_basis": {
+            "default": "NOT_STATED",
+            "enum": [
+              "INCLUDED",
+              "ESTIMATED",
+              "NOT_STATED"
+            ],
+            "title": "Utilities Basis",
+            "type": "string"
+          },
           "utilities_included": {
             "title": "Utilities Included",
             "type": "boolean"
@@ -890,6 +910,16 @@
           "offset": {
             "title": "Offset",
             "type": "integer"
+          },
+          "query": {
+            "default": "",
+            "title": "Query",
+            "type": "string"
+          },
+          "sort": {
+            "default": "newest",
+            "title": "Sort",
+            "type": "string"
           },
           "total": {
             "title": "Total",
@@ -1444,6 +1474,150 @@
           "scopes"
         ],
         "title": "MandateOut",
+        "type": "object"
+      },
+      "MapPage": {
+        "description": "The same matching universe as the list (D-71), projected for a map.\n\n`total` = listings matching the query (as the list's `total`);\n`with_point` of them have a public point; `without_point` are placed by\ndistrict only and so appear in the list but cannot appear on a map.\n`points` holds up to `cap` of the `with_point` ones in the query's sort\norder; `truncated` says there are more.",
+        "properties": {
+          "cap": {
+            "title": "Cap",
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/MapPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "sort": {
+            "title": "Sort",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          },
+          "with_point": {
+            "title": "With Point",
+            "type": "integer"
+          },
+          "without_point": {
+            "title": "Without Point",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "points",
+          "total",
+          "with_point",
+          "without_point",
+          "truncated",
+          "cap",
+          "query",
+          "sort"
+        ],
+        "title": "MapPage",
+        "type": "object"
+      },
+      "MapPoint": {
+        "description": "One map marker: a light projection of a listing, never the full card.\nThe point is the PUBLIC, privacy-reduced one (D-70).",
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "freshness": {
+            "anyOf": [
+              {
+                "enum": [
+                  "FRESH",
+                  "RECONFIRM_DUE",
+                  "STALE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Freshness"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "latitude": {
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": "number"
+          },
+          "monthly_total_estimate": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Total Estimate"
+          },
+          "precision": {
+            "title": "Precision",
+            "type": "string"
+          },
+          "rent_amount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rent Amount"
+          },
+          "space_type": {
+            "title": "Space Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "latitude",
+          "longitude",
+          "precision",
+          "rent_amount",
+          "monthly_total_estimate",
+          "currency",
+          "space_type",
+          "category",
+          "freshness"
+        ],
+        "title": "MapPoint",
         "type": "object"
       },
       "MediaAssetOut": {
@@ -4323,9 +4497,107 @@
     },
     "/v1/classifieds": {
       "get": {
-        "description": "Search the free board. Only active offers, and never a phone number.",
+        "description": "Search the board. One query model with the map (`/classifieds/map`):\nonly publicly eligible listings, never a phone number, never an exact\nlocation. Dimensions combine with AND; repeated values of one dimension\nwith OR.",
         "operationId": "list_classifieds_v1_classifieds_get",
         "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 10000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "country_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[A-Z]{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Country Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "admin_area_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Admin Area Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "locality_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Locality Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "geo_area_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Geo Area Id"
+            }
+          },
           {
             "in": "query",
             "name": "city",
@@ -4360,24 +4632,7 @@
           },
           {
             "in": "query",
-            "name": "country_code",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "pattern": "^[A-Z]{2}$",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Country Code"
-            }
-          },
-          {
-            "in": "query",
-            "name": "admin_area_id",
+            "name": "bbox",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4388,73 +4643,118 @@
                   "type": "null"
                 }
               ],
-              "title": "Admin Area Id"
+              "title": "Bbox"
             }
           },
           {
             "in": "query",
-            "name": "locality_id",
+            "name": "near_lat",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "maximum": 90,
+                  "minimum": -90,
+                  "type": "number"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "title": "Locality Id"
+              "title": "Near Lat"
             }
           },
           {
             "in": "query",
-            "name": "geo_area_id",
+            "name": "near_lon",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "maximum": 180,
+                  "minimum": -180,
+                  "type": "number"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "title": "Geo Area Id"
+              "title": "Near Lon"
             }
           },
           {
             "in": "query",
-            "name": "max_monthly_total",
+            "name": "radius_m",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "minimum": 0,
+                  "maximum": 50000,
+                  "minimum": 1,
                   "type": "integer"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "title": "Max Monthly Total"
+              "title": "Radius M"
             }
           },
           {
             "in": "query",
-            "name": "min_monthly_total",
+            "name": "category",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "minimum": 0,
-                  "type": "integer"
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "title": "Min Monthly Total"
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "subtype",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subtype"
+            }
+          },
+          {
+            "in": "query",
+            "name": "space_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Space Type"
             }
           },
           {
@@ -4557,6 +4857,110 @@
           },
           {
             "in": "query",
+            "name": "has",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_rent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Rent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_rent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Rent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_monthly_total",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Monthly Total"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_monthly_total",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Monthly Total"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_move_in_total",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Move In Total"
+            }
+          },
+          {
+            "in": "query",
             "name": "available_by",
             "required": false,
             "schema": {
@@ -4591,7 +4995,80 @@
           },
           {
             "in": "query",
-            "name": "has",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "newest",
+              "title": "Sort",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassifiedPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Classifieds",
+        "tags": [
+          "properties"
+        ]
+      }
+    },
+    "/v1/classifieds/map": {
+      "get": {
+        "description": "The same search as `/classifieds`, projected for a map: one light\nmarker per listing at its PUBLIC point, capped and in the same order.\nClustering is the client's (D-71): public points are already ~550 m grid\ncells, so listings in one cell share a marker position.",
+        "operationId": "map_classifieds_v1_classifieds_map_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "country_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[A-Z]{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Country Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "admin_area_id",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4605,12 +5082,50 @@
                   "type": "null"
                 }
               ],
-              "title": "Has"
+              "title": "Admin Area Id"
             }
           },
           {
             "in": "query",
-            "name": "space_type",
+            "name": "locality_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Locality Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "geo_area_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Geo Area Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "city",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4621,7 +5136,23 @@
                   "type": "null"
                 }
               ],
-              "title": "Space Type"
+              "title": "City"
+            }
+          },
+          {
+            "in": "query",
+            "name": "district",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "District"
             }
           },
           {
@@ -4696,34 +5227,305 @@
           },
           {
             "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "subtype",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subtype"
+            }
+          },
+          {
+            "in": "query",
+            "name": "space_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Space Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_rooms",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Rooms"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_area_m2",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Area M2"
+            }
+          },
+          {
+            "in": "query",
+            "name": "furnished",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Furnished"
+            }
+          },
+          {
+            "in": "query",
+            "name": "parking",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parking"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pets_allowed",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pets Allowed"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_elevator",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Elevator"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_rent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Rent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_rent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Rent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_monthly_total",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Monthly Total"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_monthly_total",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Monthly Total"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_move_in_total",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Move In Total"
+            }
+          },
+          {
+            "in": "query",
+            "name": "available_by",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Available By"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_term_months",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Term Months"
+            }
+          },
+          {
+            "in": "query",
             "name": "sort",
             "required": false,
             "schema": {
               "default": "newest",
               "title": "Sort",
               "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 50,
-              "maximum": 100,
-              "title": "Limit",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "offset",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "minimum": 0,
-              "title": "Offset",
-              "type": "integer"
             }
           }
         ],
@@ -4732,7 +5534,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ClassifiedPage"
+                  "$ref": "#/components/schemas/MapPage"
                 }
               }
             },
@@ -4749,7 +5551,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List Classifieds",
+        "summary": "Map Classifieds",
         "tags": [
           "properties"
         ]

@@ -46,18 +46,40 @@ def area_path(db: Session, area_id: str | None) -> list[AdministrativeArea]:
     return list(reversed(path))
 
 
-def descendant_area_ids(area_id: str):
-    """A selectable of the area and every area below it (recursive CTE).
-    Works on PostgreSQL and SQLite."""
+def descendant_area_ids(area_id: str | Iterable[str]):
+    """A selectable of the area(s) and every area below them (one recursive
+    CTE, seeded with all of them). Works on PostgreSQL and SQLite."""
+    seeds = [area_id] if isinstance(area_id, str) else list(area_id)
     tree = (
         select(AdministrativeArea.id)
-        .where(AdministrativeArea.id == area_id)
+        .where(AdministrativeArea.id.in_(seeds))
         .cte("area_tree", recursive=True)
     )
     tree = tree.union_all(
         select(AdministrativeArea.id).where(AdministrativeArea.parent_id == tree.c.id)
     )
     return select(tree.c.id)
+
+
+def preload_area_paths(db: Session, area_ids: Iterable[str]) -> list[AdministrativeArea]:
+    """Load these areas and all their ancestors in one query, so `area_path`
+    is then answered from the session instead of one query per level per row
+    (TASK-013). The caller keeps the returned list alive while it renders:
+    the identity map holds objects weakly."""
+    ids = {a for a in area_ids if a}
+    if not ids:
+        return []
+    tree = (
+        select(AdministrativeArea.id, AdministrativeArea.parent_id)
+        .where(AdministrativeArea.id.in_(ids))
+        .cte("area_ancestors", recursive=True)
+    )
+    tree = tree.union(
+        select(AdministrativeArea.id, AdministrativeArea.parent_id)
+        .where(AdministrativeArea.id == tree.c.parent_id)
+    )
+    return list(db.scalars(
+        select(AdministrativeArea).where(AdministrativeArea.id.in_(select(tree.c.id)))))
 
 
 def check_parent(db: Session, country_code: str, parent_id: str | None,
