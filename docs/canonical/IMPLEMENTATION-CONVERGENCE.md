@@ -66,7 +66,23 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
-## TASK-012 → TASK-012A → TASK-012R — UTC temporal repair (2026-09-27)
+## PR-001 — CI, runtime & production-readiness baseline (2026-09-28, builder)
+
+Independent engineering track on the accepted `879bf56` (no TASK-013/014
+code). **Production: NOT READY, NOT DEPLOYED.** Measured baseline and gaps:
+[docs/production/PRODUCTION-READINESS.md](../production/PRODUCTION-READINESS.md).
+
+| Area | State after PR-001 |
+|---|---|
+| Python 3.12 | verified: full SQLite + full PostgreSQL/PostGIS suites green in `ops/test/Dockerfile.py312` |
+| dependencies | `backend/constraints.txt` pins the verified set for CI, test and production images |
+| CI | also runs on `claude/**` pushes (before: no Phase-1A commit ever triggered CI); single-head and PG/PostGIS version gates |
+| logging | entry-point logging (text/JSON), request id on records and responses |
+| config | production-like env refuses the development `DATABASE_URL`; Redis/Meilisearch/NATS removed |
+| monitoring | outbox backlog alert (promtool-tested) |
+| restore drill | Phase-1A backup→destroy→restore drill in CI |
+| open decisions | RPO/RTO; alert destination; schema-compatibility policy for rollback/rolling deploys; hosting |
+
 
 History: TASK-012 candidate `c4c8bfac7f59a0930d9403d1100f35dccf003ae6` →
 independent **TASK-012A** (Codex): **TASK_012_REQUIRES_TARGETED_FIXES**, P0 0 /
@@ -352,9 +368,9 @@ awaits the targeted re-audit.
 | DB role / privileges (`ops/sql/app_role.sql`) | App role without ledger UPDATE/DELETE | Cross-cutting | **CANONICAL_ACTIVE** | Preserved engineering (03 §11) | Extend to new append-only tables (audit, moderation decisions) | — |
 | backup / restore drill | CI restore cycle, DR scripts | Cross-cutting | **CANONICAL_ACTIVE** | Preserved engineering | Offsite target needs an account | — |
 | monitoring (Prometheus rules, alertmanager) | Metrics + alert tests | Cross-cutting | **CANONICAL_ACTIVE** | Cheap and tested | — | — |
-| Redis | Compose service; config key; unused by code | Not Phase 1 (03 §7) | **LEGACY_DORMANT** → **REMOVE_LATER** from compose | No code uses it | Drop from compose when compose is next touched | Local dev starts an unused service |
-| Meilisearch | Compose service; config key; unused | Not Phase 1 (03 §6) | **LEGACY_DORMANT** → **REMOVE_LATER** from compose | Unused | As Redis | As Redis |
-| NATS | Compose service; config key; unused | Not Phase 1 (03 §5) | **LEGACY_DORMANT** → **REMOVE_LATER** from compose | Unused | As Redis | As Redis |
+| Redis | — | Not Phase 1 (03 §7) | **REMOVED** from compose and config (PR-001) | No code used it | — | — |
+| Meilisearch | — | Not Phase 1 (03 §6) | **REMOVED** from compose and config (PR-001) | Unused | — | — |
+| NATS | — | Not Phase 1 (03 §5) | **REMOVED** from compose and config (PR-001) | Unused | — | — |
 | `infra/{helm,k8s,terraform}`, `data/{airflow,dbt,ml}`, `apps/` | Empty local directories (not tracked by git) | Deferred (03 §8) | **REMOVE_LATER** | Contain nothing | Delete locally when convenient | None |
 | design system (`frontend/design-system`) | Tokens, components, mobile CSS | Visual source material | **REFERENCE_ONLY** (visuals) | Colour, type, spacing, components worth keeping; not business behaviour | Reuse in Next.js/Expo work | Old booking/payment flows copied as behaviour |
 | Claude Design exports, dated references | Prototype screens incl. booking/payment flows | Visual source only | **REFERENCE_ONLY** — on `preserve/foreign-continuity-2026-09` | Business flows there are obsolete | Redesign screens against 1A flows | Same |
