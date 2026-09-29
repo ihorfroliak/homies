@@ -17,11 +17,22 @@ machine reason at the first check that fails:
 
 The recipient address is resolved HERE, from the user's verified email — the
 queue never holds an address, and a user id is never an SMTP recipient.
+
+Unsubscribe links (TASK-014R, TASK-014A F-1). Every capability placed in an
+email is committed BEFORE the SMTP call, so a crash after the provider accepted
+the message still leaves working links. A capability is derived, not stored:
+HMAC-SHA256(server key, delivery, scope[, search]) — 256 bits, recomputable
+only with the key, identical on every retry of the same logical delivery, and
+kept in the database as its SHA-256 alone (primary key → a retry or a
+concurrent attempt inserts nothing new). SMTP stays at-least-once (D-09): a
+crash between accept and the delivery's commit can send the email twice, and
+both copies carry the same working links.
 """
 
+import base64
 import hashlib
+import hmac
 import logging
-import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from uuid import uuid4
@@ -123,7 +134,8 @@ def revalidate(db: Session, d: AlertDelivery, now: datetime) -> Check:
 
 def deliver(db: Session, delivery_id: str) -> str:
     """Revalidate and send one claimed delivery; returns its final status.
-    The caller commits."""
+    The caller commits the outcome. An EMAIL delivery commits its unsubscribe
+    capabilities before sending (see the module docstring)."""
     d = db.execute(select(AlertDelivery).where(AlertDelivery.id == delivery_id)
                    .with_for_update()).scalar_one_or_none()
     if d is None or d.status != "processing":
@@ -149,11 +161,30 @@ def deliver(db: Session, delivery_id: str) -> str:
 
 
 def _send_email(db: Session, d: AlertDelivery, first: SavedSearch, now: datetime) -> str:
+    # Durable before the side effect: provision the links, commit, then take
+    # the delivery back under its row lock and check again that it may go —
+    # the commit released the lock, and the world may have moved meanwhile.
+    for _ in range(2):
+        one, every = ensure_unsubscribe_capabilities(db, d, first.id, now)
+        db.commit()
+        locked = db.execute(select(AlertDelivery).where(AlertDelivery.id == d.id)
+                            .with_for_update()).scalar_one_or_none()
+        if locked is None or locked.status != "processing":
+            return locked.status if locked else "missing"
+        d = locked
+        now = freshness.db_now(db)
+        check = revalidate(db, d, now)
+        if check.reason is not None:
+            _finish(d, "suppressed", check.reason, now)
+            return d.status
+        if check.searches[0].id == first.id:
+            break
+        first = check.searches[0]  # the linked search changed: links for the new one
+    else:
+        return _retry_or_dead(d, now, transient=True, reason="search_changed")
     user = db.get(User, d.user_id)
     assert user is not None and user.email_verified_at is not None
     base = settings.public_web_base_url.rstrip("/")
-    one = issue_unsubscribe_token(db, d.user_id, "SAVED_SEARCH", first.id, now)
-    every = issue_unsubscribe_token(db, d.user_id, "PRODUCT_EMAIL", None, now)
     message = render(SAVED_SEARCH_MATCH, "en", {
         "search_name": first.name,
         "listing_url": f"{base}/listings/{d.listing_id}",
@@ -165,14 +196,26 @@ def _send_email(db: Session, d: AlertDelivery, first: SavedSearch, now: datetime
                                        body=message["body"], idem_key=d.id)
     if result.ok:
         _finish(d, "delivered", "", now)
-    elif result.transient and d.attempts < settings.notification_max_attempts:
+        return d.status
+    return _retry_or_dead(d, now, transient=result.transient, reason=result.error or "")
+
+
+def _retry_or_dead(d: AlertDelivery, now: datetime, *, transient: bool, reason: str) -> str:
+    """A failed attempt: back off while transient attempts remain. The terminal
+    outcome says which ending it was (TASK-014A N-4): the provider refused for
+    good (`provider_rejected:<machine reason>`) or transient failures ran out
+    (`retries_exhausted`). `reason` is a machine string (providers.py), never
+    provider text or an address."""
+    if transient and d.attempts < settings.notification_max_attempts:
         d.status = "failed"
         d.outcome = "transient_failure"
         d.claimed_at = None
         d.next_attempt_at = now + timedelta(
             seconds=settings.notification_backoff_base_seconds * (2 ** d.attempts))
+    elif transient:
+        _finish(d, "dead", "retries_exhausted", now)
     else:
-        _finish(d, "dead", "permanent_failure", now)
+        _finish(d, "dead", f"provider_rejected:{reason}"[:48].rstrip(":"), now)
     return d.status
 
 
@@ -191,21 +234,45 @@ def token_hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def issue_unsubscribe_token(db: Session, user_id: str, scope: str, saved_search_id: str | None,
-                            now: datetime) -> str:
-    """A fresh 256-bit random bearer token; only its SHA-256 is stored. The
-    token is random — it encodes no user, address or search."""
-    token = secrets.token_urlsafe(32)
-    db.add(UnsubscribeToken(token_hash=token_hash(token), user_id=user_id, scope=scope,
-                            saved_search_id=saved_search_id, created_at=now,
-                            expires_at=now + UNSUBSCRIBE_TTL))
-    db.flush()
-    return token
+_CAPABILITY_LABEL = b"homies/unsubscribe-capability/v1"
+
+
+def capability(delivery_id: str, scope: str, saved_search_id: str | None) -> str:
+    """The bearer token for one delivery and scope: HMAC-SHA256 under a key
+    derived from the server secret with a purpose label. 256 bits, url-safe
+    (43 characters). It encodes nothing readable — no user, address or search —
+    and cannot be computed from its stored hash or without the key."""
+    key = hmac.new(settings.jwt_secret.encode(), _CAPABILITY_LABEL, hashlib.sha256).digest()
+    mac = hmac.new(key, f"{delivery_id}\n{scope}\n{saved_search_id or ''}".encode(),
+                   hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(mac).rstrip(b"=").decode()
+
+
+def ensure_unsubscribe_capabilities(db: Session, d: AlertDelivery, saved_search_id: str,
+                                    now: datetime) -> tuple[str, str]:
+    """The delivery's two links (this search / all PRODUCT email), recorded
+    idempotently: the same delivery always yields the same tokens, and an
+    existing row is never duplicated or refreshed. The caller commits."""
+    one = capability(d.id, "SAVED_SEARCH", saved_search_id)
+    every = capability(d.id, "PRODUCT_EMAIL", None)
+    insert_ignore(db, UnsubscribeToken, [
+        {"token_hash": token_hash(one), "user_id": d.user_id, "scope": "SAVED_SEARCH",
+         "saved_search_id": saved_search_id, "created_at": now,
+         "expires_at": now + UNSUBSCRIBE_TTL, "used_at": None},
+        {"token_hash": token_hash(every), "user_id": d.user_id, "scope": "PRODUCT_EMAIL",
+         "saved_search_id": None, "created_at": now,
+         "expires_at": now + UNSUBSCRIBE_TTL, "used_at": None},
+    ], ["token_hash"])
+    return one, every
 
 
 def unsubscribe(db: Session, token: str, now: datetime) -> str:
     """Apply a token. Returns an internal outcome for metrics only — the HTTP
-    answer is the same whatever happened (no enumeration signal)."""
+    answer is the same whatever happened (no enumeration signal).
+
+    Single-use effect (TASK-014A N-3): the first valid use applies the
+    unsubscribe and records `used_at`; any replay changes nothing — so an old
+    link can never switch off alerts the user has since turned back on."""
     row = db.execute(select(UnsubscribeToken)
                      .where(UnsubscribeToken.token_hash == token_hash(token))
                      .with_for_update()).scalar_one_or_none()
@@ -213,6 +280,8 @@ def unsubscribe(db: Session, token: str, now: datetime) -> str:
         return "unknown"
     if freshness.to_utc(row.expires_at) <= now:
         return "expired"
+    if row.used_at is not None:
+        return "replayed"
     if row.scope == "SAVED_SEARCH":
         if row.saved_search_id is not None:
             db.execute(update(SavedSearch)
@@ -222,6 +291,5 @@ def unsubscribe(db: Session, token: str, now: datetime) -> str:
                                version=SavedSearch.version + 1))
     else:
         preferences.set_preference(db, row.user_id, PRODUCT, "EMAIL", False, now)
-    if row.used_at is None:
-        row.used_at = now
+    row.used_at = now
     return "applied"

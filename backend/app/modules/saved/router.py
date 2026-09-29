@@ -318,19 +318,39 @@ def update_saved_search(search_id: Id, body: SavedSearchUpdate,
                           market_country_code=service.market_country(db, q), baseline_at=now)
         else:
             q = None
-    changed = db.execute(update(SavedSearch)
-                         .where(SavedSearch.id == saved.id, SavedSearch.user_id == user.id,
-                                SavedSearch.version == body.expected_version)
-                         .values(**values).execution_options(synchronize_session=False))
-    if getattr(changed, "rowcount", 0) != 1:
+    try:
+        changed = db.execute(update(SavedSearch)
+                             .where(SavedSearch.id == saved.id, SavedSearch.user_id == user.id,
+                                    SavedSearch.version == body.expected_version)
+                             .values(**values).execution_options(synchronize_session=False))
+        if getattr(changed, "rowcount", 0) != 1:
+            db.rollback()
+            raise HTTPException(status.HTTP_409_CONFLICT,
+                                "The saved search was changed elsewhere. Reload and try again.")
+        db.refresh(saved)
+        if q is not None:
+            service.set_anchors(saved, q)
+        db.commit()
+    except IntegrityError as exc:
+        # TASK-014A F-4: another of the user's searches was changed to the same
+        # query concurrently; the unique (user, fingerprint) index decided. Only
+        # that constraint becomes a 409 — any other integrity failure re-raises.
         db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT,
-                            "The saved search was changed elsewhere. Reload and try again.")
-    db.refresh(saved)
-    if q is not None:
-        service.set_anchors(saved, q)
-    db.commit()
+        if "uq_saved_searches_user_fingerprint" not in str(exc.orig) and not (
+                q is not None and _fingerprint_taken(db, user.id, values, saved.id)):
+            raise
+        raise HTTPException(status.HTTP_409_CONFLICT, "This search is already saved") from None
     return _search_out(db, saved, with_count=True)
+
+
+def _fingerprint_taken(db: Session, user_id: str, values: dict, exclude: str) -> bool:
+    """SQLite names columns, not constraints, in its message: fall back to the
+    fact itself — does another search of this user now hold the fingerprint?"""
+    fingerprint = values.get("query_fingerprint")
+    return fingerprint is not None and db.scalar(
+        select(SavedSearch.id).where(SavedSearch.user_id == user_id,
+                                     SavedSearch.query_fingerprint == fingerprint,
+                                     SavedSearch.id != exclude)) is not None
 
 
 @router.delete("/me/saved-searches/{search_id}", status_code=status.HTTP_204_NO_CONTENT)

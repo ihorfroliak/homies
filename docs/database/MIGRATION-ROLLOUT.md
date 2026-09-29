@@ -21,6 +21,7 @@ rollout of the current chain must plan for.
 | `e4f6a8b0c2d4` | TASK-010 | Geography tables, one UNSTRUCTURED address per property (per-row backfill), `address_id` NOT NULL + UNIQUE. |
 | `a7c9e1f3b5d7` | TASK-010R | Converts stored public EXACT offers to APPROXIMATE (grid recomputed in SQL); CHECK re-created. |
 | `b8d0f2a4c6e8` | TASK-012 | Status preflight (**refuses** unknown statuses), adds `last_confirmed_available_at` backfilled from `published_at`, status CHECK, index. **Changes no status.** |
+| `f3b5d7e9a1c2` | TASK-014 (+R) | Adds `classified_offers.public_generation` / `public_since` (constant default, no rewrite) and nine new tables; backfill: generation 1 where `published_at` is set, 0 otherwise — and, after a dev downgrade, the highest surviving `ListingBecamePublic` generation, its episodes' work items restored as `done` (no events or alerts written). Downgrade is **dev-only**: it drops every saved listing, saved search, match, delivery, inbox entry, preference and unsubscribe token. |
 | `d0f2b4c6e8a1` | TASK-013 | Two plain `CREATE INDEX` (addresses.geo_area_id, classified_offers.primary_price_minor): brief write lock per table; use `CONCURRENTLY` outside the transaction on a large table. No data change. |
 | `d3f5b7a9c1e4` | TASK-002 R4 | Preflights (refuses duplicate active threads / incoherent viewings), partial UNIQUE index (blocks writes on `conversations` while building), one CHECK on `viewings`. |
 

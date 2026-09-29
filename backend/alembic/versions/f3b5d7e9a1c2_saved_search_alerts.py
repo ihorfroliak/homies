@@ -12,6 +12,10 @@ Additive only:
   has had one episode (generation 1, since its publication); a draft never
   published has none (0). No event and no work item is written for that
   history: nothing alerts about listings public before this migration.
+  After a downgrade and a re-upgrade (dev only), `ListingBecamePublic` events
+  have survived: the counter then resumes from the highest recorded
+  generation, and those episodes' work items come back as already handled
+  (TASK-014R, `_reconcile_surviving_generations`).
 * `listing_public_generations` — the durable work identity (listing, generation).
 * `saved_listings`, `saved_searches`, `saved_search_anchors`,
   `saved_search_matches`, `alert_deliveries`, `user_notifications`,
@@ -62,6 +66,7 @@ def upgrade() -> None:
     )
     op.create_index("ix_listing_public_generations_pending", "listing_public_generations",
                     ["alert_status", "became_public_at"])
+    _reconcile_surviving_generations()
 
     op.create_table(
         "saved_listings",
@@ -195,6 +200,51 @@ def upgrade() -> None:
         sa.CheckConstraint("length(token_hash) = 64", name="ck_unsubscribe_tokens_hash_length"),
     )
     op.create_index("ix_unsubscribe_tokens_user_id", "unsubscribe_tokens", ["user_id"])
+
+
+# TASK-014R (TASK-014A F-3). `ListingBecamePublic` events are append-only and
+# survive a downgrade of this migration. Re-upgrading must not count episodes
+# from 1 again: the next publication would open a generation whose event dedup
+# key already exists, and every publication of that listing would fail. So the
+# counter starts from the highest generation history already recorded, read
+# from the events' structured payload (never from the dedup-key text), and each
+# historical episode's work item is restored as already handled (`done`) — no
+# alert is fabricated and reconcile finds nothing to redo. On a first upgrade
+# no such event exists and both statements change nothing.
+_SURVIVING_EPISODES = r"""
+    SELECT e.id AS event_id,
+           e.payload->>'listing_id' AS listing_id,
+           (e.payload->>'public_generation')::bigint AS generation,
+           CASE WHEN e.payload->>'became_public_at' ~ '^\d{4}-\d{2}-\d{2}T'
+                THEN (e.payload->>'became_public_at')::timestamptz END AS became_public_at
+    FROM domain_events e
+    JOIN classified_offers o ON o.id = e.payload->>'listing_id'
+    WHERE e.event_type = 'ListingBecamePublic'
+      AND e.payload->>'public_generation' ~ '^[1-9][0-9]{0,17}$'
+"""
+
+
+def _reconcile_surviving_generations() -> None:
+    op.execute(f"""
+        WITH ev AS ({_SURVIVING_EPISODES}),
+        latest AS (
+            SELECT DISTINCT ON (listing_id) listing_id, generation, became_public_at
+            FROM ev ORDER BY listing_id, generation DESC)
+        UPDATE classified_offers o
+           SET public_generation = latest.generation,
+               public_since = COALESCE(latest.became_public_at, o.public_since)
+          FROM latest
+         WHERE latest.listing_id = o.id AND latest.generation > o.public_generation
+    """)
+    op.execute(f"""
+        INSERT INTO listing_public_generations
+            (listing_id, public_generation, became_public_at, event_id, alert_status,
+             attempts, processed_at, last_error)
+        SELECT ev.listing_id, ev.generation, COALESCE(ev.became_public_at, now()), ev.event_id,
+               'done', 0, now(), ''
+        FROM ({_SURVIVING_EPISODES}) ev
+        ON CONFLICT (listing_id, public_generation) DO NOTHING
+    """)
 
 
 def downgrade() -> None:

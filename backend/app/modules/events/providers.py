@@ -45,9 +45,46 @@ class StubEmailChannel:
         return DeliveryResult(ok=True)
 
 
+def classify_smtp_error(exc: BaseException) -> tuple[bool, str]:
+    """(transient, machine reason) for a failed SMTP send (TASK-014R, TASK-014A F-5).
+
+    `smtplib.SMTPException` subclasses `OSError`, so catching `OSError` first
+    swallowed every SMTP error as "transient", and `str(exc)` carried the
+    recipient address and whatever the provider echoed back. Now:
+
+    * an SMTP reply code decides: 4xx transient, 5xx permanent (recipients
+      refused: permanent unless every recipient got a 4xx);
+    * authentication / unsupported-feature failures are configuration errors,
+      permanent — retrying cannot fix them;
+    * a dropped connection, a timeout, a refused or unresolvable host are
+      transient.
+
+    The reason is the exception class and, where there is one, the code
+    (`SMTPDataError:550`) — never the provider text, an address or a secret.
+    """
+    name = type(exc).__name__
+    if isinstance(exc, smtplib.SMTPRecipientsRefused):
+        codes = [code for code, _msg in exc.recipients.values()]
+        worst = max(codes) if codes else 0
+        return (bool(codes) and all(400 <= c < 500 for c in codes)), f"{name}:{worst}"
+    if isinstance(exc, (smtplib.SMTPAuthenticationError, smtplib.SMTPNotSupportedError)):
+        code = getattr(exc, "smtp_code", None)
+        return False, f"{name}:{code}" if code else name
+    if isinstance(exc, smtplib.SMTPResponseException):
+        code = int(exc.smtp_code)
+        return not (500 <= code < 600), f"{name}:{code}"
+    if isinstance(exc, smtplib.SMTPServerDisconnected):
+        return True, name
+    if isinstance(exc, smtplib.SMTPException):
+        return True, name  # no reply code: treat as a transport hiccup, bounded by max attempts
+    if isinstance(exc, (TimeoutError, OSError)):
+        return True, name
+    return False, name
+
+
 class SmtpEmailChannel:
-    """Real SMTP adapter. Network errors are transient (retry); a missing
-    recipient is permanent (dead)."""
+    """Real SMTP adapter. Failures are classified by `classify_smtp_error`;
+    the result carries a machine reason only (no provider text, no address)."""
 
     def send(self, to, subject, body, idem_key) -> DeliveryResult:
         if not to:
@@ -65,10 +102,9 @@ class SmtpEmailChannel:
                     s.login(settings.smtp_user, settings.smtp_password)
                 s.send_message(msg)
             return DeliveryResult(ok=True)
-        except (smtplib.SMTPServerDisconnected, smtplib.SMTPConnectError, TimeoutError, OSError) as e:
-            return DeliveryResult(ok=False, transient=True, error=str(e)[:255])
-        except smtplib.SMTPException as e:
-            return DeliveryResult(ok=False, transient=False, error=str(e)[:255])
+        except (smtplib.SMTPException, OSError) as e:  # OSError covers timeouts and sockets
+            transient, reason = classify_smtp_error(e)
+            return DeliveryResult(ok=False, transient=transient, error=reason)
 
 
 class StubSmsChannel:

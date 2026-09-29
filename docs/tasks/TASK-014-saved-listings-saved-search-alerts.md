@@ -196,6 +196,17 @@ again before hand-off, not taken on trust:
     fix is on the infra branch only).
   * TASK-013RA archived verbatim; D-77 and convergence updated.
 
+## TASK-014A → TASK-014R (2026-09-29)
+
+TASK-014A (independent, [archived verbatim](../reviews/2026-09-29-task014a-independent-task014-audit.md)):
+**TASK_014_REQUIRES_TARGETED_FIXES** — six P3 findings, eight notes, evidence not verified.
+TASK-014R, from exactly `196c887`, repairs F-1, N-3, F-2, F-3, F-4, F-5, N-4 and F-6 (see
+convergence). Tests: `tests/test_task014r_repairs.py` (SQLite), `tests/test_task014r_repairs_pg.py`
+(PostgreSQL: crash-window links, blocked-on-index PATCH, multi-generation migration round trip).
+Mutation: `backend/scripts/mutation/task014r_mutants.py`, evidence
+[2026-09-29-task014r-mutation](../reviews/2026-09-29-task014r-mutation.md) (16 / 16 killed, incl. X13, X18).
+Status: **TASK-014 NOT YET ACCEPTED · TASK-014R CANDIDATE · TASK-014RA REQUIRED.**
+
 ## Known debt
 
 * Alert email locale fixed to `en`; no digest; no retention/purge for work
@@ -212,7 +223,8 @@ again before hand-off, not taken on trust:
 * The booking-era `GET /v1/me/notifications` feed remains (legacy shape).
 * On this branch Alembic's `fileConfig` still disables existing loggers
   (PR-001R F5 arrives with product + infra convergence).
-* SMTP error text (`str(exc)`) is stored in `last_error` and may name the
-  refused recipient for `SMTPRecipientsRefused` (DB only, not logs).
+* A listing public-generation work item that keeps failing (poison) is retried
+  without a cap and never records `last_error` (TASK-014A N-2) — needs a dedicated
+  worker/retry-policy follow-up.
 * Local certification ran on host Python 3.14 (Docker VM clock unstable);
   Python 3.12 + CI evidence is outstanding (CI NOT RUN).

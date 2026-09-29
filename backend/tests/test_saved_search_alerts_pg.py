@@ -247,9 +247,9 @@ def test_d_to_h_queued_deliveries_are_revalidated(pg_client, sessions, geo, owne
         from app.modules.alerts import delivery
 
         with sessions.begin() as db:
-            user_id = db.scalar(select(AlertDelivery.user_id).where(AlertDelivery.id == claimed[0]))
-            token = delivery.issue_unsubscribe_token(db, user_id, "SAVED_SEARCH", sid,
-                                                     delivery.freshness.db_now(db))
+            queued = db.get(AlertDelivery, claimed[0])
+            token, _ = delivery.ensure_unsubscribe_capabilities(
+                db, queued, sid, delivery.freshness.db_now(db))
         assert pg_client.post("/v1/notifications/unsubscribe",
                               json={"token": token}).json() == {"status": "ok"}
     elif change == "pause_listing":
@@ -469,7 +469,10 @@ def test_migration_backfills_generations_and_round_trips(scratch_url, monkeypatc
             "SELECT id, public_generation, public_since, published_at FROM classified_offers"))}
         assert rows == {live: (1, True), paused: (1, True), draft: (0, False)}
         # History is not work: nothing alerts about listings public before TASK-014.
-        assert conn.scalar(text("SELECT count(*) FROM listing_public_generations")) == 0
+        # Episodes whose events survived the downgrade come back as already
+        # handled (TASK-014R, F-3) — never as pending work.
+        assert conn.scalar(text("SELECT count(*) FROM listing_public_generations "
+                                "WHERE alert_status <> 'done'")) == 0
         assert conn.scalar(text("SELECT count(*) FROM alembic_version")) == 1
         with pytest.raises(Exception):
             conn.execute(text("UPDATE classified_offers SET public_generation = -1"))

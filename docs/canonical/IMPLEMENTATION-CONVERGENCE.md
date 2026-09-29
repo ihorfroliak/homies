@@ -66,6 +66,31 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
+## TASK-014 → TASK-014A → TASK-014R — alert integrity repair (2026-09-29, builder)
+
+History: TASK-014 candidate `196c88796cf34a6b19860259cc6ff81c94dbe8d2` → independent
+**TASK-014A**: **TASK_014_REQUIRES_TARGETED_FIXES**, P0–P2 0 / P3 6 / NOTE 8,
+EVIDENCE NOT_VERIFIED ([archived verbatim](../reviews/2026-09-29-task014a-independent-task014-audit.md))
+→ **TARGETED FIX REQUIRED** → TASK-014R on `claude/TASK-014R-alert-integrity-repair`,
+**pending TASK-014RA. TASK-014 is NOT accepted.** Accepted by TASK-014A and not reopened:
+saved listing, saved search semantics, public generation, atomicity, concurrency, anchor
+completeness, baseline/no flood, match and delivery dedup, N/N+1 isolation, send-time
+revalidation, unsubscribe core, privacy, worker recovery.
+
+| Finding | State after TASK-014R |
+|---|---|
+| F-1 SMTP crash left dead unsubscribe links | **CLOSED BY BUILDER** — capabilities derived per delivery, committed before SMTP, reused on retry |
+| N-3 token replay after re-enable | **CLOSED BY BUILDER** — single-use effect, idempotent generic answer |
+| F-2 stored query never verified | **CLOSED BY BUILDER** — canonical form + fingerprint required, else INVALID |
+| F-3 downgrade → re-upgrade → publish 500 | **CLOSED BY BUILDER** — generation resumes from surviving event history; migration row added (N-5) |
+| F-4 concurrent PATCH → 500 | **CLOSED BY BUILDER** — the fingerprint unique violation answers 409 |
+| F-5 SMTP classification / provider text | **CLOSED BY BUILDER** — reply-code classification, machine reason only |
+| N-4 exhausted retries labelled permanent | **CLOSED BY BUILDER** |
+| F-6 surviving mutants X13, X18 (+X06/X07/X08/X10) | **CLOSED BY BUILDER** — behavioural tests; X04 stays a note (CAS fails closed) |
+| N-2 poison work item uncapped | **DEBT** — dedicated retry-policy follow-up |
+| N-7 F13RA-N01 wording | **MICRO-001** (unchanged here) |
+| EVIDENCE | exact-SHA stable-clock run required (see the TASK-014R report) |
+
 ## TASK-014 — saved listings, saved search & alerts (2026-09-28, builder)
 
 Candidate on `claude/TASK-014-saved-search-alerts`, started from the accepted

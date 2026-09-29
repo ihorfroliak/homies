@@ -253,8 +253,17 @@ to a **verified** email address, resolved at send time; transactional account
 email resolves the account's current address at send time (no verification
 requirement stated by the identity canon). A queued alert is not authority to
 send: it is re-validated at send time and otherwise ends `suppressed`.
-Unsubscribe is a bearer capability (256-bit random token, only its hash
-stored, generic response).
+Unsubscribe is a bearer capability (256 bits, only its hash stored, generic
+response). TASK-014R: the capability of one delivery and scope is derived with a
+server key (HMAC-SHA256), committed **before** the email is sent and identical on
+every retry of that delivery; its effect is **single-use** — the first valid use
+applies it, a replay (like an unknown or expired token) changes nothing and gets
+the same generic answer, so an old link cannot switch off alerts turned back on
+later. Email transport is **at-least-once** (D-09): a crash between the
+provider's acceptance and the delivery's commit can send a second copy, and
+every copy carries the same working links. A stored saved search whose text is
+not its own canonical form, or whose fingerprint does not match, is INVALID —
+never repaired or run broader.
 
 **Account status limitation.** Phase 1A has no account deletion/status
 model; for alerts "account valid" means *the user exists* (plus a verified

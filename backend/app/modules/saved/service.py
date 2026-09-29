@@ -62,6 +62,15 @@ def load_query(db: Session, saved: SavedSearch,
             f"query schema version {saved.query_schema_version} is not supported")
     q = search.parse_query_string(db, saved.canonical_query, ctx)
     search.check_references(db, q, ctx)
+    # Integrity (TASK-014R, TASK-014A F-2): the stored text must be exactly the
+    # canonical form it parses to, and the stored fingerprint must be the one
+    # computed from it. A row altered out of band — a filter dropped, a
+    # fingerprint zeroed, a non-canonical spelling — is INVALID; it is never
+    # repaired, re-canonicalised or run as the broader query it now spells.
+    if q.canonical() != saved.canonical_query:
+        raise InvalidSearchQuery("the stored query is not in its canonical form")
+    if fingerprint(saved.query_schema_version, saved.canonical_query) != saved.query_fingerprint:
+        raise InvalidSearchQuery("the stored query does not match its fingerprint")
     return q
 
 
