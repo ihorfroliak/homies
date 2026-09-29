@@ -39,11 +39,24 @@ _PG_BIN = os.environ.get("PG_BIN") or None
 PG_DUMP = shutil.which("pg_dump", path=_PG_BIN) or shutil.which("pg_dump")
 PG_RESTORE = shutil.which("pg_restore", path=_PG_BIN) or shutil.which("pg_restore")
 
+DRILL_AVAILABLE = bool(TEST_DATABASE_URL and PG_DUMP and PG_RESTORE)
+DRILL_SKIP_REASON = "needs TEST_DATABASE_URL and the pg_dump/pg_restore client tools"
+
+# PR-001R F7: where the drills are declared mandatory (CI sets
+# HOMIES_REQUIRE_RESTORE_DRILL=1), a missing prerequisite is a collection
+# failure — red, and named — not a skip nobody reads. A developer machine
+# without the client tools keeps the skip.
+if os.environ.get("HOMIES_REQUIRE_RESTORE_DRILL") == "1" and not DRILL_AVAILABLE:
+    pytest.fail(
+        "HOMIES_REQUIRE_RESTORE_DRILL=1 but the restore drill cannot run: "
+        f"TEST_DATABASE_URL={'set' if TEST_DATABASE_URL else 'missing'}, "
+        f"pg_dump={'found' if PG_DUMP else 'missing'}, "
+        f"pg_restore={'found' if PG_RESTORE else 'missing'}",
+        pytrace=False,
+    )
+
 pytestmark = [
-    pytest.mark.skipif(
-        not (TEST_DATABASE_URL and PG_DUMP and PG_RESTORE),
-        reason="needs TEST_DATABASE_URL and the pg_dump/pg_restore client tools",
-    ),
+    pytest.mark.skipif(not DRILL_AVAILABLE, reason=DRILL_SKIP_REASON),
     # The seeded business day goes through LEGACY_DORMANT booking routes, so it
     # runs on the test-only legacy composition (TASK-002 R1).
     pytest.mark.legacy_runtime,

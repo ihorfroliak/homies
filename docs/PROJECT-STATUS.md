@@ -6,28 +6,22 @@
 > and [DECISIONS](DECISIONS.md). If this page disagrees with them, they win —
 > fix this page. Nothing is accepted because it is listed here.
 
-**As of:** 2026-09-29 (written by the TASK-014R builder)
+**As of:** 2026-09-30 (written by the CONV-001 builder)
 
-## CURRENT ACCEPTED PRODUCT BASELINE
+## ACCEPTED BASELINES (separate lines)
 
-TASK-013 (Phase-1A slice) — `3f324b6ddff6c7557894eb5f65736729d956f7eb`
-(`TASK_013_PHASE_1A_SLICE_ACCEPTED`, D-77; TASK-013RA archived in docs/reviews).
-TASK-014 is **NOT YET ACCEPTED**.
+| Line | Accepted SHA | Verdict |
+|---|---|---|
+| PRODUCT — TASK-014 (Phase-1A slice) | `7ffb4f51dd315363362df1a5f8fc5c19a57767dc` | `TASK_014_PHASE_1A_SLICE_ACCEPTED` (TASK-014RA) |
+| INFRA — PR-001 (runtime / CI / readiness) | `5cad442f07264ab25b3024c96fc691ad9c7a75fa` | `PR_001_BASELINE_ACCEPTED` (PR-001RA2) |
 
-## CURRENT PRODUCT CANDIDATE
+Common ancestor: `879bf56cd7bb497fd77d8140fc1443fe9d61c1fe` (TASK-012 accepted line).
 
-TASK-014 `196c88796cf34a6b19860259cc6ff81c94dbe8d2` → TASK-014A
-(`TASK_014_REQUIRES_TARGETED_FIXES`, archived) → **TASK-014R — CANDIDATE** on
-`claude/TASK-014R-alert-integrity-repair`; candidate SHA: the tip named in the
-TASK-014R builder report (this page cannot contain its own commit's SHA).
-**TASK-014RA REQUIRED.** Contract:
-[TASK-014](tasks/TASK-014-saved-listings-saved-search-alerts.md).
+## CURRENT INTEGRATION CANDIDATE
 
-## CURRENT INFRA CANDIDATE
-
-PR-001R2 — `5cad442f07264ab25b3024c96fc691ad9c7a75fa`
-(`claude/PR-001R2-readiness-repair`), awaiting PR-001RA2. Separate ancestry; not
-merged into the product branch.
+**CONV-001** — one merge commit of both accepted lines on
+`claude/CONV-001-product-infra` (SHA in the CONV-001 builder report; this page
+cannot contain its own commit's SHA). **CONV-001A REQUIRED.** Not accepted.
 
 ## PRODUCTION
 
@@ -35,6 +29,6 @@ merged into the product branch.
 
 ## ACTIVE / NEXT GATES
 
-1. TASK-014RA (independent audit of TASK-014R, exact SHA, stable-clock evidence).
-2. PR-001RA2 (independent audit of PR-001R2).
-3. MICRO-001 → CONV-001 (one branch, one Alembic head, CI run) → PR-002 B → PR-003 → TASK-015.
+1. CONV-001A (independent integration audit, exact SHA).
+2. MICRO-001 (R0 wording cleanup) after the integrated baseline is accepted.
+3. PR-002 Phase B (blocked until CONV-001 is accepted) → PR-003 → TASK-015 delta → TASK-015 B.

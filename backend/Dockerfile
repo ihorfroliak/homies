@@ -2,8 +2,16 @@ FROM python:3.12-slim
 
 WORKDIR /srv
 
-COPY pyproject.toml ./
-RUN pip install --no-cache-dir .
+# PR-001R F3: the deployable image is production-like unless told otherwise.
+# Without this an image started with no ENV became "local" — self-migrating,
+# with every secret check switched off. Local tooling sets ENV=local explicitly
+# (ops/docker-compose.yml); tests set ENV=test.
+ENV ENV=production
+
+COPY pyproject.toml constraints.txt ./
+# PR-001: the verified dependency set (constraints.txt), not whatever PyPI
+# resolves on build day — an image rebuilt later must contain what was tested.
+RUN pip install --no-cache-dir -c constraints.txt .
 
 COPY app ./app
 # TD-01: migrations are the schema source of truth; the image must carry them so

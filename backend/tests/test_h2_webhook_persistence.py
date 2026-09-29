@@ -20,7 +20,7 @@ from sqlalchemy import select
 
 import app.modules.payments.router as payments_router
 from app.modules.payments.models import WebhookEvent
-from tests.conftest import TestingSession, auth, register_and_login
+from tests.conftest import TestingSession, assert_unhandled_500, auth, register_and_login
 from tests.test_fin01_stripe_signature import event_body, sign
 
 # LEGACY_DORMANT runtime (TASK-002 R1): see tests/legacy_runtime.py.
@@ -95,8 +95,7 @@ def test_conflicting_state_dispatch_persists_the_raw_event(client, admin_token, 
 
 # --- retry behaviour --------------------------------------------------------
 def test_retry_after_a_transient_failure_processes_exactly_once(
-    client, admin_token, stripe_webhook, monkeypatch
-):
+    client, admin_token, stripe_webhook, monkeypatch, caplog):
     """Stripe redelivers after a failure. The retry must re-run dispatch (the
     event was never marked processed), confirm the booking, and capture once —
     no duplicate row, no duplicate money."""
@@ -114,8 +113,7 @@ def test_retry_after_a_transient_failure_processes_exactly_once(
 
     monkeypatch.setattr(payments_router.service, "process_intent_succeeded", flaky)
 
-    with pytest.raises(RuntimeError):  # first delivery blows up after persistence
-        _deliver(client, stripe_webhook, body)
+    assert_unhandled_500(_deliver(client, stripe_webhook, body), caplog, RuntimeError)
 
     rows = _events("evt_h2_retry")
     assert len(rows) == 1 and rows[0].processed_at is None

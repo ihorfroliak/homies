@@ -186,3 +186,58 @@ def test_ensure_schema_local_mode_applies_migrations(pg_migrated_engine, monkeyp
         conn.execute(text("CREATE SCHEMA public"))
     schema.ensure_schema()  # should migrate to head, no error
     assert "bookings" in inspect(pg_migrated_engine).get_table_names()
+
+
+def test_local_self_migration_keeps_the_application_logging(pg_migrated_engine, monkeypatch):
+    """PR-001R F5: alembic.ini's fileConfig replaced the root handlers and
+    disabled every logger that existed, so after `ENV=local` self-migrated
+    the application logged nothing more."""
+    import logging
+
+    from app.core import schema
+    from app.core.config import settings
+
+    from tests.conftest import TEST_DATABASE_URL
+
+    class Grab(logging.Handler):
+        def __init__(self):
+            super().__init__()
+            self.messages: list[str] = []
+
+        def emit(self, record):
+            self.messages.append(record.getMessage())
+
+    root = logging.getLogger()
+    grab = Grab()
+    root.addHandler(grab)
+    app_logger = logging.getLogger("homies.test.after_migration")
+    level = root.level
+    root.setLevel(logging.INFO)
+    monkeypatch.setattr(settings, "database_url", TEST_DATABASE_URL)
+    monkeypatch.setattr(settings, "env", "local")
+    try:
+        with pg_migrated_engine.begin() as conn:
+            conn.execute(text("DROP SCHEMA public CASCADE"))
+            conn.execute(text("CREATE SCHEMA public"))
+        schema.ensure_schema()
+        assert grab in root.handlers, "the application's handler was removed"
+        assert not app_logger.disabled and not logging.getLogger("homies.schema").disabled
+        app_logger.warning("still logging")
+        assert "still logging" in grab.messages
+        assert any("applying migrations" in m for m in grab.messages)
+    finally:
+        root.removeHandler(grab)
+        root.setLevel(level)
+
+
+def test_a_percent_encoded_password_neither_breaks_nor_leaks(monkeypatch):
+    """configparser read '%' as interpolation: alembic_config() raised a
+    ValueError whose message was the whole URL, password included."""
+    from app.core import schema
+    from app.core.config import settings
+
+    url = "postgresql+psycopg://homies_app:p%40ss-S3CRET@db.internal:5432/homies"
+    monkeypatch.setattr(settings, "database_url", url)
+    cfg = schema.alembic_config()
+    assert cfg.get_main_option("sqlalchemy.url") == url
+    assert cfg.attributes["configure_logger"] is False

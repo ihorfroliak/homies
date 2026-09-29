@@ -66,6 +66,54 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
+## CONV-001 — product / infrastructure baseline convergence (2026-09-30, builder)
+
+**INTEGRATION CANDIDATE — CONV-001A REQUIRED.** One non-fast-forward merge
+commit on `claude/CONV-001-product-infra` whose parents are exactly the two
+accepted lines (the SHA is named in the CONV-001 builder report; this page
+cannot contain its own commit's SHA):
+
+| Line | Accepted SHA | Verdict |
+|---|---|---|
+| PRODUCT (parent 1) | `7ffb4f51dd315363362df1a5f8fc5c19a57767dc` | TASK-014 ACCEPTED |
+| INFRA (parent 2) | `5cad442f07264ab25b3024c96fc691ad9c7a75fa` | PR-001 ACCEPTED |
+| Common ancestor | `879bf56cd7bb497fd77d8140fc1443fe9d61c1fe` | TASK-012 accepted line |
+
+No new product behaviour, schema, release architecture or deployment. One
+Alembic head (`f3b5d7e9a1c2`); git divergence is not Alembic divergence (the
+infra line added no migration). The TASK-014 stable evidence proves only the
+product parent and PR-001's acceptance only the infra parent: the integrated
+candidate needs its own exact-SHA certification and the independent
+**CONV-001A**. Not accepted until then. PR-002 Phase B stays blocked until
+CONV-001 is accepted; PR-003 (health isolation), MICRO-001 and TASK-015 are
+untouched. Production: **NOT READY · NOT DEPLOYED.**
+
+## TASK-014 — ACCEPTED (2026-09-29)
+
+Re-audit **TASK-014RA** (independent Claude session) of
+`7ffb4f51dd315363362df1a5f8fc5c19a57767dc`:
+**TASK_014_ACCEPTED_WITH_NONBLOCKING_NOTES** → `TASK_014_PHASE_1A_SLICE_ACCEPTED`
+([archived verbatim](../reviews/2026-09-29-task014ra-independent-task014r-audit.md)).
+P0–P3 0, NOTE 5: RA-N1 a channel exception outside SMTP/OS errors is retried
+without a cap (pre-existing debt, with TASK-014A N-2); RA-N2 stale token wording
+in the contract and D-81; RA-N3 the canonical-form check is defence in depth;
+RA-N4 raw CI logs and artifacts need authentication (acceptance rests on the
+public annotations and the auditor's own runs); RA-N5 the migration backfill
+trusts well-formed `ListingBecamePublic` payloads. Stable evidence: run
+`36595074447` / job `109497758765`, harness `3d37a7e`. Not production
+readiness. Production: NOT DEPLOYED.
+
+## PR-001 — ACCEPTED (2026-09-29)
+
+Re-audit **PR-001RA2** (independent Claude session) of
+`5cad442f07264ab25b3024c96fc691ad9c7a75fa`:
+**PR_001_ACCEPTED_WITH_NONBLOCKING_NOTES** → `PR_001_BASELINE_ACCEPTED`
+([archived verbatim](../reviews/2026-09-29-pr001ra2-independent-pr001r2-audit.md)).
+RA-1 and RA-2 closed, m12 and the canary mutation killed; P0–P3 0 (RA-3 stays
+PR-003 debt, not counted), NOTE 6: RA2-N1 the decision-budget value is not
+pinned by a test; carried N-A, N-C, N-D, N-E, N-F. Accepting PR-001 does not
+mean production readiness. Production: NOT READY, NOT DEPLOYED.
+
 ## TASK-014 → TASK-014A → TASK-014R — alert integrity repair (2026-09-29, builder)
 
 History: TASK-014 candidate `196c88796cf34a6b19860259cc6ff81c94dbe8d2` → independent
@@ -90,6 +138,27 @@ revalidation, unsubscribe core, privacy, worker recovery.
 | N-2 poison work item uncapped | **DEBT** — dedicated retry-policy follow-up |
 | N-7 F13RA-N01 wording | **MICRO-001** (unchanged here) |
 | EVIDENCE | exact-SHA stable-clock run required (see the TASK-014R report) |
+
+## PR-001R → PR-001RA → PR-001R2 — readiness contract & canary repair (2026-09-29, builder)
+
+Re-audit **PR-001RA** (independent Claude session) of `70be78b`:
+**PR_001_REQUIRES_TARGETED_FIXES**, P0 0 / P1 0 / P2 1 / P3 2
+([archived verbatim](../reviews/2026-09-29-pr001ra-independent-pr001r-audit.md)).
+F1–F10, N1, N5, N7 CLOSED; F11 PARTIAL. PR-001R2 on
+`claude/PR-001R2-readiness-repair`, **pending PR-001RA2. PR-001 NOT accepted.
+Production: NOT READY, NOT DEPLOYED.**
+
+| Finding | State after PR-001R2 |
+|---|---|
+| RA-1 (P2) readiness "3 s end to end" false; deadline untested | **CLOSED BY BUILDER** — decision budget vs measured finite completion documented (code, row 6); freeze-after-connect PostgreSQL regression; m12 killed |
+| RA-2 (P3) canary green on advisory-lookup failure | **CLOSED BY BUILDER** — structured JSON proof required; failure fixtures tested |
+| RA-3 (P3) health endpoints share the business thread pool | **DEFERRED — PR-003 debt**, canonical decision on health isolation |
+| N-B README stale lines | cleaned (status, process wording, layout) |
+| N-A, N-C, N-D, N-E, N-F | open notes, unchanged |
+
+## TASK-013 — ACCEPTED (2026-09-28)
+
+Re-audit **TASK-013RA** (Codex) of `3f324b6ddff6c7557894eb5f65736729d956f7eb`: **TASK_013_ACCEPTED_WITH_NONBLOCKING_NOTES** → `TASK_013_PHASE_1A_SLICE_ACCEPTED` (D-77; [archived verbatim](../reviews/2026-09-28-task013ra-codex-task013r-audit.md)). F13A-01 and F13A-02 closed; P0–P3 0. Nonblocking notes retained: **F13RA-N01** — the worst-case canonical-length test and D-76 wording overstate the per-field guarantee (percent-encoded Unicode ids can reach the 16 384 backstop within per-field budgets; the backstop itself works: 16 384 accepted, 16 385 refused) → test/doc improvement, open; **F13RA-N02** — the audit host's wall clock stepped backwards, which limits full-suite certification there (environment, not code). Production: NOT DEPLOYED.
 
 ## TASK-014 — saved listings, saved search & alerts (2026-09-28, builder)
 
@@ -117,10 +186,6 @@ decisions D-78…D-82; 04a §22.
 | `app/modules/properties/publicity.py` | **CANONICAL_ACTIVE** (candidate) — the one public-transition seam |
 | booking-era `GET /v1/me/notifications` feed | **LEGACY_DORMANT** shape, kept unchanged; the inbox is `/v1/me/inbox` |
 
-## TASK-013 — ACCEPTED (2026-09-28)
-
-Re-audit **TASK-013RA** (Codex) of `3f324b6ddff6c7557894eb5f65736729d956f7eb`: **TASK_013_ACCEPTED_WITH_NONBLOCKING_NOTES** → `TASK_013_PHASE_1A_SLICE_ACCEPTED` (D-77; [archived verbatim](../reviews/2026-09-28-task013ra-codex-task013r-audit.md)). F13A-01 and F13A-02 closed; P0–P3 0. Nonblocking notes retained: **F13RA-N01** — the worst-case canonical-length test and D-76 wording overstate the per-field guarantee (percent-encoded Unicode ids can reach the 16 384 backstop within per-field budgets; the backstop itself works: 16 384 accepted, 16 385 refused) → test/doc improvement, open; **F13RA-N02** — the audit host's wall clock stepped backwards, which limits full-suite certification there (environment, not code). Production: NOT DEPLOYED.
-
 ## TASK-013 → TASK-013A → TASK-013R — search validation & map count (2026-09-28, builder)
 
 History: TASK-013 candidate `56567d24bd764563bc21707c0c027e637a206e16` → independent **TASK-013A** (Codex): **TASK_013_REQUIRES_TARGETED_FIXES**, P0 0 / P1 0 / **P2 1** / P3 1 ([archived verbatim](../reviews/2026-09-28-task013a-codex-task013-audit.md)) → **TARGETED FIX REQUIRED** → TASK-013R on `claude/TASK-013R-search-validation-map-count`, **pending narrow re-audit (TASK-013RA)**. **TASK-013 is NOT accepted.** Accepted by TASK-013A and not reopened: public eligibility, geography, spatial privacy, price semantics, availability, sort/pagination, query count, indexes/migration, URL-state concept, archive integrity.
@@ -131,6 +196,47 @@ History: TASK-013 candidate `56567d24bd764563bc21707c0c027e637a206e16` → indep
 | F13A-02 map `without_point` negative under a concurrent publication | P3 | **CLOSED BY BUILDER** — one aggregate statement; deterministic interleaving test |
 | F13A-03 no URL/input budgets or normalization | NOTE | **CLOSED BY BUILDER** — budgets and normalization (D-76) before TASK-014 persists canonical queries |
 | regression-environment clock (Docker wall clock moving backwards) | NOTE | environment, not code; JWT validation unchanged |
+
+## PR-001 → PR-001A → PR-001R — targeted runtime & CI repair (2026-09-28, builder)
+
+History: PR-001 candidate `4416e2b14b007ba50aab41cad8e23deea32c4678` →
+independent **PR-001A** (Codex): **PR_001_REQUIRES_TARGETED_FIXES**, P0 0 /
+P1 0 / P2 4 / P3 7 → **TARGETED FIX REQUIRED** → PR-001R on
+`claude/PR-001R-runtime-ci-repair`, **pending narrow re-audit (PR-001RA)**.
+[Archived verbatim](../reviews/2026-09-28-pr001a-codex-pr001-audit.md); [verdict record and disposition](../reviews/2026-09-28-pr001a-verdict-record.md).
+**PR-001 is NOT accepted. Production: NOT READY, NOT DEPLOYED.**
+
+| Finding | State after PR-001R |
+|---|---|
+| F1 unhandled 500 loses request id (P2) | **CLOSED BY BUILDER** — caught in the outermost middleware: generic 500 + `X-Request-ID`, logged once under the id |
+| F2 CI audits an unpinned resolution (P2) | **CLOSED BY BUILDER** — `pip-audit -r constraints.txt --no-deps --disable-pip`; installed set proven equal to the pins; canary must be flagged |
+| F3 missing ENV fails open as local (P2) | **CLOSED BY BUILDER** — image `ENV=production`; implicit `local` announced |
+| F11 readiness hangs on a warm pool (P2) | **CLOSED BY BUILDER** — fresh dedicated connection under a wall-clock deadline; proven on real PostgreSQL incl. frozen-after-warm-pool |
+| F4 dev DATABASE_URL guard exact-string | **CLOSED BY BUILDER** — parsed-URL rules, documented guarantee |
+| F5 Alembic wipes logging | **CLOSED BY BUILDER** |
+| F6 backlog alert × replicas; worker-death claim | **CLOSED BY BUILDER** — `max by (status)`; claim removed; heartbeat → observability track |
+| F7 restore drill can skip in CI | **CLOSED BY BUILDER** — `HOMIES_REQUIRE_RESTORE_DRILL=1` |
+| F8 runtime drift | **CLOSED BY BUILDER** — image asserts 3.12; Dependabot ignores python minor/major |
+| F9 canonical TASK-012 heading lost | **CLOSED BY BUILDER** — restored byte-identical to `879bf56` |
+| F10 main CI runs cancelled | **CLOSED BY BUILDER** — per-commit group on `main` |
+| N1 / N5 / N7 | **CLOSED BY BUILDER** — `fullmatch`; README stack; real 429 test |
+
+## PR-001 — CI, runtime & production-readiness baseline (2026-09-28, builder)
+
+Independent engineering track on the accepted `879bf56` (no TASK-013/014
+code). **Production: NOT READY, NOT DEPLOYED.** Measured baseline and gaps:
+[docs/production/PRODUCTION-READINESS.md](../production/PRODUCTION-READINESS.md).
+
+| Area | State after PR-001 |
+|---|---|
+| Python 3.12 | verified: full SQLite + full PostgreSQL/PostGIS suites green in `ops/test/Dockerfile.py312` |
+| dependencies | `backend/constraints.txt` pins the verified set for CI, test and production images |
+| CI | also runs on `claude/**` pushes (before: no Phase-1A commit ever triggered CI); single-head and PG/PostGIS version gates |
+| logging | entry-point logging (text/JSON), request id on records and responses |
+| config | production-like env refuses the development `DATABASE_URL`; Redis/Meilisearch/NATS removed |
+| monitoring | outbox backlog alert (promtool-tested) |
+| restore drill | Phase-1A backup→destroy→restore drill in CI |
+| open decisions | RPO/RTO; alert destination; schema-compatibility policy for rollback/rolling deploys; hosting |
 
 ## TASK-013 — search, map & marketplace discovery (2026-09-28, builder)
 
@@ -154,6 +260,7 @@ History: TASK-012 `c4c8bfa` → **TASK-012A**: TASK_012_REQUIRES_TARGETED_FIXES
 **TASK_012_PHASE_1A_SLICE_ACCEPTED at `879bf56cd7bb497fd77d8140fc1443fe9d61c1fe`**
 (D-75; [archive](../reviews/2026-09-28-task012ra-codex-task012r-audit.md)). Not
 production readiness. Production: NOT DEPLOYED.
+
 
 ## TASK-012 → TASK-012A → TASK-012R — UTC temporal repair (2026-09-27)
 
@@ -441,9 +548,9 @@ awaits the targeted re-audit.
 | DB role / privileges (`ops/sql/app_role.sql`) | App role without ledger UPDATE/DELETE | Cross-cutting | **CANONICAL_ACTIVE** | Preserved engineering (03 §11) | Extend to new append-only tables (audit, moderation decisions) | — |
 | backup / restore drill | CI restore cycle, DR scripts | Cross-cutting | **CANONICAL_ACTIVE** | Preserved engineering | Offsite target needs an account | — |
 | monitoring (Prometheus rules, alertmanager) | Metrics + alert tests | Cross-cutting | **CANONICAL_ACTIVE** | Cheap and tested | — | — |
-| Redis | Compose service; config key; unused by code | Not Phase 1 (03 §7) | **LEGACY_DORMANT** → **REMOVE_LATER** from compose | No code uses it | Drop from compose when compose is next touched | Local dev starts an unused service |
-| Meilisearch | Compose service; config key; unused | Not Phase 1 (03 §6) | **LEGACY_DORMANT** → **REMOVE_LATER** from compose | Unused | As Redis | As Redis |
-| NATS | Compose service; config key; unused | Not Phase 1 (03 §5) | **LEGACY_DORMANT** → **REMOVE_LATER** from compose | Unused | As Redis | As Redis |
+| Redis | — | Not Phase 1 (03 §7) | **REMOVED** from compose and config (PR-001) | No code used it | — | — |
+| Meilisearch | — | Not Phase 1 (03 §6) | **REMOVED** from compose and config (PR-001) | Unused | — | — |
+| NATS | — | Not Phase 1 (03 §5) | **REMOVED** from compose and config (PR-001) | Unused | — | — |
 | `infra/{helm,k8s,terraform}`, `data/{airflow,dbt,ml}`, `apps/` | Empty local directories (not tracked by git) | Deferred (03 §8) | **REMOVE_LATER** | Contain nothing | Delete locally when convenient | None |
 | design system (`frontend/design-system`) | Tokens, components, mobile CSS | Visual source material | **REFERENCE_ONLY** (visuals) | Colour, type, spacing, components worth keeping; not business behaviour | Reuse in Next.js/Expo work | Old booking/payment flows copied as behaviour |
 | Claude Design exports, dated references | Prototype screens incl. booking/payment flows | Visual source only | **REFERENCE_ONLY** — on `preserve/foreign-continuity-2026-09` | Business flows there are obsolete | Redesign screens against 1A flows | Same |

@@ -2,8 +2,18 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # PR-001: task branches are pushed for audit without a PR; before this,
+    # CI never ran on them, so no Phase-1A commit had a CI record.
+    branches: [main, "claude/**"]
   pull_request:
+  workflow_dispatch:
+
+# A newer push to a task branch supersedes an older run of it. On `main` every
+# commit keeps its own run (PR-001R F10): the group is per-commit there, so a
+# later merge can neither cancel nor replace a queued run of an earlier one.
+concurrency:
+  group: ci-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   backend:
@@ -31,17 +41,48 @@ jobs:
     env:
       # Enables the Postgres migration + concurrency suites (else they skip).
       TEST_DATABASE_URL: postgresql+psycopg://homies:homies@localhost:5432/homies_ci
+      # PR-001R F7: the backup/restore drills are part of this contract. Missing
+      # client tools fail the run instead of skipping the drills silently.
+      HOMIES_REQUIRE_RESTORE_DRILL: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: backend/pyproject.toml
+          cache-dependency-path: |
+            backend/pyproject.toml
+            backend/constraints.txt
       - name: Install backend
         working-directory: backend
         # Quoted: unquoted .[dev] is a shell glob, not an extras spec.
-        run: pip install ".[dev]"
+        # -c constraints.txt (PR-001): the exact dependency set verified on
+        # Python 3.12, so a new upstream release cannot turn a build red/green
+        # with no change here.
+        run: pip install -c constraints.txt ".[dev]"
+      - name: Installed set is exactly the pinned set (PR-001R F2)
+        working-directory: backend
+        # What CI tests and audits must be what the images ship: every package
+        # in the environment at exactly its constraints.txt version. The
+        # project itself is excluded (installed from the checkout).
+        run: |
+          grep -vE '^\s*(#|$)' constraints.txt | sort -f > /tmp/pinned.txt
+          pip freeze --exclude-editable | grep -viE '^homies-backend([ =@]|$)' | sort -f > /tmp/installed.txt
+          diff -u /tmp/pinned.txt /tmp/installed.txt
+      - name: Runtime versions (evidence)
+        working-directory: backend
+        run: |
+          python -VV
+          python -c "import sys; assert sys.version_info[:2] == (3, 12), sys.version"
+          command -v pg_dump || sudo apt-get install -y --no-install-recommends postgresql-client-16
+          pg_dump --version
+          pg_restore --version
+          pip freeze | grep -iE '^(fastapi|sqlalchemy|alembic|psycopg|pydantic|pytest)=='
+      - name: Alembic has exactly one head
+        working-directory: backend
+        run: |
+          heads=$(python -m alembic heads | grep -c "(head)")
+          echo "heads=$heads"; test "$heads" -eq 1
       - name: Lint
         working-directory: backend
         run: ruff check app tests alembic scripts
@@ -53,23 +94,43 @@ jobs:
         working-directory: backend
         env:
           ALEMBIC_DATABASE_URL: postgresql+psycopg://homies:homies@localhost:5432/homies_ci
-        run: python -m alembic upgrade head
+        run: |
+          python -m alembic upgrade head
+          python - <<'PY'
+          import os
+          from sqlalchemy import create_engine, text
+          e = create_engine(os.environ["ALEMBIC_DATABASE_URL"])
+          with e.connect() as c:
+              print(c.scalar(text("select version()")))
+              print("postgis", c.scalar(text("select postgis_lib_version()")))
+              assert c.scalar(text("select current_setting('server_version_num')::int")) // 10000 == 16
+          PY
       - name: Test
         working-directory: backend
         # Fast SQLite unit suite + gated Postgres migration/concurrency suites
         # (TEST_DATABASE_URL is set, so they run against the service).
-        run: python -m coverage run -m pytest -q
+        # -rs lists every skip with its reason, so "the drills ran" is visible
+        # in the log rather than inferred from a count (PR-001R F7).
+        run: python -m coverage run -m pytest -q -rs
       - name: Coverage threshold
         working-directory: backend
         # Fails under 80% branch coverage. Config in pyproject [tool.coverage].
         run: python -m coverage report
-      - name: Dependency audit
+      - name: Dependency audit (the shipped, pinned set)
         working-directory: backend
-        # Audits the project's *declared* dependencies, not the runner's
-        # toolchain: a plain `pip-audit` also reports CVEs in pip itself, which
-        # would turn a green build red with no change to this repo (the D-26
-        # lesson). `pip-audit .` resolves pyproject instead.
-        run: python -m pip_audit .
+        # PR-001R F2: `pip-audit .` resolved pyproject's ranges afresh and could
+        # audit newer versions than the ones pinned and shipped. This audits
+        # exactly constraints.txt: every pin as written, no resolution
+        # (--no-deps --disable-pip), and not the runner's own toolchain (the
+        # D-26 lesson). The step above proves the environment equals the pins.
+        run: python -m pip_audit -r constraints.txt --no-deps --disable-pip --progress-spinner off
+      - name: Dependency audit inspects the pins it is given (canary)
+        working-directory: backend
+        # A deliberately old, vulnerable pin that is never installed. The step
+        # passes only when pip-audit's JSON report lists urllib3==1.26.4 with a
+        # PYSEC/GHSA/CVE advisory — an advisory-lookup failure (network, PyPI,
+        # OSV) is a failure, not a detection (PR-001R2, PR-001RA RA-2).
+        run: python scripts/ci/audit_canary.py ../ops/ci/pip-audit-canary.pins
 
   # M9b: the image was never built in CI. Every deploy artifact was unverified,
   # and TD-01 made this load-bearing — the image must carry alembic/ or
@@ -81,6 +142,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build backend image
         run: docker build -t homies-backend:ci backend
+      - name: Image runs the supported runtime (PR-001R F8)
+        # The authoritative tested runtime is Python 3.12. A base-image bump to
+        # another minor (Dependabot proposed 3.14) must fail here, not ship.
+        run: |
+          docker run --rm homies-backend:ci python -c "import sys; print(sys.version); assert sys.version_info[:2] == (3, 12)"
+      - name: Image is production-like by default (PR-001R F3)
+        run: |
+          test "$(docker run --rm homies-backend:ci printenv ENV)" = "production"
       - name: Verify the image carries migrations (TD-01 / D-35)
         # Not a smoke test of the app — a check that the artifact contains what
         # startup requires. Without alembic/ the container starts and then

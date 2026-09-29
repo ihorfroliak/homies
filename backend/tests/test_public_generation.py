@@ -13,7 +13,13 @@ from sqlalchemy import select, update
 from app.modules.events.models import DomainEvent
 from app.modules.properties import freshness, publicity
 from app.modules.properties.models import ClassifiedOffer, ListingPublicGeneration
-from tests.conftest import TestingSession, auth, register_and_login, verify_ownership
+from tests.conftest import (
+    TestingSession,
+    assert_unhandled_500,
+    auth,
+    register_and_login,
+    verify_ownership,
+)
 
 PROPERTY = {"category": "APARTMENT", "area_m2": 44, "rooms": 2, "capacity": 2, "city": "Gdańsk",
             "address": "ul. Prywatna 9 m. 4"}
@@ -154,7 +160,7 @@ def test_the_event_payload_is_identifiers_and_time_only(client, owner):
         assert secret not in text
 
 
-def test_generation_event_and_work_item_are_atomic(client, owner, monkeypatch):
+def test_generation_event_and_work_item_are_atomic(client, owner, monkeypatch, caplog):
     """If the work item cannot be written, the publication, the generation and
     the event all roll back — an episode never half-exists."""
     oid = _draft(client, owner)
@@ -165,8 +171,10 @@ def test_generation_event_and_work_item_are_atomic(client, owner, monkeypatch):
         raise RuntimeError("work item write failed")
 
     monkeypatch.setattr(publicity, "_open_episode", exploding)
-    with pytest.raises(RuntimeError):
-        client.post(f"/v1/classifieds/{oid}/publish", headers=auth(owner))
+    # PR-001R F1: the request-id middleware turns the unhandled exception into
+    # a generic 500 (CONV-001: the product test adopts the infra contract).
+    assert_unhandled_500(client.post(f"/v1/classifieds/{oid}/publish", headers=auth(owner)),
+                         caplog, RuntimeError)
     with TestingSession() as db:
         offer = db.get(ClassifiedOffer, oid)
         assert (offer.status, offer.public_generation, offer.public_since) == ("draft", 0, None)

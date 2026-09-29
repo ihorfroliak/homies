@@ -27,6 +27,7 @@ from app.core.config import settings, validate_security_config
 from app.core.health import check_database
 from app.core.http_metrics import http_metrics_middleware
 from app.core.ratelimit import client_ip, limiter, resolve_policy
+from app.core.request_id import request_id_middleware
 from app.core.schema import ensure_schema, verify_ledger_privileges
 
 API_V1 = "/v1"
@@ -217,6 +218,9 @@ def build_app(
     # observe throttled requests too, or a rate-limit storm would show up as a
     # drop in traffic rather than a spike in 429s.
     app.middleware("http")(http_metrics_middleware)
+    # Outermost (PR-001): every request — throttled ones included — carries a
+    # correlation id on its response and on every log record written for it.
+    app.middleware("http")(request_id_middleware)
 
     for router in routers:
         app.include_router(router, prefix=API_V1)
