@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  SOURCE_SHA: "39f158ed4e3fd3032e170eebd254071f0c44258e"
+  SOURCE_SHA: "7ffb4f51dd315363362df1a5f8fc5c19a57767dc"
 
 jobs:
   evidence:
