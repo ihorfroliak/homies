@@ -363,6 +363,36 @@ def test_inbox_is_private_and_carries_no_private_details(client, owner, renter, 
         assert secret not in text, secret
 
 
+def test_the_alert_flow_logs_no_address_or_contact(client, owner, renter, geo, caplog):
+    """§33 logs: the whole path — save, publish, match, IN_APP + EMAIL through
+    the real stub channel (not the capturing mailbox), a failed unsubscribe —
+    writes no email address, street, building, unit or postcode to any log."""
+    import logging
+
+    # On this branch Alembic's fileConfig (run by the PostgreSQL migration
+    # fixture) disables loggers that already exist — PR-001R F5, fixed on the
+    # infra branch only. Re-enable the application's loggers for this check.
+    silenced = [lg for name, lg in logging.root.manager.loggerDict.items()
+                if name.startswith("homies") and isinstance(lg, logging.Logger) and lg.disabled]
+    for lg in silenced:
+        lg.disabled = False
+    try:
+        with caplog.at_level(logging.DEBUG):
+            _search(client, renter, f"locality_id={geo['krakow']}")
+            _listing(client, owner, geo)
+            _run()
+            client.post("/v1/notifications/unsubscribe", json={"token": "x" * 43})
+    finally:
+        for lg in silenced:
+            lg.disabled = True
+    assert _inbox(client, renter)["total"] == 1
+    assert _deliveries(channel="EMAIL")[0].status == "delivered"  # really went through the stub
+    logged = "\n".join(r.getMessage() + " " + str(r.args) for r in caplog.records)
+    assert "email[stub] recipient=present" in logged
+    for secret in (RENTER_EMAIL, "owner-alerts@example.com", "ul. Tajna", "SEC7", "30-777"):
+        assert secret not in logged, secret
+
+
 def test_preferences_default_on_and_are_per_channel(client, renter):
     prefs = client.get("/v1/me/notification-preferences", headers=auth(renter)).json()
     assert prefs == [{"category": "PRODUCT", "channel": "IN_APP", "enabled": True},

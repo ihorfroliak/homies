@@ -6,12 +6,13 @@
 > and [DECISIONS](DECISIONS.md). If this page disagrees with them, they win —
 > fix this page. Nothing is accepted because it is listed here.
 
-**As of:** 2026-09-28 (written by the TASK-014 builder)
+**As of:** 2026-09-29 (written by the TASK-014 builder)
 
 ## CURRENT ACCEPTED PRODUCT BASELINE
 
 TASK-013 (Phase-1A slice) — `3f324b6ddff6c7557894eb5f65736729d956f7eb`
-(`TASK_013_PHASE_1A_SLICE_ACCEPTED`, D-77). TASK-014 is **not** accepted.
+(`TASK_013_PHASE_1A_SLICE_ACCEPTED`, D-77; TASK-013RA archived in docs/reviews).
+TASK-014 is **not** accepted.
 
 ## CURRENT PRODUCT CANDIDATE
 

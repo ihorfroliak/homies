@@ -92,6 +92,10 @@ decisions D-78…D-82; 04a §22.
 | `app/modules/properties/publicity.py` | **CANONICAL_ACTIVE** (candidate) — the one public-transition seam |
 | booking-era `GET /v1/me/notifications` feed | **LEGACY_DORMANT** shape, kept unchanged; the inbox is `/v1/me/inbox` |
 
+## TASK-013 — ACCEPTED (2026-09-28)
+
+Re-audit **TASK-013RA** (Codex) of `3f324b6ddff6c7557894eb5f65736729d956f7eb`: **TASK_013_ACCEPTED_WITH_NONBLOCKING_NOTES** → `TASK_013_PHASE_1A_SLICE_ACCEPTED` (D-77; [archived verbatim](../reviews/2026-09-28-task013ra-codex-task013r-audit.md)). F13A-01 and F13A-02 closed; P0–P3 0. Nonblocking notes retained: **F13RA-N01** — the worst-case canonical-length test and D-76 wording overstate the per-field guarantee (percent-encoded Unicode ids can reach the 16 384 backstop within per-field budgets; the backstop itself works: 16 384 accepted, 16 385 refused) → test/doc improvement, open; **F13RA-N02** — the audit host's wall clock stepped backwards, which limits full-suite certification there (environment, not code). Production: NOT DEPLOYED.
+
 ## TASK-013 → TASK-013A → TASK-013R — search validation & map count (2026-09-28, builder)
 
 History: TASK-013 candidate `56567d24bd764563bc21707c0c027e637a206e16` → independent **TASK-013A** (Codex): **TASK_013_REQUIRES_TARGETED_FIXES**, P0 0 / P1 0 / **P2 1** / P3 1 ([archived verbatim](../reviews/2026-09-28-task013a-codex-task013-audit.md)) → **TARGETED FIX REQUIRED** → TASK-013R on `claude/TASK-013R-search-validation-map-count`, **pending narrow re-audit (TASK-013RA)**. **TASK-013 is NOT accepted.** Accepted by TASK-013A and not reopened: public eligibility, geography, spatial privacy, price semantics, availability, sort/pagination, query count, indexes/migration, URL-state concept, archive integrity.

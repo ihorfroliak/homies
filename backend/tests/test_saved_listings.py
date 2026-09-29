@@ -1,6 +1,7 @@
 """Saved Listings (TASK-014): owner isolation, idempotency, privacy-safe tombstones."""
 
 import json
+import re
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -125,10 +126,32 @@ def test_stale_by_time_alone_is_a_tombstone(client, owner, renter, geo):
 def test_public_saves_never_carry_private_details(client, owner, renter, geo):
     oid = _publish(client, owner, geo)
     client.post(f"/v1/me/saved-listings/{oid}", headers=auth(renter))
-    text = json.dumps(_saved(client, renter))
+    page = _saved(client, renter)
+    text = json.dumps(page)
     for secret in SENTINELS:
         assert secret not in text, secret
-    assert "50.0612" not in text and "19.9371" not in text  # exact point
+    # The exact point, as a number or inside any non-timestamp string. A plain
+    # substring check on the dump was flaky: an ISO timestamp such as
+    # "…T00:12:50.061234" contains "50.0612".
+    for value in _leaves(page):
+        if isinstance(value, float):
+            assert abs(value - 50.0612) > 1e-9 and abs(value - 19.9371) > 1e-9, value
+        elif isinstance(value, str) and not _ISO_INSTANT.match(value):
+            assert "50.0612" not in value and "19.9371" not in value, value
+
+
+_ISO_INSTANT = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
+
+
+def _leaves(node):
+    if isinstance(node, dict):
+        for v in node.values():
+            yield from _leaves(v)
+    elif isinstance(node, list):
+        for v in node:
+            yield from _leaves(v)
+    else:
+        yield node
 
 
 def test_order_is_newest_first_and_pages_deterministically(client, owner, renter, geo):

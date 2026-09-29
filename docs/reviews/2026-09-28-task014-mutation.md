@@ -40,6 +40,14 @@ Honesty notes:
   `evaluate_for_listing`) would still suppress; the mutant dies on the
   suppression reason.
 
+## Independent re-run (2026-09-29)
+
+Same harness on a private copy of the tree (host Python 3.14.3, pinned set;
+separate disposable PostgreSQL 16.4 / PostGIS 3.4.3): **21 / 21 killed**,
+green baseline before each. Added **L01** (stub email channel logs the
+address instead of `present`) — killed by
+`test_saved_search_alerts::test_the_alert_flow_logs_no_address_or_contact`.
+
 ## Scale probe (LOCAL evidence)
 
 `tests/test_saved_search_scale_pg.py` (TASK014_SCALE=full): 10 000 saved

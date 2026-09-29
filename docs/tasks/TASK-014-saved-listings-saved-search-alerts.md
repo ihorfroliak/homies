@@ -157,6 +157,45 @@ tombstones, inbox, events, logs, metrics; migration backfill/round trip.
 See `docs/reviews/2026-09-28-task014-mutation.md` (mutations, scale) and the
 final builder report. CI: **NOT RUN** (branch not pushed).
 
+## Verification session (2026-09-29, builder)
+
+The implementation above was committed on 2026-09-28 by an earlier builder
+session and not pushed. On the TASK-014 Phase-B authorisation it was verified
+again before hand-off, not taken on trust:
+
+* **Environment finding.** The Docker Desktop VM's wall clock steps backwards
+  by ~1 s every ~28.5 s (measured: steady sawtooth, 0.4–1.3 s per step;
+  host clock: 0 steps). That is the same condition TASK-013RA recorded as
+  F13RA-N02. In the Python 3.12 container it produced scattered failures across
+  unrelated modules (booking, viewings, organisations, media, freshness, search)
+  and a JWT `iat` rejection. It was not fixed by restarting the VM (a Hyper-V
+  time-sync issue on the host; not changed — system settings are out of
+  bounds). Certification therefore ran on the **host Python 3.14.3** (stable
+  clock) with the **pinned dependency set** (PR-001R's `constraints.txt`,
+  installed in a scratch venv outside the repository), against PostgreSQL
+  16.4 / PostGIS 3.4.3 in Docker.
+* **Full suites (host, stable clock):** SQLite **986 passed, 360 skipped, 0 failed**; PostgreSQL/PostGIS
+  **1336 passed, 10 skipped, 0 failed**. ruff clean; mypy clean (103 files, Python 3.12 container);
+  OpenAPI up to date.
+* **Mutation harness re-run** on a private copy (separate PostgreSQL): **21/21
+  killed**, a green baseline before each. Plus L01 (the stub email channel logs
+  the address) — killed by the new log-privacy test.
+* **Scale probe re-run** (`TASK014_SCALE=full`, 10 000 searches, 1 000
+  listings): Kraków 7 096 candidates / 4 304 matches / 49 statements / 15
+  evaluation statements / 10.6 s; Warszawa 4 903 / 2 906 / 40 / 12 / 5.0 s;
+  Balice 3 016 / 1 832 / 35 / 10 / 7.1 s; candidate query 14.8 ms (bitmap index
+  scans on `ix_saved_search_anchors_key`). Identical counts to the first run.
+* **Changes made in verification:**
+  * `test_public_saves_never_carry_private_details` was flaky: a substring check
+    for the exact coordinate matched ISO timestamps ("…:50.0612…"). It now
+    checks numbers and non-timestamp strings — same strength, deterministic.
+  * New `test_the_alert_flow_logs_no_address_or_contact` (§33 logs): the whole
+    flow through the real stub email channel, asserting no address, street,
+    building, unit or postcode in any log record. It re-enables `homies.*`
+    loggers that Alembic's `fileConfig` disables on this branch (the PR-001R F5
+    fix is on the infra branch only).
+  * TASK-013RA archived verbatim; D-77 and convergence updated.
+
 ## Known debt
 
 * Alert email locale fixed to `en`; no digest; no retention/purge for work
@@ -171,3 +210,9 @@ final builder report. CI: **NOT RUN** (branch not pushed).
   expression per distinct query (~1–2 ms each locally); a cached predicate
   or denormalised prefilter columns are the next step if needed.
 * The booking-era `GET /v1/me/notifications` feed remains (legacy shape).
+* On this branch Alembic's `fileConfig` still disables existing loggers
+  (PR-001R F5 arrives with product + infra convergence).
+* SMTP error text (`str(exc)`) is stored in `last_error` and may name the
+  refused recipient for `SMTPRecipientsRefused` (DB only, not logs).
+* Local certification ran on host Python 3.14 (Docker VM clock unstable);
+  Python 3.12 + CI evidence is outstanding (CI NOT RUN).
