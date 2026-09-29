@@ -66,6 +66,23 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
+## PR-001R → PR-001RA → PR-001R2 — readiness contract & canary repair (2026-09-29, builder)
+
+Re-audit **PR-001RA** (independent Claude session) of `70be78b`:
+**PR_001_REQUIRES_TARGETED_FIXES**, P0 0 / P1 0 / P2 1 / P3 2
+([archived verbatim](../reviews/2026-09-29-pr001ra-independent-pr001r-audit.md)).
+F1–F10, N1, N5, N7 CLOSED; F11 PARTIAL. PR-001R2 on
+`claude/PR-001R2-readiness-repair`, **pending PR-001RA2. PR-001 NOT accepted.
+Production: NOT READY, NOT DEPLOYED.**
+
+| Finding | State after PR-001R2 |
+|---|---|
+| RA-1 (P2) readiness "3 s end to end" false; deadline untested | **CLOSED BY BUILDER** — decision budget vs measured finite completion documented (code, row 6); freeze-after-connect PostgreSQL regression; m12 killed |
+| RA-2 (P3) canary green on advisory-lookup failure | **CLOSED BY BUILDER** — structured JSON proof required; failure fixtures tested |
+| RA-3 (P3) health endpoints share the business thread pool | **DEFERRED — PR-003 debt**, canonical decision on health isolation |
+| N-B README stale lines | cleaned (status, process wording, layout) |
+| N-A, N-C, N-D, N-E, N-F | open notes, unchanged |
+
 ## PR-001 → PR-001A → PR-001R — targeted runtime & CI repair (2026-09-28, builder)
 
 History: PR-001 candidate `4416e2b14b007ba50aab41cad8e23deea32c4678` →

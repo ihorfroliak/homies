@@ -5,11 +5,13 @@ quietly reverts one of the repairs fails here, in the ordinary suite, instead
 of being discovered from a CI history nobody reads.
 """
 
+import json
 import os
 import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -44,13 +46,75 @@ def test_every_image_installs_from_the_same_pins():
         assert "-c constraints.txt" in text, dockerfile
 
 
-def test_the_audit_canary_is_a_real_old_pin_and_ci_requires_it_to_be_flagged():
+def test_the_audit_canary_is_a_real_old_pin_and_ci_runs_the_structured_check():
     pins = [line for line in (ROOT / "ops/ci/pip-audit-canary.pins").read_text(
         encoding="utf-8").splitlines() if line and not line.startswith("#")]
-    assert pins == ["urllib3==1.26.4"]
+    assert pins == [f"{_canary().CANARY_PACKAGE}=={_canary().CANARY_VERSION}"]
     runs = _runs("backend")
-    assert "pip-audit-canary.pins --no-deps --disable-pip" in runs
-    assert 'grep -qi "urllib3"' in runs
+    assert "python scripts/ci/audit_canary.py ../ops/ci/pip-audit-canary.pins" in runs
+    assert 'grep -qi "urllib3"' not in runs, "a package-name grep passes on a failed lookup"
+
+
+# --- RA-2: the canary passes only on proof of detection ---------------------
+FIXTURES = BACKEND / "tests/fixtures/pip_audit"
+
+
+def _canary():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "audit_canary", BACKEND / "scripts/ci/audit_canary.py")
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_a_real_vulnerable_report_is_a_canary_success():
+    """Recorded pip-audit 2.9.0 JSON for urllib3==1.26.4 (9 advisories)."""
+    raw = (FIXTURES / "canary-vulnerable.json").read_text(encoding="utf-8")
+    assert _canary().detected(raw) is True
+
+
+def test_an_advisory_lookup_failure_is_a_canary_failure():
+    """Recorded pip-audit run without network: exit 1, empty stdout, and a
+    traceback that mentions urllib3 13 times — the old grep's false success."""
+    failure = (FIXTURES / "canary-network-failure.stderr.txt").read_text(encoding="utf-8")
+    assert failure.count("urllib3") > 1 and "Failed to resolve" in failure
+    canary = _canary()
+    assert canary.detected("") is False                 # what stdout held
+    assert canary.detected(failure) is False            # even if both streams were mixed
+    assert canary.detected(failure + "\n" + "urllib3 1.26.4") is False
+
+
+@pytest.mark.parametrize("report", [
+    {"dependencies": [{"name": "urllib3", "version": "1.26.4", "vulns": []}]},
+    {"dependencies": [{"name": "urllib3", "version": "1.26.5",
+                       "vulns": [{"id": "PYSEC-2023-192"}]}]},
+    {"dependencies": [{"name": "requests", "version": "2.0.0",
+                       "vulns": [{"id": "PYSEC-2014-13"}]}]},
+    {"dependencies": [{"name": "urllib3", "version": "1.26.4",
+                       "vulns": [{"id": "not-an-advisory"}]}]},
+    {"error": "advisory service unavailable"},
+    [],
+])
+def test_anything_short_of_the_canary_pin_with_an_advisory_is_a_failure(report):
+    assert _canary().detected(json.dumps(report)) is False
+
+
+def test_the_canary_command_fails_closed_when_pip_audit_fails(monkeypatch, capsys):
+    """The CI entry point, with pip-audit replaced by the recorded failure."""
+    canary = _canary()
+    failure = (FIXTURES / "canary-network-failure.stderr.txt").read_text(encoding="utf-8")
+    monkeypatch.setattr(canary.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(
+        a[0], 1, stdout="", stderr=failure))
+    assert canary.main(["audit_canary.py", "x.pins"]) == 1
+    assert "canary FAILED" in capsys.readouterr().err
+
+    vulnerable = (FIXTURES / "canary-vulnerable.json").read_text(encoding="utf-8")
+    monkeypatch.setattr(canary.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(
+        a[0], 1, stdout=vulnerable, stderr=""))
+    assert canary.main(["audit_canary.py", "x.pins"]) == 0
 
 
 # --- F7: the restore drill is mandatory in CI -------------------------------

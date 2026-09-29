@@ -11,6 +11,7 @@ Durations are printed (run with -s) as evidence; the assertions use generous
 bounds and are not a production SLO.
 """
 
+import json
 import os
 import socket
 import threading
@@ -29,6 +30,13 @@ TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", "")
 pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="TEST_DATABASE_URL not set")
 
 BOUND_S = health.PROBE_DEADLINE_S + 1.5
+# Freeze after the connection is established: the decision budget, then the
+# driver's own finite clean-up (cancel attempt + drain), plus scheduling slack.
+# Measured ~13 s when the cancel request is frozen too (PR-001RA RA-1).
+AFTER_CONNECT_BOUND_S = health.PROBE_DEADLINE_S + health.PROBE_DRIVER_CLEANUP_S + 3.0
+# PostgreSQL ReadyForQuery, status idle: 'Z', length 5, 'I'. Seen once the
+# startup/authentication exchange is complete.
+READY_FOR_QUERY = b"Z\x00\x00\x00\x05I"
 
 
 class FreezableProxy:
@@ -37,6 +45,10 @@ class FreezableProxy:
         self.running = threading.Event()
         self.running.set()  # cleared = frozen
         self.stopped = False
+        # freeze_after_ready: freeze everything at the first client bytes sent
+        # on a connection whose handshake has completed (i.e. the query).
+        self.freeze_after_ready = False
+        self.frozen_mid_query = threading.Event()
         self.sockets: list[socket.socket] = []
         self.lock = threading.Lock()
         self.listener = socket.socket()
@@ -69,15 +81,23 @@ class FreezableProxy:
                 client.close()
                 continue
             self._track(client, upstream)
-            for src, dst in ((client, upstream), (upstream, client)):
-                threading.Thread(target=self._pump, args=(src, dst), daemon=True).start()
+            state = {"ready": False}
+            for src, dst, direction in ((client, upstream, "c2s"), (upstream, client, "s2c")):
+                threading.Thread(target=self._pump, args=(src, dst, state, direction),
+                                 daemon=True).start()
 
-    def _pump(self, src, dst):
+    def _pump(self, src, dst, state, direction):
         try:
             while True:
                 data = src.recv(65536)
                 if not data:
                     break
+                if direction == "s2c" and READY_FOR_QUERY in data:
+                    state["ready"] = True  # set before the client can answer it
+                if (direction == "c2s" and self.freeze_after_ready and state["ready"]
+                        and not self.frozen_mid_query.is_set()):
+                    self.running.clear()
+                    self.frozen_mid_query.set()
                 while not self.running.wait(0.1):  # frozen: hold the bytes
                     if self.stopped:
                         return
@@ -227,6 +247,48 @@ def test_frozen_database_after_the_pool_is_warm(proxy, monkeypatch):
     finally:
         proxy.resume()
         app_engine.dispose()
+
+
+def test_a_freeze_after_the_connection_is_established_is_a_finite_503(
+        proxy, monkeypatch, app_pool_untouched):
+    """PR-001RA RA-1: the connection is up, the query is in flight, then the
+    server stops making progress — and so does the cancel request (a truly
+    frozen server). No connect or TCP timeout can end this; only the probe's
+    decision deadline does. Without it (PR-001RA mutation m12) the probe waits
+    for ever; with it, /readyz answers 503 after the budget plus the driver's
+    finite clean-up. Triggered by the protocol, not by sleeps."""
+    monkeypatch.setattr(settings, "database_url", proxy.url())
+    proxy.freeze_after_ready = True
+    client = TestClient(_readiness_app())
+    outcome: dict = {}
+
+    def call():
+        started = time.monotonic()
+        response = client.get("/readyz")
+        outcome.update(status=response.status_code, body=response.json(),
+                       elapsed=time.monotonic() - started)
+
+    worker = threading.Thread(target=call, daemon=True)
+    worker.start()
+    worker.join(AFTER_CONNECT_BOUND_S + 5)
+    finished = not worker.is_alive()
+    proxy.resume()  # release the frozen bytes so nothing lingers after the test
+    worker.join(30)
+
+    assert proxy.frozen_mid_query.is_set(), "the freeze must happen after the handshake"
+    assert finished, (f"/readyz did not answer within {AFTER_CONNECT_BOUND_S + 5:.0f} s of a "
+                      "freeze after connect — the decision deadline is missing")
+    print(f"\n[F11] frozen after connect: /readyz {outcome['status']} "
+          f"in {outcome['elapsed'] * 1000:.0f} ms")
+    assert outcome["status"] == 503
+    database = outcome["body"]["checks"]["database"]
+    assert database["ok"] is False and database["error"] == "TimeoutError"
+    # The deadline really decided it: not an early connect failure …
+    assert outcome["elapsed"] >= health.PROBE_DEADLINE_S
+    # … and the endpoint completed within the documented, measured bound.
+    assert outcome["elapsed"] < AFTER_CONNECT_BOUND_S
+    for leak in ("postgresql", "homies:", str(proxy.port)):
+        assert leak not in json.dumps(outcome["body"])
 
 
 def test_repeated_failed_probes_do_not_exhaust_the_application_pool(proxy):

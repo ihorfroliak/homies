@@ -62,3 +62,8 @@ the installed environment equals it; the production image installs from it
 `--no-deps --disable-pip`, so it inspects each pin as written. The canary
 `ops/ci/pip-audit-canary.pins` (an old `urllib3`, never installed) must be
 flagged — if the audit ever resolved to newer releases instead, CI goes red.
+Since PR-001R2 (PR-001RA RA-2) "flagged" means structured proof:
+`scripts/ci/audit_canary.py` passes only when pip-audit's JSON report lists
+`urllib3==1.26.4` with a PYSEC/GHSA/CVE advisory id. A failed advisory lookup
+(no network, PyPI/OSV down) is a red step, not a detection — the first version
+grepped for "urllib3" and passed on the lookup's own traceback.

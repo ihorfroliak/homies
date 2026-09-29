@@ -1,10 +1,11 @@
-# Production readiness — baseline (PR-001, repaired in PR-001R, 2026-09-28)
+# Production readiness — baseline (PR-001, repaired in PR-001R and PR-001R2, 2026-09-29)
 
 Status of Homies against production readiness, **measured, not assumed**.
 Baseline: accepted Phase-1A SHA `879bf56cd7bb497fd77d8140fc1443fe9d61c1fe`
 (TASK-012). TASK-013 is under audit and is not part of this baseline.
 **Nothing is deployed. No production environment exists. PRODUCTION READINESS = NOT READY.**
-PR-001 → independent PR-001A → targeted fixes → PR-001R (pending narrow re-audit).
+PR-001 → PR-001A → PR-001R → PR-001RA (targeted fix required) → PR-001R2
+(candidate, pending PR-001RA2). **PR-001 is not accepted.**
 
 Statuses: **READY** (evidence exists) · **PARTIAL** · **MISSING** · **NOT ASSESSED**.
 Nothing is READY without evidence named in the row.
@@ -18,7 +19,7 @@ Nothing is READY without evidence named in the row.
 | 3 | Supported runtime | **READY (local evidence)** | Python 3.12.14 (test image `ops/test/Dockerfile.py312`): full SQLite 780 passed / 291 skipped, full PostgreSQL 16.4 / PostGIS 3.4.3 1070 passed / 1 skipped (Stripe live, not requested), ruff, mypy, OpenAPI drift — at `879bf56` with the pinned set. `requires-python >=3.12`; not raised |
 | 4 | Migrations | **PARTIAL** | Single Alembic head (CI gate added); empty → head verified in CI and in the image smoke test; startup never migrates outside `ENV=local`, only verifies head (`app/core/schema.py`). Gap: see §5 — app refuses any DB not at its exact head, which blocks code rollback after a migration and rolling deploys; no documented migration job/runner for staging/prod |
 | 5 | Secrets | **PARTIAL** | Fail-fast validation outside dev (SEC-02): weak/default JWT/webhook secrets, Stripe key/environment mismatch, and (PR-001R F4) a `DATABASE_URL` that is not PostgreSQL, uses the published `homies`/`homies` credentials, or is the loopback dev endpoint `…:5433/homies` — compared on the parsed URL. The image defaults to `ENV=production` (F3). Errors name rules, never values; a percent-encoded password no longer leaks through Alembic. gitleaks in CI. Gap: no secret store chosen; SMTP password not validated; no rotation procedure |
-| 6 | Health | **READY (local evidence)** | `/healthz` liveness (no external checks). `/readyz` (PR-001R F11): on PostgreSQL a fresh dedicated connection per probe, never the application pool, bounded end to end by a 3 s wall-clock deadline (2 s connect, 2 s statement timeout); 503 without DSN. Proven against a real PostgreSQL: stopped, frozen cold, frozen **after the pool is warm** (the warm application path demonstrably hangs; readiness answers 503 in ~2.0 s), repeated failures leave the pool untouched, recovery → 200; and `docker pause`/`stop` of a real PostGIS container against the production image. Timings are local evidence, not an SLO |
+| 6 | Health | **PARTIAL** | `/healthz` liveness (no external checks). `/readyz`: on PostgreSQL a fresh dedicated connection per probe, never the application pool; 503 without DSN. **Dependency decision budget 3 s** (2 s connect, 2 s statement timeout, then the wall-clock decision). The HTTP answer can take longer, finite in every tested case (PR-001RA RA-1, PR-001R2): frozen before the handshake (cold or warm pool) ~2.0–2.5 s; frozen **after** the connection is established ~7–13 s (psycopg's cancel attempt + drain after the decision; 13.0 s with the cancel frozen too, 7.3 s on a real `docker pause`); stopped container 3.8–4.0 s (Docker DNS); unreachable resolver ~10 s (OS resolver). Always 503, pool untouched, recovery 200. The freeze-after-connect case is a regression test that fails if the deadline is removed. **Gap (PR-003):** health endpoints share the application thread pool, so hung business requests delay `/readyz` and `/healthz` (RA-3). Timings are local evidence, not an SLO |
 | 7 | Logs | **PARTIAL** | Process logging at the entry point (text or `LOG_FORMAT=json`, `LOG_LEVEL`). **Request correlation READY (local evidence):** one id on normal, handled-error, 429 and **unhandled-500** responses and on their log records (PR-001R F1: the exception is logged once, under the id, and the client gets a generic 500 with `X-Request-ID`); concurrency-tested. Alembic self-migration no longer wipes logging (F5). Gap: no log shipping/retention; uvicorn access log still plain text |
 | 8 | Metrics | **PARTIAL** | Prometheus `/metrics` (HTTP, DB, rate limit, notifications, search, reveals). Gap: **`/metrics` is served publicly on the app port** — must be restricted to the internal network at ingress before production |
 | 9 | Errors | **PARTIAL** | Unhandled errors → generic 500, traceback in logs with request id. Gap: no error tracking service (none chosen; none activated) |
@@ -144,8 +145,9 @@ Rollback outline (to rehearse on staging, never yet executed):
   with secrets → started (JSON logs, no secret in the output); explicit
   `ENV=local` on an empty database → migrated and kept logging.
 * Real `docker pause` of the database after warming the pool: `/readyz` 503 in
-  ~2.04 s (×3), `/healthz` 200, recovery 200; `docker stop`: 503 in ~2.3–2.8 s,
-  recovery 200. A business request on the frozen database still hangs on the
+  ~2.04 s (×3), `/healthz` 200, recovery 200; `docker stop`: 503 in ~2.3–2.8 s
+  on the builder's machine — PR-001RA measured 3.8–4.0 s (Docker DNS resolving
+  a stopped container), recovery 200. A business request on the frozen database still hangs on the
   warm pool (not in PR-001R scope — see known debt).
 * A business request with the database stopped: generic 500 carrying the
   caller's `X-Request-ID`, and one ERROR log record with the same id.
@@ -153,6 +155,21 @@ Rollback outline (to rehearse on staging, never yet executed):
   vulnerabilities; the canary `urllib3==1.26.4` is flagged (9 advisories),
   while an unpinned `urllib3>=1.26.4` resolves to a clean release — the
   failure mode of the old `pip-audit .`.
+
+## 6b. PR-001R2 (after PR-001RA)
+
+* RA-1: the readiness contract is stated as a **decision budget** plus measured,
+  finite end-to-end bounds (row 6); no universal wall-clock guarantee is claimed.
+  New PostgreSQL regression: the server freezes after the connection is
+  established, with the query in flight (and the cancel request frozen too) →
+  `/readyz` 503 in 13.0 s; it fails (hangs past its bound) when the decision
+  deadline is removed — PR-001RA mutation m12 now killed.
+* RA-2: the dependency-audit canary passes only when pip-audit's JSON report
+  lists `urllib3==1.26.4` with a PYSEC/GHSA/CVE advisory
+  (`backend/scripts/ci/audit_canary.py`); an advisory-lookup failure fails it
+  (verified without network: exit 1).
+* RA-3 (health endpoints starved by hung business requests): **PR-003 debt, not
+  fixed here.**
 
 ## 7. Next production tasks (proposed)
 

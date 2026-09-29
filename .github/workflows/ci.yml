@@ -126,16 +126,11 @@ jobs:
         run: python -m pip_audit -r constraints.txt --no-deps --disable-pip --progress-spinner off
       - name: Dependency audit inspects the pins it is given (canary)
         working-directory: backend
-        # A deliberately old, vulnerable pin that is never installed. If the
-        # audit ever resolved to a newer safe release instead of inspecting the
-        # pin, this step would pass the canary silently — so it must fail here.
-        run: |
-          if python -m pip_audit -r ../ops/ci/pip-audit-canary.pins --no-deps --disable-pip \
-               --progress-spinner off > /tmp/canary.txt 2>&1; then
-            cat /tmp/canary.txt; echo "pip-audit did not flag the vulnerable canary pin"; exit 1
-          fi
-          cat /tmp/canary.txt
-          grep -qi "urllib3" /tmp/canary.txt
+        # A deliberately old, vulnerable pin that is never installed. The step
+        # passes only when pip-audit's JSON report lists urllib3==1.26.4 with a
+        # PYSEC/GHSA/CVE advisory — an advisory-lookup failure (network, PyPI,
+        # OSV) is a failure, not a detection (PR-001R2, PR-001RA RA-2).
+        run: python scripts/ci/audit_canary.py ../ops/ci/pip-audit-canary.pins
 
   # M9b: the image was never built in CI. Every deploy artifact was unverified,
   # and TD-01 made this load-bearing — the image must carry alembic/ or

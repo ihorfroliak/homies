@@ -7,7 +7,10 @@ this is the outline staging must exercise. Database recovery details:
 ## First five minutes (any incident)
 
 1. Open an incident record (time, reporter, symptom).
-2. Check `/readyz` on each instance and the Prometheus alerts page.
+2. Check `/readyz` on each instance and the Prometheus alerts page. A frozen
+   database answers 503 after a few seconds, but a hung query can hold a probe
+   for up to ~13 s, and under heavy traffic probes queue behind hung business
+   requests (PR-003 debt) — set orchestrator probe timeouts accordingly.
 3. Collect request ids (`X-Request-ID`) from failing responses; search the
    logs by them (`request_id` field in `LOG_FORMAT=json`).
 4. Freeze deploys.
