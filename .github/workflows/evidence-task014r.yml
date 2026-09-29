@@ -1,0 +1,140 @@
+# EVIDENCE-ONLY harness for TASK-014R (§13 stable evidence). It never tests
+# its own tree: it checks out the frozen candidate SOURCE_SHA explicitly and
+# proves the checkout, then runs the gates on a stable-clock GitHub runner.
+# This branch is never merged into main.
+name: evidence-TASK-014R
+
+on:
+  push:
+    branches: ["evidence/TASK-014R-*"]
+  workflow_dispatch:
+
+env:
+  SOURCE_SHA: "39f158ed4e3fd3032e170eebd254071f0c44258e"
+
+jobs:
+  evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4@sha256:44126d872ac91993766c341e369c539e8196614321765d36a6f1bab0419a5fa5
+        env:
+          POSTGRES_USER: homies
+          POSTGRES_PASSWORD: homies
+          POSTGRES_DB: homies_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U homies -d homies_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out the candidate (not this harness)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          path: source
+          fetch-depth: 1
+      - name: Prove the checked-out revision
+        run: |
+          got=$(git -C source rev-parse HEAD)
+          echo "SOURCE_SHA=$SOURCE_SHA"; echo "HARNESS_SHA=$GITHUB_SHA"; echo "checked_out=$got"
+          test "$got" = "$SOURCE_SHA"
+          echo "::notice title=provenance::SOURCE_SHA=$SOURCE_SHA HARNESS_SHA=$GITHUB_SHA checked_out=$got run=$GITHUB_RUN_ID attempt=$GITHUB_RUN_ATTEMPT"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend (record dependency provenance)
+        working-directory: source/backend
+        run: |
+          python -m pip install ".[dev]"
+          python -m pip freeze > ../../pip-freeze.txt
+          echo "::notice title=deps::$(sha256sum ../../pip-freeze.txt | cut -c1-64) $(wc -l < ../../pip-freeze.txt) packages"
+      - name: Environment and clock
+        env:
+          PGPASSWORD: homies
+        run: |
+          python --version
+          date -u +%FT%T.%NZ
+          timedatectl show 2>/dev/null | grep -E 'NTP|TimeUSec' || true
+          sudo apt-get -qq install -y postgresql-client >/dev/null 2>&1 || true
+          pg=$(psql -h localhost -U homies -d homies_ci -Atc "select version()")
+          gis=$(psql -h localhost -U homies -d homies_ci -Atc "create extension if not exists postgis; select postgis_full_version()" | tail -1)
+          echo "$pg"; echo "$gis"
+          echo "::notice title=env::$(python --version) | ${pg%% on *} | ${gis:0:40} | runner=$ImageOS/$ImageVersion | clock=$(date -u +%FT%TZ) | ntp=$(timedatectl show -p NTPSynchronized --value 2>/dev/null)"
+      - name: Lint
+        working-directory: source/backend
+        run: ruff check app tests alembic scripts
+      - name: Typecheck
+        working-directory: source/backend
+        run: python -m mypy
+      - name: Migrate base -> head on PostgreSQL/PostGIS
+        working-directory: source/backend
+        env:
+          ALEMBIC_DATABASE_URL: postgresql+psycopg://homies:homies@localhost:5432/homies_ci
+        run: python -m alembic upgrade head
+      - name: Targeted TASK-014 / TASK-014R (PostgreSQL)
+        working-directory: source/backend
+        env:
+          TEST_DATABASE_URL: postgresql+psycopg://homies:homies@localhost:5432/homies_ci
+        run: |
+          rc=0
+          python -m pytest -q -rs -p no:cacheprovider --junitxml=../../targeted.xml \
+            tests/test_task014r_repairs.py tests/test_task014r_repairs_pg.py \
+            tests/test_saved_search_alerts.py tests/test_saved_search_alerts_pg.py \
+            tests/test_saved_searches.py tests/test_saved_listings.py \
+            tests/test_saved_search_scale_pg.py > ../../targeted.log 2>&1 || rc=$?
+          tail -5 ../../targeted.log
+          echo "::notice title=targeted::$(tail -1 ../../targeted.log)"
+          grep '^FAILED' ../../targeted.log | head -20 || true
+          exit $rc
+      - name: Full SQLite suite
+        if: always()
+        working-directory: source/backend
+        run: |
+          rc=0
+          python -m pytest -q -rs -p no:cacheprovider --junitxml=../../sqlite.xml > ../../sqlite.log 2>&1 || rc=$?
+          tail -5 ../../sqlite.log
+          echo "::notice title=sqlite::$(tail -1 ../../sqlite.log)"
+          grep '^FAILED' ../../sqlite.log | head -20 || true
+          exit $rc
+      - name: Full PostgreSQL/PostGIS suite
+        if: always()
+        working-directory: source/backend
+        env:
+          TEST_DATABASE_URL: postgresql+psycopg://homies:homies@localhost:5432/homies_ci
+        run: |
+          rc=0
+          python -m pytest -q -rs -p no:cacheprovider --junitxml=../../pg.xml > ../../pg.log 2>&1 || rc=$?
+          tail -5 ../../pg.log
+          echo "::notice title=postgres::$(tail -1 ../../pg.log)"
+          grep '^FAILED' ../../pg.log | head -20 || true
+          echo "::notice title=postgres-skips::$(grep -c '^SKIPPED' ../../pg.log) skip lines: $(grep '^SKIPPED' ../../pg.log | cut -c1-150 | tr '\n' ';' | cut -c1-900)"
+          exit $rc
+      - name: Mutation suite (candidate's own harness, scripts/mutation/task014r_mutants.py)
+        if: always()
+        working-directory: source/backend
+        env:
+          TEST_DATABASE_URL: postgresql+psycopg://homies:homies@localhost:5432/homies_ci
+          MUTATION_OUT: ../../task014r-mutation.json
+        run: |
+          test -z "$(git status --porcelain --untracked-files=no)"
+          rc=0
+          python scripts/mutation/task014r_mutants.py > ../../mutation.log 2>&1 || rc=$?
+          cat ../../mutation.log
+          test -z "$(git status --porcelain --untracked-files=no)"
+          echo "::notice title=mutation::$(cut -d'|' -f1 ../../mutation.log | paste -sd' ' | cut -c1-900)"
+          test $rc = 0
+          python -c "import json,sys; r=json.load(open('../../task014r-mutation.json')); sys.exit(len(r) != 16 or any(m['verdict'] != 'killed' for m in r))"
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task014r-evidence
+          path: |
+            pip-freeze.txt
+            *.log
+            *.xml
+            task014r-mutation.json
