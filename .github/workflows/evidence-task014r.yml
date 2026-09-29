@@ -81,24 +81,24 @@ jobs:
           TEST_DATABASE_URL: postgresql+psycopg://homies:homies@localhost:5432/homies_ci
         run: |
           rc=0
-          python -m pytest -q -rs -p no:cacheprovider --junitxml=../../targeted.xml \
+          python -m pytest -q -rsfE -p no:cacheprovider --junitxml=../../targeted.xml \
             tests/test_task014r_repairs.py tests/test_task014r_repairs_pg.py \
             tests/test_saved_search_alerts.py tests/test_saved_search_alerts_pg.py \
             tests/test_saved_searches.py tests/test_saved_listings.py \
             tests/test_saved_search_scale_pg.py > ../../targeted.log 2>&1 || rc=$?
           tail -5 ../../targeted.log
           echo "::notice title=targeted::$(tail -1 ../../targeted.log)"
-          grep '^FAILED' ../../targeted.log | head -20 || true
+          grep -E '^(FAILED|ERROR) ' ../../targeted.log | head -20 | while read -r l; do echo "::error title=targeted-failure::${l:0:900}"; done
           exit $rc
       - name: Full SQLite suite
         if: always()
         working-directory: source/backend
         run: |
           rc=0
-          python -m pytest -q -rs -p no:cacheprovider --junitxml=../../sqlite.xml > ../../sqlite.log 2>&1 || rc=$?
+          python -m pytest -q -rsfE -p no:cacheprovider --junitxml=../../sqlite.xml > ../../sqlite.log 2>&1 || rc=$?
           tail -5 ../../sqlite.log
           echo "::notice title=sqlite::$(tail -1 ../../sqlite.log)"
-          grep '^FAILED' ../../sqlite.log | head -20 || true
+          grep -E '^(FAILED|ERROR) ' ../../sqlite.log | head -20 | while read -r l; do echo "::error title=sqlite-failure::${l:0:900}"; done
           exit $rc
       - name: Full PostgreSQL/PostGIS suite
         if: always()
@@ -107,10 +107,10 @@ jobs:
           TEST_DATABASE_URL: postgresql+psycopg://homies:homies@localhost:5432/homies_ci
         run: |
           rc=0
-          python -m pytest -q -rs -p no:cacheprovider --junitxml=../../pg.xml > ../../pg.log 2>&1 || rc=$?
+          python -m pytest -q -rsfE -p no:cacheprovider --junitxml=../../pg.xml > ../../pg.log 2>&1 || rc=$?
           tail -5 ../../pg.log
           echo "::notice title=postgres::$(tail -1 ../../pg.log)"
-          grep '^FAILED' ../../pg.log | head -20 || true
+          grep -E '^(FAILED|ERROR) ' ../../pg.log | head -20 | while read -r l; do echo "::error title=pg-failure::${l:0:900}"; done
           echo "::notice title=postgres-skips::$(grep -c '^SKIPPED' ../../pg.log) skip lines: $(grep '^SKIPPED' ../../pg.log | cut -c1-150 | tr '\n' ';' | cut -c1-900)"
           exit $rc
       - name: Mutation suite (candidate's own harness, scripts/mutation/task014r_mutants.py)
