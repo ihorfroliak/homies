@@ -87,6 +87,7 @@ def _seed_searches(sessions, geo, n):
         ctx = search.QueryContext(db)
         rows, anchors = [], []
         now = db.scalar(text("SELECT now() - interval '1 hour'"))
+        taken: set[tuple[int, str]] = set()
         for i in range(n):
             place = rng.choice(places)
             raw = "&".join(filter(None, [place, f"max_rent={rng.randrange(150_000, 400_000, 1000)}",
@@ -95,10 +96,17 @@ def _seed_searches(sessions, geo, n):
             q = search.parse_query_string(db, raw, ctx)
             sid = str(uuid.uuid4())
             canonical = q.canonical()
-            rows.append({"id": sid, "user_id": f"00000000-0000-4000-8000-{i % USERS:012d}",
+            # A genuine fingerprint (a forged one makes the search INVALID —
+            # TASK-014R F-2); a user who already saved this query gets the
+            # next user who has not, as the unique (user, fingerprint) needs.
+            user = i % USERS
+            while (user, canonical) in taken:
+                user = (user + 1) % USERS
+            taken.add((user, canonical))
+            rows.append({"id": sid, "user_id": f"00000000-0000-4000-8000-{user:012d}",
                          "name": f"s{i}", "market_country_code": "PL",
                          "canonical_query": canonical, "query_schema_version": 1,
-                         "query_fingerprint": service.fingerprint(1, canonical + f"#{i}"),
+                         "query_fingerprint": service.fingerprint(1, canonical),
                          "notifications_enabled": True, "status": "active", "created_at": now,
                          "updated_at": now, "baseline_at": now, "version": 1})
             anchors += [{"saved_search_id": sid, "kind": k, "value": v}
