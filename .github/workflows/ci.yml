@@ -203,10 +203,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # BASELINE-001: the validators come from a committed, exactly pinned
+      # toolchain (ops/contracts/package.json + package-lock.json), installed
+      # with `npm ci`. `npx --yes <package>` resolved a floating npm graph on
+      # every run, so an unrelated upstream publish could fail (or change) the
+      # contract check with no change here. @asyncapi/cli 6 requires Node 24.
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: ops/contracts/package-lock.json
+      - name: Install contract validation toolchain (pinned)
+        working-directory: ops/contracts
+        run: npm ci --no-audit --no-fund
       - name: Lint OpenAPI contract (Spectral)
-        run: npx --yes @stoplight/spectral-cli lint docs/api/openapi.json --ruleset .spectral.yaml
+        working-directory: ops/contracts
+        run: npm run lint:openapi
       - name: Validate AsyncAPI catalog
-        run: npx --yes @asyncapi/cli validate docs/api/events.asyncapi.yaml
+        working-directory: ops/contracts
+        run: npm run validate:asyncapi

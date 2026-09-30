@@ -41,7 +41,7 @@ recreate the schema — never point `TEST_DATABASE_URL` at a database you keep.
 | image | production image builds, carries `alembic/`, runs Python 3.12 and defaults to `ENV=production` (PR-001R F3/F8) |
 | secrets | gitleaks over full history |
 | monitoring | promtool config/rules/unit tests; amtool |
-| contracts | Spectral (OpenAPI), AsyncAPI validation |
+| contracts | Spectral (OpenAPI), AsyncAPI validation — pinned toolchain in `ops/contracts` (Node 24, `npm ci` from the committed lockfile; locally: `cd ops/contracts && npm ci && npm run lint:openapi && npm run validate:asyncapi`) |
 
 Triggers (PR-001): pushes to `main` and `claude/**`, pull requests, manual.
 On a task branch a newer push cancels the older run; on `main` every commit
