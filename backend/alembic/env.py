@@ -6,7 +6,7 @@ still use create_all for speed, but prod schema evolution goes through here.
 import os
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, inspect, pool, text
 
 from alembic import context
 
@@ -58,6 +58,37 @@ if config.config_file_name is not None and config.attributes.get("configure_logg
 target_metadata = Base.metadata
 
 
+def _record_lineage(ctx, step, heads, run_args) -> None:
+    """Keep `schema_lineage` in step with `alembic_version` (PR-002).
+
+    Runs inside the migration transaction after each applied step, so the
+    lineage row commits or rolls back with the schema change it describes.
+    Before the PR-002 lineage migration the table does not exist and nothing
+    is recorded (that migration backfills history). A migration without valid
+    declarations fails the upgrade: never a default. Stamps are not recorded.
+    """
+    from app.core.lineage_registry import HISTORICAL
+    from app.core.release import step_declarations
+
+    conn = ctx.connection
+    if conn is None or step.is_stamp or not inspect(conn).has_table("schema_lineage"):
+        return
+    if step.is_upgrade:
+        script = step.up_revision
+        transition, rollback = step_declarations(script.module, HISTORICAL)
+        down = script.down_revision
+        if isinstance(down, (tuple, list)):
+            raise RuntimeError(f"merge revision {script.revision} is not supported by the lineage")
+        conn.execute(
+            text("INSERT INTO schema_lineage (revision, down_revision, schema_transition, "
+                 "rollback_to_previous, recorded_by) VALUES (:r, :d, :t, :rb, 'MIGRATION')"),
+            {"r": script.revision, "d": down, "t": transition, "rb": rollback},
+        )
+    else:
+        conn.execute(text("DELETE FROM schema_lineage WHERE revision = :r"),
+                     {"r": step.up_revision_id})
+
+
 def run_migrations_offline() -> None:
     context.configure(
         url=config.get_main_option("sqlalchemy.url"),
@@ -69,16 +100,27 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+def _run(connection) -> None:
+    context.configure(connection=connection, target_metadata=target_metadata,
+                      on_version_apply=_record_lineage)
+    with context.begin_transaction():
+        context.run_migrations()
+
+
 def run_migrations_online() -> None:
+    # The migration runner (app/scripts/migrate.py) passes the connection that
+    # holds the migration advisory lock and its session lock_timeout (PR-002).
+    given = config.attributes.get("connection")
+    if given is not None:
+        _run(given)
+        return
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
-        with context.begin_transaction():
-            context.run_migrations()
+        _run(connection)
 
 
 if context.is_offline_mode():

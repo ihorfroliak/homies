@@ -68,7 +68,7 @@ def test_missing_revisions_are_never_reported_as_a_verified_schema(monkeypatch):
     def _must_not_be_consulted():
         raise AssertionError("the database must not be queried when no revisions exist")
 
-    monkeypatch.setattr(schema_mod, "_current_revision", _must_not_be_consulted)
+    monkeypatch.setattr(schema_mod, "_database_state", _must_not_be_consulted)
 
     with pytest.raises(schema_mod.SchemaNotMigratedError, match="No Alembic revisions"):
         schema_mod.ensure_schema()

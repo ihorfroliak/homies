@@ -10,8 +10,8 @@ through the application can unbuckle the seatbelt, edit the money, and buckle
 it again — leaving a ledger that reconciles and an audit trail that agrees,
 because both were rewritten by the same hand.
 
-`ops/sql/app_role.sql` gives the application a role that is not the owner and
-holds no UPDATE or DELETE on the append-only tables. Tampering then needs the
+`app/core/sql/app_role.sql` + `app_grants.sql` give the application a role that
+is not the owner and holds no UPDATE or DELETE on the append-only tables. Tampering then needs the
 migration credentials as well, which live where the application cannot reach.
 Two compromises instead of one.
 
@@ -32,7 +32,9 @@ pytestmark = pytest.mark.skipif(
     not TEST_DATABASE_URL, reason="TEST_DATABASE_URL not set — Postgres privilege tests skipped"
 )
 
-SCRIPT = Path(__file__).resolve().parents[2] / "ops" / "sql" / "app_role.sql"
+SQL_DIR = Path(__file__).resolve().parents[1] / "app" / "core" / "sql"
+SCRIPT = SQL_DIR / "app_role.sql"
+GRANTS = SQL_DIR / "app_grants.sql"
 APP_PASSWORD = "role-test-only-not-a-secret"
 
 
@@ -53,6 +55,7 @@ def app_role(pg_migrated_engine):
     """
     with pg_migrated_engine.begin() as conn:
         conn.exec_driver_sql(SCRIPT.read_text(encoding="utf-8"))
+        conn.exec_driver_sql(GRANTS.read_text(encoding="utf-8"))
         conn.exec_driver_sql(
             f"ALTER ROLE homies_app LOGIN PASSWORD '{APP_PASSWORD}'"  # noqa: S608
         )
@@ -183,6 +186,7 @@ def test_the_script_is_idempotent(pg_migrated_engine, app_role):
     it twice must be a no-op rather than an error."""
     with pg_migrated_engine.begin() as conn:
         conn.exec_driver_sql(SCRIPT.read_text(encoding="utf-8"))
+        conn.exec_driver_sql(GRANTS.read_text(encoding="utf-8"))
 
     with app_role.begin() as conn, pytest.raises(ProgrammingError):
         conn.execute(text("UPDATE journal_lines SET amount = amount + 1"))
@@ -212,7 +216,7 @@ def test_the_role_is_not_a_superuser_and_owns_nothing(app_role, pg_session):
 
 
 def test_startup_refuses_a_role_that_can_edit_the_ledger(app_role, monkeypatch):
-    """`ops/sql/app_role.sql` is a step somebody has to remember to run. This
+    """`app/core/sql/app_role.sql` is a step somebody has to remember to run. This
     proves the application notices when they did not, instead of serving
     traffic with a ledger it could rewrite."""
     from app.core import schema
@@ -244,3 +248,31 @@ def test_local_development_is_exempt(monkeypatch):
     monkeypatch.setattr(settings, "env", "local")
     monkeypatch.setattr(settings, "database_url", TEST_DATABASE_URL)
     schema.verify_ledger_privileges()
+
+
+# --- PR-002: the schema's own record is read-only for the application ------------
+
+
+@pytest.mark.parametrize("statement", [
+    "UPDATE alembic_version SET version_num = version_num",
+    "DELETE FROM alembic_version",
+    "INSERT INTO schema_lineage (revision, down_revision, schema_transition, "
+    "rollback_to_previous, recorded_by) VALUES ('fedcba987654', NULL, 'EXPAND', 'SAFE', "
+    "'MIGRATION')",
+    "UPDATE schema_lineage SET rollback_to_previous = 'SAFE'",
+    "DELETE FROM schema_lineage",
+    "UPDATE spatial_ref_sys SET srtext = srtext WHERE srid = 4326",
+    "CREATE TABLE pr002_intruder (id int)",
+])
+def test_the_grants_leave_the_schema_record_read_only(app_role, statement):
+    """app_grants.sql on its own (no runner verification involved)."""
+    with app_role.begin() as conn, pytest.raises(ProgrammingError) as excinfo:
+        conn.execute(text(statement))
+    assert excinfo.value.orig.sqlstate == "42501"
+
+
+def test_the_application_role_reads_the_schema_record(app_role):
+    with app_role.connect() as conn:
+        assert conn.scalar(text("SELECT count(*) FROM alembic_version")) == 1
+        assert conn.scalar(text("SELECT count(*) FROM schema_lineage")) > 0
+

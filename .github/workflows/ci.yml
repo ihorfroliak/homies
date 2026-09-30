@@ -95,7 +95,11 @@ jobs:
         env:
           ALEMBIC_DATABASE_URL: postgresql+psycopg://homies:homies@localhost:5432/homies_ci
         run: |
-          python -m alembic upgrade head
+          # PR-002: the migration job itself — lock, plan, upgrade, lineage and
+          # privilege verification. A fresh database crosses historical
+          # BARRIERs, hence --allow-barrier; running it twice is a no-op.
+          python -m app.scripts.migrate --allow-barrier
+          python -m app.scripts.migrate
           python - <<'PY'
           import os
           from sqlalchemy import create_engine, text
@@ -147,7 +151,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build backend image
-        run: docker build -t homies-backend:ci backend
+        run: docker build --build-arg GIT_SHA=${{ github.sha }} -t homies-backend:ci backend
+      - name: Image carries its release policy and this build's identity (PR-002)
+        # The committed policy (app/release.json) + the injected build identity
+        # (GIT_SHA build arg -> HOMIES_BUILD_SHA, OCI revision label). Without
+        # the identity a production-like image must refuse, not print a
+        # placeholder.
+        run: |
+          docker run --rm homies-backend:ci python -m app.scripts.release manifest > manifest.json
+          cat manifest.json
+          python3 -c "import json,sys; m=json.load(open('manifest.json')); sys.exit(0 if m['build_sha'] == '${{ github.sha }}' else 1)"
+          test "$(docker inspect homies-backend:ci --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "${{ github.sha }}"
+          if docker run --rm -e HOMIES_BUILD_SHA= homies-backend:ci python -m app.scripts.release manifest; then
+            echo "an image without build identity was accepted"; exit 1
+          fi
       - name: Image runs the supported runtime (PR-001R F8)
         # The authoritative tested runtime is Python 3.12. A base-image bump to
         # another minor (Dependabot proposed 3.14) must fail here, not ship.

@@ -173,6 +173,18 @@ def test_the_production_image_is_python_312_and_ci_asserts_it():
     assert 'printenv ENV)" = "production"' in image_runs
 
 
+def test_ci_builds_the_image_with_its_identity_and_proves_it_fails_closed():
+    """PR-002: identity is injected at build time and a production-like image
+    without it refuses (it never reports a placeholder)."""
+    build = next(s["run"] for s in _steps("image") if s.get("name") == "Build backend image")
+    assert "--build-arg GIT_SHA=${{ github.sha }}" in build
+    image_runs = _runs("image")
+    assert "m['build_sha'] == '${{ github.sha }}'" in image_runs
+    assert "org.opencontainers.image.revision" in image_runs
+    assert "-e HOMIES_BUILD_SHA= homies-backend:ci python -m app.scripts.release manifest" \
+        in image_runs
+
+
 def test_dependabot_cannot_propose_a_python_minor_or_major_bump():
     config = yaml.safe_load((ROOT / ".github/dependabot.yml").read_text(encoding="utf-8"))
     docker = next(u for u in config["updates"] if u["package-ecosystem"] == "docker")

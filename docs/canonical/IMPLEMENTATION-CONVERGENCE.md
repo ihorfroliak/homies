@@ -66,6 +66,25 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
+## PR-002 — release and migration compatibility (2026-10-01, builder)
+
+**BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (R2, D-88).** Branch
+`claude/PR-002-release-migration-compatibility` from `main` `dacbe9e` (which
+descends from IBB-001); integrated into `main` for continued development once
+CI is 5/5 green. Not independently verified — the review is part of the
+milestone / production-readiness audit. Production: **NOT READY · NOT
+DEPLOYED.** [Task](../tasks/PR-002-release-migration-compatibility.md) ·
+[policy](../production/RELEASE-AND-MIGRATION.md) · D-83 … D-87.
+
+| Area | Classification | State |
+|---|---|---|
+| startup schema gate (`app/core/schema.py`) | **CANONICAL_ACTIVE (builder verified)** | compatibility decision from release manifest + migration graph + `schema_lineage` (missing/mismatched lineage refused), replacing exact-head (TD-01) outside `ENV=local`; build identity required outside local/test/ci |
+| release manifest (`app/release.json`, `app/core/release.py`) | **CANONICAL_ACTIVE (builder verified)** | committed policy: schema head, lineage boundaries, schema_transition, explicit rollback_to_previous; no commit id — the build identity is injected (`RuntimeReleaseIdentity`) |
+| `schema_lineage` (migration `0c4e6a8b2d91`) | **CANONICAL_ACTIVE (builder verified)** | 26 historical steps backfilled; later steps recorded by env.py |
+| migration job (`app/scripts/migrate.py`) | **CANONICAL_ACTIVE (builder verified)** | migration role; session advisory lock on the migrating connection, 10 s try-lock budget; grant convergence; post-verify incl. privileges on every table/sequence; runs in CI |
+| roles (`app/core/sql/`) | **CANONICAL_ACTIVE (builder verified)** | `homies_migrator` / `homies_app` separation; `migration_owner.sql` for pre-PR-002 databases; closes Phase A F-A3, F-A4, F-A5 by builder |
+| PR-003 debt (request DB deadlines, health isolation) | **DEFERRED** | unchanged |
+
 ## Integrated Backend Baseline 001 — ACCEPTED (2026-09-30)
 
 | | |
@@ -569,7 +588,7 @@ awaits the targeted re-audit.
 | listings (short-stay `listings` module) | Nightly listings, host blocks | Phase 3 | **LEGACY_DORMANT** — runtime-isolated (TASK-002 R1) | Same `host_id` gap | As booking | As booking |
 | payments | Stripe seam, webhooks, disputes, reconciliation; host payout onboarding (`identity/host_payouts.py`) | Phase 2+ | **LEGACY_DORMANT** — runtime-isolated (TASK-002 R1) | Phase 1 has no payments | Audit before Phase 2 | Stripe pulled into Phase 1 by habit |
 | ledger | Append-only double-entry | Phase 2+ | **LEGACY_DORMANT** (engineering REFERENCE for Phase 2) | Proven, but Phase 2 needs its own spec | Audit before Phase 2 | — |
-| DB role / privileges (`ops/sql/app_role.sql`) | App role without ledger UPDATE/DELETE | Cross-cutting | **CANONICAL_ACTIVE** | Preserved engineering (03 §11) | Extend to new append-only tables (audit, moderation decisions) | — |
+| DB role / privileges (`backend/app/core/sql/app_role.sql` (+ `app_grants.sql`)) | App role without ledger UPDATE/DELETE | Cross-cutting | **CANONICAL_ACTIVE** | Preserved engineering (03 §11) | Extend to new append-only tables (audit, moderation decisions) | — |
 | backup / restore drill | CI restore cycle, DR scripts | Cross-cutting | **CANONICAL_ACTIVE** | Preserved engineering | Offsite target needs an account | — |
 | monitoring (Prometheus rules, alertmanager) | Metrics + alert tests | Cross-cutting | **CANONICAL_ACTIVE** | Cheap and tested | — | — |
 | Redis | — | Not Phase 1 (03 §7) | **REMOVED** from compose and config (PR-001) | No code used it | — | — |

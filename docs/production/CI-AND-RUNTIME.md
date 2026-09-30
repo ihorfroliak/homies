@@ -41,6 +41,8 @@ recreate the schema — never point `TEST_DATABASE_URL` at a database you keep.
 | image | production image builds, carries `alembic/`, runs Python 3.12 and defaults to `ENV=production` (PR-001R F3/F8) |
 | secrets | gitleaks over full history |
 | monitoring | promtool config/rules/unit tests; amtool |
+| migration job (backend) | `python -m app.scripts.migrate --allow-barrier` then a second run (must be a no-op): lock, plan, upgrade, `schema_lineage` and grant verification (PR-002) |
+| release identity (image) | the image built with `--build-arg GIT_SHA=<commit>` prints its runtime identity (committed policy + `build_sha`) whose `build_sha` and OCI revision label are that commit; the same image with the identity blanked must refuse (exit ≠ 0) (PR-002) |
 | contracts | Spectral (OpenAPI), AsyncAPI validation — pinned toolchain in `ops/contracts` (Node 24, `npm ci` from the committed lockfile; locally: `cd ops/contracts && npm ci && npm run lint:openapi && npm run validate:asyncapi`) |
 
 Triggers (PR-001): pushes to `main` and `claude/**`, pull requests, manual.

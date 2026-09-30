@@ -28,7 +28,7 @@ from app.core.health import check_database
 from app.core.http_metrics import http_metrics_middleware
 from app.core.ratelimit import client_ip, limiter, resolve_policy
 from app.core.request_id import request_id_middleware
-from app.core.schema import ensure_schema, verify_ledger_privileges
+from app.core.schema import ensure_schema, verify_ledger_privileges, verify_schema_privileges
 
 API_V1 = "/v1"
 
@@ -165,6 +165,9 @@ def build_app(
             # B5: a production role must not be able to rewrite the ledger.
             # The ledger is dormant, its tables and the guarantee are not.
             verify_ledger_privileges()
+            # PR-002: nor change the schema or forge the revision/lineage that
+            # the compatibility decision above trusts.
+            verify_schema_privileges()
             for worker in workers:
                 if worker.enabled():
                     worker.start()

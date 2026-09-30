@@ -701,3 +701,42 @@ Deployment: **NOT DEPLOYED**. Це не реліз і не версія.
 
 **Далі:** PR-002 (після перевірки MICRO-001).
 
+## 2026-10-01 — PR-002: сумісність релізів і міграцій (R2)
+
+**Від:** `main` `dacbe9e` (IBB-001 + BASELINE-001 + MICRO-001; MICRO-001
+злито fast-forward).
+
+**Що змінилось:** замість «ревізія БД == head застосунку» — явна модель.
+- Кожна міграція декларує `schema_transition` (EXPAND/BARRIER) і окремо
+  `rollback_to_previous` (SAFE/BLOCKED); 26 історичних кроків класифіковано
+  (адитивне ≠ безпечне для відкату: TASK-014 — EXPAND/BLOCKED).
+- БД веде `schema_lineage` (міграція `0c4e6a8b2d91` + хук Alembic); рішення
+  про запуск іде по графу предків, ніколи не порівнює рядки ревізій.
+- Маніфест релізу (`app/release.json`) — лише закомічена політика: межі
+  lineage (не рядковий діапазон), перехід, явний дозвіл відкату. Відсутнє чи
+  невідоме — помилка, не SAFE. SHA збірки в репозиторій не пишеться (файл не
+  може містити SHA власного коміту): його передає збірка (`GIT_SHA` →
+  `HOMIES_BUILD_SHA`, OCI-мітка); поза local/test/ci без нього запуск — відмова.
+- Запуск: EXACT / BEHIND_SUPPORTED / AHEAD_COMPATIBLE, решта — відмова.
+- Роль міграцій `homies_migrator` окремо від `homies_app`; застосунок не може
+  змінювати схему, `alembic_version`, `schema_lineage`, `spatial_ref_sys`;
+  права сходяться після кожної міграції.
+- Схема з міграцією `0c4e6a8b2d91`, але без (чи з невідповідним) `schema_lineage`
+  — відмова (LINEAGE_MISSING / LINEAGE_MISMATCH); застосунок lineage не вигадує.
+- Джоба міграцій: сесійний advisory lock на тому самому з'єднанні, яким іде
+  Alembic (перевірка в `pg_locks`); очікування обмежує сама джоба —
+  `pg_try_advisory_lock` + монотонний дедлайн 10 с (не `lock_timeout`); план,
+  `--allow-barrier`, пост-перевірка прав застосунку на кожну таблицю/sequence.
+  Default privileges не використовуються: права сходяться після кожної джоби.
+  Для БД до PR-002 — разовий `migration_owner.sql` від DBA.
+- SHA збірки — у мітці образу й логах, не в публічних `/metrics`.
+
+**Перевірено (builder):** див. [task](tasks/PR-002-release-migration-compatibility.md#evidence)
+— SQLite і PostgreSQL/PostGIS повністю, реальні ролі, два мігратори, мутації.
+
+**Статус:** BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (D-88, рішення власника):
+окремого PR-002A немає; незалежна перевірка — у milestone-аудиті. Production:
+NOT READY, NOT DEPLOYED.
+
+**Далі:** PR-003 (дедлайни клієнта БД, ізоляція збоїв).
+
