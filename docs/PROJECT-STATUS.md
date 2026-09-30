@@ -9,7 +9,7 @@ current_baseline:
   status: accepted
 production_ready: false
 deployed: false
-next_task: MICRO-001
+next_task: PR-002
 ---
 
 # Project status — orientation index
@@ -57,7 +57,7 @@ Naming convention: [docs/engineering/TRACEABILITY.md](engineering/TRACEABILITY.m
 ```text
 IBB-001                     ACCEPTED
   ↓
-MICRO-001                   NEXT      evidence / docs / test cleanup (R0/R1)
+MICRO-001                   CANDIDATE evidence / docs / test cleanup (R0/R1) — builder done, CI on the branch
   ↓
 PR-002                      PLANNED   release and migration compatibility
   ↓
@@ -68,7 +68,7 @@ TASK-015 delta review       PLANNED   against IBB-001
 TASK-015 implementation     PLANNED   reports and moderation
 ```
 
-None of these is implemented. MICRO-001 scope:
+Nothing after MICRO-001 is implemented. MICRO-001 scope and closure:
 [docs/tasks/MICRO-001-evidence-docs-test-cleanup.md](tasks/MICRO-001-evidence-docs-test-cleanup.md).
 
 **DEFERRED:** Phase-2 transactional renting (payments, ledger), short stay,

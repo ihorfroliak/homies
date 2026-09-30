@@ -442,15 +442,23 @@ def drain_notifications(max_rounds: int = 20):
             break
 
 
-def assert_unhandled_500(response, caplog, exc_type: type[BaseException]) -> None:
+def assert_unhandled_500(response, caplog, exc_type: type[BaseException],
+                         request_id: str | None = None) -> None:
     """The request failed with an exception nothing handled.
 
     Since PR-001R F1 the request-id middleware turns such an exception into a
     generic 500 (with X-Request-ID) and logs it, instead of letting it escape
     to the server — so the test client sees the 500 a real client sees, and
-    the exception is asserted from the log record.
+    the exception is asserted from the log record. The correlation is asserted
+    too (CONV-001A CV-N3): the response carries X-Request-ID, it is the
+    caller's id when one was supplied, and the logged record carries the same id.
     """
     assert response.status_code == 500, response.text
     assert response.json() == {"detail": "Internal Server Error"}
+    rid = response.headers.get("X-Request-ID")
+    assert rid, "the 500 carries no X-Request-ID"
+    if request_id is not None:
+        assert rid == request_id, (rid, request_id)
     logged = [r for r in caplog.records if r.name == "homies.http" and r.exc_info]
     assert logged and issubclass(logged[-1].exc_info[0], exc_type), logged
+    assert getattr(logged[-1], "request_id", None) == rid, (logged[-1].__dict__.get("request_id"), rid)

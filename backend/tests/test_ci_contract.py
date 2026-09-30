@@ -126,6 +126,18 @@ def test_ci_declares_the_restore_drill_mandatory_and_shows_skips():
     assert "\npg_dump --version\npg_restore --version\n" in _runs("backend")
 
 
+def test_ci_counts_the_restore_drill_test_cases_it_ran():
+    """CONV-001A CV-N1: the drill evidence is a count of JUnit <testcase>
+    elements from this very run, and it fails the job when none passed."""
+    assert "pytest -q -rs --junitxml=junit.xml" in _runs("backend")
+    names = [step.get("name", "") for step in _steps("backend")]
+    test_at = next(i for i, step in enumerate(_steps("backend"))
+                   if "--junitxml=junit.xml" in step.get("run", ""))
+    drills = names.index("Restore drills ran (JUnit test cases)")
+    assert drills == test_at + 1
+    assert _steps("backend")[drills]["run"] == "python scripts/ci/junit_drills.py junit.xml"
+
+
 def _collect_drills(env_overrides: dict[str, str]) -> subprocess.CompletedProcess:
     env = {k: v for k, v in os.environ.items() if k != "HOMIES_REQUIRE_RESTORE_DRILL"}
     env.update(env_overrides)

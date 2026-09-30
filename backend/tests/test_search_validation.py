@@ -71,24 +71,66 @@ def test_attribute_codes_are_budgeted(client):
     assert response.status_code == 422 and f"at most {search.MAX_ATTRIBUTE_CODES}" in response.text
 
 
-def test_the_largest_query_the_budgets_allow_fits_the_canonical_bound():
-    """Every budget at its maximum, text in 4-byte UTF-8 (percent-encoding
-    makes each character 12): the canonical key still fits, so the backstop
-    is never the first refusal a legitimate query meets."""
-    ids = tuple(f"{i:036d}" for i in range(search.MAX_VALUES_PER_DIMENSION))
-    worst = search.SearchQuery(
-        country_code="PL", admin_area_ids=ids, locality_ids=ids, geo_area_ids=ids,
-        city="𝔸" * search.MAX_TEXT_LENGTH, district="𝔸" * search.MAX_TEXT_LENGTH,
-        bbox=(-179.123456789, -89.123456789, 179.123456789, 89.123456789),
-        near=(-89.123456789, -179.123456789, 50_000),
-        categories=("APARTMENT", "HOUSE"), subtypes=("SEMI_DETACHED_HOUSE",),
-        space_types=("ROOM", "WHOLE_PROPERTY"), min_rooms=100, min_area_m2=100_000,
-        furnished="partial", parking="garage", pets_allowed=True, has_elevator=False,
-        has=tuple("x" * 48 + str(i) for i in range(search.MAX_ATTRIBUTE_CODES)),
-        min_rent=10**12, max_rent=10**12, min_monthly_total=10**12,
-        max_monthly_total=10**12, max_move_in_total=10**12, max_term_months=1200,
-        sort="available_soonest")
-    assert len(worst.canonical()) <= search.MAX_CANONICAL_LENGTH
+# --- the canonical bound is an independent guard (TASK-013RA F13RA-N01) ----------------------
+#
+# Per-field budgets (ids <= 36 characters, <= 25 values per dimension) do NOT keep
+# the canonical query below MAX_CANONICAL_LENGTH: a 4-byte UTF-8 character
+# percent-encodes to 12 characters, so valid ids can carry the canonical form past
+# 16 384. The canonical bound is therefore load-bearing on its own, and it is
+# tested at the API boundary itself: exactly 16 384 answers, 16 385 is refused.
+
+ID_DIMENSIONS = (("admin_area_id", "admin_area_ids"), ("locality_id", "locality_ids"),
+                 ("geo_area_id", "geo_area_ids"))
+_FULL_ID = search.MAX_ID_LENGTH  # characters; each of them a 4-byte UTF-8 character
+
+
+def _canonical_length(values: dict[str, list[str]]) -> int:
+    return len(search.SearchQuery(**{field: tuple(sorted(values[field]))
+                                     for _, field in ID_DIMENSIONS}).canonical())
+
+
+def _ids_with_canonical_length(target: int) -> list[tuple[str, str]]:
+    """Unique, individually valid ids (each <= 36 characters, <= 25 per dimension)
+    whose canonical query is exactly `target` characters long."""
+    values: dict[str, list[str]] = {field: [] for _, field in ID_DIMENSIONS}
+    codepoint = iter(range(0x1D400, 0x1D800))  # 4-byte characters: 12 when encoded
+    full_fields = ["admin_area_ids", "locality_ids"]
+    while True:
+        field = min(full_fields, key=lambda f: len(values[f]))
+        trial = {**values, field: values[field] + [chr(next(codepoint)) * _FULL_ID]}
+        if target - _canonical_length(trial) < 60:
+            break
+        values = trial
+    # Two last geo_area ids close the gap exactly: u 4-byte characters (12 each)
+    # plus a ASCII letters (1 each), u + a <= 36, both values distinct.
+    gap = target - _canonical_length(values) - 2 * (len("&geo_area_id="))
+    shapes = {12 * u + a: (u, a) for u in range(_FULL_ID + 1)
+              for a in range(_FULL_ID + 1 - u) if u + a}
+    first = next(e for e in shapes if gap - e in shapes)
+    for (u, a), letter in ((shapes[first], "a"), (shapes[gap - first], "b")):
+        values["geo_area_ids"].append(chr(next(codepoint)) * u + letter * a)
+    assert all(len(v) <= search.MAX_ID_LENGTH for vs in values.values() for v in vs)
+    assert all(len(vs) <= search.MAX_VALUES_PER_DIMENSION for vs in values.values())
+    assert _canonical_length(values) == target
+    return [(name, v) for name, field in ID_DIMENSIONS for v in values[field]]
+
+
+def test_per_field_budgets_alone_do_not_bound_the_canonical_query():
+    full = {field: [chr(base + i) * _FULL_ID for i in range(search.MAX_VALUES_PER_DIMENSION)]
+            for base, (_, field) in zip((0x1D400, 0x1D500, 0x1D600), ID_DIMENSIONS)}
+    assert all(len(v) == search.MAX_ID_LENGTH for vs in full.values() for v in vs)
+    assert _canonical_length(full) > search.MAX_CANONICAL_LENGTH
+
+
+@pytest.mark.parametrize("surface", SURFACES)
+def test_the_canonical_bound_is_exact_at_the_api(client, surface):
+    at_bound = client.get(surface, params=_ids_with_canonical_length(search.MAX_CANONICAL_LENGTH))
+    assert at_bound.status_code == 200, at_bound.text
+    if surface == "/v1/classifieds":
+        assert len(at_bound.json()["query"]) == search.MAX_CANONICAL_LENGTH
+    over = client.get(surface, params=_ids_with_canonical_length(search.MAX_CANONICAL_LENGTH + 1))
+    assert over.status_code == 422
+    assert f"longer than {search.MAX_CANONICAL_LENGTH} characters" in over.text
 
 
 # --- normalization (D-72, F13A-03) -------------------------------------------------------

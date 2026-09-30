@@ -4,7 +4,11 @@ tests/test_dr_restore_pg.py proves the cycle for the ledger and bookings,
 seeded through the dormant booking routes. This drill seeds what the deployable
 Phase-1A application actually holds — reference geography, structured
 addresses, properties with exact (private) and public points, spaces,
-listings with price components and freshness, authorities — then:
+listings with price components and freshness, authorities — and the durable
+TASK-014 state (public-listing generations, a saved listing, a saved search
+with its anchors, matches, deliveries on both channels, the inbox, a
+notification preference and unsubscribe capabilities; MICRO-001, CONV-001A
+CV-N2) — then:
 
 1. dumps it with pg_dump (custom format, streamed),
 2. restores it into a brand-new database with pg_restore,
@@ -17,20 +21,30 @@ encryption at rest, point-in-time recovery, restore time at production volume,
 or that a real production backup job runs — see docs/production/BACKUP-RESTORE.md.
 """
 
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.schema import alembic_config
+from app.modules.alerts import delivery, worker
 from app.modules.geography import service
 from app.modules.geography.models import GeoArea, GeoSource
 from app.modules.properties import freshness
 from app.modules.properties.models import ClassifiedOffer
-from tests.conftest import TEST_DATABASE_URL, auth, register_and_login, verify_ownership
+from app.modules.saved import service as saved_service
+from app.modules.saved.models import SavedSearch
+from tests.conftest import (
+    TEST_DATABASE_URL,
+    auth,
+    last_code,
+    register_and_login,
+    verify_ownership,
+)
 # Importing it also applies its HOMIES_REQUIRE_RESTORE_DRILL check (PR-001R F7).
 from tests.test_dr_restore_pg import (
     DRILL_AVAILABLE,
@@ -42,6 +56,7 @@ from tests.test_dr_restore_pg import (
     _with_database,
 )
 from tests.test_geography import PL_AREAS, PL_LOCALITIES, SOURCE
+from tests.test_saved_search_alerts import Mailbox
 
 pytestmark = pytest.mark.skipif(not DRILL_AVAILABLE, reason=DRILL_SKIP_REASON)
 
@@ -49,10 +64,16 @@ pytestmark = pytest.mark.skipif(not DRILL_AVAILABLE, reason=DRILL_SKIP_REASON)
 TABLES = ("countries", "geo_sources", "admin_areas", "localities", "geo_areas",
           "geo_external_refs", "addresses", "properties", "spaces", "classified_offers",
           "listing_price_components", "legal_parties", "person_legal_parties",
-          "property_authorities", "property_authority_scopes", "attribute_definitions")
+          "property_authorities", "property_authority_scopes", "attribute_definitions",
+          # TASK-014 durable state (CONV-001A CV-N2)
+          "listing_public_generations", "saved_listings", "saved_searches",
+          "saved_search_anchors", "saved_search_matches", "alert_deliveries",
+          "user_notifications", "notification_preferences", "unsubscribe_tokens")
+TASK014_TABLES = TABLES[-9:]
+TOKEN = re.compile(r"/unsubscribe\?token=([A-Za-z0-9_-]+)")
 
 
-def _seed(pg_client, pg_session):
+def _seed(pg_client, pg_session, pg_migrated_engine, monkeypatch):
     db = pg_session
     db.add(GeoSource(code=SOURCE, name="Test fixture (not an official register)"))
     db.flush()
@@ -66,6 +87,17 @@ def _seed(pg_client, pg_session):
     db.commit()
 
     owner = register_and_login(pg_client, "dr-phase1@example.com", "host")
+    # A renter who saved a search before the listings went public, and set a
+    # notification preference: the publications below become alerts.
+    renter = register_and_login(pg_client, "dr-phase1-renter@example.com", "guest")
+    pg_client.post("/v1/me/verify/email/start", headers=auth(renter))
+    assert pg_client.post("/v1/me/verify/email/confirm", json={"code": last_code()},
+                          headers=auth(renter)).status_code == 200
+    saved = pg_client.post("/v1/me/saved-searches", headers=auth(renter), json={
+        "name": "Kraków", "query": f"locality_id={krakow}&max_rent=300000"})
+    assert saved.status_code == 201, saved.text
+    assert pg_client.put("/v1/me/notification-preferences", headers=auth(renter), json={
+        "category": "PRODUCT", "channel": "IN_APP", "enabled": True}).status_code == 200
     offers = []
     for i, extra in enumerate(({}, {"admin_fee": 45000, "utilities_amount": 30000,
                                      "deposit_amount": 500000}, {})):
@@ -83,12 +115,21 @@ def _seed(pg_client, pg_session):
         assert pg_client.post(f"/v1/classifieds/{offer}/publish",
                               headers=auth(owner)).status_code == 200
         offers.append(offer)
+    assert pg_client.post(f"/v1/me/saved-listings/{offers[0]}",
+                          headers=auth(renter)).status_code == 201
+    mailbox = Mailbox()
+    monkeypatch.setattr(delivery, "channel_for", lambda name: mailbox)
+    sessions = sessionmaker(bind=pg_migrated_engine, expire_on_commit=False)
+    worker.process_work(sessions)
+    worker.process_deliveries(sessions)
+    tokens = [t for mail in mailbox.sent for t in TOKEN.findall(mail["body"])]
+    assert tokens, "no alert email carried an unsubscribe capability"
     # One listing past its freshness window: it must stay non-public after restore.
     db.execute(text("UPDATE classified_offers SET last_confirmed_available_at = :t "
                     "WHERE id = :o"),
                {"t": datetime.now(timezone.utc) - timedelta(days=30), "o": offers[2]})
     db.commit()
-    return offers
+    return offers, saved.json()["id"], tokens
 
 
 def _rows(conn, table):
@@ -108,10 +149,14 @@ def _public_ids(url):
 
 
 def test_phase1_data_survives_backup_destroy_restore(pg_client, pg_session,
-                                                     pg_migrated_engine):
-    offers = _seed(pg_client, pg_session)
+                                                     pg_migrated_engine, monkeypatch):
+    offers, search_id, tokens = _seed(pg_client, pg_session, pg_migrated_engine, monkeypatch)
     with pg_migrated_engine.connect() as conn:
         before = {t: _rows(conn, t) for t in TABLES}
+        # Every TASK-014 table holds real state, or "identical after restore" proves nothing.
+        assert all(before[t] for t in TASK014_TABLES), \
+            {t: len(before[t]) for t in TASK014_TABLES}
+        assert conn.scalar(text("SELECT count(DISTINCT channel) FROM alert_deliveries")) == 2
         geogs_before = conn.execute(text(
             "SELECT p.id, ST_AsText(p.exact_geog::geometry), ST_AsText(o.public_geog::geometry) "
             "FROM properties p JOIN classified_offers o ON o.property_id = p.id ORDER BY 1")).all()
@@ -154,6 +199,15 @@ def test_phase1_data_survives_backup_destroy_restore(pg_client, pg_session,
                 "'ix_classified_offers_public_geog'")) == 1
         assert _public_ids(target) == public_before  # same public answer, stale stays hidden
 
+        # TASK-014 on the copy: the saved search is still a VALID stored query
+        # (canonical form and fingerprint intact), and the emailed unsubscribe
+        # capabilities still resolve by their hash.
+        with Session(restored) as db:
+            saved_service.load_query(db, db.get(SavedSearch, search_id))
+        with restored.connect() as conn:
+            stored = set(conn.scalars(text("SELECT token_hash FROM unsubscribe_tokens")))
+        assert {delivery.token_hash(t) for t in tokens} <= stored
+
         # ...and the guards still refuse on the copy.
         with pytest.raises(IntegrityError) as caught, restored.begin() as conn:
             conn.execute(text("UPDATE classified_offers SET public_location_precision = "
@@ -169,6 +223,16 @@ def test_phase1_data_survives_backup_destroy_restore(pg_client, pg_session,
                                      "LIMIT 1"), {"p": top})
             conn.execute(text("UPDATE admin_areas SET parent_id = :c, level = 3 "
                               "WHERE id = :t"), {"c": child, "t": top})
+        with pytest.raises(IntegrityError) as caught, restored.begin() as conn:  # one alert per episode
+            # the same delivery again under a new id: only the UNIQUE episode key differs
+            conn.execute(text("CREATE TEMP TABLE twin AS SELECT * FROM alert_deliveries LIMIT 1"))
+            conn.execute(text("UPDATE twin SET id = gen_random_uuid()::text"))
+            conn.execute(text("INSERT INTO alert_deliveries SELECT * FROM twin"))
+        assert caught.value.orig.diag.constraint_name == \
+            "uq_alert_deliveries_user_episode_channel"
+        with pytest.raises(IntegrityError), restored.begin() as conn:  # one match per episode
+            conn.execute(text("INSERT INTO saved_search_matches SELECT * FROM "
+                              "saved_search_matches LIMIT 1"))
         with pytest.raises(IntegrityError), restored.begin() as conn:  # one address, one property
             conn.execute(text("UPDATE properties SET address_id = "
                               "(SELECT address_id FROM properties ORDER BY id LIMIT 1) "

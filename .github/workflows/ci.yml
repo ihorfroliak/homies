@@ -111,7 +111,13 @@ jobs:
         # (TEST_DATABASE_URL is set, so they run against the service).
         # -rs lists every skip with its reason, so "the drills ran" is visible
         # in the log rather than inferred from a count (PR-001R F7).
-        run: python -m coverage run -m pytest -q -rs
+        run: python -m coverage run -m pytest -q -rs --junitxml=junit.xml
+      - name: Restore drills ran (JUnit test cases)
+        working-directory: backend
+        # MICRO-001 (CONV-001A CV-N1): the drill count is taken from <testcase>
+        # elements, not from lines of the one-line XML. Fails if no drill
+        # passed, or if any drill was skipped or failed.
+        run: python scripts/ci/junit_drills.py junit.xml
       - name: Coverage threshold
         working-directory: backend
         # Fails under 80% branch coverage. Config in pyproject [tool.coverage].

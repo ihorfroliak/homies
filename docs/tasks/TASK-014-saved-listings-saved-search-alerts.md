@@ -64,8 +64,9 @@ users.
 PRODUCT preference, verified email, listing public, same generation, a
 linked search exists / is active & notifying, stored query valid, still
 matches → else `suppressed` with a machine reason. IN_APP = inbox row
-(UNIQUE delivery_id). EMAIL = verified address + two fresh unsubscribe tokens
-(one search / all PRODUCT email). Transient failures back off; permanent → dead.
+(UNIQUE delivery_id). EMAIL = verified address + two unsubscribe capabilities
+(one search / all PRODUCT email): HMAC-derived per delivery and scope, committed before
+SMTP, identical on every retry, single-use effect (TASK-014R; D-81). Transient failures back off; permanent → dead.
 
 **Worker & recovery** (`alerts/worker.py`, `app/scripts/saved_search_alerts.py`).
 BackgroundWorker `saved-search-alerts` (on by default): work batch 20,

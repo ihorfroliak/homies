@@ -480,8 +480,10 @@ def build_query(
         max_monthly_total=max_monthly_total, max_move_in_total=max_move_in_total,
         available_by=available_by, max_term_months=max_term_months, sort=sort,
     )
-    # A backstop the budgets above already keep far away; it bounds the
-    # saved-search key TASK-014 will persist (F13A-03).
+    # An independent bound, not a backstop the budgets keep away: ids within
+    # their length budget still percent-encode past it (4-byte characters
+    # become 12). It bounds the saved-search key TASK-014 persists (F13A-03,
+    # F13RA-N01).
     if len(query.canonical()) > MAX_CANONICAL_LENGTH:
         _refuse(f"the query is longer than {MAX_CANONICAL_LENGTH} characters")
     return query

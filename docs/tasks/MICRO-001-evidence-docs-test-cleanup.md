@@ -2,12 +2,12 @@
 
 | Field | Value |
 |---|---|
-| Status | DRAFT — **PLANNED, NEXT** after IBB-001; not started |
+| Status | **CANDIDATE** — implemented on `claude/MICRO-001-evidence-docs-tests` (builder, R0/R1); final SHA in the MICRO-001 report |
 | Risk class | **R0/R1** (docs, wording, tests, evidence tooling) |
 | Owner (writer) | Claude Code |
 | Bounded contexts written | tests, evidence harness, docs; no runtime code expected |
 | Baseline | Integrated Backend Baseline 001 (IBB-001), `5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98` |
-| Branch | `claude/MICRO-001-<short-name>` (from IBB-001 or its documented successor) |
+| Branch | `claude/MICRO-001-evidence-docs-tests`, from `main` `507a96773ee8476d6ba26bc7f547f64a831369e9` (descends from IBB-001) |
 | Independent audit required | **no** — unless the implementation unexpectedly changes runtime behaviour (then reclassify R2 and stop) |
 
 ## Goal
@@ -38,3 +38,21 @@ the local Docker clock.
 Builder evidence: ruff, mypy, OpenAPI drift unchanged, full SQLite and
 PostgreSQL/PostGIS suites green in CI on the exact SHA; the RA2-N1 mutant
 killed; the drill annotation reports the real testcase count.
+
+## Closure (builder, 2026-09-30)
+
+No runtime behaviour, schema or OpenAPI change. The one application-source
+edit is a comment in `properties/search.py`, proven comment-only (identical
+Python AST before and after).
+
+| Item | State | What changed | Evidence |
+|---|---|---|---|
+| F13RA-N01 | **CLOSED** | the false "worst case fits" test replaced by `test_per_field_budgets_alone_do_not_bound_the_canonical_query` and `test_the_canonical_bound_is_exact_at_the_api` (list + map: unique, individually valid percent-encoded 4-byte-character ids; exactly 16 384 → 200, 16 385 → 422); D-76 and the `search.py` comment now call the bound independent. Query limits unchanged | `tests/test_search_validation.py` |
+| TASK-014 token wording / D-81 | **CLOSED** | contract §delivery and D-81 describe the HMAC-derived, per-delivery, retry-stable, single-use capability; D-81 status → accepted (TASK-014RA, IBB-001) | docs only |
+| RA2-N1 | **CLOSED** | `tests/test_readiness_budget.py`: the decision budget is 3 s, and a probe whose connect never returns is decided not ready within [3 s, 4 s) on the monotonic clock. Makes no claim about total HTTP completion. Mutant m12b (3.0 → 60.0) killed by both tests | local mutant run |
+| CV-N1 | **CLOSED** | `backend/scripts/ci/junit_drills.py` counts drill `<testcase>` elements and outcomes; CI writes `junit.xml` and a new step fails when no drill passed or any was skipped/failed; unit tests use a one-line report of 10 drills; a CI-contract test pins the step | `tests/test_junit_drills.py`, `tests/test_ci_contract.py` |
+| CV-N2 | **CLOSED** | the Phase-1 drill seeds a verified renter, saved search, preference, saved listing and alert work (both channels), then proves the nine TASK-014 tables non-empty before and identical after restore, the saved search still VALID (canonical + fingerprint), emailed capabilities still resolving by hash, and the delivery / match uniqueness guards still refusing on the copy | `tests/test_dr_restore_phase1_pg.py` (10 drills passed on PostgreSQL 16.4 / PostGIS 3.4.3) |
+| CV-N3 | **CLOSED** | `assert_unhandled_500` also asserts `X-Request-ID` present, equal to the caller's id when supplied, and equal to the logged record's `request_id`; the merged atomicity test supplies its own id; meta-tests prove the helper refuses a missing / mismatched id | `tests/test_assert_unhandled_500.py`, `tests/conftest.py` |
+
+Remaining documentation debt noticed, not in scope: D-76 and D-78…D-80, D-82
+status columns still read "pending" although TASK-013 and TASK-014 are accepted.

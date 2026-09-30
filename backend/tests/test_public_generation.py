@@ -173,8 +173,10 @@ def test_generation_event_and_work_item_are_atomic(client, owner, monkeypatch, c
     monkeypatch.setattr(publicity, "_open_episode", exploding)
     # PR-001R F1: the request-id middleware turns the unhandled exception into
     # a generic 500 (CONV-001: the product test adopts the infra contract).
-    assert_unhandled_500(client.post(f"/v1/classifieds/{oid}/publish", headers=auth(owner)),
-                         caplog, RuntimeError)
+    rid = "atomic-publish-0001"
+    assert_unhandled_500(client.post(f"/v1/classifieds/{oid}/publish",
+                                     headers={**auth(owner), "X-Request-ID": rid}),
+                         caplog, RuntimeError, request_id=rid)
     with TestingSession() as db:
         offer = db.get(ClassifiedOffer, oid)
         assert (offer.status, offer.public_generation, offer.public_since) == ("draft", 0, None)
