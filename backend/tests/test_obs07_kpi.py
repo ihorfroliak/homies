@@ -188,6 +188,7 @@ def test_payouts_and_escrow_do_not_leak_into_gmv(db):
 # --- endpoint ----------------------------------------------------------------
 
 
+@pytest.mark.legacy_runtime
 def test_endpoint_returns_the_report(client, admin_token):
     resp = client.get(
         "/v1/admin/kpi?from=2026-01-01&to=2026-02-01",
@@ -200,6 +201,7 @@ def test_endpoint_returns_the_report(client, admin_token):
     assert "gmv_net" in body["money_minor_units"]
 
 
+@pytest.mark.legacy_runtime
 def test_endpoint_declares_what_it_cannot_answer(client, admin_token):
     """Six numbers look complete. The founder must be able to tell that CM2 is
     absent because the data does not exist, not because it is zero."""
@@ -213,6 +215,7 @@ def test_endpoint_declares_what_it_cannot_answer(client, admin_token):
     assert all(u["reason"] and u["unblocked_by"] for u in body["unavailable"])
 
 
+@pytest.mark.legacy_runtime
 def test_endpoint_rejects_an_inverted_window(client, admin_token):
     resp = client.get(
         "/v1/admin/kpi?from=2026-02-01&to=2026-01-01",
@@ -221,6 +224,7 @@ def test_endpoint_rejects_an_inverted_window(client, admin_token):
     assert resp.status_code == 422
 
 
+@pytest.mark.legacy_runtime
 def test_endpoint_is_admin_only(client):
     client.post("/v1/auth/register", json={
         "email": "guest-kpi@example.com", "password": "password-123456", "role": "guest"})

@@ -12,6 +12,31 @@ from sqlalchemy.pool import StaticPool  # noqa: E402
 from app.core.db import Base, get_db  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
 from app.main import app  # noqa: E402
+from tests.legacy_runtime import create_legacy_test_app  # noqa: E402
+
+# Tests marked `legacy_runtime` exercise the LEGACY_DORMANT short-stay/booking/
+# payment contexts. The Phase-1 app does not route to them (TASK-002 R1), so
+# those tests get the test-only legacy composition; every other test runs
+# against the real Phase-1 application object.
+legacy_app = create_legacy_test_app()
+
+
+def authorization_date():
+    """The calendar date authority validity is judged against: the UTC date
+    (current product rule — authority._today and authority.decision_date).
+
+    Not `date.today()`, which is the machine's LOCAL date: in Poland it is a
+    day ahead of UTC between local midnight and 01:00/02:00, and a test that
+    means "yesterday, so expired" then builds a date that is still valid
+    (TASK-005 N-04). Whether validity should follow the Polish civil date is
+    an open product/legal question, not a test detail."""
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).date()
+
+
+def app_for(request):
+    return legacy_app if request.node.get_closest_marker("legacy_runtime") else app
 from app.modules.identity.models import User  # noqa: E402
 
 engine = create_engine(
@@ -50,8 +75,33 @@ def _seed_attribute_catalogue():
         db.commit()
 
 
+def _seed_geography():
+    """Countries and reference-source namespaces, read from the migration that
+    seeds them (TASK-010) — the same rule as the attribute catalogue: one list,
+    owned by the migration."""
+    import importlib.util
+    from pathlib import Path
+
+    from app.modules.geography.models import Country, GeoSource
+
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "alembic" / "versions" / "e4f6a8b0c2d4_geography_address_classification.py"
+    )
+    spec = importlib.util.spec_from_file_location("_geo_seed", source)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    with TestingSession() as db:
+        if db.get(Country, "PL") is not None:
+            return
+        db.add_all(Country(**row) for row in module._seed_countries())
+        db.flush()
+        db.add_all(GeoSource(**row) for row in module._seed_sources())
+        db.commit()
+
+
 @pytest.fixture()
-def client():
+def client(request):
     from app.core.config import settings
     from app.core.ratelimit import limiter
 
@@ -61,6 +111,7 @@ def client():
     settings.rate_limit_enabled = False
     Base.metadata.create_all(engine)
     _seed_attribute_catalogue()
+    _seed_geography()
 
     def override_get_db():
         db = TestingSession()
@@ -69,10 +120,11 @@ def client():
         finally:
             db.close()
 
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as c:
+    target = app_for(request)
+    target.dependency_overrides[get_db] = override_get_db
+    with TestClient(target) as c:
         yield c
-    app.dependency_overrides.clear()
+    target.dependency_overrides.clear()
     Base.metadata.drop_all(engine)
 
 
@@ -246,7 +298,7 @@ def pg_migrated_engine():
 
 
 @pytest.fixture()
-def pg_client(pg_migrated_engine):
+def pg_client(request, pg_migrated_engine):
     """A TestClient wired to the migration-built Postgres schema, so requests
     hit the real engine (row locks, exclusion constraints). Data is truncated
     between tests; the schema is preserved. Used by the CI-03 concurrency tests
@@ -260,6 +312,9 @@ def pg_client(pg_migrated_engine):
     tables = (
         # Every table a test can write to. A missing name leaks state into the
         # next test: `disputes` was absent since FIN-03 and nothing noticed.
+        "unsubscribe_tokens notification_preferences user_notifications alert_deliveries "
+        "saved_search_matches saved_search_anchors saved_searches saved_listings "
+        "listing_public_generations "
         "notifications domain_events incidents webhook_events disputes "
         "listing_media media_assets file_objects "
         "viewings viewing_blackouts viewing_windows viewing_settings "
@@ -270,7 +325,8 @@ def pg_client(pg_migrated_engine):
         "organization_memberships organization_legal_parties organizations "
         "person_legal_parties legal_parties verification_codes "
         "journal_lines journal_entries ledger_accounts payments bookings "
-        "host_blocks listings host_profiles refresh_tokens audit_log users"
+        "host_blocks listings host_profiles refresh_tokens audit_log users "
+        "geo_external_refs addresses geo_areas localities admin_areas"
     ).split()
     with pg_migrated_engine.begin() as conn:
         conn.execute(text(f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"))
@@ -285,10 +341,11 @@ def pg_client(pg_migrated_engine):
             db.close()
 
     settings.rate_limit_enabled = False
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as c:
+    target = app_for(request)
+    target.dependency_overrides[get_db] = override_get_db
+    with TestClient(target) as c:
         yield c
-    app.dependency_overrides.clear()
+    target.dependency_overrides.clear()
 
 
 @pytest.fixture()
@@ -301,6 +358,9 @@ def pg_session(pg_migrated_engine):
     tables = (
         # Every table a test can write to. A missing name leaks state into the
         # next test: `disputes` was absent since FIN-03 and nothing noticed.
+        "unsubscribe_tokens notification_preferences user_notifications alert_deliveries "
+        "saved_search_matches saved_search_anchors saved_searches saved_listings "
+        "listing_public_generations "
         "notifications domain_events incidents webhook_events disputes "
         "listing_media media_assets file_objects "
         "viewings viewing_blackouts viewing_windows viewing_settings "
@@ -311,7 +371,8 @@ def pg_session(pg_migrated_engine):
         "organization_memberships organization_legal_parties organizations "
         "person_legal_parties legal_parties verification_codes "
         "journal_lines journal_entries ledger_accounts payments bookings "
-        "host_blocks listings host_profiles refresh_tokens audit_log users"
+        "host_blocks listings host_profiles refresh_tokens audit_log users "
+        "geo_external_refs addresses geo_areas localities admin_areas"
     ).split()
     with pg_migrated_engine.begin() as conn:
         conn.execute(text(f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"))
@@ -379,3 +440,17 @@ def drain_notifications(max_rounds: int = 20):
             )
         if not due:
             break
+
+
+def assert_unhandled_500(response, caplog, exc_type: type[BaseException]) -> None:
+    """The request failed with an exception nothing handled.
+
+    Since PR-001R F1 the request-id middleware turns such an exception into a
+    generic 500 (with X-Request-ID) and logs it, instead of letting it escape
+    to the server — so the test client sees the 500 a real client sees, and
+    the exception is asserted from the log record.
+    """
+    assert response.status_code == 500, response.text
+    assert response.json() == {"detail": "Internal Server Error"}
+    logged = [r for r in caplog.records if r.name == "homies.http" and r.exc_info]
+    assert logged and issubclass(logged[-1].exc_info[0], exc_type), logged

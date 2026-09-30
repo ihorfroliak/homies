@@ -149,9 +149,11 @@ def test_pets_and_elevator_are_exact_not_merely_truthy(client, owner):
     assert [o["id"] for o in _search(client, pets_allowed=False)["items"]] == [without]
 
 
-def test_an_offer_with_no_start_date_counts_as_available_now(client, owner):
-    """A missing date means "available now"; filtering it out would hide the
-    offers most ready to rent."""
+def test_an_offer_with_no_start_date_is_unknown_not_available_now(client, owner):
+    """D-64 (TASK-012), replacing the earlier "no date means available now":
+    a missing date is unknown. It stays in the general board, is shown as
+    UNKNOWN, and an explicit `available_by` does not match it — the filter
+    promises a date, and the listing never gave one."""
     undated = _publish(client, owner, offer_overrides={"available_from": None})
     later = _publish(
         client,
@@ -159,10 +161,20 @@ def test_an_offer_with_no_start_date_counts_as_available_now(client, owner):
         property_overrides={"address": "ul. Pozniej 7"},
         offer_overrides={"available_from": date(2027, 6, 1).isoformat()},
     )
+    sooner = _publish(
+        client,
+        owner,
+        property_overrides={"address": "ul. Wczesniej 3"},
+        offer_overrides={"available_from": date(2026, 12, 1).isoformat()},
+    )
 
     ids = [o["id"] for o in _search(client, available_by=date(2027, 1, 1).isoformat())["items"]]
-    assert undated in ids
+    assert sooner in ids
+    assert undated not in ids
     assert later not in ids
+    board = {o["id"]: o for o in _search(client)["items"]}
+    assert undated in board and board[undated]["move_in"] == "UNKNOWN"
+    assert board[undated]["available_from"] is None
 
 
 def test_open_ended_offers_satisfy_any_maximum_term(client, owner):

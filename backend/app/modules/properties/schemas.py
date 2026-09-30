@@ -12,8 +12,8 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.modules.properties import classification
 from app.modules.properties.models import (
-    CREATABLE_PROPERTY_TYPES,
     MIN_CLASSIFIED_TERM_MONTHS,
 )
 
@@ -45,15 +45,37 @@ class PropertyCreate(BaseModel):
         "OWNER", "CO_OWNER", "AUTHORIZED_REPRESENTATIVE", "PROPERTY_MANAGER",
         "TENANT_WITH_SUBLET_RIGHT", "OTHER_VERIFIED_RIGHT",
     ] = "OWNER"
-    property_type: str
-    city: str = Field(min_length=1, max_length=80)
-    district: str = ""
-    postcode: str = ""
-    # Required, entered by the owner: the Polish tourist tax is set per gmina.
-    municipality: str = Field(min_length=1, max_length=80)
-    address: str = Field(min_length=1, max_length=255)
-    latitude: float | None = None
-    longitude: float | None = None
+    # Classification (classification.py): the canonical pair, or the legacy
+    # value, or both when they agree.
+    property_type: str | None = None
+    category: str | None = None
+    subtype: str | None = None
+
+    # Location (TASK-010). Structured: a reference locality (or, when no
+    # locality fits, an administrative area) from /v1/geo, plus street,
+    # building and unit. Free text is still accepted and kept as typed, but
+    # an address made only of text is UNSTRUCTURED and says so.
+    # country_code defaults to the current market for existing clients; new
+    # clients send it. It is a request default, not a model assumption.
+    country_code: str = Field(default="PL", pattern="^[A-Z]{2}$")
+    locality_id: str | None = None
+    admin_area_id: str | None = None
+    geo_area_id: str | None = None
+    thoroughfare: str | None = Field(default=None, max_length=200)
+    building_number: str | None = Field(default=None, max_length=20)
+    unit_number: str | None = Field(default=None, max_length=32)
+    # Legacy free-text fields. `city` is required only when no locality or
+    # area is given; `municipality` (a Polish gmina) is optional since
+    # TASK-010 — it only ever served the dormant short-stay tourist tax.
+    city: str | None = Field(default=None, min_length=1, max_length=80)
+    district: str = Field(default="", max_length=80)
+    postcode: str = Field(default="", max_length=12)
+    municipality: str | None = Field(default=None, max_length=80)
+    address: str | None = Field(default=None, min_length=1, max_length=255)
+    # Finite and on the globe; both or neither (TASK-001 F-07). The database
+    # enforces the same with CHECK constraints.
+    latitude: float | None = Field(default=None, ge=-90, le=90, allow_inf_nan=False)
+    longitude: float | None = Field(default=None, ge=-180, le=180, allow_inf_nan=False)
     area_m2: int = Field(gt=0)
     rooms: int = Field(ge=0)
     bedrooms: int = Field(ge=0, default=0)
@@ -69,15 +91,18 @@ class PropertyCreate(BaseModel):
 
     @model_validator(mode="after")
     def check_enums(self):
-        if self.property_type == "room":
-            raise ValueError(
-                "a room is not a property: register the flat, then add the room with "
-                "POST /v1/properties/{id}/spaces"
-            )
-        if self.property_type not in CREATABLE_PROPERTY_TYPES:
-            raise ValueError(
-                f"property_type must be one of {', '.join(CREATABLE_PROPERTY_TYPES)}"
-            )
+        if (self.latitude is None) != (self.longitude is None):
+            raise ValueError("latitude and longitude go together: give both or neither")
+        try:
+            classification.resolve(self.property_type, self.category, self.subtype)
+        except classification.ClassificationError as exc:
+            raise ValueError(str(exc)) from None
+        if self.locality_id and self.admin_area_id:
+            raise ValueError("give locality_id or admin_area_id, not both")
+        if not (self.locality_id or self.admin_area_id or self.city):
+            raise ValueError("give locality_id (from /v1/geo/localities) or city")
+        if not (self.address or self.building_number):
+            raise ValueError("give the street and number (address), or building_number")
         if self.furnished not in FURNISHED:
             raise ValueError(f"furnished must be one of {', '.join(FURNISHED)}")
         if self.parking not in PARKING:
@@ -97,17 +122,60 @@ class AuthorityOut(BaseModel):
     scopes: list[str]
 
 
+class NamedRef(BaseModel):
+    id: str
+    name: str
+    slug: str | None = None
+
+
+class AreaRef(NamedRef):
+    level: int
+    kind_code: str
+
+
+class PropertyLocationOut(BaseModel):
+    """The full structured address. PRIVATE: owner/provider/admin only."""
+
+    country_code: str
+    areas: list[AreaRef] = []
+    locality: NamedRef | None = None
+    geo_area: NamedRef | None = None
+    postal_code: str
+    thoroughfare: str | None = None
+    building_number: str | None = None
+    unit_number: str | None = None
+    unstructured_text: str
+    resolution: str
+    source: str
+    verification: str
+
+
+class PublicPlace(BaseModel):
+    """Where a listing is, as far as the public may know: country, official
+    areas, locality, search area. Never a street, building, unit, postal code,
+    exact point or an identifier that pinpoints a building (D-54)."""
+
+    country_code: str
+    areas: list[AreaRef] = []
+    locality: NamedRef | None = None
+    geo_area: NamedRef | None = None
+
+
 class PropertyOut(BaseModel):
     """Owner-facing only. It carries the exact address and coordinates, which
     no public response may (Schema v1 §80, §116)."""
 
     id: str
     owner_id: str
-    property_type: str
+    property_type: str | None = None
+    category: str | None = None
+    subtype: str | None = None
+    unit_number: str | None = None
+    location: PropertyLocationOut | None = None
     city: str
     district: str
     postcode: str
-    municipality: str
+    municipality: str | None = None
     address: str
     latitude: float | None = None
     longitude: float | None = None
@@ -131,9 +199,10 @@ class PropertyOut(BaseModel):
 class ClassifiedCreate(BaseModel):
     # Which part of the property is on offer. Omitted means the whole flat.
     space_id: str | None = None
-    # How precisely the listing may be placed on the public map. The flat's
-    # own coordinates are shown only if the owner asks for EXACT.
-    public_location_precision: Literal["EXACT", "APPROXIMATE", "DISTRICT"] = "APPROXIMATE"
+    # How coarsely the listing is placed on the public map. The flat's own
+    # coordinates are never public — there is no EXACT (D-58); asking for it
+    # is a 422.
+    public_location_precision: Literal["APPROXIMATE", "DISTRICT"] = "APPROXIMATE"
     title: str = Field(min_length=3, max_length=140)
     description: str = Field(default="", max_length=4000)
     rent_amount: int = Field(gt=0)  # minor units, ADR-0002
@@ -155,9 +224,9 @@ class ClassifiedCreate(BaseModel):
             raise ValueError(f"contact_mode must be one of {', '.join(CONTACT_MODES)}")
         if self.contact_mode == "phone" and not self.contact_phone:
             raise ValueError("contact_phone is required when contact_mode is 'phone'")
-        # The board is for long-term rental only. A shorter term is a Homies
-        # booking — paid and commissioned — and must not arrive here by
-        # mislabelling a 3-month let as a free classified.
+        # LONG_TERM is the non-transactional residential-rental mode. It is not
+        # defined by a six-month floor (founder decision 2026-09-24): the offer
+        # is open-ended or states a minimum of at least one month.
         if self.open_ended:
             if self.min_term_months is not None:
                 raise ValueError("an open-ended offer cannot also set min_term_months")
@@ -166,8 +235,8 @@ class ClassifiedCreate(BaseModel):
             raise ValueError("set min_term_months or mark the offer open_ended")
         if self.min_term_months < MIN_CLASSIFIED_TERM_MONTHS:
             raise ValueError(
-                f"the free board starts at {MIN_CLASSIFIED_TERM_MONTHS} months. "
-                "Shorter stays are booked through Homies."
+                f"min_term_months must be at least {MIN_CLASSIFIED_TERM_MONTHS}, "
+                "or mark the offer open_ended"
             )
         return self
 
@@ -206,10 +275,12 @@ class ClassifiedOut(BaseModel):
     space_label: str | None = None
     # Where, as far as the public may know: the city and district, and a map
     # point whose precision the owner chose. Never the street address and
-    # never the flat's own coordinates unless the owner asked for that.
+    # never the flat's own coordinates — the public point is APPROXIMATE (grid
+    # centre) or absent (DISTRICT); there is no owner opt-in (D-58).
     city: str
     district: str
     public_location: PublicLocation | None = None
+    place: PublicPlace | None = None
     media: list[PublicMedia] = []
     title: str
     description: str
@@ -224,8 +295,22 @@ class ClassifiedOut(BaseModel):
     other_costs: str
     min_term_months: int | None = None
     open_ended: bool
+    # The move-in date as the owner gave it. None means NOT GIVEN — never
+    # "available now" (D-64). `move_in` says the same in words:
+    # UNKNOWN (no date), NOW (the date has passed), FROM_DATE (a future date).
     available_from: date | None = None
+    move_in: Literal["UNKNOWN", "NOW", "FROM_DATE"] = "UNKNOWN"
+    # Freshness (D-59): the day the offer was last confirmed as still current
+    # by someone with authority over the property — "confirmed current", which
+    # is NOT identity or property verification. FRESH, or RECONFIRM_DUE while
+    # the owner is being asked; a STALE listing is never public.
+    confirmed_on: date | None = None
+    freshness: Literal["FRESH", "RECONFIRM_DUE", "STALE"] | None = None
     contact_mode: str
+    # How honest the monthly total is about utilities (D-69): INCLUDED in
+    # the rent, ESTIMATED (a stated figure, added to the total) or NOT_STATED
+    # (the total is then a lower bound — nothing is invented for them).
+    utilities_basis: Literal["INCLUDED", "ESTIMATED", "NOT_STATED"] = "NOT_STATED"
     # What the tenant pays each month, so offers compare without arithmetic;
     # and what they need on the day they move in, deposit included. Both are
     # summaries of the current price components, kept in step with them in the
@@ -236,6 +321,102 @@ class ClassifiedOut(BaseModel):
     version: int
 
     model_config = {"from_attributes": True}
+
+
+class QualityCheckOut(BaseModel):
+    code: str
+    required: bool
+    passed: bool
+
+
+class QualityOut(BaseModel):
+    """Owner guidance (D-63): required = what publishing demands; recommended
+    = what makes the listing better. Deterministic; never used for ranking."""
+
+    completeness_percent: int
+    missing_required: list[str]
+    recommended_improvements: list[str]
+    checks: list[QualityCheckOut]
+
+
+class FreshnessOut(BaseModel):
+    """Owner view of freshness. `reconfirm_at` / `stale_at` are derived from
+    the last confirmation and the current policy, not stored (D-60)."""
+
+    state: Literal["FRESH", "RECONFIRM_DUE", "STALE"] | None
+    last_confirmed_available_at: datetime | None
+    reconfirm_at: datetime | None
+    stale_at: datetime | None
+    confirmation_valid_days: int
+    auto_pause_after_days: int
+
+
+class ClassifiedOwnerOut(ClassifiedOut):
+    """What the owner/agent sees of their own listing, in any status."""
+
+    published_at: datetime | None = None
+    freshness_detail: FreshnessOut
+    quality: QualityOut
+
+
+class AvailabilityUpdate(BaseModel):
+    """Move-in date and term. `expected_version` as for a price change: an
+    edit made against an older version loses with 409 instead of overwriting."""
+
+    expected_version: int
+    available_from: date | None = None
+    min_term_months: int | None = None
+    open_ended: bool = False
+
+    @model_validator(mode="after")
+    def check_term(self):
+        if self.open_ended:
+            if self.min_term_months is not None:
+                raise ValueError("an open-ended offer cannot also set min_term_months")
+            return self
+        if self.min_term_months is None:
+            raise ValueError("set min_term_months or mark the offer open_ended")
+        if self.min_term_months < MIN_CLASSIFIED_TERM_MONTHS:
+            raise ValueError(
+                f"min_term_months must be at least {MIN_CLASSIFIED_TERM_MONTHS}, "
+                "or mark the offer open_ended"
+            )
+        return self
+
+
+class MapPoint(BaseModel):
+    """One map marker: a light projection of a listing, never the full card.
+    The point is the PUBLIC, privacy-reduced one (D-70)."""
+
+    id: str
+    latitude: float
+    longitude: float
+    precision: str
+    rent_amount: int | None
+    monthly_total_estimate: int | None
+    currency: str
+    space_type: str
+    category: str | None
+    freshness: Literal["FRESH", "RECONFIRM_DUE", "STALE"] | None
+
+
+class MapPage(BaseModel):
+    """The same matching universe as the list (D-71), projected for a map.
+
+    `total` = listings matching the query (as the list's `total`);
+    `with_point` of them have a public point; `without_point` are placed by
+    district only and so appear in the list but cannot appear on a map.
+    `points` holds up to `cap` of the `with_point` ones in the query's sort
+    order; `truncated` says there are more."""
+
+    points: list[MapPoint]
+    total: int
+    with_point: int
+    without_point: int
+    truncated: bool
+    cap: int
+    query: str
+    sort: str
 
 
 class ClassifiedPage(BaseModel):
@@ -250,6 +431,11 @@ class ClassifiedPage(BaseModel):
     total: int
     limit: int
     offset: int
+    # The query as canonical URL parameters (stable names, sorted values,
+    # defaults omitted) — what a shareable link, a saved search or an SEO
+    # page will be keyed on (D-72).
+    query: str = ""
+    sort: str = "newest"
 
 
 class ContactRevealOut(BaseModel):

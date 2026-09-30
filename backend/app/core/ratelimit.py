@@ -84,6 +84,12 @@ VERIFY_CONFIRM = Policy(
     "verify_confirm", capacity=10, refill_per_second=0.05, on_store_failure="closed"
 )
 ADMIN = Policy("admin", capacity=120, refill_per_second=5.0)
+# TASK-014: saves, saved searches, inbox writes; preference changes; and the
+# unauthenticated unsubscribe lookup (a bearer capability — throttled per IP).
+SAVED_WRITE = Policy("saved_write", capacity=30, refill_per_second=0.5)
+PREFERENCE_WRITE = Policy("preference_write", capacity=10, refill_per_second=0.1)
+UNSUBSCRIBE = Policy("unsubscribe", capacity=10, refill_per_second=0.1,
+                     on_store_failure="closed")
 PUBLIC_READ = Policy("public_read", capacity=120, refill_per_second=10.0)
 
 # Future Product B categories (documented, deliberately not wired — no routes
@@ -263,6 +269,13 @@ def resolve_policy(method: str, path: str) -> Policy | None:
         return PROPERTY_WRITE
     if method in ("GET", "HEAD", "OPTIONS"):
         return PUBLIC_READ
+    if path.startswith("/v1/notifications/unsubscribe"):
+        return UNSUBSCRIBE
+    if path.startswith("/v1/me/notification-preferences"):
+        return PREFERENCE_WRITE
+    if path.startswith(("/v1/me/saved-listings", "/v1/me/saved-searches",
+                        "/v1/me/inbox")):
+        return SAVED_WRITE
     if path.startswith("/v1/bookings"):
         # exact collection POST = creation; anything deeper is a mutation
         return BOOKING_CREATE if path.rstrip("/") == "/v1/bookings" else BOOKING_MUTATE

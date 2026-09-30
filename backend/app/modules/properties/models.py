@@ -46,6 +46,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
+from app.modules.geography.models import Address
+from app.modules.properties.classification import subtype_check_sql
 
 # JSONB where it exists so the long tail can carry a GIN index once filters are
 # built; plain JSON on SQLite so the fast unit suite still runs.
@@ -73,8 +75,35 @@ PROPERTY_TYPES = (
 CREATABLE_PROPERTY_TYPES = tuple(t for t in PROPERTY_TYPES if t != "room")
 
 
+# Coordinate integrity (TASK-001 F-07). Latitude and longitude are a pair —
+# both or neither — and inside the globe. PostGIS would otherwise wrap
+# (100, 200) into a different real place while the numeric columns kept the
+# original, so the DTO and the map search would disagree about the flat.
+# NaN and ±Infinity fall outside every BETWEEN range, so they are refused too.
+def _coordinate_checks(lat: str, lon: str, name: str) -> tuple[CheckConstraint, ...]:
+    return (
+        CheckConstraint(f"({lat} IS NULL) = ({lon} IS NULL)", name=f"ck_{name}_pair"),
+        CheckConstraint(
+            f"{lat} IS NULL OR {lat} BETWEEN -90 AND 90", name=f"ck_{name}_latitude_range"
+        ),
+        CheckConstraint(
+            f"{lon} IS NULL OR {lon} BETWEEN -180 AND 180", name=f"ck_{name}_longitude_range"
+        ),
+    )
+
+
 class Property(Base):
     __tablename__ = "properties"
+    __table_args__ = (
+        *_coordinate_checks("latitude", "longitude", "properties_coordinates"),
+        # Canonical classification (TASK-010, classification.py). ROOM is a
+        # Space, never a category; a subtype lives under its own category.
+        CheckConstraint("category IS NULL OR category IN ('APARTMENT', 'HOUSE')",
+                        name="ck_properties_category"),
+        CheckConstraint("subtype IS NULL OR category IS NOT NULL",
+                        name="ck_properties_subtype_needs_category"),
+        CheckConstraint(subtype_check_sql(), name="ck_properties_subtype_in_category"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     owner_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
@@ -83,16 +112,54 @@ class Property(Base):
     # recorded a type — and inventing "apartment" for them would write a fact
     # nobody established. New properties must supply it (PropertyCreate).
     property_type: Mapped[str | None] = mapped_column(String(24), index=True, nullable=True)
+    # APARTMENT | HOUSE, and an optional subtype (classification.py). NULL
+    # only for legacy rows that were never classifiable (a pre-Space "room").
+    category: Mapped[str | None] = mapped_column(String(16), index=True, nullable=True)
+    subtype: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
-    # Address. `municipality` (gmina) is required and entered by the owner: the
-    # Polish tourist tax is set per gmina and charged per night, so a short-stay
-    # price cannot be computed without it. It is not derivable from a free-text
-    # address, and a TERYT lookup would still need human confirmation.
+    # Structured, source-aware address (geography.Address), building-level and
+    # PRIVATE. One per Property today (UNIQUE); see D-53.
+    address_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("addresses.id", ondelete="RESTRICT"), unique=True
+    )
+    # The flat within the building. PRIVATE: never in a public response.
+    unit_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    address_record = relationship(
+        Address, foreign_keys=[address_id], lazy="select", viewonly=True
+    )
+
+    # Legacy free-text location (pre-TASK-010). Kept for existing clients and
+    # for records whose address is UNSTRUCTURED / LEGACY_BACKFILL. The authority
+    # rule (D-57, TASK-010R): what the address references — locality, search
+    # area — is read from the reference entity (`display_city`,
+    # `display_district`, and the city/district filters); these columns are
+    # only the fallback for what it does not reference, and hold "" otherwise.
+    # Rows written before TASK-010R may still carry a copied name; it is never
+    # read while the reference exists. `municipality` (a Polish gmina) was
+    # required only for the dormant short-stay tourist tax; optional now
+    # (D-53).
     city: Mapped[str] = mapped_column(String(80), index=True)
     district: Mapped[str] = mapped_column(String(80), default="", index=True)
     postcode: Mapped[str] = mapped_column(String(12), default="")
     municipality: Mapped[str | None] = mapped_column(String(80), nullable=True)
     address: Mapped[str] = mapped_column(String(255))
+
+    @property
+    def display_city(self) -> str:
+        """The referenced locality's current name, else the typed city (D-57)."""
+        record = self.address_record
+        if record is not None and record.locality is not None:
+            return record.locality.official_name
+        return self.city
+
+    @property
+    def display_district(self) -> str:
+        """The referenced search area's current name, else the typed district."""
+        record = self.address_record
+        if record is not None and record.geo_area is not None:
+            return record.geo_area.name
+        return self.district
+
     # Plain decimals, not PostGIS: CI runs stock postgres:16 and a geometry
     # column would break the migration there. This is also the shape external
     # pricing APIs ask for.
@@ -120,9 +187,23 @@ class Property(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
-# 6 months is the floor for the free board. Shorter than that is a Homies
-# booking (paid, commissioned) and belongs to a different offer type.
-MIN_CLASSIFIED_TERM_MONTHS = 6
+# LONG_TERM has no mandatory six-month floor (founder decision 2026-09-24,
+# TASK-002 §23): a listing is open-ended or names a minimum of at least one
+# month. MONTHLY — the transactional product — is a later phase and not what
+# decides this. See properties/listing_rules.py.
+MIN_CLASSIFIED_TERM_MONTHS = 1
+
+
+# Lifecycle (lower-case in this code; 04 §43 spells them PUBLISHED, STALE, …):
+# draft → active → paused | stale | archived. `stale` is set only by the
+# freshness sweep (TASK-012, D-61); `archived` is terminal.
+OFFER_STATUSES = ("draft", "active", "paused", "stale", "archived")
+PUBLISHABLE_FROM = ("draft", "paused", "active", "stale")
+# What an owner's "confirm it is still current" may act on.
+CONFIRMABLE_FROM = ("active", "stale")
+# What a manual pause may act on — never an archived listing, which a later
+# publish would otherwise bring back.
+PAUSABLE_FROM = ("draft", "active", "stale", "paused")
 
 
 class ClassifiedOffer(Base):
@@ -140,8 +221,20 @@ class ClassifiedOffer(Base):
             name="fk_classified_offers_space_same_property",
         ),
         CheckConstraint(
-            "public_location_precision IN ('EXACT', 'APPROXIMATE', 'DISTRICT')",
+            "status IN ('draft', 'active', 'paused', 'stale', 'archived')",
+            name="ck_classified_offers_status",
+        ),
+        # The public-visibility rule and the freshness sweep both read these two.
+        Index("ix_classified_offers_status_confirmed", "status", "last_confirmed_available_at"),
+        # Base-rent filter (TASK-013; the monthly total already has its index).
+        Index("ix_classified_offers_primary_price_minor", "primary_price_minor"),
+        CheckConstraint(
+            # No EXACT: public exact residential coordinates are prohibited (D-58).
+            "public_location_precision IN ('APPROXIMATE', 'DISTRICT')",
             name="ck_classified_offers_location_precision",
+        ),
+        *_coordinate_checks(
+            "public_latitude", "public_longitude", "classified_offers_public_coordinates"
         ),
     )
 
@@ -159,7 +252,7 @@ class ClassifiedOffer(Base):
     )
 
     # Where the listing sits on the public map — never the flat's own
-    # coordinates unless the owner chose EXACT. See location.py. On Postgres a
+    # coordinates (D-58; there is no owner opt-in). See location.py. On Postgres a
     # generated `public_geog` column and a GiST index sit alongside these for
     # viewport and radius search; they live in the migration only, because
     # SQLite has no geography type and the fast suite never searches by area.
@@ -187,22 +280,27 @@ class ClassifiedOffer(Base):
     @property
     def media(self) -> list[dict]:
         """Approved photos only, cover first. A photo awaiting or refused
-        moderation is never part of what the public sees."""
+        moderation, archived, or whose bytes are not servable (quarantined,
+        made by an old pipeline) is never part of what the public sees — the
+        same rule GET /v1/media/{id} applies."""
         return [
             {"id": link.asset.id, "url": f"/v1/media/{link.asset.id}",
              "is_cover": link.is_cover, "media_type": link.asset.media_type,
              "width_px": link.asset.width_px, "height_px": link.asset.height_px}
             for link in self.listing_media
             if link.asset.moderation_state == "APPROVED"
+            and link.asset.archived_at is None
+            and link.asset.file.servable
+            and link.asset.file.access_class == "PUBLIC"
         ]
 
     @property
     def city(self) -> str:
-        return self.listed_property.city
+        return self.listed_property.display_city
 
     @property
     def district(self) -> str:
-        return self.listed_property.district
+        return self.listed_property.display_district
 
     @property
     def space_type(self) -> str:
@@ -214,7 +312,8 @@ class ClassifiedOffer(Base):
     owner_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
     title: Mapped[str] = mapped_column(String(140))
     description: Mapped[str] = mapped_column(String(4000), default="")
-    # draft -> active -> paused | archived
+    # draft -> active -> paused | stale | archived. Publication moves only
+    # PUBLISHABLE_FROM -> active, conditionally on the stored status.
     status: Mapped[str] = mapped_column(String(16), default="draft", index=True)
 
     # Price. The source of truth is `listing_price_components`, one row per
@@ -274,8 +373,15 @@ class ClassifiedOffer(Base):
     def deposit_amount(self) -> int:
         return self._current("SECURITY_DEPOSIT")
 
-    # Term. Either a minimum in months (>= 6) or explicitly open-ended.
-    min_term_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Term. Either a minimum in months (>= 1) or explicitly open-ended.
+    min_term_months: Mapped[int | None] = mapped_column(
+        Integer,
+        CheckConstraint(
+            "min_term_months IS NULL OR min_term_months >= 1",
+            name="ck_classified_offers_min_term_positive",
+        ),
+        nullable=True,
+    )
     open_ended: Mapped[bool] = mapped_column(Boolean, default=False)
     available_from: Mapped[date | None] = mapped_column(Date, nullable=True)
 
@@ -288,6 +394,63 @@ class ClassifiedOffer(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # When someone with authority last confirmed the offer is still current
+    # (04 §43). Publication counts as confirmation. Everything else about
+    # freshness — due, stale, public or not — is derived from this, the
+    # policy and the database clock: see freshness.py.
+    last_confirmed_available_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Public eligibility episodes (TASK-014, publicity.py). 0 = never public;
+    # +1 on every not-public → public transition — decided by the public rule
+    # (freshness.is_public), not by the status label, so a listing whose
+    # confirmation silently expired and is then confirmed starts a new
+    # episode. Never incremented on public → public (a reconfirmation, a
+    # republish of an active listing). `public_since` is the database instant
+    # the current (or last) episode began.
+    public_generation: Mapped[int] = mapped_column(
+        BigInteger,
+        CheckConstraint("public_generation >= 0",
+                        name="ck_classified_offers_public_generation_nonnegative"),
+        default=0, server_default="0",
+    )
+    public_since: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+
+
+class ListingPublicGeneration(Base):
+    """One row per public episode of a listing (TASK-014): the durable work
+    identity `(listing_id, public_generation)` for saved-search alerts.
+
+    Written in the same transaction as the transition that opened the episode
+    and its `ListingBecamePublic` event (publicity.py), so an episode can
+    never exist without its work item or the other way round. The alert
+    worker (app/modules/alerts) owns the processing columns; acknowledging
+    generation N touches only N's row, never N+1's.
+    """
+
+    __tablename__ = "listing_public_generations"
+    __table_args__ = (
+        CheckConstraint("public_generation >= 1", name="ck_listing_public_generations_positive"),
+        CheckConstraint(
+            "alert_status IN ('pending', 'processing', 'done', 'superseded')",
+            name="ck_listing_public_generations_alert_status",
+        ),
+        Index("ix_listing_public_generations_pending", "alert_status", "became_public_at"),
+    )
+
+    listing_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("classified_offers.id"), primary_key=True
+    )
+    public_generation: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    became_public_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    event_id: Mapped[str] = mapped_column(String(36))
+    alert_status: Mapped[str] = mapped_column(String(12), default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str] = mapped_column(String(255), default="")
 
 
 class ContactReveal(Base):

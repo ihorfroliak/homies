@@ -23,6 +23,11 @@ dependencies = [
     # zoneinfo reads the system tz database, which slim images and Windows
     # do not ship; without this every viewing would fail to resolve a zone.
     "tzdata>=2024.1",
+    # Untrusted image decoding (TASK-002 R3). A maintained decoder replaces the
+    # hand-written JPEG/PNG walker as the media trust boundary. Floor = the
+    # version audited in TASK-002 (pip-audit clean, bundled libjpeg/zlib-ng/
+    # lcms2 in the manylinux wheel); CI's pip-audit re-checks every build.
+    "Pillow>=12.3.0",
 ]
 
 [project.optional-dependencies]
@@ -53,6 +58,9 @@ target-version = "py312"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "legacy_runtime: exercises LEGACY_DORMANT short-stay/booking/payment routes via the test-only legacy composition (tests/legacy_runtime.py)",
+]
 
 # CI-04 / audit M9. Default strictness, applied to the application package only.
 # It is a real blocking gate — it already caught a production hole in

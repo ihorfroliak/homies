@@ -1,0 +1,16 @@
+{
+  "name": "homies-contract-validation",
+  "private": true,
+  "description": "Pinned toolchain for the CI contract checks (OpenAPI lint, AsyncAPI validation). Run from ops/contracts after `npm ci`.",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "lint:openapi": "spectral lint ../../docs/api/openapi.json --ruleset ../../.spectral.yaml",
+    "validate:asyncapi": "asyncapi validate ../../docs/api/events.asyncapi.yaml"
+  },
+  "devDependencies": {
+    "@asyncapi/cli": "6.2.0",
+    "@stoplight/spectral-cli": "6.16.3"
+  }
+}

@@ -12,6 +12,8 @@ cards, 3DS/SCA, refunds, transfers, payouts, disputes) live in
 tests/stripe_live/ and are skipped unless credentials are supplied.
 """
 
+import pytest
+
 import hashlib
 import hmac
 import json
@@ -20,6 +22,9 @@ import time
 from datetime import date, timedelta
 
 from tests.conftest import auth, register_and_login
+
+# LEGACY_DORMANT runtime (TASK-002 R1): see tests/legacy_runtime.py.
+pytestmark = pytest.mark.legacy_runtime
 
 CI = (date.today() + timedelta(days=25)).isoformat()
 CO = (date.today() + timedelta(days=28)).isoformat()

@@ -30,6 +30,7 @@ from app.core.audit import audit
 from app.core.db import get_db
 from app.core.security import get_current_user
 from app.modules.identity.models import (
+    ORGANIZATION_STATUSES,
     LegalParty,
     Organization,
     OrganizationLegalParty,
@@ -119,6 +120,28 @@ def organization_party(db: Session, organization_id: str) -> OrganizationLegalPa
             OrganizationLegalParty.organization_id == organization_id
         )
     )
+
+
+def set_organization_status(db: Session, organization_id: str, new_status: str) -> Organization:
+    """Change an organisation's status — the only supported way to suspend or
+    archive one. No endpoint exposes it yet (TASK-004 adds no workflow).
+
+    The row is locked first. A publication resting on this organisation holds
+    it FOR SHARE until it commits (authority.authorize_for_mutation), so the
+    change waits for it or is seen by it. The guarantee does not depend on
+    this function: any UPDATE of the row, however issued, waits the same way.
+    """
+    if new_status not in ORGANIZATION_STATUSES:
+        raise ValueError(f"unknown organization status {new_status!r}")
+    org = db.scalar(
+        select(Organization).where(Organization.id == organization_id)
+        .with_for_update().execution_options(populate_existing=True)
+    )
+    if org is None:
+        raise LookupError(organization_id)
+    org.status = new_status
+    db.flush()
+    return org
 
 
 def active_membership(
@@ -219,27 +242,61 @@ def invite_member(
     _require_role(db, organization_id, user, MANAGING_ROLES)
     invitee = _user_by_email(db, body.email)
     if invitee is not None and invitee.id != user.id:
-        existing = db.scalar(
-            select(OrganizationMembership).where(
-                OrganizationMembership.organization_id == organization_id,
-                OrganizationMembership.user_id == invitee.id,
-            )
-        )
-        if existing is None:
-            db.add(OrganizationMembership(
-                organization_id=organization_id, user_id=invitee.id, role=body.role,
-                status="INVITED", invited_by_user_id=user.id,
-            ))
-        elif existing.status == "REVOKED":
-            existing.status = "INVITED"
-            existing.role = body.role
-            existing.revoked_at = None
-            existing.invited_by_user_id = user.id
-            existing.version += 1
+        _invite(db, organization_id, invitee.id, body.role, user.id)
         audit(db, actor=user.id, action="organization.member_invited",
               entity_type="organization", entity_id=organization_id)
         db.commit()
     return ACCEPTED
+
+
+def _locked_membership(
+    db: Session, organization_id: str, user_id: str
+) -> OrganizationMembership | None:
+    return db.scalar(
+        select(OrganizationMembership).where(
+            OrganizationMembership.organization_id == organization_id,
+            OrganizationMembership.user_id == user_id,
+        ).with_for_update().execution_options(populate_existing=True)
+    )
+
+
+def _invite(db: Session, organization_id: str, invitee_id: str, role: str,
+            actor_id: str) -> None:
+    """The membership lifecycle an invitation may drive (TASK-008 N-09/N-10).
+
+    * no row      → INVITED;
+    * REVOKED     → INVITED again, with the new role: an explicit re-invitation
+                    by a manager — under UNIQUE(organization, user) the only way
+                    back in;
+    * INVITED or ACTIVE → left exactly as it is. An invitation never demotes a
+                    member and never changes a pending invitation's role.
+
+    The row is locked before it is read, like accept and revoke: read unlocked,
+    an ACTIVE membership committed in between (re-invite + accept) was written
+    back to INVITED (TASK-007). Two first invitations racing both see no row;
+    the database's unique index lets one INSERT win, and the other decides on
+    the winner's row instead of failing with a 500."""
+    existing = _locked_membership(db, organization_id, invitee_id)
+    if existing is None:
+        try:
+            with db.begin_nested():
+                db.add(OrganizationMembership(
+                    organization_id=organization_id, user_id=invitee_id, role=role,
+                    status="INVITED", invited_by_user_id=actor_id,
+                ))
+                db.flush()
+            return
+        except IntegrityError:
+            # The concurrent invitation committed first; its row decides.
+            existing = _locked_membership(db, organization_id, invitee_id)
+            if existing is None:  # pragma: no cover — the constraint fired for another reason
+                raise
+    if existing.status == "REVOKED":
+        existing.status = "INVITED"
+        existing.role = role
+        existing.revoked_at = None
+        existing.invited_by_user_id = actor_id
+        existing.version += 1
 
 
 @router.post("/organizations/{organization_id}/membership/accept", response_model=MemberOut)
@@ -248,14 +305,20 @@ def accept_invitation(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Locked before it is read, like revoke_member (TASK-006, N-02). Read
+    # unlocked, an admin's revoke could commit between this read and the
+    # write, and the write would turn the REVOKED row back into ACTIVE —
+    # the revoke answered 200 and the invitee got the role anyway. Locked,
+    # the two are ordered: a revoke already committed is seen here and the
+    # invitation is gone; a revoke arriving later waits and revokes the
+    # membership this accept made ACTIVE.
     membership = db.scalar(
         select(OrganizationMembership).where(
             OrganizationMembership.organization_id == organization_id,
             OrganizationMembership.user_id == user.id,
-            OrganizationMembership.status == "INVITED",
-        )
+        ).with_for_update().execution_options(populate_existing=True)
     )
-    if membership is None:
+    if membership is None or membership.status != "INVITED":
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Invitation not found")
     membership.status = "ACTIVE"
     membership.joined_at = _now()
@@ -292,11 +355,15 @@ def revoke_member(
     """Take a person's access away. The last OWNER cannot be removed: an
     organisation with nobody able to manage it is one nobody can repair."""
     _require_role(db, organization_id, user, MANAGING_ROLES)
+    # Locked before it is read (TASK-004): a publication resting on this
+    # membership holds it FOR SHARE until it commits, so the revoke either
+    # happens before that publication decides (and it is refused) or after it
+    # commits — never in between. See authority.authorize_for_mutation.
     target = db.scalar(
         select(OrganizationMembership).where(
             OrganizationMembership.organization_id == organization_id,
             OrganizationMembership.user_id == member_user_id,
-        )
+        ).with_for_update().execution_options(populate_existing=True)
     )
     if target is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found")
@@ -395,7 +462,13 @@ def revoke_mandate(
     """Only the principal can take a mandate back. To the representative and
     to anyone else, somebody else's mandate does not exist."""
     principal = personal_party(db, user)
-    mandate = db.get(RepresentationMandate, mandate_id)
+    # Locked before it is read, for the same reason as a membership revoke
+    # (TASK-004): an in-flight publication using this mandate finishes first,
+    # or sees the revocation.
+    mandate = db.scalar(
+        select(RepresentationMandate).where(RepresentationMandate.id == mandate_id)
+        .with_for_update().execution_options(populate_existing=True)
+    )
     if mandate is None or mandate.principal_legal_party_id != principal.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Mandate not found")
     if mandate.status != "REVOKED":

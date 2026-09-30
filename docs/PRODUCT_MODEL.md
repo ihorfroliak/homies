@@ -1,5 +1,7 @@
 # PRODUCT MODEL — об'єкти, типи оренди, параметри, ціноутворення
 
+> **HISTORICAL — superseded** by the canonical documents (02-BUSINESS-LOGIC and 04-DOMAIN-SCHEMA-v1) on 2026-09-24 (TASK-000). Kept as a record; not current strategy or scope. Precedence: [00-AUTHORITY](canonical/00-AUTHORITY.md).
+
 **Статус:** фундамент. Оновлено 2026-09-19.
 Це канонічне джерело для коду, дизайну (Claude Design) і адмінки. Якщо документ і
 макет розходяться — правий документ, макет оновлюємо.

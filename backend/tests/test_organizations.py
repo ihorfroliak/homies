@@ -21,7 +21,13 @@ from app.modules.identity.models import (
     RepresentationMandate,
 )
 from app.modules.properties.models import PropertyAuthority
-from tests.conftest import TestingSession, auth, register_and_login, verify_ownership
+from tests.conftest import (
+    TestingSession,
+    auth,
+    authorization_date,
+    register_and_login,
+    verify_ownership,
+)
 
 PROPERTY = {
     "property_type": "apartment",
@@ -337,13 +343,13 @@ def test_a_mandate_works_only_inside_its_dates(client, owner_flat):
                                               "password": "password-123456"}).json()
     rep = rep["access_token"]
     _mandate(client, owner, "later@example.com", ["MANAGE_PROPERTY", "PUBLISH_LISTING"],
-             effective_from=date.today() + timedelta(days=7))
+             effective_from=authorization_date() + timedelta(days=7))
     assert _draft(client, rep, prop).status_code == 404
 
     with TestingSession() as db:
         m = db.scalar(select(RepresentationMandate))
-        m.effective_from = date.today() - timedelta(days=30)
-        m.effective_until = date.today() - timedelta(days=1)
+        m.effective_from = authorization_date() - timedelta(days=30)
+        m.effective_until = authorization_date() - timedelta(days=1)
         db.commit()
     assert _draft(client, rep, prop).status_code == 404
 

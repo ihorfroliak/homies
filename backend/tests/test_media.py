@@ -1,20 +1,22 @@
-"""Property photos (Domain Schema v1 §36–§38, §48, §121).
+"""Property photos through the API (Domain Schema v1 §36–§38, §48, §121).
 
-The test that matters most is the first one: a phone photo carries the GPS
-position where it was taken — for a listing, the flat — and publishing it
-unaltered would hand out the address the approximate map point hides. The
-images below are built by hand with that metadata planted in them, and every
-test looks for it in what comes out.
+A phone photo carries the GPS position where it was taken — for a listing,
+the flat — and publishing it unaltered would hand out the address the
+approximate map point hides. Every image here is a real, decodable picture
+(tests/media_corpus.py) with that metadata planted in it, and the tests look
+for it in what is stored and what is served. The decoder-level corpus is in
+test_media_pipeline.py; TASK-001's reproductions are in
+test_media_regressions.py.
 """
 
-import struct
-import zlib
+import io
 
 import pytest
+from PIL import Image
 from sqlalchemy import func, select
 
 from app.core.config import settings
-from app.modules.media import sanitize, storage
+from app.modules.media import storage
 from app.modules.media.models import FileObject, ListingMedia, MediaAsset
 from tests.conftest import (
     TestingSession,
@@ -23,117 +25,11 @@ from tests.conftest import (
     register_and_login,
     verify_ownership,
 )
-
-GPS = b"GPSLatitude=52.229676;GPSLongitude=21.012229"
-SECRET_NOTE = b"Taken at ul. Tajna 17/4"
-
-
-def _seg(marker: int, payload: bytes) -> bytes:
-    return b"\xff" + bytes([marker]) + struct.pack(">H", len(payload) + 2) + payload
-
-
-def jpeg(width=640, height=480, *, trailer=b"") -> bytes:
-    return (b"\xff\xd8"
-            + _seg(0xE0, b"JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00")
-            + _seg(0xE1, b"Exif\x00\x00" + GPS)
-            + _seg(0xE1, b"http://ns.adobe.com/xap/1.0/\x00" + GPS)
-            + _seg(0xED, b"Photoshop 3.0\x00" + SECRET_NOTE)
-            + _seg(0xFE, SECRET_NOTE)
-            + _seg(0xDB, b"\x00" + bytes(64))
-            + _seg(0xC0, b"\x08" + struct.pack(">HH", height, width) + b"\x01\x01\x11\x00")
-            + _seg(0xDA, b"\x01\x01\x00\x00\x3f\x00")
-            + b"\x12\x34\x56\x78"
-            + b"\xff\xd9" + trailer)
-
-
-def _chunk(kind: bytes, body: bytes) -> bytes:
-    return struct.pack(">I", len(body)) + kind + body + struct.pack(
-        ">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
-
-
-def png(width=320, height=240) -> bytes:
-    ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
-    return (b"\x89PNG\r\n\x1a\n" + _chunk(b"IHDR", ihdr) + _chunk(b"eXIf", GPS)
-            + _chunk(b"tEXt", b"Comment\x00" + SECRET_NOTE)
-            + _chunk(b"iTXt", b"XML:com.adobe.xmp\x00\x00\x00\x00\x00" + GPS)
-            + _chunk(b"IDAT", zlib.compress(b"\x00" * 16)) + _chunk(b"IEND", b""))
+from tests.media_corpus import jpeg, leaks, png
 
 
 def _leaks(data: bytes) -> bool:
-    return GPS in data or SECRET_NOTE in data or b"52.229676" in data
-
-
-# --- the sanitiser ------------------------------------------------------------
-
-
-def test_jpeg_metadata_is_stripped_and_the_image_kept():
-    clean = sanitize.sanitize(jpeg())
-    assert not _leaks(clean.data)
-    assert (clean.mime_type, clean.width, clean.height) == ("image/jpeg", 640, 480)
-    assert clean.data.startswith(b"\xff\xd8") and clean.data.endswith(b"\xff\xd9")
-    assert b"JFIF" in clean.data and b"\x12\x34\x56\x78" in clean.data
-
-
-def test_png_metadata_is_stripped_and_the_image_kept():
-    clean = sanitize.sanitize(png())
-    assert not _leaks(clean.data)
-    assert (clean.mime_type, clean.width, clean.height) == ("image/png", 320, 240)
-    for kept in (b"IHDR", b"IDAT", b"IEND"):
-        assert kept in clean.data
-    for dropped in (b"eXIf", b"tEXt", b"iTXt"):
-        assert dropped not in clean.data
-
-
-@pytest.mark.parametrize("data", [
-    b"not an image at all",
-    b"GIF89a" + bytes(40),
-    b"%PDF-1.7 pretending",
-])
-def test_anything_but_jpeg_or_png_is_refused(data):
-    with pytest.raises(sanitize.RejectedImage):
-        sanitize.sanitize(data)
-
-
-def test_a_truncated_jpeg_is_refused():
-    with pytest.raises(sanitize.RejectedImage):
-        sanitize.sanitize(jpeg()[:-6])
-
-
-def test_something_hidden_after_the_jpeg_is_refused():
-    """A file that is a JPEG at the front and something else at the back is a
-    polyglot; serving it as an image serves the other thing too."""
-    with pytest.raises(sanitize.RejectedImage):
-        sanitize.sanitize(jpeg(trailer=b"PK\x03\x04 a zip archive"))
-
-
-def test_a_segment_claiming_to_run_past_the_file_is_refused():
-    broken = b"\xff\xd8" + b"\xff\xe0" + struct.pack(">H", 60000) + b"short"
-    with pytest.raises(sanitize.RejectedImage):
-        sanitize.sanitize(broken)
-
-
-def test_a_corrupt_png_chunk_is_refused():
-    """The CRC itself, not the chunk type: flipping a type byte would be
-    refused for a different reason and prove nothing about the CRC check."""
-    data = bytearray(png())
-    data[-1] ^= 0xFF  # last byte of IEND's CRC
-    with pytest.raises(sanitize.RejectedImage, match="corrupt"):
-        sanitize.sanitize(bytes(data))
-
-
-def test_a_frame_header_shorter_than_it_claims_is_refused_not_crashed():
-    """A SOF that claims 64 bytes but carries one: read naively, unpacking
-    the dimensions raises struct.error — a 500 for any uploader who sends it.
-    It must be a clean refusal."""
-    broken = b"\xff\xd8\xff\xc0\x00\x40\x08"
-    with pytest.raises(sanitize.RejectedImage):
-        sanitize.sanitize(broken)
-
-
-@pytest.mark.parametrize(("width", "height"), [(0, 100), (100, 0), (20_000, 100)])
-def test_implausible_dimensions_are_refused(width, height):
-    with pytest.raises(sanitize.RejectedImage):
-        sanitize.sanitize(png(width, height))
+    return leaks(data)
 
 
 def test_storage_keys_cannot_climb_out_of_the_store(tmp_path):
@@ -197,7 +93,9 @@ def test_what_is_stored_carries_no_location(client, owner, listing):
         file = db.get(FileObject, db.get(MediaAsset, asset.json()["id"]).file_id)
         stored = storage.storage().get(file.storage_key)
     assert not _leaks(stored)
-    assert asset.json()["width_px"] == 640
+    assert asset.json()["width_px"] == 64
+    with Image.open(io.BytesIO(stored)) as image:
+        assert not image.getexif() and "icc_profile" not in image.info
 
 
 def test_what_is_served_carries_no_location(client, owner, listing):

@@ -16,6 +16,7 @@ from app.core.db import Base
 from app.modules.booking.models import Booking  # noqa: F401
 from app.modules.engagement.models import Conversation  # noqa: F401
 from app.modules.events.models import DomainEvent, Incident, Notification  # noqa: F401
+from app.modules.geography.models import Address, AdministrativeArea, Country  # noqa: F401
 from app.modules.identity.models import (  # noqa: F401
     HostProfile,
     RefreshToken,
@@ -28,8 +29,11 @@ from app.modules.payments.models import Payment, WebhookEvent  # noqa: F401
 from app.modules.properties.models import (  # noqa: F401
     ClassifiedOffer,
     ContactReveal,
+    ListingPublicGeneration,
     Property,
 )
+from app.modules.saved.models import SavedListing, SavedSearch  # noqa: F401
+from app.modules.alerts.models import AlertDelivery, SavedSearchMatch  # noqa: F401
 
 config = context.config
 
@@ -40,11 +44,16 @@ from app.core.config import settings  # noqa: E402
 
 config.set_main_option(
     "sqlalchemy.url",
-    os.environ.get("ALEMBIC_DATABASE_URL", settings.database_url),
+    # '%' escaped for configparser: a percent-encoded password would otherwise
+    # raise a ValueError that prints the whole URL (PR-001R).
+    os.environ.get("ALEMBIC_DATABASE_URL", settings.database_url).replace("%", "%%"),
 )
 
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+# The CLI configures logging from alembic.ini. A caller that already has logging
+# (the application's local self-migration) passes configure_logger=False; and
+# existing loggers are never disabled either way (PR-001R F5).
+if config.config_file_name is not None and config.attributes.get("configure_logger", True):
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 

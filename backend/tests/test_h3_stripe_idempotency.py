@@ -115,6 +115,7 @@ def test_simulation_provider_accepts_the_same_signature():
     assert intent.intent_id.startswith("pi_sim_")
 
 
+@pytest.mark.legacy_runtime
 def test_booking_flow_passes_the_booking_id_as_the_key(client, monkeypatch):
     """End to end: the booking that reaches Stripe carries its own id as the
     idempotency scope."""

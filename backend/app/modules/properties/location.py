@@ -7,9 +7,14 @@ board it is also what lets someone pose as the owner of a flat they have only
 seen from the street. So the map shows a *public* point, chosen by the owner's
 precision setting:
 
-* EXACT        — the flat's own coordinates, when the owner wants them shown;
 * APPROXIMATE  — the centre of the ~550 m grid cell the flat lies in (default);
 * DISTRICT     — no point at all; the listing is placed by district name only.
+
+There is no EXACT. Public exact residential coordinates are prohibited, with
+no owner opt-in (D-58, TASK-011/TASK-010R): an owner who "chooses" to publish
+their door also publishes it for everyone who will ever copy the listing. The
+exact point stays private on the Property. Anything that is not DISTRICT gets
+the grid point — an unknown or stale precision value fails safe.
 
 APPROXIMATE is a grid, not a random offset. A random offset drawn afresh each
 time a listing is published lets anyone republish-and-average their way back to
@@ -20,7 +25,7 @@ is the point.
 
 from decimal import ROUND_FLOOR, Decimal
 
-PRECISIONS = ("EXACT", "APPROXIMATE", "DISTRICT")
+PRECISIONS = ("APPROXIMATE", "DISTRICT")
 DEFAULT_PRECISION = "APPROXIMATE"
 
 # Cell size. At Polish latitudes (49–55°N) 0.005° of latitude is ~555 m and
@@ -31,8 +36,12 @@ GRID_LON = Decimal("0.008")
 _SIX = Decimal("0.000001")
 
 
-def _cell_centre(value: Decimal, step: Decimal) -> Decimal:
+def _cell_centre(value: Decimal, step: Decimal, upper: Decimal | None = None) -> Decimal:
     index = (value / step).to_integral_value(rounding=ROUND_FLOOR)
+    # A value exactly on the upper edge (90° N, 180° E) would open a cell that
+    # lies beyond the globe; it belongs to the last cell inside it.
+    if upper is not None and index * step >= upper:
+        index -= 1
     return (index * step + step / 2).quantize(_SIX)
 
 
@@ -46,9 +55,7 @@ def public_point(
         return None, None
     lat = Decimal(str(latitude))
     lon = Decimal(str(longitude))
-    if precision == "EXACT":
-        return lat.quantize(_SIX), lon.quantize(_SIX)
-    return _cell_centre(lat, GRID_LAT), _cell_centre(lon, GRID_LON)
+    return _cell_centre(lat, GRID_LAT, Decimal(90)), _cell_centre(lon, GRID_LON, Decimal(180))
 
 
 def refresh(offer, prop) -> None:

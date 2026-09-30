@@ -18,11 +18,12 @@ right that party does not have.
 """
 
 from datetime import date, datetime, timezone
+from typing import Any
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, or_, select, union
+from sqlalchemy import Date, and_, cast, false, func, or_, select, union
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import Select
+from sqlalchemy.sql import ColumnElement, Select
 
 from app.core.audit import audit
 from app.modules.identity.models import (
@@ -36,6 +37,7 @@ from app.modules.identity.models import (
     User,
 )
 from app.modules.identity.parties import has_legal_name, personal_party
+from app.modules.properties import coordination
 from app.modules.properties.models import (
     AUTHORITY_SCOPES,
     OWNER_PHASE1_SCOPES,
@@ -50,7 +52,12 @@ def _today() -> date:
     return datetime.now(timezone.utc).date()
 
 
-def _in_force(today: date):
+# A calendar date, either computed in Python (ordinary reads) or evaluated by
+# the database at the moment a protected decision is made (publication).
+Today = date | ColumnElement[Any]
+
+
+def _in_force(today: Today):
     """ACTIVE and inside its dates. A revoked or expired authority authorises
     nothing new, whatever its verification state (Schema v1 §81.14)."""
     return and_(
@@ -89,9 +96,14 @@ MANDATE_PROPERTY_SCOPES: dict[str, frozenset[str]] = {
 }
 
 
-def _holder_parties(user_id: str, scope: str):
-    """Every legal party this account may act for, for this scope."""
-    today = _today()
+def _holder_parties(user_id: str, scope: str, today: Today | None = None,
+                    within: dict[str, list] | None = None):
+    """Every legal party this account may act for, for this scope.
+
+    `within` is for the protected decision only: consider only the rows a
+    locked proof names, so a link that appeared after the locks were taken
+    cannot carry the decision (TASK-006, N-01)."""
+    today = _today() if today is None else today
     personal = select(PersonLegalParty.legal_party_id).where(
         PersonLegalParty.linked_user_id == user_id
     )
@@ -131,11 +143,32 @@ def _holder_parties(user_id: str, scope: str):
             ),
         )
     )
+    if within is not None:
+        personal = personal.where(
+            PersonLegalParty.legal_party_id.in_(within.get("person_legal_parties") or []))
+        organisational = organisational.where(
+            OrganizationMembership.id.in_(within.get("organization_memberships") or []),
+            Organization.id.in_(within.get("organizations") or []),
+            OrganizationLegalParty.legal_party_id.in_(
+                within.get("organization_legal_parties") or []),
+        )
+        # The exact (mandate, scope) rows that were locked, not merely the
+        # locked mandates: a scope row added since is not part of the proof.
+        pairs = within.get("representation_mandate_scopes") or []
+        mandated = mandated.where(
+            RepresentationMandate.id.in_(within.get("representation_mandates") or []),
+            or_(false(), *(
+                and_(RepresentationMandateScope.mandate_id == m,
+                     RepresentationMandateScope.scope == s) for m, s in pairs)),
+        )
     return union(personal, organisational, mandated)
 
 
-def _chains(user_id: str, scope: str, *, verified: bool) -> Select:
-    """Property ids this account may act on with `scope`."""
+def _chains(user_id: str, scope: str, *, verified: bool, today: Today | None = None,
+            within: dict[str, list] | None = None) -> Select:
+    """Property ids this account may act on with `scope` — restricted to the
+    rows of a locked proof when `within` is given."""
+    today = _today() if today is None else today
     query = (
         select(PropertyAuthority.property_id)
         .join(LegalParty, LegalParty.id == PropertyAuthority.holder_legal_party_id)
@@ -147,11 +180,22 @@ def _chains(user_id: str, scope: str, *, verified: bool) -> Select:
             ),
         )
         .where(
-            PropertyAuthority.holder_legal_party_id.in_(_holder_parties(user_id, scope)),
+            PropertyAuthority.holder_legal_party_id.in_(
+                _holder_parties(user_id, scope, today, within)),
             LegalParty.status == "ACTIVE",
-            _in_force(_today()),
+            _in_force(today),
         )
     )
+    if within is not None:
+        # The locked authorities, and among them only those whose (authority,
+        # `scope`) row was itself locked: a scope row deleted and re-inserted
+        # while the lock waited is a different, unlocked row (TASK-008 N-05).
+        scoped = [a for a, s in within.get("property_authority_scopes") or [] if s == scope]
+        query = query.where(
+            PropertyAuthority.id.in_(within.get("property_authorities") or []),
+            PropertyAuthorityScope.property_authority_id.in_(scoped),
+            LegalParty.id.in_(within.get("legal_parties") or []),
+        )
     if verified:
         query = query.where(PropertyAuthority.verification_state == "VERIFIED")
     return query
@@ -188,6 +232,267 @@ def require(
             "Ownership of this property has not been verified yet",
         )
     return prop
+
+
+# --- the protected decision (TASK-004) ----------------------------------------
+#
+# `require` answers "may this account act?" as of the statement that asks. A
+# privileged write that commits later — publication — needs the answer to
+# still hold when it commits. TASK-003 showed it did not: a membership or a
+# mandate revoked, an organisation suspended, a legal party archived, or a
+# mandate expiring between the last check and the write, and the listing went
+# public on a chain that no longer existed.
+#
+# `authorize_for_mutation` closes that gap inside the caller's transaction:
+#
+#   1. the caller already holds the property's coordination lock
+#      (coordination.py) — this orders it against authority revoke and space
+#      archive, which take the same lock first;
+#   2. every row that makes a currently-valid chain valid — for every chain
+#      the account has, not one — is locked FOR SHARE, table by table in the
+#      order below and by id within a table;
+#   3. the chains are evaluated again, after the locks, against the calendar
+#      date the database reports at that moment — and ONLY through the rows
+#      the locking statements of step 2 actually returned (TASK-006 N-01,
+#      TASK-008 N-05).
+#
+# FOR SHARE conflicts with every UPDATE and DELETE of those rows, whoever
+# issues it: a membership or mandate revoke, an organisation suspension, a
+# legal party archival, even a direct SQL statement. Such a change either
+# committed before step 2 (and step 3 sees it) or waits until this transaction
+# ends (and is serialised after it).
+#
+# Why step 3 is restricted: the proof is read before it is locked, and step 2
+# can wait (on a revoke in flight, say). A chain that became valid during that
+# wait — a mandate granted, an invitation accepted — is not in the proof and
+# holds no lock. TASK-005 showed a decision carried by such a chain, which was
+# then revoked without waiting, and the listing went public with no valid
+# chain at commit. So the decision uses only locked rows: a chain gained after
+# the proof was read cannot carry this attempt (it is refused with 409, and a
+# new attempt reads a proof that includes it). One pass, no loop, nothing
+# unbounded.
+#
+# "Locked" means returned by the FOR SHARE statement, not "named in the proof".
+# A proof row deleted while its lock waited is not returned (READ COMMITTED
+# skips the deleted version), and a row re-inserted under the same key after
+# that statement took its snapshot is a different row nobody locked. TASK-007
+# showed such a replacement carrying the decision (N-05). The decision is
+# therefore evaluated through the returned rows only; a missing row makes this
+# attempt fail like any other lost link (409 if a valid chain exists now).
+#
+# Two publications share the locks and do not block each other. A share
+# request is granted even while an UPDATE is already waiting on the same row
+# (PostgreSQL grants compatible row locks ahead of a waiting writer), so a
+# continuous stream of publications resting on one row can delay a revoke of
+# that row — a delay, never a cycle, and never a lost revoke (TASK-007 note;
+# carried as operational debt). There is no global lock and no in-process lock.
+#
+# Lock order for a publication (never acquired in reverse by any path):
+#
+#   properties                        (coordination row, FOR UPDATE)
+#   legal_parties                     (chain holders)
+#   person_legal_parties              (personal link)
+#   organizations                     (organisation status)
+#   organization_legal_parties        (organisation -> its legal party)
+#   organization_memberships          (the acting user's membership)
+#   representation_mandates           (the acting user's mandates)
+#   representation_mandate_scopes
+#   property_authorities
+#   property_authority_scopes
+#   classified_offers                 (the conditional status UPDATE)
+#
+# The paths that invalidate a link each lock only the row they change
+# (membership revoke, mandate revoke, organisation/party status), or take the
+# property lock first (authority revoke, space archive). None of them holds a
+# lock publication needs while waiting for one publication holds, so no cycle
+# exists. Validity dates are compared to the database's statement time, not
+# to a Python date read earlier in the request.
+
+
+def decision_date(db: Session) -> ColumnElement[Any]:
+    """Today's UTC calendar date as the database sees it, when the statement
+    runs. The same UTC date `_today()` computes in Python, so inclusive
+    `effective_until` semantics are unchanged; only the clock moves to the
+    decision point."""
+    if db.get_bind().dialect.name == "postgresql":
+        return cast(func.timezone("UTC", func.statement_timestamp()), Date)
+    return func.date("now")  # SQLite (unit tests): 'YYYY-MM-DD' in UTC
+
+
+def _proof(db: Session, user_id: str, property_id: str, scope: str, *,
+           verified: bool) -> dict[str, list]:
+    """Ids of every row that makes a currently-valid chain valid, per table.
+
+    Read before locking; anything that changes before the lock is taken is
+    seen by the re-evaluation after it. Rows of chains that are already
+    invalid are not needed: they cannot authorise anything."""
+    today = decision_date(db)
+    authorities = select(PropertyAuthority.id, PropertyAuthority.holder_legal_party_id).join(
+        LegalParty, LegalParty.id == PropertyAuthority.holder_legal_party_id
+    ).join(
+        PropertyAuthorityScope,
+        and_(
+            PropertyAuthorityScope.property_authority_id == PropertyAuthority.id,
+            PropertyAuthorityScope.scope == scope,
+        ),
+    ).where(
+        PropertyAuthority.property_id == property_id,
+        PropertyAuthority.holder_legal_party_id.in_(_holder_parties(user_id, scope, today)),
+        LegalParty.status == "ACTIVE",
+        _in_force(today),
+    )
+    if verified:
+        authorities = authorities.where(PropertyAuthority.verification_state == "VERIFIED")
+    rows = db.execute(authorities).all()
+    authority_ids = sorted({r[0] for r in rows})
+    holders = sorted({r[1] for r in rows})
+    if not holders:
+        return {}
+
+    personal = db.scalars(select(PersonLegalParty.legal_party_id).where(
+        PersonLegalParty.linked_user_id == user_id,
+        PersonLegalParty.legal_party_id.in_(holders),
+    )).all()
+
+    roles = [role for role, scopes in ROLE_SCOPES.items() if scope in scopes]
+    organisational = db.execute(
+        select(OrganizationMembership.id, Organization.id, OrganizationLegalParty.legal_party_id)
+        .join(Organization, Organization.id == OrganizationMembership.organization_id)
+        .join(OrganizationLegalParty,
+              OrganizationLegalParty.organization_id == Organization.id)
+        .where(
+            OrganizationMembership.user_id == user_id,
+            OrganizationMembership.status == "ACTIVE",
+            OrganizationMembership.role.in_(roles),
+            Organization.status == "ACTIVE",
+            OrganizationLegalParty.legal_party_id.in_(holders),
+        )
+    ).all()
+
+    mandate_scopes = [m for m, scopes in MANDATE_PROPERTY_SCOPES.items() if scope in scopes]
+    mandated = db.execute(
+        select(RepresentationMandate.id, RepresentationMandateScope.scope)
+        .join(RepresentationMandateScope,
+              and_(RepresentationMandateScope.mandate_id == RepresentationMandate.id,
+                   RepresentationMandateScope.scope.in_(mandate_scopes)))
+        .where(
+            RepresentationMandate.representative_user_id == user_id,
+            RepresentationMandate.principal_legal_party_id.in_(holders),
+            RepresentationMandate.status == "ACTIVE",
+            RepresentationMandate.verification_state == "VERIFIED",
+            RepresentationMandate.effective_from <= today,
+            or_(RepresentationMandate.effective_until.is_(None),
+                RepresentationMandate.effective_until >= today),
+        )
+    ).all()
+
+    return {
+        "legal_parties": holders,
+        "person_legal_parties": sorted(set(personal)),
+        "organizations": sorted({r[1] for r in organisational}),
+        "organization_legal_parties": sorted({r[2] for r in organisational}),
+        "organization_memberships": sorted({r[0] for r in organisational}),
+        "representation_mandates": sorted({r[0] for r in mandated}),
+        "representation_mandate_scopes": sorted({(r[0], r[1]) for r in mandated}),
+        "property_authorities": authority_ids,
+        "property_authority_scopes": [(a, scope) for a in authority_ids],
+    }
+
+
+def _lock_proof(db: Session, proof: dict[str, list]) -> dict[str, list]:
+    """FOR SHARE on every proof row, in the documented order. Returns the rows
+    the locking statements actually returned — the only rows this transaction
+    holds. A proof row that was deleted (or deleted and re-inserted under the
+    same key) while its lock waited is absent from the result (N-05)."""
+    single = (
+        ("legal_parties", LegalParty.id),
+        ("person_legal_parties", PersonLegalParty.legal_party_id),
+        ("organizations", Organization.id),
+        ("organization_legal_parties", OrganizationLegalParty.legal_party_id),
+        ("organization_memberships", OrganizationMembership.id),
+        ("representation_mandates", RepresentationMandate.id),
+    )
+    locked: dict[str, list] = {}
+    for key, column in single:
+        ids = proof.get(key) or []
+        locked[key] = sorted(db.scalars(
+            select(column).where(column.in_(ids)).order_by(column).with_for_update(read=True)
+        ).all()) if ids else []
+    locked["representation_mandate_scopes"] = [
+        (mandate_id, mandate_scope)
+        for mandate_id, mandate_scope in proof.get("representation_mandate_scopes") or []
+        if db.execute(select(RepresentationMandateScope.mandate_id).where(
+            RepresentationMandateScope.mandate_id == mandate_id,
+            RepresentationMandateScope.scope == mandate_scope,
+        ).with_for_update(read=True)).first() is not None
+    ]
+    ids = proof.get("property_authorities") or []
+    locked["property_authorities"] = sorted(db.scalars(
+        select(PropertyAuthority.id).where(PropertyAuthority.id.in_(ids))
+        .order_by(PropertyAuthority.id).with_for_update(read=True)
+    ).all()) if ids else []
+    locked["property_authority_scopes"] = [
+        (authority_id, authority_scope)
+        for authority_id, authority_scope in proof.get("property_authority_scopes") or []
+        if db.execute(select(PropertyAuthorityScope.property_authority_id).where(
+            PropertyAuthorityScope.property_authority_id == authority_id,
+            PropertyAuthorityScope.scope == authority_scope,
+        ).with_for_update(read=True)).first() is not None
+    ]
+    return locked
+
+
+# The retryable publication conflict (TASK-006, TASK-008): stable text, and
+# the project's existing retry signal (Retry-After) so a client can tell it
+# from the other 409s of publish (archived space, listing state, policy).
+AUTHORITY_CHANGED = "The authority for this property changed while publishing. Try again."
+
+
+def authorize_for_mutation(
+    db: Session, user: User, property_id: str, scope: str, *, verified: bool = True
+) -> None:
+    """The protected authorisation decision for a privileged write.
+
+    Precondition: the caller holds the property's coordination lock
+    (coordination.lock_property) in this transaction, and makes its write in
+    the same transaction before committing. Postcondition: at least one chain
+    that grants `scope` (VERIFIED when `verified`) is valid at the database's
+    current time, every row of that chain was returned by a locking statement
+    of this transaction, and none can change until the caller commits. The
+    chain is found among those rows only: one that became valid after the
+    proof was read (N-01), or a proof row replaced under the same key while
+    its lock waited (N-05), does not count.
+
+    Refusals: 409 with Retry-After when a valid chain exists now but was not
+    among the locked rows (it appeared, or was replaced, while the locks were
+    being taken — a new attempt reads and locks it); otherwise the same as
+    `require`: 404 when nothing is held, 403 when only an unverified right is.
+
+    Scopes are not pooled across chains: each chain must carry `scope` on its
+    own, exactly as `require` evaluates it."""
+    proof = _proof(db, user.id, property_id, scope, verified=verified)
+    locked = _lock_proof(db, proof)
+    today = decision_date(db)
+    protected = _chains(user.id, scope, verified=verified, today=today, within=locked).where(
+        PropertyAuthority.property_id == property_id)
+    if proof and db.scalar(protected.limit(1)) is not None:
+        return
+    # Refused. Which refusal is decided from the state as it is now; none of
+    # it is protected, and none of it authorises anything.
+    unprotected = _chains(user.id, scope, verified=verified, today=today).where(
+        PropertyAuthority.property_id == property_id)
+    if db.scalar(unprotected.limit(1)) is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, AUTHORITY_CHANGED, headers={"Retry-After": "0"},
+        )
+    held = _chains(user.id, scope, verified=False, today=today).where(
+        PropertyAuthority.property_id == property_id)
+    if db.scalar(held.limit(1)) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Property not found")
+    raise HTTPException(
+        status.HTTP_403_FORBIDDEN,
+        "Ownership of this property has not been verified yet",
+    )
 
 
 def grant_owner(
@@ -277,7 +582,15 @@ def revoke(db: Session, authority: PropertyAuthority, actor_id: str) -> list[str
     revoked must not keep their listing on the board until they choose to
     remove it. Listings stay up only if some other verified authority can
     still publish that property. Returns the ids of the offers paused.
+
+    Takes the property's coordination lock first (properties/coordination.py),
+    the lock publication takes too. A publication already holding it finishes
+    first and its listing is then paused here; one that arrives later
+    re-checks under the lock and finds this authority revoked (TASK-001 F-04).
     """
+    coordination.lock_property(db, authority.property_id)
+    # The lock expired the session: this is the authority as committed now,
+    # so two admins revoking at once do the work once.
     if authority.status == "REVOKED":
         return []
     authority.status = "REVOKED"
@@ -285,8 +598,11 @@ def revoke(db: Session, authority: PropertyAuthority, actor_id: str) -> list[str
     authority.version += 1
     db.flush()
 
+    # "Still backed" means exactly what publication requires: in force,
+    # VERIFIED, holding PUBLISH_LISTING, held by an ACTIVE legal party.
     still_backed = db.scalar(
         select(PropertyAuthority.id)
+        .join(LegalParty, LegalParty.id == PropertyAuthority.holder_legal_party_id)
         .join(
             PropertyAuthorityScope,
             and_(
@@ -297,6 +613,7 @@ def revoke(db: Session, authority: PropertyAuthority, actor_id: str) -> list[str
         .where(
             PropertyAuthority.property_id == authority.property_id,
             PropertyAuthority.verification_state == "VERIFIED",
+            LegalParty.status == "ACTIVE",
             _in_force(_today()),
         )
         .limit(1)

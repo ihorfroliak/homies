@@ -115,6 +115,7 @@ def test_missing_client_does_not_crash():
 
 
 # --- policy resolution ------------------------------------------------------
+@pytest.mark.legacy_runtime
 def test_policy_resolution_matches_route_categories():
     assert rl.resolve_policy("POST", "/v1/auth/login") is rl.AUTH_LOGIN_IP
     assert rl.resolve_policy("POST", "/v1/auth/register") is rl.AUTH_REGISTER
@@ -202,6 +203,7 @@ def test_rate_limit_response_does_not_reveal_account_existence(client, clock):
     assert real == fake  # identical treatment for existing and non-existing accounts
 
 
+@pytest.mark.legacy_runtime
 def test_booking_burst_is_throttled_but_normal_booking_works(client, clock):
     host = register_and_login(client, "host@example.com", "host")
     client.post("/v1/hosts/onboarding", json={"payout_iban": "PL61109010140000071219812874"},
@@ -227,6 +229,7 @@ def test_booking_burst_is_throttled_but_normal_booking_works(client, clock):
     assert 429 in codes
 
 
+@pytest.mark.legacy_runtime
 def test_payment_webhooks_are_never_throttled(client, clock):
     """Stripe retries aggressively; throttling would create inconsistent
     financial state. Exemption must hold under sustained volume."""

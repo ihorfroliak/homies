@@ -1,5 +1,11 @@
+import logging
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import ArgumentError
+
+log = logging.getLogger("homies.config")
 
 # BK-01: bounds for the unpaid-booking TTL. Below the floor an accidental tiny
 # value would expire real customers mid-checkout; above the ceiling inventory
@@ -9,12 +15,15 @@ BOOKING_TTL_MAX_SECONDS = 86_400  # 24h
 
 
 class Settings(BaseSettings):
+    # "local" only when nothing says otherwise, for a developer's shell. The
+    # production image sets ENV=production (backend/Dockerfile, PR-001R F3), so
+    # a container started without ENV is production-like and fails closed; an
+    # implicit "local" is announced at startup (validate_security_config).
     env: str = "local"
     database_url: str = "postgresql+psycopg://homies:homies@localhost:5433/homies"
-    redis_url: str = "redis://localhost:6379/0"
-    meili_url: str = "http://localhost:7700"
-    meili_master_key: str = "dev-master-key"
-    nats_url: str = "nats://localhost:4222"
+    # REDIS_URL, MEILI_URL, MEILI_MASTER_KEY and NATS_URL were removed in PR-001:
+    # nothing read them (03 §5–§7). Setting them in an environment is harmless —
+    # unknown variables are ignored.
 
     # Auth
     jwt_secret: str = "dev-only-secret-change-me-0123456789abcdef"  # >=32 bytes for HS256
@@ -61,14 +70,35 @@ class Settings(BaseSettings):
     notification_worker_batch: int = 20
     notification_stale_processing_seconds: int = 60  # reclaim stuck PROCESSING
     notification_worker_enabled: bool = True  # disabled in tests (deterministic)
+    # Listing freshness sweep (TASK-012). Off by default: visibility is decided
+    # on read; the sweep only records `stale` and reminder events. The CLI
+    # `python -m app.scripts.listing_freshness sweep` does the same on demand.
+    listing_freshness_worker_enabled: bool = False
+    listing_freshness_interval_seconds: float = 3600.0
+    listing_freshness_batch: int = 500
+    # Saved searches & alerts (TASK-014). The worker evaluates new public
+    # listing episodes and sends alerts after send-time revalidation.
+    saved_search_worker_enabled: bool = True
+    saved_search_worker_interval_seconds: float = 5.0
+    saved_search_work_batch: int = 20
+    saved_search_delivery_batch: int = 50
+    saved_search_reconcile_every: int = 60  # passes
+    saved_listings_per_user: int = 500
+    saved_searches_per_user: int = 50
+    # Where links in alert emails point (the web app). Public, not a secret.
+    public_web_base_url: str = "http://localhost:3000"
     email_provider: str = "stub"  # stub | smtp
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
     smtp_from: str = "noreply@homies.example"
-    # Free board: how many DIFFERENT owners one account may uncover in a
-    # rolling 24 hours. The rate limiter bounds speed, not volume — at its
+    # Free board: how many DIFFERENT LISTINGS' contact numbers one account may
+    # uncover in a rolling 24 h (the unit is the listing, not the owner or the
+    # number: two listings of one owner count twice — TASK-001 §17.5; a
+    # per-provider unit is a later decision). Enforced under a per-viewer
+    # database lock, so concurrent requests cannot exceed it (TASK-001 F-03).
+    # The rate limiter bounds speed, not volume — at its
     # sustained refill one account could still take thousands of numbers a day,
     # which is the whole board. This is the ceiling on the total.
     #
@@ -87,6 +117,11 @@ class Settings(BaseSettings):
     # small enough that one upload cannot exhaust a worker's memory.
     media_root: str = "var/media"
     media_max_bytes: int = 10_000_000
+    # Decoding is CPU- and memory-heavy (up to MAX_PIXELS of RGBA). At most this
+    # many images are processed at once per process; an upload that cannot get
+    # a slot within the wait answers 503 rather than queueing without bound.
+    media_processing_concurrency: int = 2
+    media_processing_wait_seconds: float = 10.0
 
     @field_validator("contact_reveal_daily_quota")
     @classmethod
@@ -171,6 +206,46 @@ class InsecureConfigurationError(RuntimeError):
     """
 
 
+# The repository's development database as this repository publishes it — the
+# Settings default, ops/docker-compose.yml and the CI service all use it.
+DEV_DATABASE_CREDENTIALS = ("homies", "homies")
+DEV_DATABASE_NAME = "homies"
+DEV_DATABASE_HOST_PORT = 5433  # compose maps the dev database to localhost:5433
+LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+def development_database_problems(database_url: str) -> list[str]:
+    """Why DATABASE_URL is recognisably the repository's development
+    database, or not PostgreSQL at all (PR-001R F4).
+
+    Compared on the parsed URL, so spelling does not matter: driver suffix,
+    percent-encoding, query parameters, `localhost` vs `127.0.0.1`. What it
+    guarantees, exactly: a production-like process refuses (1) a URL that is not
+    PostgreSQL or does not parse, (2) the published development credentials
+    `homies`/`homies` on any host, (3) the development database `homies` on a
+    loopback host at the development port 5433, whatever the credentials. It is
+    not a general database-security policy: any other URL passes, and whether
+    it points at the right database is the deployment's responsibility.
+    Messages name the rule, never the value.
+    """
+    try:
+        url = make_url(database_url)
+    except (ArgumentError, ValueError):
+        return ["DATABASE_URL is not a valid database URL"]
+    if not url.drivername.startswith("postgresql"):
+        return ["DATABASE_URL does not point to PostgreSQL"]
+    problems: list[str] = []
+    if (url.username, url.password) == DEV_DATABASE_CREDENTIALS:
+        problems.append("DATABASE_URL uses the repository's published development credentials")
+    if (
+        (url.host or "").lower() in LOOPBACK_HOSTS
+        and url.port == DEV_DATABASE_HOST_PORT
+        and url.database == DEV_DATABASE_NAME
+    ):
+        problems.append("DATABASE_URL points at the repository's local development database")
+    return problems
+
+
 def validate_security_config(cfg: "Settings | None" = None) -> None:
     """Single source of truth for security-critical configuration.
 
@@ -179,6 +254,12 @@ def validate_security_config(cfg: "Settings | None" = None) -> None:
     """
     cfg = cfg or settings
     problems: list[str] = []
+
+    if "env" not in cfg.model_fields_set:
+        # Not an error — a developer's shell — but never silent (PR-001R F3).
+        log.warning(
+            "ENV is not set: running as env='%s' (local development). Deployed "
+            "images set ENV=production; set ENV explicitly anywhere else.", cfg.env)
 
     # Payment-environment agreement is checked in EVERY environment: a live
     # Stripe key on a developer laptop is as dangerous as a test key in
@@ -205,6 +286,9 @@ def validate_security_config(cfg: "Settings | None" = None) -> None:
 
     _check("JWT_SECRET", cfg.jwt_secret)
     _check("WEBHOOK_SECRET", cfg.webhook_secret, min_length=16)
+    # PR-001 / PR-001R F4: a production-like process must be told where its
+    # database is, and must not be pointed at the repository's development one.
+    problems.extend(development_database_problems(cfg.database_url))
 
     if cfg.payment_provider == "stripe":
         _check("STRIPE_API_KEY", cfg.stripe_api_key, min_length=16)

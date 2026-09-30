@@ -22,7 +22,10 @@ import pytest
 import app.modules.payments.service as payments_service
 from app.modules.booking.models import Booking
 from app.modules.payments.models import Payment
-from tests.conftest import TestingSession, auth, register_and_login
+from tests.conftest import TestingSession, assert_unhandled_500, auth, register_and_login
+
+# LEGACY_DORMANT runtime (TASK-002 R1): see tests/legacy_runtime.py.
+pytestmark = pytest.mark.legacy_runtime
 
 CI = (date.today() + timedelta(days=25)).isoformat()
 CO = (date.today() + timedelta(days=28)).isoformat()
@@ -57,7 +60,7 @@ def test_booking_still_returns_a_payable_intent(client):
 
 
 # --- the new failure mode ---------------------------------------------------
-def test_provider_failure_leaves_a_pending_booking_and_no_payment(client, monkeypatch):
+def test_provider_failure_leaves_a_pending_booking_and_no_payment(client, monkeypatch, caplog):
     """Stripe is down. The booking must still be committed — the dates are held
     and its TTL will free them — but no payment row may be invented."""
     lid = _listing(client)
@@ -68,8 +71,7 @@ def test_provider_failure_leaves_a_pending_booking_and_no_payment(client, monkey
 
     monkeypatch.setattr(payments_service.provider, "create_payment_intent", boom)
 
-    with pytest.raises(RuntimeError):
-        _book(client, guest, lid, "h4-down-01")
+    assert_unhandled_500(_book(client, guest, lid, "h4-down-01"), caplog, RuntimeError)
 
     with TestingSession() as db:
         bookings = list(db.scalars(select_bookings()))
@@ -80,7 +82,7 @@ def test_provider_failure_leaves_a_pending_booking_and_no_payment(client, monkey
     assert payments == []
 
 
-def test_replay_after_a_provider_failure_heals_the_booking(client, monkeypatch):
+def test_replay_after_a_provider_failure_heals_the_booking(client, monkeypatch, caplog):
     """Stripe recovers and the guest retries with the same Idempotency-Key. The
     replay must return the ORIGINAL booking, now with a payable intent — not a
     second booking and not an unpayable one."""
@@ -93,8 +95,7 @@ def test_replay_after_a_provider_failure_heals_the_booking(client, monkeypatch):
         raise RuntimeError("stripe unreachable")
 
     monkeypatch.setattr(payments_service.provider, "create_payment_intent", boom)
-    with pytest.raises(RuntimeError):
-        _book(client, guest, lid, "h4-heal-01")
+    assert_unhandled_500(_book(client, guest, lid, "h4-heal-01"), caplog, RuntimeError)
 
     monkeypatch.setattr(payments_service.provider, "create_payment_intent", real)
     resp = _book(client, guest, lid, "h4-heal-01")
@@ -130,7 +131,7 @@ def test_replay_of_a_healthy_booking_does_not_create_a_second_intent(client, mon
     assert calls["n"] == 0, "a replay with an existing payment must not touch the provider"
 
 
-def test_expired_booking_replay_is_not_healed(client, monkeypatch):
+def test_expired_booking_replay_is_not_healed(client, monkeypatch, caplog):
     """Only a still-pending booking is worth a payment intent. A booking that
     already expired must not acquire one on replay."""
     lid = _listing(client)
@@ -140,8 +141,7 @@ def test_expired_booking_replay_is_not_healed(client, monkeypatch):
         raise RuntimeError("stripe unreachable")
 
     monkeypatch.setattr(payments_service.provider, "create_payment_intent", boom)
-    with pytest.raises(RuntimeError):
-        _book(client, guest, lid, "h4-expired-01")
+    assert_unhandled_500(_book(client, guest, lid, "h4-expired-01"), caplog, RuntimeError)
 
     with TestingSession() as db:
         booking = db.scalars(select_bookings()).one()

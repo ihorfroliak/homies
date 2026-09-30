@@ -45,8 +45,19 @@ def create_listing(
         if prop is None or prop.owner_id != user.id:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Property not found")
     else:
+        # TASK-010: every Property has an Address. This dormant short-stay path
+        # (Poland-only when it ran) records the typed text, UNSTRUCTURED — a
+        # schema-compatibility change, not an extension of the legacy runtime.
+        from app.modules.geography.models import Address
+
+        address = Address(country_code="PL", unstructured_text=data["address"],
+                          locality_text=data["city"], resolution="UNSTRUCTURED",
+                          source="USER_INPUT", verification="UNVERIFIED")
+        db.add(address)
+        db.flush()
         prop = Property(
             owner_id=user.id,
+            address_id=address.id,
             city=data["city"],
             address=data["address"],
             capacity=data["capacity"],

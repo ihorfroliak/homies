@@ -12,9 +12,12 @@ That protection is the security-relevant part of this module:
   requires an account with a *verified phone* — and `users.phone` is unique, so
   the SIM that proves one account cannot prove the next;
 * every disclosure is recorded in `ContactReveal`, and those rows are now read:
-  one account may uncover a bounded number of DIFFERENT owners per rolling 24
-  hours. The rate limiter bounds speed; this bounds the total, which is what
-  stands between a verified account and the whole board overnight.
+  one account may uncover the contact of a bounded number of DIFFERENT
+  LISTINGS per rolling 24 hours (the unit is the listing: two listings of one
+  owner count twice). The rate limiter bounds speed; this bounds the total,
+  which is what stands between a verified account and the whole board
+  overnight. The decision is serialised per viewer in the database, so
+  parallel requests and several API workers cannot exceed it.
 
 Narrower than PRODUCT_MODEL, deliberately: the model asks for a verified email
 *and* phone. Email verification exists (`/v1/me/verify/email/*`) but is not a
@@ -24,38 +27,66 @@ collector cannot buy in bulk. Tightening it is a product call, not a gap.
 Still open: the owner-facing "who asked for my number" view. The rows exist.
 """
 
-from datetime import date, datetime, timedelta, timezone
-from typing import Any
+from datetime import datetime, timedelta, timezone
+from typing import Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from prometheus_client import Counter
-from sqlalchemy import case, func, literal_column, or_, select
+from sqlalchemy import select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
-from sqlalchemy.sql import ColumnElement
+from sqlalchemy.orm import Session, contains_eager, object_session, selectinload
 
 from app.core.audit import audit
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import get_current_user, require_role
+from app.modules.geography import service as geography
+from app.modules.geography.models import Address
 from app.modules.identity import organizations
-from app.modules.properties import authority, location, pricing, spaces
-from app.modules.properties.attributes import AttributeError_, load_catalogue
+from app.modules.identity.models import User
+from app.modules.properties import (
+    authority,
+    coordination,
+    freshness,
+    listing_rules,
+    location,
+    pricing,
+    publicity,
+    search,
+    quality,
+    spaces,
+)
+from app.modules.properties.attributes import AttributeError_
 from app.modules.properties.attributes import validate as validate_attributes
 from app.modules.properties.models import (
+    CONFIRMABLE_FROM,
+    PAUSABLE_FROM,
+    PUBLISHABLE_FROM,
     AttributeDefinition,
     ClassifiedOffer,
-    SPACE_TYPES,
     ContactReveal,
     Property,
     Space,
 )
+from app.modules.properties import classification
 from app.modules.properties.schemas import (
+    AreaRef,
+    NamedRef,
+    PropertyLocationOut,
+    PublicPlace,
     AttributeOut,
+    AvailabilityUpdate,
     AuthorityOut,
     ClassifiedCreate,
     ClassifiedOut,
+    ClassifiedOwnerOut,
+    FreshnessOut,
+    QualityCheckOut,
+    QualityOut,
     ClassifiedPage,
+    MapPage,
+    MapPoint,
     ContactRevealOut,
     PropertyCreate,
     PriceComponentOut,
@@ -71,10 +102,68 @@ from app.modules.properties.schemas import (
 router = APIRouter(tags=["properties"])
 
 
-_DERIVED_FIELDS = {"monthly_total_estimate", "move_in_total", "public_location"}
+_DERIVED_FIELDS = {"monthly_total_estimate", "move_in_total", "public_location", "place",
+                   "move_in", "confirmed_on", "freshness", "utilities_basis"}
 
 
-def _public(offer: ClassifiedOffer) -> ClassifiedOut:
+def _area_refs(areas) -> list[AreaRef]:
+    return [AreaRef(id=a.id, name=a.official_name, slug=a.slug, level=a.level,
+                    kind_code=a.kind_code) for a in areas]
+
+
+def _named(obj, name_attr: str) -> NamedRef | None:
+    if obj is None:
+        return None
+    return NamedRef(id=obj.id, name=getattr(obj, name_attr), slug=obj.slug)
+
+
+def _public_place(db: Session, address: Address | None) -> PublicPlace | None:
+    """The coarse, public half of an address (D-54). Built field by field
+    from reference entities only: nothing typed by the owner, nothing that
+    pinpoints a building, can reach it."""
+    if address is None:
+        return None
+    return PublicPlace(
+        country_code=address.country_code,
+        areas=_area_refs(geography.address_areas(db, address)),
+        locality=_named(address.locality, "official_name"),
+        geo_area=_named(address.geo_area, "name"),
+    )
+
+
+def _location_out(db: Session, prop: Property) -> PropertyLocationOut | None:
+    """The full structured address — owner/provider/admin surfaces only."""
+    address = prop.address_record
+    if address is None:
+        return None
+    return PropertyLocationOut(
+        country_code=address.country_code,
+        areas=_area_refs(geography.address_areas(db, address)),
+        locality=_named(address.locality, "official_name"),
+        geo_area=_named(address.geo_area, "name"),
+        postal_code=address.postal_code,
+        thoroughfare=address.thoroughfare,
+        building_number=address.building_number,
+        unit_number=prop.unit_number,
+        unstructured_text=address.unstructured_text,
+        resolution=address.resolution,
+        source=address.source,
+        verification=address.verification,
+    )
+
+
+def _move_in(offer: ClassifiedOffer, now: datetime) -> Literal["UNKNOWN", "NOW", "FROM_DATE"]:
+    """UNKNOWN when no date was given — never read as "available now" (D-64)."""
+    if offer.available_from is None:
+        return "UNKNOWN"
+    # "Today" is the UTC date of the database decision instant (D-67) — not
+    # the session's, the host's or the client's.
+    return "NOW" if offer.available_from <= freshness.utc_date(now) else "FROM_DATE"
+
+
+def _public(offer: ClassifiedOffer, now: datetime | None = None) -> ClassifiedOut:
+    """`now` is the request's decision instant from the database clock; pass
+    it when serialising many offers so the clock is read once, not per row."""
     point = None
     if offer.public_latitude is not None and offer.public_longitude is not None:
         point = PublicLocation(
@@ -82,8 +171,22 @@ def _public(offer: ClassifiedOffer) -> ClassifiedOut:
             longitude=float(offer.public_longitude),
             precision=offer.public_location_precision,
         )
+    db = object_session(offer)
+    place = (
+        _public_place(db, offer.listed_property.address_record) if db is not None else None
+    )
+    if now is None:
+        now = freshness.db_now(db) if db is not None else datetime.now(timezone.utc)
+    last = offer.last_confirmed_available_at
     return ClassifiedOut(
         **{k: getattr(offer, k) for k in ClassifiedOut.model_fields if k not in _DERIVED_FIELDS},
+        place=place,
+        move_in=_move_in(offer, now),
+        utilities_basis=(
+            "INCLUDED" if offer.utilities_included
+            else "ESTIMATED" if offer.utilities_amount > 0 else "NOT_STATED"),
+        confirmed_on=freshness.utc_date(last) if last is not None else None,
+        freshness=freshness.state(last, now),
         monthly_total_estimate=offer.estimated_monthly_total_minor or 0,
         move_in_total=offer.move_in_total_minor or 0,
         public_location=point,
@@ -124,6 +227,10 @@ def _property_out(db: Session, prop: Property) -> PropertyOut:
     why Publish refuses."""
     return PropertyOut.model_validate(prop).model_copy(
         update={
+            # The reference wins over the legacy mirror (D-57).
+            "city": prop.display_city,
+            "district": prop.display_district,
+            "location": _location_out(db, prop),
             "authorities": [
                 AuthorityOut(
                     id=a.id,
@@ -149,10 +256,18 @@ def create_property(
 ):
     """Register a physical object. It exists once, whatever is later done with it.
 
-    `municipality` (gmina) is required: the Polish tourist tax is set per gmina
-    and charged per night, so a short-stay price cannot be computed without it.
+    Location: a reference locality (or area) from /v1/geo plus street, building
+    and unit gives a STRUCTURED address; free text alone is kept as typed and
+    marked UNSTRUCTURED. Classification: `category` (+ `subtype`), or the
+    legacy `property_type`.
     """
-    data = body.model_dump(exclude={"organization_id", "authority_type"})
+    legacy_type, category, subtype = classification.resolve(
+        body.property_type, body.category, body.subtype)
+    data = body.model_dump(exclude={
+        "organization_id", "authority_type", "property_type", "category", "subtype",
+        "country_code", "locality_id", "admin_area_id", "geo_area_id", "thoroughfare",
+        "building_number", "city", "address", "municipality",
+    })
     try:
         validate_attributes(db, data.get("attributes") or {})
     except AttributeError_ as exc:
@@ -168,7 +283,39 @@ def create_property(
         party = organizations.organization_party(db, body.organization_id)
         assert party is not None
         holder = party.legal_party_id
-    prop = Property(owner_id=user.id, **data)
+    try:
+        address = geography.build_address(db, geography.LocationInput(
+            country_code=body.country_code,
+            locality_id=body.locality_id,
+            admin_area_id=body.admin_area_id,
+            geo_area_id=body.geo_area_id,
+            postal_code=body.postcode,
+            thoroughfare=body.thoroughfare,
+            building_number=body.building_number,
+            unstructured_text=body.address or "",
+            locality_text=body.city or "",
+            district_text=body.district,
+        ))
+    except geography.GeographyError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
+    db.add(address)
+    db.flush()
+    street_line = " ".join(p for p in (body.thoroughfare, body.building_number) if p)
+    prop = Property(
+        owner_id=user.id,
+        address_id=address.id,
+        property_type=legacy_type,
+        category=category,
+        subtype=subtype,
+        # Legacy mirrors hold only what the address does not reference
+        # (D-57): "" when a locality / search area is referenced — read from
+        # the reference instead, so no copy can go stale or overflow.
+        city=address.locality_text,
+        address=body.address or street_line,
+        municipality=body.municipality,
+        **{k: v for k, v in data.items() if k not in {"district"}},
+        district=address.district_text,
+    )
     db.add(prop)
     db.flush()
     # Registering a flat is a claim to it, recorded as an authority held by the
@@ -234,6 +381,9 @@ def archive_space(space_id: str, user=Depends(get_current_user), db: Session = D
         if exc.status_code == status.HTTP_404_NOT_FOUND:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Space not found") from None
         raise
+    # Same coordination lock as publication: a publish racing this archive
+    # either lands first (and is paused here) or sees the space archived.
+    coordination.lock_property(db, space.property_id)
     paused = spaces.archive(db, space, user.id)
     db.commit()
     return SpaceArchiveOut(**SpaceOut.model_validate(space).model_dump(), paused_offers=paused)
@@ -262,8 +412,8 @@ def create_classified(
 ):
     """Post a free long-term listing against one of your properties.
 
-    The board starts at six months. Anything shorter is a Homies booking — paid
-    and commissioned — and must not arrive here relabelled.
+    A LONG_TERM listing: open-ended, or with a minimum term of at least one
+    month. Homies is not a party to the letting.
     """
     # A draft needs an authority in force, not a verified one: the owner has
     # to be able to prepare the listing while the claim is being checked.
@@ -306,7 +456,34 @@ def create_classified(
     return _public(offer)
 
 
-@router.post("/classifieds/{offer_id}/publish", response_model=ClassifiedOut)
+@router.post(
+    "/classifieds/{offer_id}/publish",
+    response_model=ClassifiedOut,
+    responses={
+        403: {"description": "The caller's authority on the property is not VERIFIED "
+                             "(at the pre-check, or lost between it and the protected "
+                             "decision)."},
+        404: {"description": "Offer not found, or the caller holds no authority on its "
+                             "property — deliberately indistinguishable."},
+        409: {
+            "description": (
+                "Conflict. RETRYABLE only when the response carries `Retry-After`: the "
+                "authority chain changed while the protected decision was being taken "
+                "(detail: \"" + authority.AUTHORITY_CHANGED + "\"); send a new request, "
+                "which re-reads and locks the current chain. NOT retryable (no "
+                "`Retry-After`): the space was archived; the listing can no longer be "
+                "published from its current state; the property type is not publishable "
+                "under current policy."
+            ),
+            "headers": {
+                "Retry-After": {
+                    "description": "Only on the retryable authority-change conflict; 0.",
+                    "schema": {"type": "integer"},
+                }
+            },
+        },
+    },
+)
 def publish_classified(
     offer_id: str,
     user=Depends(require_role("host")),
@@ -315,17 +492,55 @@ def publish_classified(
     # Publishing is the one step that needs a VERIFIED claim. A listing for a
     # flat the poster does not own is the scam this board would otherwise
     # carry; it is refused here, before the first deposit is wired.
+    #
+    # The first check refuses early without taking a lock. It proves nothing
+    # about the moment of writing: the authority, a membership, a mandate, an
+    # organisation or a legal party can lose its validity before the commit
+    # (TASK-001 F-04, TASK-003). So the property's coordination lock is taken
+    # — the one authority revoke and space archiving take — and the decision is
+    # made again by authorize_for_mutation, which locks every row of every
+    # valid chain FOR SHARE and evaluates dates on the database clock. From
+    # there to the commit nothing the decision rests on can change.
+    # See properties/coordination.py and authority.authorize_for_mutation.
     offer = _authorized_offer(db, user, offer_id, verified=True)
+    prop = coordination.lock_property(db, offer.property_id)
+    # lock_property expired the session: `offer` reloads as committed now.
+    if prop is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
+    try:
+        authority.authorize_for_mutation(db, user, prop.id, "PUBLISH_LISTING", verified=True)
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_404_NOT_FOUND:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found") from None
+        raise
     try:
         spaces.ensure_listable(offer.space)
     except spaces.SpaceArchived:
         raise HTTPException(
             status.HTTP_409_CONFLICT, "The space this offer is for has been archived"
         ) from None
+    listing_rules.ensure_publishable(prop)
+    # Publication counts as confirmation (D-59); both stamps are the database
+    # clock's, read at the decision.
+    now = freshness.db_now(db)
+    # Conditional on the status as it is in the database now, not as it was
+    # loaded: an archived listing is never brought back by a stale request.
+    # Through the one public-transition seam (TASK-014): a new public episode
+    # — generation, event and alert work item — only if it was not public.
+    published = publicity.make_public(
+        db, offer.id, allowed_from=PUBLISHABLE_FROM,
+        values={"status": "active", "published_at": now, "last_confirmed_available_at": now},
+        now=now,
+    )
+    if not published.applied:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This listing can no longer be published from its current state",
+        )
+    db.refresh(offer)
     # Recomputed on publish, so the map reflects the property as it is now.
-    location.refresh(offer, offer.listed_property)
-    offer.status = "active"
-    offer.published_at = datetime.now(timezone.utc)
+    location.refresh(offer, prop)
     audit(
         db,
         actor=user.id,
@@ -386,225 +601,289 @@ def pause_classified(
     # Taking a listing down needs no verification: a holder whose claim is
     # still unchecked must always be able to stop showing it.
     offer = _authorized_offer(db, user, offer_id, verified=False)
-    offer.status = "paused"
+    # Conditional on the stored status: an archived listing is never turned
+    # back into a paused one, which a later publish could bring back.
+    paused = cast(CursorResult, db.execute(
+        update(ClassifiedOffer)
+        .where(ClassifiedOffer.id == offer.id, ClassifiedOffer.status.in_(PAUSABLE_FROM))
+        .values(status="paused")
+        .execution_options(synchronize_session=False)
+    ))
+    if paused.rowcount != 1:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "This listing is archived")
+    db.commit()
+    db.refresh(offer)
+    return _public(offer)
+
+
+@router.post(
+    "/classifieds/{offer_id}/confirm",
+    response_model=ClassifiedOut,
+    responses={
+        403: {"description": "The caller's authority on the property is not VERIFIED."},
+        404: {"description": "Offer not found, or the caller holds no authority on its "
+                             "property — deliberately indistinguishable."},
+        409: {"description": (
+            "Not confirmable: the listing is a draft, paused or archived; or, when it is "
+            "stale, it no longer passes a publication check (space archived, property "
+            "type not publishable). RETRYABLE only with `Retry-After` (authority chain "
+            "changed during the decision), as for publish."
+        )},
+    },
+)
+def confirm_classified(
+    offer_id: str,
+    user=Depends(require_role("host")),
+    db: Session = Depends(get_db),
+):
+    """"This listing is still current" — one action for the owner or agent.
+
+    On an active listing it renews the confirmation (D-59). On a listing the
+    freshness sweep made `stale` it is also the way back: the listing becomes
+    active again, but only through every check publication makes — a verified
+    authority decided under the same locks, a listable space, a publishable
+    property type (D-61). Draft, paused and archived listings are refused;
+    publishing is a separate, explicit act. Confirming changes no content, so
+    the price-edit `version` is not bumped.
+    """
+    offer = _authorized_offer(db, user, offer_id, verified=True)
+    prop = coordination.lock_property(db, offer.property_id)
+    if prop is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
+    try:
+        authority.authorize_for_mutation(db, user, prop.id, "PUBLISH_LISTING", verified=True)
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_404_NOT_FOUND:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found") from None
+        raise
+    # The row lock, after the property lock and the proof locks (the order
+    # publication uses): from here the status cannot move under us — not by
+    # the sweep, not by a pause.
+    prior = db.scalar(
+        select(ClassifiedOffer.status).where(ClassifiedOffer.id == offer.id).with_for_update()
+    )
+    if prior not in CONFIRMABLE_FROM:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Only a published or stale listing can be confirmed as current",
+        )
+    try:
+        spaces.ensure_listable(offer.space)
+    except spaces.SpaceArchived:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "The space this offer is for has been archived"
+        ) from None
+    listing_rules.ensure_publishable(prop)
+    now = freshness.db_now(db)
+    # The same seam as publication (TASK-014): confirming a listing that was
+    # still public keeps its episode; confirming one that was not — stale, or
+    # `active` whose confirmation silently expired — opens a new one.
+    publicity.make_public(
+        db, offer.id, allowed_from=(prior,),
+        values={"status": "active", "last_confirmed_available_at": now}, now=now,
+    )
+    db.refresh(offer)
+    reactivated = prior == "stale"
+    if reactivated:
+        location.refresh(offer, prop)
+    audit(
+        db,
+        actor=user.id,
+        action="classified.reactivated" if reactivated else "classified.confirmed",
+        entity_type="classified_offer",
+        entity_id=offer.id,
+    )
+    freshness.emit(
+        db,
+        freshness.LISTING_REACTIVATED if reactivated else freshness.LISTING_CONFIRMED,
+        offer.id, prop.id, now,
+    )
     db.commit()
     return _public(offer)
 
 
-# Sorting is an allowlist, never a column name from the query string. Passing
-# user input into order_by() exposes every column in the table and, with a
-# string-built query, worse.
-# The generated geography column exists on Postgres only (see the model note),
-# so it is referenced by name rather than through the ORM.
-_PUBLIC_GEOG: ColumnElement[Any] = literal_column("classified_offers.public_geog")
-
-
-def _geo_filters(bbox, near_lat, near_lon, radius_m) -> list:
-    """Viewport and radius conditions on the public point.
-
-    Distances are geodesic (geography, metres), not degrees: a degree of
-    longitude is 70 km in Kraków and would be 111 km at the equator, and a
-    radius in degrees is a different radius in every city.
-    """
-    conditions = []
-    if bbox is not None:
-        try:
-            min_lon, min_lat, max_lon, max_lat = (float(p) for p in bbox.split(","))
-        except ValueError:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                "bbox must be four numbers: minLon,minLat,maxLon,maxLat",
-            ) from None
-        if not (-180 <= min_lon < max_lon <= 180 and -90 <= min_lat < max_lat <= 90):
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY, "bbox is not a valid box"
-            )
-        envelope = func.ST_MakeEnvelope(min_lon, min_lat, max_lon, max_lat, 4326)
-        conditions.append(func.ST_Intersects(_PUBLIC_GEOG, func.geography(envelope)))
-    given = [v is not None for v in (near_lat, near_lon, radius_m)]
-    if any(given) and not all(given):
+@router.put("/classifieds/{offer_id}/availability", response_model=ClassifiedOut)
+def change_availability(
+    offer_id: str,
+    body: AvailabilityUpdate,
+    user=Depends(require_role("host")),
+    db: Session = Depends(get_db),
+):
+    """Move-in date and term (D-64). `available_from: null` means the date is
+    not given. Guarded by `expected_version` like a price change. Changing
+    availability is not a confirmation: that stays one explicit act."""
+    offer = _authorized_offer(db, user, offer_id, verified=False)
+    changed = cast(CursorResult, db.execute(
+        update(ClassifiedOffer)
+        .where(ClassifiedOffer.id == offer.id,
+               ClassifiedOffer.version == body.expected_version,
+               ClassifiedOffer.status != "archived")
+        .values(available_from=body.available_from, min_term_months=body.min_term_months,
+                open_ended=body.open_ended, version=ClassifiedOffer.version + 1)
+        .execution_options(synchronize_session=False)
+    ))
+    if changed.rowcount != 1:
+        db.rollback()
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "radius search needs near_lat, near_lon and radius_m together",
+            status.HTTP_409_CONFLICT,
+            "The listing was changed by someone else, or is archived. Reload and try again.",
         )
-    if all(given):
-        centre = func.geography(func.ST_SetSRID(func.ST_MakePoint(near_lon, near_lat), 4326))
-        conditions.append(func.ST_DWithin(_PUBLIC_GEOG, centre, radius_m))
-    return conditions
+    audit(db, actor=user.id, action="classified.availability_changed",
+          entity_type="classified_offer", entity_id=offer.id)
+    db.commit()
+    db.refresh(offer)
+    return _public(offer)
 
 
-def _listed_area_sql():
-    """The area of what is actually on offer: the room's for a room, the
-    flat's otherwise. A tenant asking for "at least 20 m2" who is shown a
-    12 m2 room because the flat around it is 60 m2 has been misled by the
-    search. A room whose area was not given matches no minimum."""
-    return case((Space.space_type == "ROOM", Space.area_m2), else_=Property.area_m2)
+@router.get("/me/classifieds", response_model=list[ClassifiedOwnerOut])
+def my_classifieds(user=Depends(require_role("host")), db: Session = Depends(get_db)):
+    """Every listing this account may manage, in any status — including the
+    ones the public can no longer see — with its freshness and what would
+    improve it."""
+    now = freshness.db_now(db)
+    offers = db.scalars(
+        select(ClassifiedOffer)
+        .where(ClassifiedOffer.property_id.in_(
+            authority.authorized_property_ids(user.id, "PUBLISH_LISTING")))
+        .order_by(ClassifiedOffer.created_at.desc())
+    )
+    out = []
+    for offer in offers:
+        last = offer.last_confirmed_available_at
+        verdict = quality.assess(db, user.id, offer, offer.listed_property, now)
+        out.append(ClassifiedOwnerOut(
+            **_public(offer, now).model_dump(),
+            published_at=offer.published_at,
+            freshness_detail=FreshnessOut(
+                state=freshness.state(last, now),
+                last_confirmed_available_at=freshness.to_utc(last) if last else None,
+                reconfirm_at=freshness.reconfirm_at(last),
+                stale_at=freshness.stale_at(last),
+                confirmation_valid_days=freshness.CONFIRMATION_VALID_FOR.days,
+                auto_pause_after_days=freshness.AUTO_PAUSE_AFTER.days,
+            ),
+            quality=QualityOut(
+                completeness_percent=verdict.completeness_percent,
+                missing_required=verdict.missing_required,
+                recommended_improvements=verdict.recommended_improvements,
+                checks=[QualityCheckOut(code=c.code, required=c.required, passed=c.passed)
+                        for c in verdict.checks],
+            ),
+        ))
+    return out
 
 
-SORTS = {
-    "newest": ClassifiedOffer.published_at.desc(),
-    "price_asc": None,  # filled in below: the total, not the rent
-    "price_desc": None,
-    "size_desc": None,  # filled in below: the listed area, not the building's
-}
+def _page_options(stmt):
+    """Load what a page of results renders in a fixed number of queries — not
+    one per row (TASK-013): property → address → locality and search area.
+    Media and price components already load per page (selectin)."""
+    return stmt.options(
+        contains_eager(ClassifiedOffer.listed_property)
+        .selectinload(Property.address_record)
+        .options(selectinload(Address.locality), selectinload(Address.geo_area))
+    )
 
 
-def _monthly_total_sql():
-    """The tenant's real monthly cost, so it can be filtered and sorted.
-
-    Deliberately not the rent. Two offers at 3 000 zł rent are not the same
-    price when one adds 600 zł of building fees and the other does not, and a
-    tenant who filters "up to 3 000" and is shown a 3 600 zł flat has been
-    misled by the search, not by the owner. The deposit is excluded — it comes
-    back. Read from the stored summary, which is kept in step with the price
-    components in the transaction that changes them, and indexed.
-    """
-    return ClassifiedOffer.estimated_monthly_total_minor
+def _preload_places(db: Session, offers) -> list:
+    """Every administrative area the page's public `place` shows, ancestors
+    included, in one query. Returned so the caller keeps them alive."""
+    ids = set()
+    for offer in offers:
+        record = offer.listed_property.address_record
+        if record is None:
+            continue
+        ids.add(record.locality.admin_area_id if record.locality is not None
+                else record.admin_area_id)
+    return geography.preload_area_paths(db, ids)
 
 
 @router.get("/classifieds", response_model=ClassifiedPage)
 def list_classifieds(
-    city: str | None = None,
-    district: str | None = None,
-    # Budget is expressed against the TOTAL, which is what the tenant pays.
-    max_monthly_total: int | None = Query(default=None, ge=0),
-    min_monthly_total: int | None = Query(default=None, ge=0),
-    min_rooms: int | None = Query(default=None, ge=0),
-    min_area_m2: int | None = Query(default=None, ge=0),
-    furnished: str | None = None,
-    parking: str | None = None,
-    pets_allowed: bool | None = None,
-    has_elevator: bool | None = None,
-    # "I can move by this date" — offers available then or sooner, plus those
-    # with no date set, which means available now.
-    available_by: date | None = None,
-    max_term_months: int | None = Query(default=None, ge=0),
-    # Repeatable: ?has=dishwasher&has=balcony. Only codes the catalogue marks
-    # filterable are accepted, so a typo fails loudly instead of quietly
-    # matching nothing.
-    has: list[str] | None = Query(default=None),
-    # WHOLE_PROPERTY or ROOM.
-    space_type: str | None = None,
-    # Map search, against the PUBLIC point only. Viewport: "minLon,minLat,
-    # maxLon,maxLat". Radius: near_lat + near_lon + radius_m. Listings placed
-    # by district only have no point and are not matched by either.
-    bbox: str | None = None,
-    near_lat: float | None = Query(default=None, ge=-90, le=90),
-    near_lon: float | None = Query(default=None, ge=-180, le=180),
-    radius_m: int | None = Query(default=None, ge=1, le=50_000),
-    sort: str = "newest",
-    limit: int = Query(default=50, le=100),
-    offset: int = Query(default=0, ge=0),
+    q: search.SearchQuery = Depends(search.search_query),
+    limit: int = Query(default=50, ge=1, le=100),
+    # Offset paging, bounded (D-71): deterministic under the id tie-breaker;
+    # deep paging past 10 000 is not a Phase-1A use and is refused.
+    offset: int = Query(default=0, ge=0, le=10_000),
     db: Session = Depends(get_db),
 ):
-    """Search the free board. Only active offers, and never a phone number."""
-    if sort not in SORTS:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"sort must be one of {', '.join(sorted(SORTS))}",
-        )
-
-    if space_type is not None and space_type not in SPACE_TYPES:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"space_type must be one of {', '.join(SPACE_TYPES)}",
-        )
-
-    total_expr = _monthly_total_sql()
-    area_expr = _listed_area_sql()
-    filters = [ClassifiedOffer.status == "active"]
-    if space_type is not None:
-        filters.append(Space.space_type == space_type)
-    filters.extend(_geo_filters(bbox, near_lat, near_lon, radius_m))
-    if has:
-        catalogue = load_catalogue(db)
-        for code in has:
-            definition = catalogue.get(code)
-            if definition is None or not definition.filterable:
-                raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    f"'{code}' is not a filterable attribute — see GET /v1/attributes",
-                )
-            # as_boolean() rather than a text comparison: SQLite's
-            # JSON_EXTRACT yields 1/0 while Postgres yields a JSON boolean, and
-            # SQLAlchemy is the thing that knows the difference. An earlier
-            # version compared the literal 'true' and matched nothing on SQLite.
-            filters.append(Property.attributes[code].as_boolean().is_(True))
-    if city:
-        filters.append(Property.city == city)
-    if district:
-        filters.append(Property.district == district)
-    if max_monthly_total is not None:
-        filters.append(total_expr <= max_monthly_total)
-    if min_monthly_total is not None:
-        filters.append(total_expr >= min_monthly_total)
-    if min_rooms is not None:
-        filters.append(Property.rooms >= min_rooms)
-    if min_area_m2 is not None:
-        filters.append(area_expr >= min_area_m2)
-    if furnished:
-        filters.append(Property.furnished == furnished)
-    if parking:
-        filters.append(Property.parking == parking)
-    if pets_allowed is not None:
-        filters.append(Property.pets_allowed.is_(pets_allowed))
-    if has_elevator is not None:
-        filters.append(Property.has_elevator.is_(has_elevator))
-    if available_by is not None:
-        # A missing date means "available now", so it must not be filtered out.
-        filters.append(
-            or_(
-                ClassifiedOffer.available_from.is_(None),
-                ClassifiedOffer.available_from <= available_by,
-            )
-        )
-    if max_term_months is not None:
-        # An open-ended offer commits the tenant to nothing, so it satisfies any
-        # "I can stay at most N months" filter.
-        filters.append(
-            or_(
-                ClassifiedOffer.open_ended.is_(True),
-                ClassifiedOffer.min_term_months <= max_term_months,
-            )
-        )
-
-    base = (
-        select(ClassifiedOffer)
-        .join(Property, Property.id == ClassifiedOffer.property_id)
-        .join(Space, Space.id == ClassifiedOffer.space_id)
-        .where(*filters)
-    )
-
-    order = SORTS[sort]
-    if sort == "price_asc":
-        order = total_expr.asc()
-    elif sort == "price_desc":
-        order = total_expr.desc()
-    elif sort == "size_desc":
-        order = area_expr.desc()
-
-    total = db.scalar(
-        select(func.count())
-        .select_from(ClassifiedOffer)
-        .join(Property, Property.id == ClassifiedOffer.property_id)
-        .join(Space, Space.id == ClassifiedOffer.space_id)
-        .where(*filters)
-    )
-    rows = db.scalars(base.order_by(order).limit(limit).offset(offset))
+    """Search the board. One query model with the map (`/classifieds/map`):
+    only publicly eligible listings, never a phone number, never an exact
+    location. Dimensions combine with AND; repeated values of one dimension
+    with OR."""
+    total = search.count_matching(db, q)
+    rows = list(db.scalars(
+        _page_options(search.select_matching(db, q))
+        .order_by(*search.order_by(q)).limit(limit).offset(offset)
+    ))
+    areas = _preload_places(db, rows)  # noqa: F841 — keeps the preloaded areas alive
+    now = freshness.db_now(db)
+    search.record("list", q, total)
     return ClassifiedPage(
-        items=[_public(o) for o in rows],
-        total=int(total or 0),
+        items=[_public(o, now) for o in rows],
+        total=total,
         limit=limit,
         offset=offset,
+        query=q.canonical(),
+        sort=q.sort,
+    )
+
+
+@router.get("/classifieds/map", response_model=MapPage)
+def map_classifieds(
+    q: search.SearchQuery = Depends(search.search_query),
+    limit: int = Query(default=search.MAP_CAP, ge=1, le=search.MAP_CAP),
+    db: Session = Depends(get_db),
+):
+    """The same search as `/classifieds`, projected for a map: one light
+    marker per listing at its PUBLIC point, capped and in the same order.
+    Clustering is the client's (D-71): public points are already ~550 m grid
+    cells, so listings in one cell share a marker position."""
+    has_point = search.has_public_point()
+    # One aggregate for the partition (F13A-02). The marker rows below are a
+    # separate statement; ordinary READ COMMITTED drift between them is
+    # accepted, impossible counts within one response are not.
+    total, with_point = search.count_map_partition(db, q)
+    rows = db.execute(
+        search.select_matching(
+            db, q,
+            ClassifiedOffer.id, ClassifiedOffer.public_latitude, ClassifiedOffer.public_longitude,
+            ClassifiedOffer.public_location_precision, ClassifiedOffer.primary_price_minor,
+            ClassifiedOffer.estimated_monthly_total_minor, ClassifiedOffer.currency,
+            Space.space_type, Property.category, ClassifiedOffer.last_confirmed_available_at,
+        ).where(has_point).order_by(*search.order_by(q)).limit(limit)
+    ).all()
+    now = freshness.db_now(db)
+    search.record("map", q, total)
+    return MapPage(
+        points=[
+            MapPoint(
+                id=r[0], latitude=float(r[1]), longitude=float(r[2]), precision=r[3],
+                rent_amount=r[4], monthly_total_estimate=r[5], currency=r[6],
+                space_type=r[7], category=r[8], freshness=freshness.state(r[9], now),
+            )
+            for r in rows
+        ],
+        total=total,
+        with_point=with_point,
+        without_point=total - with_point,
+        truncated=with_point > len(rows),
+        cap=limit,
+        query=q.canonical(),
+        sort=q.sort,
     )
 
 
 @router.get("/classifieds/{offer_id}", response_model=ClassifiedOut)
 def get_classified(offer_id: str, db: Session = Depends(get_db)):
     offer = db.get(ClassifiedOffer, offer_id)
-    if offer is None or offer.status != "active":
+    now = freshness.db_now(db)
+    # A stale listing answers exactly like an unpublished one (D-59).
+    if offer is None or not freshness.is_public(offer, now):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
-    return _public(offer)
+    return _public(offer, now)
 
 
 QUOTA_WINDOW = timedelta(hours=24)
@@ -689,7 +968,7 @@ def reveal_contact(
             "Verify your phone number before contacting owners",
         )
     offer = db.get(ClassifiedOffer, offer_id)
-    if offer is None or offer.status != "active":
+    if offer is None or not freshness.is_public(offer, freshness.db_now(db)):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
     if offer.contact_mode != "phone" or not offer.contact_phone:
         # The owner chose messages. Saying so is not a leak, and pretending the
@@ -697,6 +976,14 @@ def reveal_contact(
         raise HTTPException(
             status.HTTP_409_CONFLICT, "This owner accepts messages only, not phone calls"
         )
+
+    # Serialise this viewer's disclosure decisions (TASK-001 F-03). Counting
+    # and then inserting is a race between two requests for two different
+    # listings: both count, both find room, both insert. The viewer's own
+    # users row is the coordination point — FOR NO KEY UPDATE, so the FK check
+    # on the ContactReveal insert (a KEY SHARE lock) is not blocked by it.
+    # Everything below, to the commit, runs with it held.
+    db.execute(select(User.id).where(User.id == user.id).with_for_update(key_share=True))
 
     already = db.scalar(
         select(ContactReveal).where(

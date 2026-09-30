@@ -3,6 +3,8 @@ and auth bypass. Written as executable evidence — every question the audit
 asks ("can User A touch User B's data?") is answered by a running test, not by
 reading the code."""
 
+import pytest
+
 from datetime import date, timedelta
 
 from tests.conftest import auth, register_and_login
@@ -28,6 +30,7 @@ def _booking(client, guest, lid, key):
 
 
 # ---- IDOR: guest A vs guest B -------------------------------------------
+@pytest.mark.legacy_runtime
 def test_guest_cannot_read_or_cancel_another_guests_booking(client):
     _, lid = _host_with_listing(client)
     guest_a = register_and_login(client, "a@example.com", "guest")
@@ -42,6 +45,7 @@ def test_guest_cannot_read_or_cancel_another_guests_booking(client):
     assert client.get(f"/v1/bookings/{bk['id']}", headers=auth(guest_a)).json()["status"] == "pending"
 
 
+@pytest.mark.legacy_runtime
 def test_booking_list_is_scoped_to_the_caller(client):
     _, lid = _host_with_listing(client)
     guest_a = register_and_login(client, "a@example.com", "guest")
@@ -51,6 +55,7 @@ def test_booking_list_is_scoped_to_the_caller(client):
 
 
 # ---- IDOR: host A vs host B ---------------------------------------------
+@pytest.mark.legacy_runtime
 def test_host_cannot_modify_another_hosts_listing(client):
     _, lid_a = _host_with_listing(client, "hostA@example.com")
     host_b = register_and_login(client, "hostB@example.com", "host")
@@ -65,6 +70,7 @@ def test_host_cannot_modify_another_hosts_listing(client):
     assert client.get(f"/v1/listings/{lid_a}").json()["nightly_price_amount"] == 40000
 
 
+@pytest.mark.legacy_runtime
 def test_host_cannot_trigger_another_hosts_payout(client, admin_token):
     host_a, _ = _host_with_listing(client, "hostA@example.com")
     host_b = register_and_login(client, "hostB@example.com", "host")
@@ -77,6 +83,7 @@ def test_host_cannot_trigger_another_hosts_payout(client, admin_token):
 
 
 # ---- Private data: notifications ----------------------------------------
+@pytest.mark.legacy_runtime
 def test_notifications_are_private_to_recipient(client):
     _, lid = _host_with_listing(client)
     guest_a = register_and_login(client, "a@example.com", "guest")
@@ -87,6 +94,7 @@ def test_notifications_are_private_to_recipient(client):
 
 
 # ---- Role boundaries -----------------------------------------------------
+@pytest.mark.legacy_runtime
 def test_non_admin_cannot_reach_admin_surface(client):
     guest = register_and_login(client, "g@example.com", "guest")
     host = register_and_login(client, "h@example.com", "host")
@@ -102,6 +110,7 @@ def test_non_admin_cannot_reach_admin_surface(client):
         assert client.get(path, headers=auth(host)).status_code == 403, path
 
 
+@pytest.mark.legacy_runtime
 def test_guest_cannot_use_host_surface_and_vice_versa(client):
     guest = register_and_login(client, "g@example.com", "guest")
     assert client.post("/v1/listings", json={"title": "Studio", "city": "Warsaw",
@@ -124,6 +133,7 @@ def test_privilege_escalation_via_registration_is_blocked(client):
 
 
 # ---- Auth bypass ---------------------------------------------------------
+@pytest.mark.legacy_runtime
 def test_protected_endpoints_reject_missing_or_bad_tokens(client):
     protected = ["/v1/me", "/v1/me/notifications", "/v1/bookings", "/v1/hosts/me",
                  "/v1/admin/users"]
@@ -150,6 +160,7 @@ def test_refresh_token_cannot_be_used_as_access_token(client):
 
 
 # ---- Webhook trust boundary ---------------------------------------------
+@pytest.mark.legacy_runtime
 def test_webhook_cannot_confirm_a_booking_without_the_secret(client, admin_token):
     _, lid = _host_with_listing(client)
     guest = register_and_login(client, "g@example.com", "guest")

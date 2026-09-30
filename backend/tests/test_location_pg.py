@@ -38,7 +38,7 @@ PROPERTY = {
 }
 
 
-def _listed(pg_client, token, point, precision="EXACT", address=None):
+def _listed(pg_client, token, point, precision="APPROXIMATE", address=None):
     prop = pg_client.post(
         "/v1/properties",
         json={**PROPERTY, "address": address or f"ul. {point}", "latitude": point[0],
@@ -116,11 +116,17 @@ def test_viewport_search(pg_client, owner):
 
 
 def test_radius_search_is_in_metres_on_the_ground(pg_client, owner):
+    """Around the centre's public (grid) point — the only point search sees
+    since public EXACT was prohibited (D-58). The three flats fall in three
+    different cells: the north one's is 0.005° (~556 m) away, the east one's
+    ~2.9 km."""
     _, centre = _listed(pg_client, owner, RYNEK)
     _, north = _listed(pg_client, owner, NORTH_445M)
     _, east = _listed(pg_client, owner, EAST_3KM)
 
-    near = dict(near_lat=RYNEK[0], near_lon=RYNEK[1])
+    lat, lon = location.public_point(Decimal(str(RYNEK[0])), Decimal(str(RYNEK[1])),
+                                     "APPROXIMATE")
+    near = dict(near_lat=float(lat), near_lon=float(lon))
     assert _ids(pg_client, **near, radius_m=100) == {centre}
     assert _ids(pg_client, **near, radius_m=1000) == {centre, north}
     assert _ids(pg_client, **near, radius_m=5000) == {centre, north, east}

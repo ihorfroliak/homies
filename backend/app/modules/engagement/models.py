@@ -67,6 +67,15 @@ class Conversation(Base):
             "listing_id IS NOT NULL OR viewing_id IS NOT NULL",
             name="ck_conversations_has_context",
         ),
+        # One ACTIVE thread per requester and listing (TASK-001 F-09). Closed
+        # or archived threads do not count, so a tenant can start over.
+        Index(
+            "uq_conversations_active_requester_listing",
+            "listing_id", "requester_user_id",
+            unique=True,
+            postgresql_where=text("status = 'ACTIVE' AND listing_id IS NOT NULL"),
+            sqlite_where=text("status = 'ACTIVE' AND listing_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
@@ -265,6 +274,12 @@ class Viewing(Base):
         CheckConstraint(_in("status", VIEWING_STATUSES), name="ck_viewings_status"),
         CheckConstraint("ends_at > starts_at", name="ck_viewings_order"),
         CheckConstraint("attendee_count > 0", name="ck_viewings_attendees"),
+        # A cancellation time exists exactly when the viewing is cancelled:
+        # CONFIRMED with cancelled_at set is the state TASK-001 F-06 produced.
+        CheckConstraint(
+            "(status = 'CANCELLED') = (cancelled_at IS NOT NULL)",
+            name="ck_viewings_cancelled_state",
+        ),
         Index("ix_viewings_listing_starts", "listing_id", "starts_at"),
         Index("ix_viewings_requester_starts", "requester_user_id", "starts_at"),
         Index("ix_viewings_status_starts", "status", "starts_at"),

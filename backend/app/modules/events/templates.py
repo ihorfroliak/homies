@@ -34,6 +34,21 @@ TEMPLATES: dict[str, dict[str, dict[str, str]]] = {
         "en": {"subject": "Incident opened",
                "body": "Incident ({kind}) opened on booking {correlation_id}: {note}"},
     },
+    # TASK-014 saved-search alert (PRODUCT). Only the user's own search name,
+    # a link to the public listing page and the two unsubscribe links: no
+    # address, no price snapshot, no owner or contact detail.
+    "SAVED_SEARCH_MATCH": {
+        "en": {"subject": "A new listing matches your saved search",
+               "body": ("A listing that matches your saved search \"{search_name}\" "
+                        "has just been published on Homies:\n{listing_url}\n\n"
+                        "Stop alerts for this search: {unsubscribe_search_url}\n"
+                        "Stop all saved-search emails: {unsubscribe_all_url}\n")},
+        "pl": {"subject": "Nowe ogłoszenie pasuje do Twojego zapisanego wyszukiwania",
+               "body": ("Pojawiło się ogłoszenie pasujące do wyszukiwania \"{search_name}\":\n"
+                        "{listing_url}\n\n"
+                        "Wyłącz powiadomienia dla tego wyszukiwania: {unsubscribe_search_url}\n"
+                        "Wyłącz wszystkie e-maile o wyszukiwaniach: {unsubscribe_all_url}\n")},
+    },
 }
 
 DEFAULT_LOCALE = "en"

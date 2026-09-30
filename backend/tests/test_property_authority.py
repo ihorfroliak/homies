@@ -23,6 +23,7 @@ from tests.conftest import (
     TestingSession,
     admin_login,
     auth,
+    authorization_date,
     register_and_login,
     verify_ownership,
 )
@@ -364,7 +365,7 @@ def test_a_revoked_right_cannot_be_verified_back_into_force(client, owner):
 def test_an_expired_right_authorises_nothing(client, owner):
     """Dates are part of the right: a power of attorney that ended last month
     publishes nothing this month."""
-    from datetime import date, timedelta
+    from datetime import timedelta
 
     prop = _register(client, owner)
     offer_id = _draft(client, owner, prop["id"])
@@ -374,8 +375,8 @@ def test_an_expired_right_authorises_nothing(client, owner):
         authority = db.scalar(
             select(PropertyAuthority).where(PropertyAuthority.property_id == prop["id"])
         )
-        authority.effective_from = date.today() - timedelta(days=60)
-        authority.effective_until = date.today() - timedelta(days=1)
+        authority.effective_from = authorization_date() - timedelta(days=60)
+        authority.effective_until = authorization_date() - timedelta(days=1)
         db.commit()
 
     assert _publish(client, owner, offer_id).status_code == 404

@@ -75,10 +75,23 @@ class FileObject(Base):
     size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     sha256: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     state: Mapped[str] = mapped_column(String(16), default="UPLOADING")
+    # Which processing pipeline produced the stored bytes. NULL = the C8
+    # structure walker, which TASK-001 showed leaks metadata; such files are
+    # quarantined and never served until reprocessed (media/sanitize.py
+    # PIPELINE_VERSION, app/scripts/reprocess_media.py).
+    processing_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     ready_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    @property
+    def servable(self) -> bool:
+        """Bytes this service may hand out: ready, and produced by the current
+        pipeline. Files from the C8 walker (processing_version NULL) never are."""
+        from app.modules.media.sanitize import PIPELINE_VERSION
+
+        return self.state == "READY" and self.processing_version == PIPELINE_VERSION
 
 
 class MediaAsset(Base):

@@ -25,6 +25,13 @@ updates:
     directory: /backend
     schedule:
       interval: monthly
+    ignore:
+      # PR-001R F8: the supported runtime is Python 3.12 (requires-python,
+      # ruff/mypy target, the verified constraints.txt). A move to another
+      # minor is a deliberate cycle with its own test evidence, never a
+      # routine image bump. Patch rebuilds within 3.12 are not affected.
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: github-actions
     directory: /

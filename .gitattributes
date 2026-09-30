@@ -1,0 +1,2 @@
+# Archived independent audit reports are kept byte-for-byte (no EOL normalisation).
+docs/reviews/*-audit.md -text
