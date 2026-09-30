@@ -1,3 +1,17 @@
+---
+id: PROJECT-STATUS
+type: status_index
+as_of: 2026-09-30
+current_baseline:
+  id: IBB-001
+  name: Integrated Backend Baseline 001
+  sha: 5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98
+  status: accepted
+production_ready: false
+deployed: false
+next_task: MICRO-001
+---
+
 # Project status — orientation index
 
 > **Derived, not canonical.** A fast orientation page for humans and agents.
@@ -6,29 +20,69 @@
 > and [DECISIONS](DECISIONS.md). If this page disagrees with them, they win —
 > fix this page. Nothing is accepted because it is listed here.
 
-**As of:** 2026-09-30 (written by the CONV-001 builder)
+**As of:** 2026-09-30 (written by BASELINE-001)
 
-## ACCEPTED BASELINES (separate lines)
+## Current accepted backend baseline
 
-| Line | Accepted SHA | Verdict |
-|---|---|---|
-| PRODUCT — TASK-014 (Phase-1A slice) | `7ffb4f51dd315363362df1a5f8fc5c19a57767dc` | `TASK_014_PHASE_1A_SLICE_ACCEPTED` (TASK-014RA) |
-| INFRA — PR-001 (runtime / CI / readiness) | `5cad442f07264ab25b3024c96fc691ad9c7a75fa` | `PR_001_BASELINE_ACCEPTED` (PR-001RA2) |
+| | |
+|---|---|
+| Human name | **Integrated Backend Baseline 001** |
+| ID | `IBB-001` |
+| Accepted SHA | `5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98` |
+| Git tag | `backend-baseline-001` |
+| Status | **ACCEPTED FOR CONTINUED DEVELOPMENT** |
+| Production | **NOT_READY** |
+| Deployment | **NOT_DEPLOYED** |
+| Record | [docs/baselines/IBB-001.md](baselines/IBB-001.md) |
 
-Common ancestor: `879bf56cd7bb497fd77d8140fc1443fe9d61c1fe` (TASK-012 accepted line).
+There is one backend development line. All new backend work descends from
+IBB-001 (or a documented successor baseline). The documentation commits that
+recorded IBB-001 (BASELINE-001) sit on top of it and change no code; the
+accepted code state is the SHA above, not a later documentation HEAD.
 
-## CURRENT INTEGRATION CANDIDATE
+### Provenance
 
-**CONV-001** — one merge commit of both accepted lines on
-`claude/CONV-001-product-infra` (SHA in the CONV-001 builder report; this page
-cannot contain its own commit's SHA). **CONV-001A REQUIRED.** Not accepted.
+| Role | ID | Exact SHA | Verdict |
+|---|---|---|---|
+| PRODUCT parent | TASK-014 — Saved Listings, Saved Search & Alerts | `7ffb4f51dd315363362df1a5f8fc5c19a57767dc` | ACCEPTED (TASK-014RA) |
+| INFRA parent | PR-001 — Runtime / CI / Readiness Baseline | `5cad442f07264ab25b3024c96fc691ad9c7a75fa` | ACCEPTED (PR-001RA2) |
+| Integration | CONV-001 | `5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98` | merge of the two parents |
+| Independent integration audit | CONV-001A | — | ACCEPTED WITH NONBLOCKING NOTES (`CONV_001_ACCEPTED_WITH_NONBLOCKING_NOTES`) |
 
-## PRODUCTION
+Full history of every audit cycle: [docs/reviews/AUDIT-HISTORY.md](reviews/AUDIT-HISTORY.md).
+Naming convention: [docs/engineering/TRACEABILITY.md](engineering/TRACEABILITY.md).
 
-**NOT READY · NOT DEPLOYED.**
+## Next serialized development
 
-## ACTIVE / NEXT GATES
+```text
+IBB-001                     ACCEPTED
+  ↓
+MICRO-001                   NEXT      evidence / docs / test cleanup (R0/R1)
+  ↓
+PR-002                      PLANNED   release and migration compatibility
+  ↓
+PR-003                      PLANNED   database client deadlines / failure containment
+  ↓
+TASK-015 delta review       PLANNED   against IBB-001
+  ↓
+TASK-015 implementation     PLANNED   reports and moderation
+```
 
-1. CONV-001A (independent integration audit, exact SHA).
-2. MICRO-001 (R0 wording cleanup) after the integrated baseline is accepted.
-3. PR-002 Phase B (blocked until CONV-001 is accepted) → PR-003 → TASK-015 delta → TASK-015 B.
+None of these is implemented. MICRO-001 scope:
+[docs/tasks/MICRO-001-evidence-docs-test-cleanup.md](tasks/MICRO-001-evidence-docs-test-cleanup.md).
+
+**DEFERRED:** Phase-2 transactional renting (payments, ledger), short stay,
+dedicated search/message infrastructure — by canonical decision only
+([06 — Roadmap](canonical/06-ROADMAP.md)).
+
+## Verification policy after IBB-001
+
+Risk-based (R0 docs → builder + light checks; R1 ordinary → tests + CI;
+R2 migrations/authorisation/concurrency/privacy → independent review where
+material; R3 payments/production/deployment → independent audit + operational
+evidence + founder approval). Details: [AUDIT-HISTORY](reviews/AUDIT-HISTORY.md#governance-change-after-ibb-001--risk-based-verification).
+
+## Production
+
+**NOT_READY · NOT_DEPLOYED.** Readiness matrix and open gaps:
+[docs/production/PRODUCTION-READINESS.md](production/PRODUCTION-READINESS.md).

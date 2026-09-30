@@ -66,6 +66,30 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
+## Integrated Backend Baseline 001 — ACCEPTED (2026-09-30)
+
+| | |
+|---|---|
+| ID | `IBB-001` — [baseline record](../baselines/IBB-001.md) |
+| SHA | `5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98` (tag `backend-baseline-001`) |
+| Product parent | `7ffb4f51dd315363362df1a5f8fc5c19a57767dc` — TASK-014, accepted by TASK-014RA |
+| Infra parent | `5cad442f07264ab25b3024c96fc691ad9c7a75fa` — PR-001, accepted by PR-001RA2 |
+| Audit | CONV-001A ([archived verbatim](../reviews/2026-09-30-conv001a-independent-integration-audit.md)) — 21 integration gates ACCEPTED |
+| Verdict | **`CONV_001_ACCEPTED_WITH_NONBLOCKING_NOTES`** → `INTEGRATED_BASELINE_ACCEPTED`; P0–P3 0, NOTE 3 (CV-N1 harness drill count, CV-N2 restore drill omits TASK-014 tables, CV-N3 `assert_unhandled_500` request-id assertion → MICRO-001) |
+| Accepted for | continued engineering development — **not** production readiness, **not** a release |
+| Production | **NOT READY · NOT DEPLOYED** |
+
+All subsequent backend implementation work MUST descend from IBB-001
+or a documented successor baseline unless an explicit governance decision
+authorizes another ancestry.
+
+The sections below are the history that led here and are kept as written:
+where they say "candidate", "pending audit" or "not accepted", this section
+and the TASK-014 / PR-001 ACCEPTED sections are the outcome. Verification
+from here on is risk-based (R0–R3,
+[AUDIT-HISTORY](../reviews/AUDIT-HISTORY.md)); next serialized task:
+MICRO-001 ([PROJECT-STATUS](../PROJECT-STATUS.md)).
+
 ## CONV-001 — product / infrastructure baseline convergence (2026-09-30, builder)
 
 **INTEGRATION CANDIDATE — CONV-001A REQUIRED.** One non-fast-forward merge

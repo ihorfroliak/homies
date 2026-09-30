@@ -8,6 +8,20 @@ internationally). Canon lives in
 `IMPLEMENTATION-CONVERGENCE` before building. Older strategy, charter and
 release-plan documents are historical (banner-marked).
 
+## Current state (read first)
+
+| | |
+|---|---|
+| Current backend baseline | Integrated Backend Baseline 001 (`IBB-001`) |
+| Accepted code SHA | `5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98` (tag `backend-baseline-001`) |
+| Current status / next task | [docs/PROJECT-STATUS.md](docs/PROJECT-STATUS.md) |
+| Audit history | [docs/reviews/AUDIT-HISTORY.md](docs/reviews/AUDIT-HISTORY.md) |
+| Traceability convention | [docs/engineering/TRACEABILITY.md](docs/engineering/TRACEABILITY.md) |
+
+Repository state and canonical documents outrank chat memory and summaries.
+New backend work descends from IBB-001 (or a documented successor);
+verification is risk-based (R0–R3, see the audit history).
+
 ## Your role
 
 **Claude Code is the primary builder.** You implement approved Task Contracts

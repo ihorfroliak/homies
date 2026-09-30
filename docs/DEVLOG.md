@@ -655,3 +655,31 @@ production-образ: fail-closed без секретів, старт під `h
 мутації продукту й інфраструктури вбито.
 
 **Далі:** незалежний CONV-001A. PR-002, PR-003, TASK-015, MICRO-001 не починаю.
+
+## 2026-09-30 — Integrated Backend Baseline 001
+
+**Що сталося:** дві окремі лінії розробки знову стали однією.
+- PRODUCT: TASK-014 (збережені оголошення, пошуки, сповіщення) прийнято
+  TASK-014RA на `7ffb4f51dd315363362df1a5f8fc5c19a57767dc`.
+- INFRA: PR-001 (рантайм, CI, готовність) прийнято PR-001RA2 на
+  `5cad442f07264ab25b3024c96fc691ad9c7a75fa`.
+- CONV-001 злив обидві точні історії одним merge-комітом; незалежний
+  CONV-001A прийняв злиття: `CONV_001_ACCEPTED_WITH_NONBLOCKING_NOTES`
+  (P0–P3 0, NOTE 3) — [звіт](reviews/2026-09-30-conv001a-independent-integration-audit.md).
+
+**Результат:** Integrated Backend Baseline 001 (IBB-001), Git SHA
+`5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98`, тег `backend-baseline-001` —
+[запис бази](baselines/IBB-001.md). Докази на точному SHA: CI `36644550108`
+(усі job'и зелені), evidence `36644558783`; SQLite 1071 passed / 372 skipped,
+PostgreSQL/PostGIS 1442 passed / 1 skipped (Stripe live), 10 restore drills,
+мутації TASK-014 16/16, інтеграційні sentinel-и 13/13.
+
+**Межа:** прийнято для подальшої розробки. Production: **NOT READY**.
+Deployment: **NOT DEPLOYED**. Це не реліз і не версія.
+
+**Також:** правило іменування (людська назва + ID + SHA) —
+[TRACEABILITY](engineering/TRACEABILITY.md); карта аудитів —
+[AUDIT-HISTORY](reviews/AUDIT-HISTORY.md); перевірки далі за ризиком R0–R3,
+без обов'язкового аудиту кожного завдання.
+
+**Далі:** завершення BASELINE-001 → MICRO-001 → PR-002.
