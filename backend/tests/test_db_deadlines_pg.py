@@ -557,18 +557,26 @@ def test_known_debt_a_property_whose_commit_is_unknown_is_duplicated_by_a_retry(
     from tests.saved_support import load_geo
 
     geo = load_geo(sessionmaker(bind=pg_migrated_engine, expire_on_commit=False))
-    token = register_and_login(pg_client, "pr003-owner@example.com", "host")
-    body = {"category": "APARTMENT", "area_m2": 50, "rooms": 2, "capacity": 2,
-            "building_number": "7", "locality_id": geo["krakow"]}
+    try:
+        token = register_and_login(pg_client, "pr003-owner@example.com", "host")
+        body = {"category": "APARTMENT", "area_m2": 50, "rooms": 2, "capacity": 2,
+                "building_number": "7", "locality_id": geo["krakow"]}
 
-    def create():
-        return pg_client.post("/v1/properties", json=body, headers=auth(token))
+        def create():
+            return pg_client.post("/v1/properties", json=body, headers=auth(token))
 
-    first, _ = _unknown_commit_then_resume(proxy, pg_client, create)
-    assert first.status_code == 503 and "outcome is unknown" in first.json()["detail"]
-    assert create().status_code == 201
-    mine = pg_client.get("/v1/properties", headers=auth(token))
-    if mine.status_code == 200:
+        first, _ = _unknown_commit_then_resume(proxy, pg_client, create)
+        assert first.status_code == 503 and "outcome is unknown" in first.json()["detail"]
+        assert create().status_code == 201
+        mine = pg_client.get("/v1/properties", headers=auth(token))
+        assert mine.status_code == 200
         items = mine.json()["items"] if isinstance(mine.json(), dict) else mine.json()
         print(f"\n[PR-003] properties after unknown COMMIT + retry: {len(items)}")
         assert len(items) == 2
+    finally:
+        # The fixture geography (and its source) is not part of pg_client's
+        # truncation; leave the shared database as other suites expect it.
+        with pg_migrated_engine.begin() as c:
+            c.execute(text("TRUNCATE geo_external_refs, addresses, geo_areas, localities, "
+                           "admin_areas RESTART IDENTITY CASCADE"))
+            c.execute(text("DELETE FROM geo_sources WHERE code = 'TEST_FIXTURE'"))
