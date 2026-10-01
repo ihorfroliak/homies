@@ -107,10 +107,13 @@ def _chain(engine, offer):
             " WHERE target_type = 'LISTING' AND target_id = :o AND supersedes_decision_id IS NULL"
             " UNION ALL SELECT d.id, d.action, d.supersedes_decision_id, c.n + 1"
             " FROM moderation_decisions d JOIN c ON d.supersedes_decision_id = c.id)"
-            " SELECT id, action, supersedes_decision_id FROM c ORDER BY n"), {"o": offer}).all()
-        total = conn.scalar(text("SELECT count(*) FROM moderation_decisions WHERE "
-                                 "target_type = 'LISTING' AND target_id = :o"), {"o": offer})
-    assert len(rows) == total, "a decision outside the single line: the chain forked"
+            # the total in the SAME statement: one snapshot, so a decision
+            # committing meanwhile cannot make the two disagree
+            " SELECT id, action, supersedes_decision_id, (SELECT count(*) FROM "
+            " moderation_decisions WHERE target_type = 'LISTING' AND target_id = :o) AS total"
+            " FROM c ORDER BY n"), {"o": offer}).all()
+    if rows:
+        assert len(rows) == rows[0].total, "a decision outside the single line: the chain forked"
     return rows
 
 
