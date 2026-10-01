@@ -123,6 +123,7 @@ def test_the_earliest_deadline_fires_first_whatever_the_arming_order():
     try:
         dog = Watchdog()
         late = dog.arm(pairs[0][0].fileno(), 5.0)
+        time.sleep(0.2)  # the watchdog is now asleep until the late deadline
         early = dog.arm(pairs[1][0].fileno(), 0.2)
         time.sleep(0.6)
         assert early.fired is True and late.fired is False

@@ -325,6 +325,27 @@ def test_session_close_after_a_failure_does_not_replace_the_error(proxy, probe_t
         engine.dispose()
 
 
+def test_closing_a_session_whose_rollback_meets_a_frozen_server_is_bounded_and_quiet(proxy):
+    """A request that fails for its own reasons (a 404, a validation error)
+    while the database freezes: get_db's close must roll back within the
+    deadline and must not raise over the request's own answer."""
+    engine = _engine(proxy.url())
+    Session = sessionmaker(bind=engine)
+    try:
+        db = Session()
+        db.execute(text("SELECT 1"))  # a transaction is open
+        proxy.freeze()
+        before = _deadline_count("rollback")
+        outcome, took = _bounded(lambda: core_db.close_quietly(db), DEADLINE_S + SLACK_S)
+        print(f"\n[PR-003] close on a frozen server: {outcome!r} in {took:.2f} s")
+        assert outcome is None, "close_quietly raised"
+        assert _deadline_count("rollback") == before + 1
+        assert engine.pool.checkedout() == 0
+    finally:
+        proxy.resume()
+        engine.dispose()
+
+
 # --- the HTTP process under a database stall (RA-3) -------------------------------
 
 
