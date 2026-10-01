@@ -19,5 +19,16 @@ COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./alembic.ini
 
+# PR-002: build identity. The release compatibility policy (app/release.json)
+# is committed and copied with app/; the commit the image is built from cannot
+# be committed inside itself, so the build injects it: --build-arg
+# GIT_SHA=<40-hex commit>. No default: an image built without it has no
+# identity and refuses to start outside ENV=local/test/ci. Exposed as OCI
+# metadata, in the runtime identity (`python -m app.scripts.release manifest`)
+# and in internal logs — never on the public /metrics endpoint.
+ARG GIT_SHA
+ENV HOMIES_BUILD_SHA=$GIT_SHA
+LABEL org.opencontainers.image.revision=$GIT_SHA
+
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -17,7 +17,7 @@ Nothing is READY without evidence named in the row.
 | 1 | Reproducible build | **PARTIAL** | Production image `backend/Dockerfile` (python:3.12-slim) now installs the verified dependency set (`backend/constraints.txt`, PR-001); built locally and checked to carry 24 migrations. Gap: base image by tag, not digest; no image registry / immutable tags; no SBOM |
 | 2 | CI green | **PARTIAL** | `.github/workflows/ci.yml`: backend (pinned install proven equal to `constraints.txt`, lint, types, migrate, tests incl. PostGIS and mandatory restore drills, coverage, pip-audit of the pinned set + canary), image (Python 3.12 and `ENV=production` asserted), gitleaks, monitoring, contracts. Runs on `main`, `claude/**`, PRs, manual; `main` keeps every commit's run (PR-001R F10). Gap: no run observed by the builder (no `gh` access); branch protection not verified |
 | 3 | Supported runtime | **READY (local evidence)** | Python 3.12.14 (test image `ops/test/Dockerfile.py312`): full SQLite 780 passed / 291 skipped, full PostgreSQL 16.4 / PostGIS 3.4.3 1070 passed / 1 skipped (Stripe live, not requested), ruff, mypy, OpenAPI drift — at `879bf56` with the pinned set. `requires-python >=3.12`; not raised |
-| 4 | Migrations | **PARTIAL** | Single Alembic head (CI gate added); empty → head verified in CI and in the image smoke test; startup never migrates outside `ENV=local`, only verifies head (`app/core/schema.py`). Gap: see §5 — app refuses any DB not at its exact head, which blocks code rollback after a migration and rolling deploys; no documented migration job/runner for staging/prod |
+| 4 | Migrations | **PARTIAL** | Single Alembic head; every migration declares `schema_transition` / `rollback_to_previous`; the database records its lineage (`schema_lineage`); the migration job `app.scripts.migrate` (migration role, advisory lock, `lock_timeout` 10 s, privilege convergence, post-verify) runs in CI; startup evaluates compatibility instead of requiring the exact head (PR-002 candidate, RELEASE-AND-MIGRATION.md). Gap: no staging/production pipeline runs the job yet |
 | 5 | Secrets | **PARTIAL** | Fail-fast validation outside dev (SEC-02): weak/default JWT/webhook secrets, Stripe key/environment mismatch, and (PR-001R F4) a `DATABASE_URL` that is not PostgreSQL, uses the published `homies`/`homies` credentials, or is the loopback dev endpoint `…:5433/homies` — compared on the parsed URL. The image defaults to `ENV=production` (F3). Errors name rules, never values; a percent-encoded password no longer leaks through Alembic. gitleaks in CI. Gap: no secret store chosen; SMTP password not validated; no rotation procedure |
 | 6 | Health | **PARTIAL** | `/healthz` liveness (no external checks). `/readyz`: on PostgreSQL a fresh dedicated connection per probe, never the application pool; 503 without DSN. **Dependency decision budget 3 s** (2 s connect, 2 s statement timeout, then the wall-clock decision). The HTTP answer can take longer, finite in every tested case (PR-001RA RA-1, PR-001R2): frozen before the handshake (cold or warm pool) ~2.0–2.5 s; frozen **after** the connection is established ~7–13 s (psycopg's cancel attempt + drain after the decision; 13.0 s with the cancel frozen too, 7.3 s on a real `docker pause`); stopped container 3.8–4.0 s (Docker DNS); unreachable resolver ~10 s (OS resolver). Always 503, pool untouched, recovery 200. The freeze-after-connect case is a regression test that fails if the deadline is removed. **Gap (PR-003):** health endpoints share the application thread pool, so hung business requests delay `/readyz` and `/healthz` (RA-3). Timings are local evidence, not an SLO |
 | 7 | Logs | **PARTIAL** | Process logging at the entry point (text or `LOG_FORMAT=json`, `LOG_LEVEL`). **Request correlation READY (local evidence):** one id on normal, handled-error, 429 and **unhandled-500** responses and on their log records (PR-001R F1: the exception is logged once, under the id, and the client gets a generic 500 with `X-Request-ID`); concurrency-tested. Alembic self-migration no longer wipes logging (F5). Gap: no log shipping/retention; uvicorn access log still plain text |
@@ -28,7 +28,7 @@ Nothing is READY without evidence named in the row.
 | 12 | Backup | **PARTIAL** | Scripts (`backend/scripts/backup/`: pg_dump custom → gzip → AES-256 → sha256) refuse the published key. Gap: no scheduled job, no offsite target, no retention, no backup of media files |
 | 13 | Restore drill | **PARTIAL** | Mandatory on every CI build (PR-001R F7: `HOMIES_REQUIRE_RESTORE_DRILL=1` turns missing `pg_dump`/`pg_restore`/database into a red run; skips are listed with `-rs`): legacy drill (`test_dr_restore_pg.py`) and Phase-1A drill (`test_dr_restore_phase1_pg.py`). Disposable databases only — see BACKUP-RESTORE.md for what this does not prove |
 | 14 | RPO / RTO | **MISSING** | **CANONICAL DECISION REQUIRED** (§4) |
-| 15 | Rollback | **PARTIAL** | Runbook outline §5. Gap: exact-head startup check (above); several destructive downgrades; no staging rehearsal |
+| 15 | Rollback | **PARTIAL** | Explicit per-release rollback declaration and a machine check (PR-002, RELEASE-AND-MIGRATION.md); runbook outline §5. Gap: no image registry, no staging rehearsal; several destructive downgrades |
 | 16 | Staging | **MISSING** | No staging environment |
 | 17 | Smoke test | **PARTIAL** | Local production-image smoke matrix (PR-001R, §6). Gap: no scripted post-deploy smoke test against an environment |
 | 18 | Load / capacity | **NOT ASSESSED** | Only diagnostic EXPLAIN on ~5 000 synthetic listings (TASK-013 branch) |
@@ -43,8 +43,8 @@ unknown variables are ignored).
 | Variable | Class | Required outside dev | Notes |
 |---|---|---|---|
 | `ENV` | public | yes | the production image defaults to `production` (PR-001R F3); `local` (config default for a developer shell, announced by a startup warning when implicit; compose sets it explicitly) self-migrates; `test`/`ci` exempt from secret checks; anything else is production-like |
-| `DATABASE_URL` | **secret** (password) | **yes** (repository dev configurations refused, PR-001/PR-001R F4) | application role `homies_app` (`ops/sql/app_role.sql`), not the owner |
-| `ALEMBIC_DATABASE_URL` | **secret** | for the migration job | owner/migration role; read by `alembic/env.py` first |
+| `DATABASE_URL` | **secret** (password) | **yes** (repository dev configurations refused, PR-001/PR-001R F4) | application role `homies_app` (`backend/app/core/sql/app_role.sql` + `app_grants.sql`), not the owner |
+| `ALEMBIC_DATABASE_URL` | **secret** | for the migration job | migration role `homies_migrator` (`backend/app/core/sql/migration_role.sql`); read by `app/scripts/migrate.py` and `alembic/env.py` |
 | `JWT_SECRET` | **secret** | yes (≥ 32 chars, not a default) | |
 | `WEBHOOK_SECRET` | **secret** | yes (≥ 16) | legacy simulated webhook |
 | `PAYMENT_PROVIDER`, `STRIPE_API_KEY`, `STRIPE_WEBHOOK_SECRET` | secret (Stripe) | no (dormant) | live keys refused outside `production` |
@@ -70,17 +70,26 @@ refused outside dev).
 
 ## 3. Startup and migrations
 
-* `ENV=local`: the app runs `alembic upgrade head` on boot (developer
-  convenience only).
-* every other environment: the app **verifies** the database is at the
-  migration head and refuses to start otherwise (D-35), then verifies the
-  application role cannot rewrite append-only tables (B5). Replicas therefore
-  never race each other running Alembic.
-* Migrations in staging/production must be a separate, single deploy step run
-  with the migration role (`ALEMBIC_DATABASE_URL`) before new app instances
-  start. Nothing in the repository runs that step yet.
-* **Risk:** the exact-head check means an app version older than the schema
-  refuses to boot. See §5.
+Release and migration compatibility (PR-002, candidate):
+[RELEASE-AND-MIGRATION.md](RELEASE-AND-MIGRATION.md).
+
+* `ENV=local`: the app runs the migration job on boot (same locked runner as a
+  deploy), then requires the exact head (developer convenience only).
+* every other environment: the app **evaluates compatibility** of its release
+  manifest and migration graph with the database revision and
+  `schema_lineage` — allowed: exact head, a supported older revision (within
+  `minimum_schema`), or a newer one reached only through EXPAND/SAFE steps;
+  everything else refuses to start. It then refuses an application role that
+  can rewrite append-only tables (B5) or change the schema / write
+  `alembic_version`, `schema_lineage`, `spatial_ref_sys` (PR-002).
+* Migrations are a separate, single deploy step: `python -m
+  app.scripts.migrate` from the release image, as the migration role
+  (`ALEMBIC_DATABASE_URL`), under a session-level advisory lock held by the
+  migrating connection and acquired within a 10 s budget enforced by the job
+  (`pg_try_advisory_lock` + monotonic deadline). Existing pre-PR-002 databases
+  first need the DBA's one-time `migration_owner.sql`. The image refuses to
+  start outside `local/test/ci` without an injected build identity.
+  CI runs it on every build. No staging or production pipeline runs it yet.
 
 ## 4. RPO / RTO — CANONICAL DECISION REQUIRED
 
@@ -101,23 +110,22 @@ RPO/RTO targets, the database hosting model, and who holds backup keys.
 
 | Layer | Current capability | Rule |
 |---|---|---|
-| Application code | Redeploy the previous image. Images are now reproducible from a commit (pinned dependencies). No registry/tags exist yet | Roll back by image, not by rebuilding |
-| Database schema | Forward-fix preferred. Several downgrades destroy data (MIGRATION-ROLLOUT.md). **`git revert` is not a database rollback**: reverting code does not undo an applied migration | Restore from backup or ship a forward migration |
+| Application code | Redeploy the previous image — only when the new release's manifest declares `rollback_to_previous = SAFE` **and** the previous image's `release check` against the live database is allowed (PR-002, N−1 only). Images are reproducible from a commit; no registry/tags exist yet | Roll back by image, not by rebuilding |
+| Database schema | Never downgraded automatically; forward-fix preferred. Several downgrades destroy data (MIGRATION-ROLLOUT.md). **`git revert` is not a database rollback** | Restore from backup or ship a forward migration |
 | Configuration | Environment variables only; no versioned config store | Keep the previous environment set with each release record |
 
-**Blocking interaction:** because startup requires `DB revision == app head`,
-rolling back the application after a migration makes the old version refuse
-to start, and a rolling deploy restarts old replicas into a refusal. Before
-production, decide one of: (a) app accepts a DB **ahead** of its head when the
-migration is declared backward-compatible (expand/contract discipline), or
-(b) every migration ships with a tested downgrade and rollback always
-downgrades first. **Decision required** (deployment design; not changed here).
+The former blocking interaction (exact-head startup made every rollback and
+rolling deploy refuse) is replaced by the PR-002 model. When a release
+declares `rollback_to_previous = BLOCKED` — PR-002 itself and TASK-014 do —
+restarting the previous image is not a recovery path: forward repair, or a
+restore to the recovery point recorded before the migration.
 
 Rollback outline (to rehearse on staging, never yet executed):
 1. Freeze deploys; record current image tag, DB revision, env set.
-2. Code-only release → redeploy previous image; verify `/readyz`, smoke test.
-3. Release with migration → if backward-compatible (future rule a), redeploy
-   previous image; else restore (BACKUP-RESTORE.md) or forward-fix.
+2. `rollback-allowed` on the current image and `release check` with the
+   previous image → both exit 0: redeploy the previous image; verify
+   `/readyz`, smoke test.
+3. Otherwise → forward-fix, or restore (BACKUP-RESTORE.md).
 4. Verify: `/readyz`, error rate, a public search, a login.
 5. Write the incident record.
 
@@ -173,8 +181,9 @@ Rollback outline (to rehearse on staging, never yet executed):
 
 ## 7. Next production tasks (proposed)
 
-PR-002 staging environment + deploy/migration job + smoke test; PR-003
-alerting destination + backup scheduling/offsite + restore rehearsal against
-staging; PR-004 schema-compatibility policy for rollback/rolling deploys;
+PR-002 release and migration compatibility (candidate: manifest, lineage,
+migration job, roles); PR-003 database client deadlines / failure containment;
+then staging environment + deploy pipeline + smoke test; alerting destination
++ backup scheduling/offsite + restore rehearsal against staging;
 PR-005 ingress (TLS, `/metrics` restriction, proxy hops), error tracking;
 PR-006 load/capacity baseline.

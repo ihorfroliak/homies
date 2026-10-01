@@ -56,6 +56,17 @@ is proportionate to risk:
 Future agents: do not recreate the audit-per-task loop that preceded IBB-001.
 Classify the task first; audit only what the class requires.
 
+### Addendum 2026-10-01 — milestone audit (D-88, owner directive)
+
+For PR-002 and the following high-risk tasks until the next milestone, the R2
+"independent review" is **deferred into a comprehensive milestone /
+production-readiness audit** that reviews them together. A task integrates into
+`main` for continued development on builder evidence (full suites, real
+PostgreSQL scenarios, mutation/fault probes with every load-bearing mutant
+killed) plus green CI. Status: **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED**.
+This is not independent verification and not production acceptance;
+production stays NOT READY / NOT DEPLOYED. R3 is unchanged.
+
 ## Summary
 
 | Cycle | Human purpose | Accepted SHA | Final verdict | Report |

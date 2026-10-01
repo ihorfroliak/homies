@@ -68,8 +68,11 @@ TABLES = ("countries", "geo_sources", "admin_areas", "localities", "geo_areas",
           # TASK-014 durable state (CONV-001A CV-N2)
           "listing_public_generations", "saved_listings", "saved_searches",
           "saved_search_anchors", "saved_search_matches", "alert_deliveries",
-          "user_notifications", "notification_preferences", "unsubscribe_tokens")
-TASK014_TABLES = TABLES[-9:]
+          "user_notifications", "notification_preferences", "unsubscribe_tokens",
+          # the schema's own record survives with it (PR-002): a restored
+          # database is judged by the same compatibility decision
+          "schema_lineage")
+TASK014_TABLES = TABLES[-10:-1]
 TOKEN = re.compile(r"/unsubscribe\?token=([A-Za-z0-9_-]+)")
 
 

@@ -1,7 +1,7 @@
 ---
 id: PROJECT-STATUS
 type: status_index
-as_of: 2026-09-30
+as_of: 2026-10-01
 current_baseline:
   id: IBB-001
   name: Integrated Backend Baseline 001
@@ -9,7 +9,7 @@ current_baseline:
   status: accepted
 production_ready: false
 deployed: false
-next_task: PR-002
+next_task: PR-003
 ---
 
 # Project status — orientation index
@@ -57,9 +57,9 @@ Naming convention: [docs/engineering/TRACEABILITY.md](engineering/TRACEABILITY.m
 ```text
 IBB-001                     ACCEPTED
   ↓
-MICRO-001                   CANDIDATE evidence / docs / test cleanup (R0/R1) — builder done, CI on the branch
+MICRO-001                   DONE      evidence / docs / test cleanup (R0/R1) — on main at dacbe9e3
   ↓
-PR-002                      PLANNED   release and migration compatibility
+PR-002                      BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — release and migration compatibility (R2, D-88)
   ↓
 PR-003                      PLANNED   database client deadlines / failure containment
   ↓
@@ -68,8 +68,12 @@ TASK-015 delta review       PLANNED   against IBB-001
 TASK-015 implementation     PLANNED   reports and moderation
 ```
 
-Nothing after MICRO-001 is implemented. MICRO-001 scope and closure:
-[docs/tasks/MICRO-001-evidence-docs-test-cleanup.md](tasks/MICRO-001-evidence-docs-test-cleanup.md).
+PR-002 is **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED** (D-88): integrated into
+`main` for continued development after green CI, not independently verified,
+not production-ready: [task](tasks/PR-002-release-migration-compatibility.md),
+[policy](production/RELEASE-AND-MIGRATION.md). Its independent review is part of
+the milestone / production-readiness audit. Nothing after it is implemented.
+MICRO-001: [scope and closure](tasks/MICRO-001-evidence-docs-test-cleanup.md).
 
 **DEFERRED:** Phase-2 transactional renting (payments, ledger), short stay,
 dedicated search/message infrastructure — by canonical decision only
@@ -79,7 +83,7 @@ dedicated search/message infrastructure — by canonical decision only
 
 Risk-based (R0 docs → builder + light checks; R1 ordinary → tests + CI;
 R2 migrations/authorisation/concurrency/privacy → independent review where
-material; R3 payments/production/deployment → independent audit + operational
+material — from PR-002 on deferred into the milestone audit (D-88); R3 payments/production/deployment → independent audit + operational
 evidence + founder approval). Details: [AUDIT-HISTORY](reviews/AUDIT-HISTORY.md#governance-change-after-ibb-001--risk-based-verification).
 
 ## Production

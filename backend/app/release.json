@@ -1,0 +1,14 @@
+{
+  "manifest_version": 1,
+  "release": "PR-002 — release and migration compatibility",
+  "schema_head": "0c4e6a8b2d91",
+  "minimum_schema": "f3b5d7e9a1c2",
+  "maximum_schema": "0c4e6a8b2d91",
+  "schema_transition": "EXPAND",
+  "rollback_to_previous": "BLOCKED",
+  "rollback_note": "The previous release (IBB-001) requires its database to be exactly at its own head f3b5d7e9a1c2, so it refuses to start once 0c4e6a8b2d91 is applied. Recovery after this release is forward repair, not a restart of the previous image.",
+  "previous_release": {
+    "id": "IBB-001",
+    "schema_head": "f3b5d7e9a1c2"
+  }
+}

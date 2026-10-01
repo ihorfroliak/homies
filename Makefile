@@ -20,10 +20,11 @@ build:
 test:
 	cd backend && python -m pytest -q
 
-# TD-01: migrations are the single schema source of truth.
-# Apply migrations to the DB in backend settings (DATABASE_URL):
+# TD-01: migrations are the single schema source of truth. PR-002: through the
+# migration job (lock, plan, lineage, grants). Local DATABASE_URL, or the
+# migration role's ALEMBIC_DATABASE_URL when set:
 db-upgrade:
-	cd backend && python -m alembic upgrade head
+	cd backend && python -m app.scripts.migrate --allow-barrier
 
 # Build a schema for the Postgres integration/migration tests, then run them.
 # TEST_DATABASE_URL must point at a throwaway Postgres database.

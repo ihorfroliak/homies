@@ -47,7 +47,8 @@ database, and the restored copy answers public search identically.
 * restore time or behaviour at production volume;
 * restore of uploaded media files (`MEDIA_ROOT`) — pg_dump does not contain them;
 * restore of roles/privileges (`--no-owner --no-privileges`; re-run
-  `ops/sql/app_role.sql` after a restore);
+  `backend/app/core/sql/app_role.sql` and `app_grants.sql` after a restore —
+  or run the migration job, which converges the grants);
 * recovery of a real production incident.
 
 Targets (RPO/RTO) are a pending founder decision — PRODUCTION-READINESS.md §4.

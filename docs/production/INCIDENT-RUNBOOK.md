@@ -49,3 +49,22 @@ dormant legacy modules and fire on nothing in Phase 1A.
   replay (no tooling yet).
 * **Suspected data exposure:** stop the affected surface, preserve logs,
   founder decision on disclosure — legal review required.
+
+## Schema incompatible at startup / migration job refused (PR-002)
+
+* Startup log `schema_compatibility decision=<CODE>` and the process exits:
+  * `TOO_OLD` / `UNMIGRATED` — the migration job has not run for this release:
+    run `python -m app.scripts.migrate` (migration role) from the same image;
+  * `TOO_NEW` — the database crossed a BARRIER or a rollback-BLOCKED step after
+    this build: this image is not a valid rollback target; deploy the current
+    release or forward-fix;
+  * `UNKNOWN_SCHEMA` / `DIVERGENT` / `MULTIPLE_DB_HEADS` — the database was
+    changed outside the migration job or restored from another branch: stop,
+    inspect `alembic_version` and `schema_lineage`, do not force.
+* Migration job exit 1 `MIGRATION_LOCK_TIMEOUT` — another migration holds the
+  lock; do not start a parallel one; wait and rerun. Exit 1
+  `BARRIER_NOT_ALLOWED` — planned maintenance only (`--allow-barrier`). Exit 2 —
+  the migration failed and rolled back; the database is at the previous
+  revision. Exit 3 — post-verify failed (lineage or grants); do not roll
+  replicas.
+* Policy and commands: [RELEASE-AND-MIGRATION.md](RELEASE-AND-MIGRATION.md).
