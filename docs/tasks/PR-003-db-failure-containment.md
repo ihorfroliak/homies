@@ -142,9 +142,23 @@ heartbeat" gap), `WorkerFailing`. 503s already count in `HighServerErrorRate`.
 
 ## Evidence (builder, local — 2026-10-01)
 
-See the CHATGPT handoff / final report for the exact runs; recorded in
-`docs/DEVLOG.md`. AFTER measurements with the Phase A probe kit: see the
-section below.
+Python 3.12.14 test image, PostgreSQL 16.4 / PostGIS 3.4.3 (disposable
+containers). Code at `ca6d820` (test-only commits after the runtime). Only runs
+that actually happened are listed.
+
+| Gate | Result |
+|---|---|
+| ruff, mypy (112 files) | clean |
+| full SQLite | 1202 passed, 423 skipped, **1 failed** — `test_task014r_repairs::test_x07…`: unasserted `pause` call; consistent with the known JWT clock flake (cause unconfirmed); the file passed 3/3 alone. An earlier run's failure (`test_approving_a_quarantined_file…`, 401) also passed alone |
+| full PostgreSQL/PostGIS (restore drills mandatory) | **1625 passed, 1 skipped** (Stripe live, not requested), 0 failed |
+| earlier full PG run (before two test fixes) | 3 failed: JWT 401 flake; restore drill duplicate `TEST_FIXTURE` source — leaked by the new property test, fixed in `7d42264`; `test_release_pg::test_a_second_runner_waits_at_most_the_lock_timeout` 12.44 s > 12 s — **pre-existing**: the same test fails on the untouched baseline `13a92ef` copy (12.57 s) on this machine, and passed in the final run |
+| PR-003 fault suite (`test_db_deadlines_pg.py`, 14 tests) | passed (in the final PG run) |
+| OpenAPI drift (in suite), Spectral, AsyncAPI | drift test passed; Spectral 0 errors (49 pre-existing warnings); AsyncAPI valid |
+| promtool | `check rules` 17 rules SUCCESS; `test rules` SUCCESS (incl. 4 new alerts) |
+| production image | built from `git archive` of the candidate with `GIT_SHA`; started `ENV=production` as `homies_app` after the PR-002 migration job; used for every AFTER probe |
+| Phase A probe kit, AFTER | table below |
+| mutation (load-bearing controls) | 21 mutants. Round 1: 19 KILLED, 2 SURVIVED (M13 quiet close, M19 watchdog wake-up order), 1 INVALID (M16, selector matched no test). Tests strengthened (`ca6d820`); round 2: M13, M16, M19 KILLED → **21/21 KILLED**. Green baseline first (118 passed). Runner and results outside the repository (`PR-003-builder/mutation/`) |
+| CI | run on the branch — see the final report |
 
 ## AFTER — same probe kit, production image of the candidate
 
