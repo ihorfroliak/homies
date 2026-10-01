@@ -29,7 +29,15 @@ goes through `make_public`, which in ONE transaction, under the row lock:
    and the durable work item `(listing_id, public_generation)`.
 
 A failure anywhere rolls all of it back: an episode never exists without its
-event and work item, nor the reverse. Transitions to not-public (pause,
+event and work item, nor the reverse.
+
+TASK-015 (04a §23): a listing whose moderation decision chain ends in a hold
+(CONTENT_EDIT_REQUIRED / VISIBILITY_LIMITED) cannot become public. The head is
+read here, under the row lock every moderation decision on the listing also
+takes, and a held listing is refused before anything is written — no status,
+no generation, no event, no work item. `make_public` is the only code that
+moves a listing into `active` (tests/test_moderation_core.py proves it
+structurally), so this one check covers publish and confirm. Transitions to not-public (pause,
 stale, archive, space archive, authority loss, silent expiry) need no
 bookkeeping: the next `make_public` reads the prior state and decides.
 """
@@ -45,6 +53,7 @@ from sqlalchemy.orm import Session
 from app.modules.events import service as events
 from app.modules.properties import freshness
 from app.modules.properties.models import ClassifiedOffer, ListingPublicGeneration
+from app.modules.trust import hold as moderation_hold
 
 LISTING_BECAME_PUBLIC = "ListingBecamePublic"
 
@@ -55,6 +64,7 @@ class Transition:
     prior_status: str | None
     became_public: bool   # a new public episode began
     generation: int
+    held: bool = False    # refused: the listing is held by moderation
 
 
 def was_public(status: str, last_confirmed: datetime | None, now: datetime) -> bool:
@@ -65,9 +75,10 @@ def was_public(status: str, last_confirmed: datetime | None, now: datetime) -> b
 
 def make_public(db: Session, offer_id: str, *, allowed_from: tuple[str, ...],
                 values: dict, now: datetime) -> Transition:
-    """Move the listing to a public state (`values` must make it `active` and
-    confirmed at `now`), counting a new episode when it was not public.
-    The caller commits; `now` is the request's `freshness.db_now`."""
+    """Move the listing to `active` — this function writes the status itself;
+    `values` carries the timestamps (confirmed at `now`) — counting a new
+    episode when it was not public. The caller commits; `now` is the request's
+    `freshness.db_now`."""
     row = db.execute(
         select(ClassifiedOffer.status, ClassifiedOffer.last_confirmed_available_at,
                ClassifiedOffer.public_generation, ClassifiedOffer.property_id)
@@ -77,9 +88,11 @@ def make_public(db: Session, offer_id: str, *, allowed_from: tuple[str, ...],
     if row is None or row.status not in allowed_from:
         return Transition(False, row.status if row else None, False,
                           row.public_generation if row else 0)
+    if moderation_hold.listing_held(db, offer_id):
+        return Transition(False, row.status, False, row.public_generation, held=True)
     opening = not was_public(row.status, row.last_confirmed_available_at, now)
     generation = row.public_generation + 1 if opening else row.public_generation
-    changes = dict(values)
+    changes = {**values, "status": "active"}  # the one write of `active` (TASK-015)
     if opening:
         changes.update(public_generation=generation, public_since=now)
     done = cast(CursorResult, db.execute(

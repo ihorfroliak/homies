@@ -86,3 +86,11 @@ def require_role(*roles: str):
         return user
 
     return checker
+
+
+def can_moderate(user) -> bool:
+    """TASK-015: who may record moderation decisions. One seam, so a distinct
+    moderator role later is a one-function change. The role is the one loaded
+    from the database for this request (get_current_user), never a token
+    claim or client input."""
+    return user is not None and user.role == "admin"

@@ -19,6 +19,10 @@ Lock order (acquire in this order, never the reverse):
     2. spaces
     3. property_authorities
     4. classified_offers
+    5. reports               (TASK-015: a moderation decision resolves the
+                              target's live reports after the listing row;
+                              report creation must never lock reports first
+                              and then any row above)
 
 `publish`, `authority.revoke` and `spaces.archive` all follow it, so none of
 them can deadlock against another.
