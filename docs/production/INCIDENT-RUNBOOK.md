@@ -8,8 +8,8 @@ this is the outline staging must exercise. Database recovery details:
 
 1. Open an incident record (time, reporter, symptom).
 2. Check `/readyz` on each instance and the Prometheus alerts page. A frozen
-   database answers 503 within the 3 s decision budget. With PR-003 (candidate,
-   not merged) the probes no longer queue behind hung business requests; on a
+   database answers 503 within the 3 s decision budget. With PR-003 (on main
+   since `451b7e56`) the probes no longer queue behind hung business requests; on a
    build without it they can (RA-3) — set orchestrator probe timeouts
    accordingly.
 3. Collect request ids (`X-Request-ID`) from failing responses; search the

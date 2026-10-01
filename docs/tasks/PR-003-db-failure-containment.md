@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED** (D-88) — candidate on its branch, **not merged to `main`**; not independently verified; **production NOT READY · NOT DEPLOYED** |
+| Status | **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED** (D-88) — candidate `e54b3eec` integrated into `main` as `451b7e56` (founder authorization, 2026-10-01); not independently verified; **production NOT READY · NOT DEPLOYED** |
 | Risk class | **R2** (database runtime, failure semantics, health) |
 | Owner (writer) | Claude Code |
 | Baseline | `main` `13a92ef77b66096021d3927fdb255b546a4ecc63` (IBB-001 + MICRO-001 + PR-002) |
