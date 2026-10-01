@@ -128,13 +128,16 @@ def test_the_image_has_no_placeholder_build_identity():
 
 
 def test_this_release_declares_its_rollback_honestly(graph):
-    """PR-002 introduces the lineage: the previous release (IBB-001) keeps the
-    exact-head rule and refuses to start on it, so rollback is BLOCKED."""
+    """TASK-015 S1 adds the moderation tables (EXPAND) and enforces holds in
+    publication; the previous release (PR-003, head 0c4e6a8b2d91) would ignore
+    them, so rollback is BLOCKED. This build reads moderation_decisions on
+    every publication, so its minimum schema is its own head (migration first)."""
     manifest = _parse(graph)
     assert manifest.schema_transition == release.EXPAND
     assert manifest.rollback_to_previous == release.BLOCKED
     assert manifest.rollback_allowed() is False
-    assert manifest.previous_schema_head == "f3b5d7e9a1c2"
+    assert manifest.previous_schema_head == "0c4e6a8b2d91"
+    assert manifest.minimum_schema == manifest.schema_head == "a3c5e7f9b1d4"
 
 
 # --- malformed manifests are errors, never compatible -----------------------------------------
@@ -241,7 +244,9 @@ def test_rollback_metadata_fails_closed(case, data, allowed):
 
 
 def test_every_migration_has_valid_declarations(graph):
-    assert len(graph.steps) == len(REGISTRY) + 1
+    # REGISTRY classifies the 26 steps before PR-002; every later step
+    # (PR-002's lineage, TASK-015 S1's moderation core, …) declares itself.
+    assert len(graph.steps) == len(REGISTRY) + 2
     for step in graph.steps.values():
         assert step.schema_transition in release.STEP_TRANSITIONS
         assert step.rollback_to_previous in release.ROLLBACK_VALUES

@@ -38,6 +38,9 @@ from app.modules.properties import freshness
 from app.modules.properties.models import ClassifiedOffer
 from app.modules.saved import service as saved_service
 from app.modules.saved.models import SavedSearch
+from app.modules.identity.models import User
+from app.modules.trust import decisions, hold
+from app.modules.trust.models import ModerationReviewRequest, Report
 from tests.conftest import (
     TEST_DATABASE_URL,
     auth,
@@ -71,8 +74,13 @@ TABLES = ("countries", "geo_sources", "admin_areas", "localities", "geo_areas",
           "user_notifications", "notification_preferences", "unsubscribe_tokens",
           # the schema's own record survives with it (PR-002): a restored
           # database is judged by the same compatibility decision
-          "schema_lineage")
-TASK014_TABLES = TABLES[-10:-1]
+          "schema_lineage",
+          # TASK-015: reports and the immutable moderation decision chain
+          "reports", "moderation_decisions", "moderation_review_requests")
+TASK014_TABLES = ("listing_public_generations", "saved_listings", "saved_searches",
+                  "saved_search_anchors", "saved_search_matches", "alert_deliveries",
+                  "user_notifications", "notification_preferences", "unsubscribe_tokens")
+TASK015_TABLES = ("reports", "moderation_decisions", "moderation_review_requests")
 TOKEN = re.compile(r"/unsubscribe\?token=([A-Za-z0-9_-]+)")
 
 
@@ -132,7 +140,41 @@ def _seed(pg_client, pg_session, pg_migrated_engine, monkeypatch):
                     "WHERE id = :o"),
                {"t": datetime.now(timezone.utc) - timedelta(days=30), "o": offers[2]})
     db.commit()
+    _seed_moderation(pg_client, sessions, offers[2], renter_email="dr-phase1-renter@example.com")
     return offers, saved.json()["id"], tokens
+
+
+def _seed_moderation(pg_client, sessions, listing_id, *, renter_email):
+    """A report and a hold → release → hold chain on the already non-public
+    listing (the public answer of the drill is unchanged), plus an open review
+    request on the current hold."""
+    moderator_email = "dr-phase1-moderator@example.com"
+    register_and_login(pg_client, moderator_email, "guest")
+    with sessions() as db:
+        db.execute(text("UPDATE users SET role = 'admin' WHERE email = :e"),
+                   {"e": moderator_email})
+        moderator = db.scalar(select(User).where(User.email == moderator_email))
+        renter_id = db.scalar(select(User.id).where(User.email == renter_email))
+        report = Report(reporter_user_id=renter_id, target_type="LISTING",
+                        target_id=listing_id, listing_id=listing_id, category="SCAM",
+                        severity="HIGH", snapshot={"title": "Przywrócone 2"})
+        db.add(report)
+        db.commit()
+        first = decisions.apply_listing_decision(
+            db, actor=moderator, listing_id=listing_id, action="VISIBILITY_LIMITED",
+            reason_code="SCAM", expected_head_decision_id=None, report_id=report.id)
+        db.commit()
+        release = decisions.apply_listing_decision(
+            db, actor=moderator, listing_id=listing_id, action="NO_ACTION",
+            reason_code="REINSTATED_DECISION_ERROR",
+            expected_head_decision_id=first.decision_id)
+        db.commit()
+        again = decisions.apply_listing_decision(
+            db, actor=moderator, listing_id=listing_id, action="CONTENT_EDIT_REQUIRED",
+            reason_code="MISLEADING_PRICE", expected_head_decision_id=release.decision_id)
+        db.add(ModerationReviewRequest(decision_id=again.decision_id,
+                                       requested_by_user_id=moderator.id, note="poprawione"))
+        db.commit()
 
 
 def _rows(conn, table):
@@ -159,6 +201,9 @@ def test_phase1_data_survives_backup_destroy_restore(pg_client, pg_session,
         # Every TASK-014 table holds real state, or "identical after restore" proves nothing.
         assert all(before[t] for t in TASK014_TABLES), \
             {t: len(before[t]) for t in TASK014_TABLES}
+        assert all(before[t] for t in TASK015_TABLES), \
+            {t: len(before[t]) for t in TASK015_TABLES}
+        assert len(before["moderation_decisions"]) == 3
         assert conn.scalar(text("SELECT count(DISTINCT channel) FROM alert_deliveries")) == 2
         geogs_before = conn.execute(text(
             "SELECT p.id, ST_AsText(p.exact_geog::geometry), ST_AsText(o.public_geog::geometry) "
@@ -236,6 +281,28 @@ def test_phase1_data_survives_backup_destroy_restore(pg_client, pg_session,
         with pytest.raises(IntegrityError), restored.begin() as conn:  # one match per episode
             conn.execute(text("INSERT INTO saved_search_matches SELECT * FROM "
                               "saved_search_matches LIMIT 1"))
+        # TASK-015 on the copy: the chain and its head survive, the decisions
+        # stay immutable, and the chain still cannot fork.
+        with Session(restored) as db:
+            held = [hold.listing_held(db, o) for o in offers]
+        assert held == [False, False, True]
+        with pytest.raises(DBAPIError), restored.begin() as conn:  # append-only trigger
+            conn.execute(text("UPDATE moderation_decisions SET reason_code = 'OTHER'"))
+        with pytest.raises(DBAPIError), restored.begin() as conn:
+            conn.execute(text("DELETE FROM moderation_decisions"))
+        with pytest.raises(IntegrityError) as caught, restored.begin() as conn:  # no fork
+            conn.execute(text("CREATE TEMP TABLE twin AS SELECT * FROM moderation_decisions "
+                              "WHERE supersedes_decision_id IS NOT NULL LIMIT 1"))
+            conn.execute(text("UPDATE twin SET id = gen_random_uuid()::text"))
+            conn.execute(text("INSERT INTO moderation_decisions SELECT * FROM twin"))
+        assert caught.value.orig.diag.constraint_name == "uq_moderation_decisions_supersedes"
+        with pytest.raises(IntegrityError), restored.begin() as conn:  # one live report
+            conn.execute(text("CREATE TEMP TABLE r2 AS SELECT * FROM reports LIMIT 1"))
+            conn.execute(text("UPDATE r2 SET id = gen_random_uuid()::text, status = 'OPEN', "
+                              "resolution_decision_id = NULL"))
+            conn.execute(text("INSERT INTO reports SELECT * FROM r2"))
+            conn.execute(text("UPDATE r2 SET id = gen_random_uuid()::text"))
+            conn.execute(text("INSERT INTO reports SELECT * FROM r2"))  # a second live one
         with pytest.raises(IntegrityError), restored.begin() as conn:  # one address, one property
             conn.execute(text("UPDATE properties SET address_id = "
                               "(SELECT address_id FROM properties ORDER BY id LIMIT 1) "

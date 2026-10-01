@@ -27,6 +27,7 @@ from tests.test_geography_pg import _migrate, scratch_url  # noqa: F401 — fixt
 
 pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="TEST_DATABASE_URL not set")
 
+LINEAGE_REVISION = "0c4e6a8b2d91"
 IBB001_HEAD = "f3b5d7e9a1c2"
 MIGRATOR_PASSWORD = "migrator-test-only-not-a-secret"
 BUILD_SHA = "5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98"
@@ -81,8 +82,14 @@ def test_a_fresh_database_records_its_whole_lineage(scratch_url):  # noqa: F811
     assert lineage == {r: graph.steps[r] for r in graph.ancestors(graph.head)}
     recorded = dict(_scalar(scratch_url, "SELECT json_object_agg(revision, recorded_by) "
                                          "FROM schema_lineage"))
-    assert recorded.pop(graph.head) == "MIGRATION"
-    assert set(recorded.values()) == {"BACKFILL"} and len(recorded) == len(graph.steps) - 1
+    # The lineage migration backfills every step before it; it and every later
+    # step (TASK-015 S1, …) are recorded by the migration itself.
+    applied_since = {r for r in recorded
+                     if graph.is_ancestor_or_equal(LINEAGE_REVISION, r)}
+    assert graph.head in applied_since and LINEAGE_REVISION in applied_since
+    assert {recorded.pop(r) for r in applied_since} == {"MIGRATION"}
+    assert set(recorded.values()) == {"BACKFILL"}
+    assert len(recorded) == len(graph.steps) - len(applied_since)
     # a second run changes nothing
     assert migrate.upgrade(scratch_url)["result"] == "nothing_to_do"
 
@@ -98,21 +105,23 @@ def test_the_plan_changes_nothing_and_a_barrier_needs_permission(scratch_url):  
 
 
 def test_bootstrap_from_ibb001_and_back(scratch_url, monkeypatch):  # noqa: F811
-    """An IBB-001 database has no lineage: this build still runs on it (its
-    minimum schema), the migration job adds the lineage, and a dev downgrade
-    removes it again."""
+    """An IBB-001 database has no lineage. Since TASK-015 S1 this build needs
+    its own head (it reads moderation_decisions on every publication), so it
+    refuses such a database until the migration job has run: the job adds the
+    lineage and the moderation tables in one run, and a dev downgrade removes
+    the lineage again."""
     _migrate(scratch_url, IBB001_HEAD)
     monkeypatch.setattr(settings, "database_url", scratch_url)
     decision, _ = schema.check_compatibility()
-    assert decision.code == release.BEHIND_SUPPORTED
+    assert decision.code == release.TOO_OLD
     result = migrate.upgrade(scratch_url)
     assert (result["from"], result["to"]) == (IBB001_HEAD, _graph().head)
-    assert [s["revision"] for s in result["steps"]] == [_graph().head]
+    assert [s["revision"] for s in result["steps"]] == [LINEAGE_REVISION, _graph().head]
     assert len(_lineage(scratch_url)) == len(_graph().steps)
     assert schema.check_compatibility()[0].code == release.EXACT
     _migrate(scratch_url, IBB001_HEAD, down=True)
     assert _lineage(scratch_url) is None
-    assert schema.check_compatibility()[0].code == release.BEHIND_SUPPORTED
+    assert schema.check_compatibility()[0].code == release.TOO_OLD
 
 
 # --- startup decisions against real revisions --------------------------------------------------
@@ -316,8 +325,9 @@ def test_two_concurrent_runners_migrate_exactly_once(scratch_url):  # noqa: F811
         t.join(60)
     assert sorted(results) == ["migrated", "nothing_to_do"], results
     assert _scalar(scratch_url, "SELECT count(*) FROM alembic_version") == 1
+    # Exactly once: each step after IBB-001 recorded by exactly one runner.
     assert _scalar(scratch_url, "SELECT count(*) FROM schema_lineage WHERE recorded_by = "
-                                "'MIGRATION'") == 1
+                                "'MIGRATION'") == len(_graph().between(IBB001_HEAD, _graph().head))
 
 
 # --- roles: a real, non-superuser migration role and the application role ------------------
