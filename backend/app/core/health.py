@@ -26,9 +26,11 @@ refuses to boot unless migrations are at head (D-35).
 """
 
 import asyncio
+import sys
 import time
 from dataclasses import dataclass
 
+import anyio
 import psycopg
 from prometheus_client import Gauge
 from sqlalchemy import text
@@ -83,8 +85,13 @@ DATABASE_CHECKED_AT = Gauge(
 #       resolver's own timeouts, not this budget, decide that case.
 #   Every case fails closed (503, exception class name only). There is no
 #   universal end-to-end wall-clock guarantee, and none is claimed.
-# * Not covered here: health endpoints share the application thread pool, so
-#   hung business requests can delay them (PR-001RA RA-3) — PR-003 debt.
+# * PR-003 (RA-3 closed): the endpoints no longer share the application thread
+#   pool. /readyz awaits `check_database_async` on the event loop: one shared
+#   in-flight probe per database (single flight — a probe storm opens one
+#   connection, not one per caller), a response at the decision budget, and the
+#   driver's clean-up left to finish in the background instead of in the
+#   response. Business requests stuck on the database hold pool threads, not
+#   the event loop, so they cannot delay /healthz, /readyz or /metrics.
 PROBE_STATEMENT_TIMEOUT_MS = 2000
 PROBE_CONNECT_TIMEOUT_S = 2  # libpq minimum is 2
 PROBE_DEADLINE_S = 3.0  # dependency decision budget (see above), not end-to-end
@@ -115,15 +122,84 @@ def check_database(database_url: str | None = None) -> CheckResult:
         if url.startswith("postgresql"):
             _probe_postgres(url)
         else:
-            with engine.connect() as conn, conn.begin():
-                conn.execute(text("SELECT 1"))
-    except (SQLAlchemyError, psycopg.Error, OSError, TimeoutError) as exc:
-        _publish(up=False)
-        return CheckResult(
-            ok=False,
-            latency_ms=round((time.perf_counter() - started) * 1000, 2),
-            error=type(exc).__name__,
-        )
+            _probe_engine()
+    except _PROBE_ERRORS as exc:
+        return _failed(started, exc)
+    return _succeeded(started)
+
+
+async def check_database_async(database_url: str | None = None) -> CheckResult:
+    """`check_database` for the event loop (PR-003): what /readyz awaits.
+
+    PostgreSQL: joins the in-flight probe of this database or starts one, and
+    decides at PROBE_DEADLINE_S whatever the probe is still doing; no thread
+    pool is involved. SQLite (tests) runs in a worker thread — it cannot hang
+    on a network.
+    """
+    url = database_url or settings.database_url
+    started = time.perf_counter()
+    try:
+        if url.startswith("postgresql"):
+            if _is_proactor(asyncio.get_running_loop()):
+                # psycopg's async connection cannot run on Windows' proactor
+                # loop (a developer's machine): the threaded probe instead.
+                return await anyio.to_thread.run_sync(check_database, url)
+            probe = _shared_probe(_libpq_url(url))
+            done, _ = await asyncio.wait({probe}, timeout=PROBE_DEADLINE_S)
+            if not done:
+                raise TimeoutError
+            probe.result()
+        else:
+            await anyio.to_thread.run_sync(_probe_engine)
+    except _PROBE_ERRORS as exc:
+        return _failed(started, exc)
+    return _succeeded(started)
+
+
+_PROBE_ERRORS = (SQLAlchemyError, psycopg.Error, OSError, TimeoutError)
+
+# One in-flight probe per database. Keyed by the libpq URI; a task belongs to
+# the loop that made it, so another loop never joins it.
+_inflight: dict[str, asyncio.Task[None]] = {}
+
+
+def _shared_probe(conninfo: str) -> asyncio.Task[None]:
+    loop = asyncio.get_running_loop()
+    task = _inflight.get(conninfo)
+    if task is None or task.done() or task.get_loop() is not loop:
+        task = loop.create_task(_probe_postgres_async(conninfo), name="homies-readiness-probe")
+        _inflight[conninfo] = task
+
+        def _settled(t: asyncio.Task[None], key: str = conninfo) -> None:
+            if _inflight.get(key) is t:
+                del _inflight[key]
+            if not t.cancelled():
+                t.exception()  # retrieved: a failed probe is an answer, not a loop warning
+
+        task.add_done_callback(_settled)
+    return task
+
+
+def _is_proactor(loop: asyncio.AbstractEventLoop) -> bool:
+    proactor = getattr(asyncio, "ProactorEventLoop", None) if sys.platform == "win32" else None
+    return proactor is not None and isinstance(loop, proactor)
+
+
+def _probe_engine() -> None:
+    with engine.connect() as conn, conn.begin():
+        conn.execute(text("SELECT 1"))
+
+
+def _failed(started: float, exc: BaseException) -> CheckResult:
+    _publish(up=False)
+    return CheckResult(
+        ok=False,
+        latency_ms=round((time.perf_counter() - started) * 1000, 2),
+        error=type(exc).__name__,
+    )
+
+
+def _succeeded(started: float) -> CheckResult:
     _publish(up=True)
     return CheckResult(ok=True, latency_ms=round((time.perf_counter() - started) * 1000, 2))
 

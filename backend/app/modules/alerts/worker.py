@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import SessionLocal
+from app.core.worker_loop import run_loop
 from app.modules.alerts import delivery, matching, metrics
 from app.modules.alerts.models import AlertDelivery
 from app.modules.alerts.sql import insert_ignore
@@ -146,15 +147,17 @@ class AlertWorker:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 
-    def _loop(self):
+    def _loop(self) -> None:
         passes = 0
-        while not self._stop.is_set():
+
+        def one_pass() -> None:
+            nonlocal passes
             passes += 1
-            try:
-                run_once(reconcile_now=passes % settings.saved_search_reconcile_every == 1)
-            except Exception:  # noqa: BLE001 — the worker must never die on one bad pass
-                log.exception("alert worker pass failed")
-            self._stop.wait(settings.saved_search_worker_interval_seconds)
+            run_once(reconcile_now=passes % settings.saved_search_reconcile_every == 1)
+
+        # PR-003: the shared loop (failure backoff, worker metrics).
+        run_loop("saved-search-alerts", self._stop, one_pass,
+                 lambda: settings.saved_search_worker_interval_seconds)
 
     def start(self):
         if self._thread and self._thread.is_alive():

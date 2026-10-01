@@ -47,6 +47,43 @@ engine = create_engine(
 TestingSession = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
+def forbid_sql_on_the_event_loop(target_engine) -> None:
+    """PR-003: no SQL may run on a thread that is running an event loop.
+
+    A blocking database call there freezes the whole process — every request
+    and the health endpoints with it — for as long as the database does not
+    answer (PR-003 Phase A, E7: `upload_media`). Sync handlers run in the
+    thread pool and pass; an `async def` handler that touches the session
+    directly fails every test that reaches it. LEGACY_DORMANT runtime tests
+    are exempt (the dormant Stripe webhook is such a handler; it is not
+    composed into the Phase-1 app).
+    """
+    import asyncio
+
+    from sqlalchemy import event
+
+    @event.listens_for(target_engine, "before_cursor_execute")
+    def _not_on_the_loop(conn, cursor, statement, parameters, context, executemany):
+        if not _EVENT_LOOP_SQL_GUARD["enabled"]:
+            return
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        raise AssertionError("SQL executed on an event-loop thread: " + statement[:80])
+
+
+_EVENT_LOOP_SQL_GUARD = {"enabled": True}
+forbid_sql_on_the_event_loop(engine)
+
+
+@pytest.fixture(autouse=True)
+def _event_loop_sql_guard(request):
+    _EVENT_LOOP_SQL_GUARD["enabled"] = request.node.get_closest_marker("legacy_runtime") is None
+    yield
+    _EVENT_LOOP_SQL_GUARD["enabled"] = True
+
+
 def _seed_attribute_catalogue():
     """The fast suite builds its schema with create_all, which runs no seeds.
 
@@ -281,12 +318,19 @@ def pg_migrated_engine():
     if not TEST_DATABASE_URL:
         pytest.skip("TEST_DATABASE_URL not set — Postgres migration tests skipped")
     from alembic import command
-    from sqlalchemy import create_engine, text
+    from sqlalchemy import text
 
     from app.core.schema import alembic_config
 
+    from app.core.db import create_bounded_engine
+
     os.environ["ALEMBIC_DATABASE_URL"] = TEST_DATABASE_URL  # env.py reads this first
-    eng = create_engine(TEST_DATABASE_URL)
+    # PR-003: the application's own engine shape — bounded pool wait, server
+    # statement/lock/idle timeouts and the client deadline — so the Postgres
+    # suite runs under the deadlines production runs under, and every test
+    # that hooks this engine observes the requests' real traffic.
+    eng = create_bounded_engine(TEST_DATABASE_URL)
+    forbid_sql_on_the_event_loop(eng)
     with eng.begin() as conn:  # fresh schema every session
         conn.execute(text("DROP SCHEMA public CASCADE"))
         conn.execute(text("CREATE SCHEMA public"))

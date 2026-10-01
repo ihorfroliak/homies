@@ -740,3 +740,43 @@ NOT READY, NOT DEPLOYED.
 
 **Далі:** PR-003 (дедлайни клієнта БД, ізоляція збоїв).
 
+
+## 2026-10-01 — PR-002 у main; CTX-001; PR-003: дедлайни БД і локалізація збоїв (R2)
+
+**Інтеграція PR-002:** кандидат `be26fcb8` (CI 5/5) злито `--no-ff` у `main`:
+`13a92ef77b66096021d3927fdb255b546a4ecc63` (батьки `dacbe9e3` + `be26fcb8`,
+дерево = `be26fcb`). PR-003 гілкується від нього.
+
+**CTX-001** (окремі коміти `93f2c05`, `64631b1`): хуки PreCompact / PostCompact /
+SessionStart, правило `.claude/rules/context-survival.md`,
+`CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80` (лише знижує поріг). Перевірено реальною
+автокомпакцією цієї сесії; машинні шляхи — у незакоміченому `settings.local.json`.
+
+**PR-003 — що виміряно ДО (13a92ef, production-образ, проксі й напряму):**
+замерзла БД вішала теплі з'єднання пулу, pre-ping, COMMIT, ROLLBACK, воркери й
+старт назавжди; `/healthz` до 75.9 с; після відновлення 30 с без жодного 200;
+записи, які клієнт покинув, комітились пізніше; воркери або мовчки висіли, або
+писали 126 рядків логів/с; `upload_media` виконував SQL на event loop.
+
+**Зроблено:**
+- Одна політика дедлайнів (D-89): connect 3 с, пул 5 с, statement 5 с, lock 2 с,
+  idle-in-tx 60 с, client check 2 с; клієнтський дедлайн 7 с на кожен
+  блокуючий виклик драйвера — watchdog робить shutdown сокета (не close, без
+  cancel), з'єднання інвалідоване, пул відновлюється сам.
+- 503 + Retry-After за причиною замість 500; покинутий COMMIT = «результат
+  невідомий» (D-90). Повтор: saved search / saved listing / viewing —
+  розв'язуються природним ключем; створення property/classified/message —
+  можливий дубль (борг, Idempotency-Key — окремо).
+- `/healthz`, `/readyz`, `/metrics` — async, не залежать від пулу потоків;
+  readiness — single-flight на event loop (D-91). RA-3 закрито кандидатом.
+- Спільний цикл воркерів: backoff, метрики живості, алерти `WorkerOverdue`,
+  `WorkerFailing`, а також `DatabaseStoppedAnswering`, `DatabaseWriteOutcomeUnknown`.
+- Перевірки старту — на обмеженому engine. Джоба міграцій (PR-002) не змінена — борг.
+
+**Перевірено (builder):** див. [task](tasks/PR-003-db-failure-containment.md).
+
+**Статус:** BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (D-88); **не злито в
+main** — рішення власника. Production: NOT READY, NOT DEPLOYED.
+
+**Поза обсягом:** JWT leeway — лише рекомендація MICRO-002 (поза репозиторієм);
+DATA-001 — лише пропозиція (поза репозиторієм), не прийнята.

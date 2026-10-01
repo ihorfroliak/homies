@@ -15,6 +15,7 @@ import threading
 
 from app.core.config import settings
 from app.core.db import SessionLocal
+from app.core.worker_loop import run_loop
 from app.modules.properties import freshness
 
 log = logging.getLogger("homies.freshness")
@@ -38,13 +39,13 @@ class FreshnessWorker:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 
-    def _loop(self):
-        while not self._stop.is_set():
-            try:
-                log.info("listing freshness sweep: %s", run_once())
-            except Exception:  # noqa: BLE001 — the loop must survive one bad pass
-                log.exception("listing freshness sweep failed")
-            self._stop.wait(settings.listing_freshness_interval_seconds)
+    def _pass(self) -> None:
+        log.info("listing freshness sweep: %s", run_once())
+
+    def _loop(self) -> None:
+        # PR-003: the shared loop (failure backoff, worker metrics).
+        run_loop("listing-freshness", self._stop, self._pass,
+                 lambda: settings.listing_freshness_interval_seconds)
 
     def start(self):
         if self._thread and self._thread.is_alive():

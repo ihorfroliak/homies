@@ -66,6 +66,24 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
+## PR-003 — database client deadlines and failure containment (2026-10-01, builder)
+
+**BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (R2, D-88).** Candidate on
+`claude/PR-003-db-failure-containment` from `main` `13a92ef` (PR-002
+integrated); **not merged to `main`** — founder decision. Not independently
+verified; part of the milestone / production-readiness audit. Production:
+**NOT READY · NOT DEPLOYED.** [Task](../tasks/PR-003-db-failure-containment.md) ·
+D-89 … D-91.
+
+| Area | Classification | State |
+|---|---|---|
+| database deadline policy (`app/core/db.py`, `db_deadline.py`) | **CANDIDATE (builder verified)** | one policy; connect 3 s, pool wait 5 s, server statement 5 s / lock 2 s / idle-in-transaction 60 s / client check 2 s, client deadline 7 s with socket shutdown and invalidation |
+| failure semantics (`app/core/db_failures.py`) | **CANDIDATE (builder verified)** | 503 + Retry-After by bounded reason; abandoned COMMIT = outcome unknown |
+| health isolation | **CANDIDATE (builder verified)** | ops endpoints async; single-flight async readiness; no SQL on the event loop — closes PR-001RA RA-3 |
+| workers (`app/core/worker_loop.py`) | **CANDIDATE (builder verified)** | shared loop, failure backoff, liveness metric and alerts |
+| migration job connect/statement bounds | **DEBT** | `migrate.py` (PR-002) unchanged; relies on the job runner's timeout |
+| idempotency of creates (property, classified, message) | **DEBT** | a retry after an unknown COMMIT can duplicate; follow-up |
+
 ## PR-002 — release and migration compatibility (2026-10-01, builder)
 
 **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (R2, D-88).** Branch
@@ -83,7 +101,7 @@ DEPLOYED.** [Task](../tasks/PR-002-release-migration-compatibility.md) ·
 | `schema_lineage` (migration `0c4e6a8b2d91`) | **CANONICAL_ACTIVE (builder verified)** | 26 historical steps backfilled; later steps recorded by env.py |
 | migration job (`app/scripts/migrate.py`) | **CANONICAL_ACTIVE (builder verified)** | migration role; session advisory lock on the migrating connection, 10 s try-lock budget; grant convergence; post-verify incl. privileges on every table/sequence; runs in CI |
 | roles (`app/core/sql/`) | **CANONICAL_ACTIVE (builder verified)** | `homies_migrator` / `homies_app` separation; `migration_owner.sql` for pre-PR-002 databases; closes Phase A F-A3, F-A4, F-A5 by builder |
-| PR-003 debt (request DB deadlines, health isolation) | **DEFERRED** | unchanged |
+| PR-003 debt (request DB deadlines, health isolation) | **DEFERRED** | addressed by the PR-003 candidate (section above), not merged |
 
 ## Integrated Backend Baseline 001 — ACCEPTED (2026-09-30)
 
