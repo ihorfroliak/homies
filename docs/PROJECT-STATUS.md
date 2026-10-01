@@ -9,7 +9,7 @@ current_baseline:
   status: accepted
 production_ready: false
 deployed: false
-next_task: PR-003
+next_task: PR-003 merge decision (founder), then TASK-015 delta review
 ---
 
 # Project status — orientation index
@@ -20,7 +20,7 @@ next_task: PR-003
 > and [DECISIONS](DECISIONS.md). If this page disagrees with them, they win —
 > fix this page. Nothing is accepted because it is listed here.
 
-**As of:** 2026-09-30 (written by BASELINE-001)
+**As of:** 2026-10-01 (BASELINE-001; updated by PR-002 integration and PR-003)
 
 ## Current accepted backend baseline
 
@@ -59,9 +59,9 @@ IBB-001                     ACCEPTED
   ↓
 MICRO-001                   DONE      evidence / docs / test cleanup (R0/R1) — on main at dacbe9e3
   ↓
-PR-002                      BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — release and migration compatibility (R2, D-88)
+PR-002                      BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — release and migration compatibility (R2, D-88) — on main at 13a92ef7 (merge of be26fcb8)
   ↓
-PR-003                      PLANNED   database client deadlines / failure containment
+PR-003                      BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — database client deadlines / failure containment (R2, D-88) — candidate on its branch, NOT merged
   ↓
 TASK-015 delta review       PLANNED   against IBB-001
   ↓
@@ -69,10 +69,17 @@ TASK-015 implementation     PLANNED   reports and moderation
 ```
 
 PR-002 is **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED** (D-88): integrated into
-`main` for continued development after green CI, not independently verified,
-not production-ready: [task](tasks/PR-002-release-migration-compatibility.md),
+`main` for continued development after green CI — merge commit
+`13a92ef77b66096021d3927fdb255b546a4ecc63` (parents `dacbe9e3` + candidate
+`be26fcb8`, CI 5/5) — not independently verified, not production-ready:
+[task](tasks/PR-002-release-migration-compatibility.md),
 [policy](production/RELEASE-AND-MIGRATION.md). Its independent review is part of
-the milestone / production-readiness audit. Nothing after it is implemented.
+the milestone / production-readiness audit.
+
+PR-003 is **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED** (D-88) as a candidate
+on `claude/PR-003-db-failure-containment`, **not merged to `main`** (founder
+decision): [task](tasks/PR-003-db-failure-containment.md), D-89 … D-91. It
+closes PR-001RA RA-3. Nothing after it is implemented.
 MICRO-001: [scope and closure](tasks/MICRO-001-evidence-docs-test-cleanup.md).
 
 **DEFERRED:** Phase-2 transactional renting (payments, ledger), short stay,

@@ -8,9 +8,10 @@ this is the outline staging must exercise. Database recovery details:
 
 1. Open an incident record (time, reporter, symptom).
 2. Check `/readyz` on each instance and the Prometheus alerts page. A frozen
-   database answers 503 after a few seconds, but a hung query can hold a probe
-   for up to ~13 s, and under heavy traffic probes queue behind hung business
-   requests (PR-003 debt) — set orchestrator probe timeouts accordingly.
+   database answers 503 within the 3 s decision budget. With PR-003 (candidate,
+   not merged) the probes no longer queue behind hung business requests; on a
+   build without it they can (RA-3) — set orchestrator probe timeouts
+   accordingly.
 3. Collect request ids (`X-Request-ID`) from failing responses; search the
    logs by them (`request_id` field in `LOG_FORMAT=json`).
 4. Freeze deploys.
@@ -25,8 +26,10 @@ this is the outline staging must exercise. Database recovery details:
 | Latency | HTTP histogram | `homies_http_request_duration_seconds` | p95 (`HighRequestLatency`) | ticket | rule **yes** |
 | Migration / startup failure | process exits; readiness never green | container logs (`SchemaNotMigratedError`, `InsecureConfigurationError`, `LedgerPrivilegeError`) + `up` | deploy step fails; instance never ready | deploy pipeline + page | **no** pipeline exists |
 | Notification backlog | outbox depth as last reported by a running worker | `homies_notification_queue_depth` (DB-wide, same on every replica), `homies_notifications_dead_total` | `sum(max by (status)(…pending|failed)) > 100` for 15 m (`NotificationBacklogGrowing`; replica-safe, PR-001R F6); any dead (`NotificationsDeadLettered`) | ticket | rules **yes** |
-| Freshness sweep stopped | — | — | (off by default; visibility never depends on it) | ticket | **no** metric |
-| Notification worker stopped | — | the queue gauge is refreshed by the worker itself, so a stopped worker freezes or drops it | needs a worker heartbeat | ticket | **no** (observability track) |
+| Worker hung, dead or failing (notifications, saved-search-alerts, listing-freshness) | worker liveness | `homies_worker_next_pass_due_timestamp_seconds`, `homies_worker_consecutive_failures`, `homies_worker_passes_total` | overdue > 5 m (`WorkerOverdue`); ≥ 5 failed passes for 10 m (`WorkerFailing`) | ticket | rules **yes** (PR-003 candidate) |
+| Database stops answering established sessions | client deadline | `homies_db_client_deadline_exceeded_total{operation}` | ≥ 3 in 5 m for 5 m (`DatabaseStoppedAnswering`) | ticket | rule **yes** (PR-003 candidate) |
+| Write with unknown outcome | abandoned COMMIT | `homies_db_unavailable_responses_total{reason="commit_unknown"}` | any in 1 h (`DatabaseWriteOutcomeUnknown`) | ticket | rule **yes** (PR-003 candidate) |
+| Requests refused for database reasons | 503 by reason | `homies_db_unavailable_responses_total{reason}`; pool / thread-pool gauges | counted in `HighServerErrorRate` | page | rule **yes** |
 | Disk / storage | node metrics | node-exporter / provider | < 15 % free | page | **no** (no infrastructure) |
 | Backup failure | job exit / artifact age | backup job metrics | no successful backup in 26 h | page | **no** (no scheduled job) |
 | Restore verification failure | drill result | CI restore drills; scheduled staging drill | drill red | ticket | CI **yes**; scheduled **no** |
@@ -49,6 +52,30 @@ dormant legacy modules and fire on nothing in Phase 1A.
   replay (no tooling yet).
 * **Suspected data exposure:** stop the affected surface, preserve logs,
   founder decision on disclosure — legal review required.
+
+## Database stall — frozen, partitioned or overloaded database (PR-003)
+
+What the application does by itself (PR-003 candidate): every database wait is
+bounded (connect 3 s, pool 5 s, lock 2 s, statement 5 s, no answer at all 7 s);
+requests get 503 + `Retry-After: 5`; health, readiness and metrics keep
+answering; workers back off; nothing needs a restart when the database returns.
+
+1. Signals: `DatabaseUnreachable` (readiness), `DatabaseStoppedAnswering`,
+   `HighServerErrorRate`; `homies_db_unavailable_responses_total` by reason
+   says *which* wait failed (`lock_timeout`/`statement_timeout` = the database
+   is alive but contended or slow; `client_deadline`/`connection` = it is not
+   answering or not reachable; `pool_timeout` = this instance's pool is
+   exhausted — check `homies_db_pool_connections_in_use`).
+2. Do **not** restart healthy-but-waiting replicas: liveness does not depend on
+   the database by design; restarting stampedes the database at recovery.
+3. Database host: paused or stalled VM, CPU steal, storage latency, network
+   path; `pg_stat_activity` for long `active` / `idle in transaction` sessions
+   and lock chains.
+4. After recovery, `DatabaseWriteOutcomeUnknown`: list the affected requests by
+   request id in the logs (`database unavailable (commit_unknown)`), and check
+   for duplicated creates (property, classified, message) from client retries.
+5. The migration job is **not** bounded by PR-003: run it under the job
+   runner's own timeout.
 
 ## Schema incompatible at startup / migration job refused (PR-002)
 
