@@ -66,6 +66,21 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
+## TASK-015 Slice 1 — moderation core and publication hold (2026-10-01, builder)
+
+**BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (R2, D-88).** Candidate on
+`claude/TASK-015-s1-moderation-core` from `main` `985db7ae` (PR-003 + Phase A);
+**not merged**. [Task](../tasks/TASK-015-S1-moderation-core.md) · D-92 (founder
+D-1 … D-9) · D-93 · 04a §23. Production: **NOT READY · NOT DEPLOYED.**
+
+| Area | Classification | State |
+|---|---|---|
+| `trust.reports` (04 §64) | **CANDIDATE (schema only)** | table, live-report key; no API until Slice 2 |
+| `trust.moderation_decisions` (04 §65) | **CANDIDATE (builder verified)** | immutable chain (no fork: unique supersedes, one first decision, same-target FK; append-only trigger and privileges); `apply_listing_decision` with lock order and head CAS |
+| publication hold | **CANDIDATE (builder verified)** | derived from the chain head; `make_public` (sole writer of `active`, structural test) refuses; publish/confirm 409; confirm `.applied` bug fixed |
+| moderator HTTP API, notices, message/media/conversation actions, review requests | **PLANNED** | Slices 2–5 |
+| `trust.incidents` (04 §66) | **DEFERRED** | safety foundation (roadmap 7) |
+
 ## PR-003 — database client deadlines and failure containment (2026-10-01, builder)
 
 **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (R2, D-88).** Candidate on

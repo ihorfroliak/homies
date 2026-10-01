@@ -805,3 +805,29 @@ DATA-001 — лише пропозиція (поза репозиторієм), 
 
 **Статус:** READY WITH DECISIONS REQUIRED (D-1…D-9). Production: NOT READY,
 NOT DEPLOYED.
+
+## 2026-10-01 — TASK-015 Phase A у main; Slice 1: ядро модерації та hold
+
+**Інтеграція Phase A:** `2d4064b0` (лише документи) злито `--no-ff` у `main`:
+`985db7ae116aca5e37984b8e46556e0859792313`. Засновник затвердив D-1…D-9
+(записано як D-92).
+
+**Slice 1** ([задача](tasks/TASK-015-S1-moderation-core.md); 04a §23; D-93):
+- Міграція `a3c5e7f9b1d4` (EXPAND / rollback BLOCKED): `reports`,
+  `moderation_decisions` (незмінні; ланцюг без розгалужень — UNIQUE
+  supersedes, одне перше рішення на ціль, FK на ту саму ціль; append-only
+  тригер і права), `moderation_review_requests`; категорія TRANSACTIONAL для
+  inbox. `release.json`: мінімум = голова (спершу міграція).
+- `apply_listing_decision`: модератор (роль з БД), блокування власності →
+  рядка оголошення, конфлікт інтересів, CAS на голову ланцюга (`StaleHead`),
+  пауза через наявний `paused`, закриття живих скарг, аудит (лише id/коди),
+  подія `ModerationDecisionRecorded` (без ROUTING), лічильник лише після commit.
+- Hold виводиться з голови ланцюга; `make_public` — єдиний запис `active`
+  (AST-сторож) — відмовляє під блокуванням; publish/confirm → 409
+  `HELD_BY_MODERATION`. Виправлено баг: confirm ігнорував `.applied`.
+- Release не перепубліковує; власник публікує сам → нове покоління (D-5).
+- Гонки C1–C6 доведено на PostgreSQL (`pg_blocking_pids`), зокрема реальний
+  «невідомий COMMIT» через проксі PR-003.
+
+**Статус:** BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (D-88); у `main` не
+злито. Production: NOT READY, NOT DEPLOYED.
