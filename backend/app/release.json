@@ -1,14 +1,14 @@
 {
   "manifest_version": 1,
-  "release": "PR-002 — release and migration compatibility",
-  "schema_head": "0c4e6a8b2d91",
-  "minimum_schema": "f3b5d7e9a1c2",
-  "maximum_schema": "0c4e6a8b2d91",
+  "release": "TASK-015 Slice 1 — moderation core and publication hold",
+  "schema_head": "a3c5e7f9b1d4",
+  "minimum_schema": "a3c5e7f9b1d4",
+  "maximum_schema": "a3c5e7f9b1d4",
   "schema_transition": "EXPAND",
   "rollback_to_previous": "BLOCKED",
-  "rollback_note": "The previous release (IBB-001) requires its database to be exactly at its own head f3b5d7e9a1c2, so it refuses to start once 0c4e6a8b2d91 is applied. Recovery after this release is forward repair, not a restart of the previous image.",
+  "rollback_note": "Migration first: this build reads moderation_decisions on every publication, so it needs a3c5e7f9b1d4 (minimum_schema). The previous release (PR-002/PR-003, head 0c4e6a8b2d91) refuses this schema (TOO_NEW: the step is BLOCKED), because its publication ignores moderation holds and would let an owner republish a held listing. Recovery is forward repair, not a restart of the previous image.",
   "previous_release": {
-    "id": "IBB-001",
-    "schema_head": "f3b5d7e9a1c2"
+    "id": "PR-003",
+    "schema_head": "0c4e6a8b2d91"
   }
 }
