@@ -56,6 +56,34 @@ groups:
             Nothing is probing /readyz, so homies_database_up is stale and must
             not be trusted. Check the orchestrator's readiness configuration.
 
+      - alert: DatabaseStoppedAnswering
+        # PR-003: established connections abandoned at the client deadline —
+        # the server accepted the work and then gave no answer at all (a live
+        # one answers within statement_timeout, with an error if need be).
+        # Readiness opens a fresh connection each time, so a stall that only
+        # affects established sessions (a paused VM, a half-broken network path)
+        # can show here first.
+        expr: sum(increase(homies_db_client_deadline_exceeded_total[5m])) >= 3
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Database calls are being abandoned at the client deadline"
+          description: >-
+            {{ $value | printf "%.0f" }} calls in 5 minutes got no answer from the database at all. Check the database host (paused or stalled VM, CPU steal) and the network path; see docs/production/INCIDENT-RUNBOOK.md (database stall).
+
+      - alert: DatabaseWriteOutcomeUnknown
+        # PR-003: a COMMIT left the client and no answer came back. It may have
+        # been applied; the client was told the outcome is unknown.
+        expr: sum(increase(homies_db_unavailable_responses_total{reason="commit_unknown"}[1h])) > 0
+        for: 1m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Writes with an unknown outcome in the last hour"
+          description: >-
+            {{ $value | printf "%.0f" }} request(s) were answered 503 after their COMMIT got no reply. A non-idempotent write (a new property, a message) may exist twice if the client repeated it; see the runbook (database stall) before reconciling.
+
   - name: homies-http
     rules:
       - alert: HighServerErrorRate
@@ -176,6 +204,30 @@ groups:
           summary: "{{ $value | printf \"%.0f\" }} notifications waiting in the outbox"
           description: >-
             More than 100 pending or failed notifications for 15 minutes, as last reported by a running worker. Check the worker logs and homies_notifications_failed_total.
+
+      - alert: WorkerOverdue
+        # PR-003: every worker publishes when its next pass is due. A worker
+        # hung inside a pass, or whose thread died, stops moving it — whatever
+        # its interval. Per instance: one replica's stuck worker is not hidden
+        # by a healthy one elsewhere.
+        expr: time() - homies_worker_next_pass_due_timestamp_seconds > 300
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Worker {{ $labels.worker }} on {{ $labels.instance }} is overdue"
+          description: >-
+            Its next pass was due over 5 minutes ago and has not started. The worker is hung or its thread is gone; its work waits (other replicas still run theirs). Check the logs for "worker {{ $labels.worker }}" and restart the instance.
+
+      - alert: WorkerFailing
+        expr: homies_worker_consecutive_failures >= 5
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Worker {{ $labels.worker }} on {{ $labels.instance }} keeps failing"
+          description: >-
+            {{ $value | printf "%.0f" }} passes in a row failed (the worker backs off, up to a minute between passes). Usually the database; otherwise a bug — the log has each failure.
 
       - alert: BookingExpiryBacklogGrowing
         # BK-01: the sweep frees dates held by unpaid bookings. A growing

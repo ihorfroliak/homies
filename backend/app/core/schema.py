@@ -19,7 +19,8 @@ from pathlib import Path
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import Engine, create_engine, inspect, text
+from sqlalchemy.pool import NullPool
 
 from app.core import release
 from app.core.config import settings
@@ -30,6 +31,20 @@ BACKEND_DIR = Path(__file__).resolve().parents[2]
 
 # Environments where the app may apply migrations itself as a dev convenience.
 SELF_MIGRATING_ENVIRONMENTS = frozenset({"local"})
+
+
+def _check_engine(url: str) -> Engine:
+    """A one-shot engine for a startup or release check (PR-003).
+
+    Bounded like the application's own: a database that stalls or vanishes
+    fails the check (and the process start) after the deadlines instead of
+    hanging it. Same decisions, same queries — only the waits are bounded.
+    """
+    if url.startswith("postgresql"):
+        from app.core.db import create_bounded_engine
+
+        return create_bounded_engine(url, poolclass=NullPool)
+    return create_engine(url)
 
 
 class SchemaNotMigratedError(RuntimeError):
@@ -97,7 +112,7 @@ def read_lineage(conn) -> dict[str, "release.Step"] | None:
 
 def _database_state(url: str | None = None) -> tuple[tuple[str, ...], dict | None]:
     """(Alembic heads recorded in the database, its schema_lineage)."""
-    engine = create_engine(url or settings.database_url)
+    engine = _check_engine(url or settings.database_url)
     try:
         with engine.connect() as conn:
             heads = tuple(MigrationContext.configure(conn).get_current_heads())
@@ -173,7 +188,7 @@ def verify_ledger_privileges() -> None:
     if not settings.database_url.startswith("postgresql"):
         return
 
-    engine = create_engine(settings.database_url)
+    engine = _check_engine(settings.database_url)
     try:
         with engine.connect() as conn:
             writable = list(
@@ -240,7 +255,7 @@ def verify_schema_privileges() -> None:
         return
     if not settings.database_url.startswith("postgresql"):
         return
-    engine = create_engine(settings.database_url)
+    engine = _check_engine(settings.database_url)
     try:
         with engine.connect() as conn:
             problems = schema_privilege_problems(conn)

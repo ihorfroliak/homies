@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import SessionLocal
+from app.core.worker_loop import run_loop
 from app.modules.events import metrics
 from app.modules.events.models import Notification
 from app.modules.events.providers import DeliveryResult, channel_for
@@ -166,14 +167,15 @@ class NotificationWorker:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 
-    def _loop(self):
-        while not self._stop.is_set():
-            try:
-                with SessionLocal() as db:
-                    run_once(db)
-            except Exception:  # noqa: BLE001 — worker must never die on one bad row
-                log.exception("notification worker iteration failed")
-            self._stop.wait(settings.notification_worker_interval_seconds)
+    def _pass(self) -> None:
+        with SessionLocal() as db:
+            run_once(db)
+
+    def _loop(self) -> None:
+        # PR-003: the shared loop — a failed pass (one bad row, or the database
+        # gone) never ends it, backs off, and is visible in the worker metrics.
+        run_loop("notifications", self._stop, self._pass,
+                 lambda: settings.notification_worker_interval_seconds)
 
     def start(self):
         if self._thread and self._thread.is_alive():

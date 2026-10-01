@@ -135,14 +135,10 @@ async def upload_media(
     it. Video and 360° tours are in the model but not accepted yet — they
     need a processing pipeline this service does not have.
     """
-    authority.require(db, user, property_id, "MANAGE_MEDIA")
-    if not rights_declared:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
-                            "Confirm you have the right to publish this image")
-    if space_id is not None:
-        space = db.get(Space, space_id)
-        if space is None or space.property_id != property_id:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Space not found")
+    # PR-003: this handler is async (it streams the body), so every database
+    # and storage call runs in the thread pool. On the event loop a database
+    # stall would freeze the whole process, health endpoints included.
+    await run_in_threadpool(_check_upload, db, user, property_id, space_id, rights_declared)
 
     raw = await _read_bounded(request, settings.media_max_bytes)
     try:
@@ -156,6 +152,24 @@ async def upload_media(
         ) from None
     del raw  # the upload as it arrived is never kept
 
+    return await run_in_threadpool(_record_upload, db, user, property_id, space_id,
+                                   media_type, clean)
+
+
+def _check_upload(db: Session, user: User, property_id: str, space_id: str | None,
+                  rights_declared: bool) -> None:
+    authority.require(db, user, property_id, "MANAGE_MEDIA")
+    if not rights_declared:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            "Confirm you have the right to publish this image")
+    if space_id is not None:
+        space = db.get(Space, space_id)
+        if space is None or space.property_id != property_id:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Space not found")
+
+
+def _record_upload(db: Session, user: User, property_id: str, space_id: str | None,
+                   media_type: str, clean: sanitize.CleanImage) -> MediaAssetOut:
     backend = storage.storage()
     file = FileObject(
         uploader_user_id=user.id, purpose="PROPERTY_MEDIA", storage_provider=backend.provider,

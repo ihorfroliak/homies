@@ -1,6 +1,6 @@
 import logging
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
@@ -21,6 +21,31 @@ class Settings(BaseSettings):
     # implicit "local" is announced at startup (validate_security_config).
     env: str = "local"
     database_url: str = "postgresql+psycopg://homies:homies@localhost:5433/homies"
+    # PR-003: the database deadline policy — read in one place (app/core/db.py,
+    # DatabaseDeadlines). Each bounds a different wait; none stands in for
+    # another:
+    #   connect      libpq connect_timeout: TCP connect + startup + auth;
+    #   pool         waiting for a pooled connection when all are checked out;
+    #   lock         server: waiting for a row/table lock (fails with 55P03);
+    #   statement    server: one statement, lock wait included (57014);
+    #   idle-in-tx   server: ends a session whose client stopped mid-transaction,
+    #                so its locks do not outlive a stalled request or worker;
+    #   check        server (PG >= 14, Linux): while a statement runs, notice a
+    #                client that went away and stop it, releasing its locks,
+    #                instead of finishing work nobody waits for (0 = off);
+    #   client       the driver: statement_timeout + grace. Past it the server is
+    #                presumed gone (frozen, partitioned) — the client cannot get
+    #                an answer the server would have sent — and the connection
+    #                is shut down and discarded instead of waited on for ever.
+    # Readiness (app/core/health.py) and the migration job's lock budget
+    # (PR-002, app/scripts/migrate.py) keep their own, separate budgets.
+    db_connect_timeout_seconds: int = 3
+    db_pool_timeout_seconds: float = 5.0
+    db_lock_timeout_ms: int = 2_000
+    db_statement_timeout_ms: int = 5_000
+    db_idle_in_transaction_timeout_ms: int = 60_000
+    db_client_connection_check_interval_ms: int = 2_000
+    db_client_grace_seconds: float = 2.0
     # REDIS_URL, MEILI_URL, MEILI_MASTER_KEY and NATS_URL were removed in PR-001:
     # nothing read them (03 §5–§7). Setting them in an environment is harmless —
     # unknown variables are ignored.
@@ -129,6 +154,21 @@ class Settings(BaseSettings):
         if v < 1:
             raise ValueError("CONTACT_REVEAL_DAILY_QUOTA must be at least 1")
         return v
+
+    @model_validator(mode="after")
+    def _validate_db_deadlines(self) -> "Settings":
+        """PR-003: a deadline policy that cannot work is refused at startup."""
+        if self.db_connect_timeout_seconds < 2:
+            raise ValueError("DB_CONNECT_TIMEOUT_SECONDS must be at least 2 (libpq minimum)")
+        if self.db_pool_timeout_seconds <= 0 or self.db_client_grace_seconds <= 0:
+            raise ValueError("DB_POOL_TIMEOUT_SECONDS and DB_CLIENT_GRACE_SECONDS must be positive")
+        if not 0 < self.db_lock_timeout_ms < self.db_statement_timeout_ms:
+            raise ValueError("DB_LOCK_TIMEOUT_MS must be positive and below DB_STATEMENT_TIMEOUT_MS")
+        if self.db_client_connection_check_interval_ms < 0:
+            raise ValueError("DB_CLIENT_CONNECTION_CHECK_INTERVAL_MS must not be negative")
+        if self.db_idle_in_transaction_timeout_ms <= self.db_statement_timeout_ms:
+            raise ValueError("DB_IDLE_IN_TRANSACTION_TIMEOUT_MS must exceed DB_STATEMENT_TIMEOUT_MS")
+        return self
 
     access_token_ttl_seconds: int = 1800
     refresh_token_ttl_days: int = 30

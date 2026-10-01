@@ -426,3 +426,101 @@ tests:
               summary: "Over 20% of payments are failing"
               description: >-
                 Guests cannot complete bookings. Check the Stripe status page and the webhook dead-letter (payments with processed_at IS NULL).
+
+  # --- PR-003: database deadlines and worker liveness ------------------------
+  - interval: 1m
+    name: DatabaseStoppedAnswering ignores a single abandoned call
+    input_series:
+      - series: 'homies_db_client_deadline_exceeded_total{operation="statement", instance="api:8000"}'
+        values: "0 0 1 1 1 1 1 1 1 1 1 1 1 1"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: DatabaseStoppedAnswering
+        exp_alerts: []
+
+  - interval: 1m
+    name: DatabaseStoppedAnswering fires while calls keep being abandoned
+    input_series:
+      - series: 'homies_db_client_deadline_exceeded_total{operation="statement", instance="api:8000"}'
+        values: "0+2x20"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: DatabaseStoppedAnswering
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: DatabaseStoppedAnswering
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+            exp_annotations:
+              summary: "Database calls are being abandoned at the client deadline"
+              description: >-
+                10 calls in 5 minutes got no answer from the database at all. Check the database host (paused or stalled VM, CPU steal) and the network path; see docs/production/INCIDENT-RUNBOOK.md (database stall).
+
+  - interval: 1m
+    name: DatabaseWriteOutcomeUnknown fires on an unknown COMMIT and ignores other 503s
+    input_series:
+      - series: 'homies_db_unavailable_responses_total{reason="pool_timeout", instance="api:8000"}'
+        values: "0+5x30"
+      - series: 'homies_db_unavailable_responses_total{reason="commit_unknown", instance="api:8000"}'
+        values: "0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1"
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: DatabaseWriteOutcomeUnknown
+        exp_alerts: []
+      - eval_time: 13m
+        alertname: DatabaseWriteOutcomeUnknown
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+            exp_annotations:
+              summary: "Writes with an unknown outcome in the last hour"
+              description: >-
+                1 request(s) were answered 503 after their COMMIT got no reply. A non-idempotent write (a new property, a message) may exist twice if the client repeated it; see the runbook (database stall) before reconciling.
+
+  - interval: 1m
+    name: WorkerOverdue fires when the next pass never starts, not while it keeps moving
+    input_series:
+      - series: 'homies_worker_next_pass_due_timestamp_seconds{worker="notifications", instance="api:8000"}'
+        values: "0+0x20"
+      - series: 'homies_worker_next_pass_due_timestamp_seconds{worker="listing-freshness", instance="api:8000"}'
+        values: "3600+60x20"
+    alert_rule_test:
+      - eval_time: 7m
+        alertname: WorkerOverdue
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: WorkerOverdue
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+              worker: notifications
+              instance: api:8000
+            exp_annotations:
+              summary: "Worker notifications on api:8000 is overdue"
+              description: >-
+                Its next pass was due over 5 minutes ago and has not started. The worker is hung or its thread is gone; its work waits (other replicas still run theirs). Check the logs for "worker notifications" and restart the instance.
+
+  - interval: 1m
+    name: WorkerFailing fires on a sustained failure streak and clears after a success
+    input_series:
+      - series: 'homies_worker_consecutive_failures{worker="saved-search-alerts", instance="api:8000"}'
+        values: "0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 0 0 0"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: WorkerFailing
+        exp_alerts: []
+      - eval_time: 16m
+        alertname: WorkerFailing
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+              worker: saved-search-alerts
+              instance: api:8000
+            exp_annotations:
+              summary: "Worker saved-search-alerts on api:8000 keeps failing"
+              description: >-
+                16 passes in a row failed (the worker backs off, up to a minute between passes). Usually the database; otherwise a bug — the log has each failure.
+      - eval_time: 19m
+        alertname: WorkerFailing
+        exp_alerts: []

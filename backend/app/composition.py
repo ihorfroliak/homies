@@ -17,20 +17,29 @@ from collections.abc import Callable, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
+import anyio.to_thread
 from fastapi import APIRouter, FastAPI, Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from prometheus_client import CONTENT_TYPE_LATEST, Gauge, generate_latest
+from sqlalchemy import exc as sa_exc
 
 from app.core.config import settings, validate_security_config
-from app.core.health import check_database
+from app.core.db_failures import database_unavailable_handler
+from app.core.health import check_database_async
 from app.core.http_metrics import http_metrics_middleware
 from app.core.ratelimit import client_ip, limiter, resolve_policy
 from app.core.request_id import request_id_middleware
 from app.core.schema import ensure_schema, verify_ledger_privileges, verify_schema_privileges
 
 API_V1 = "/v1"
+
+# PR-003: sync endpoints run on AnyIO's worker threads; when they are all taken
+# (requests stuck on the database) new requests queue. Set at scrape time.
+THREADPOOL_IN_USE = Gauge("homies_threadpool_tokens_in_use",
+                          "Worker-thread tokens held by sync request handlers")
+THREADPOOL_TOTAL = Gauge("homies_threadpool_tokens_total", "Worker-thread tokens available")
 
 
 @dataclass(frozen=True)
@@ -197,6 +206,9 @@ def build_app(
     )
     app.state.worker_names = tuple(w.name for w in workers)
     app.add_exception_handler(RequestValidationError, _validation_error)  # type: ignore[arg-type]
+    # PR-003: a database that cannot serve in time is a 503, not a 500.
+    app.add_exception_handler(sa_exc.OperationalError, database_unavailable_handler)
+    app.add_exception_handler(sa_exc.TimeoutError, database_unavailable_handler)
 
     @app.middleware("http")
     async def rate_limit_middleware(request: Request, call_next):
@@ -233,8 +245,15 @@ def build_app(
 
 
 def _add_ops_routes(app: FastAPI) -> None:
+    # PR-003 (closes PR-001RA RA-3): the ops endpoints are `async def`, so they
+    # run on the event loop and never wait for a thread-pool token. Business
+    # endpoints are sync and run in the pool; when the database stalls they can
+    # occupy every token (each for at most the database deadlines), and the
+    # probes and the scrape that report that stall must still answer. Nothing
+    # here may block the loop: liveness and metrics are in-memory, readiness
+    # awaits an async probe.
     @app.get("/healthz", tags=["ops"])
-    def healthz() -> dict:
+    async def healthz() -> dict:
         """Liveness. Deliberately checks nothing external — see app/core/health.py.
 
         A failing liveness probe restarts the container, so making this depend
@@ -248,9 +267,9 @@ def _add_ops_routes(app: FastAPI) -> None:
         tags=["ops"],
         responses={503: {"description": "A dependency is unavailable; do not route traffic here."}},
     )
-    def readyz(response: Response) -> dict:
+    async def readyz(response: Response) -> dict:
         """Readiness. 503 pulls this instance from the load balancer without killing it."""
-        db = check_database()
+        db = await check_database_async()
         if not db.ok:
             response.status_code = 503
         return {
@@ -267,7 +286,10 @@ def _add_ops_routes(app: FastAPI) -> None:
         }
 
     @app.get("/metrics", tags=["ops"])
-    def metrics() -> Response:
+    async def metrics() -> Response:
+        limiter = anyio.to_thread.current_default_thread_limiter()
+        THREADPOOL_IN_USE.set(limiter.borrowed_tokens)
+        THREADPOOL_TOTAL.set(limiter.total_tokens)
         return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
