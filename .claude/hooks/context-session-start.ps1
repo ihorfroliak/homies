@@ -5,7 +5,9 @@ $ErrorActionPreference = 'Stop'
 try {
     $raw = [Console]::In.ReadToEnd()
     $in = if ($raw) { $raw | ConvertFrom-Json } else { $null }
-    $cwd = if ($in -and $in.cwd) { $in.cwd } else { (Get-Location).Path }
+    # HOMIES_WORKTREE (machine-local) points git state at the task worktree when
+    # the session itself runs from another checkout.
+    $cwd = if ($env:HOMIES_WORKTREE) { $env:HOMIES_WORKTREE } elseif ($in -and $in.cwd) { $in.cwd } else { (Get-Location).Path }
     $source = if ($in -and $in.source) { $in.source } else { 'unknown' }
     $branch = try { (& git -C $cwd rev-parse --abbrev-ref HEAD 2>$null) -join '' } catch { '?' }
     $head = try { (& git -C $cwd rev-parse HEAD 2>$null) -join '' } catch { '?' }
@@ -13,7 +15,7 @@ try {
     $latest = $null
     if (Test-Path -LiteralPath $archive) {
         $latest = Get-ChildItem -LiteralPath $archive -File |
-            Where-Object { $_.Name -like '*-summary.md' -or $_.Name -like '*-postcompact.json' } |
+            Where-Object { $_.Name -like '*-summary.md' -or $_.Name -like '*-postcompact.json' -or $_.Name -like '*-precompact.json' } |
             Sort-Object Name -Descending | Select-Object -First 1 -ExpandProperty FullName
     }
     $checkpoint = if ($env:HOMIES_CHECKPOINT) { $env:HOMIES_CHECKPOINT } else { '(none configured: HOMIES_CHECKPOINT unset)' }

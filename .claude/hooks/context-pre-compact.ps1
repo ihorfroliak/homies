@@ -6,6 +6,7 @@
 # Machine-local pointers (set in .claude/settings.local.json "env", not committed):
 #   HOMIES_CONTEXT_ARCHIVE  directory for archives (default ~\.claude\homies-context)
 #   HOMIES_CHECKPOINT       the active task CHECKPOINT.md
+#   HOMIES_WORKTREE         task worktree for branch/HEAD/status (default: hook cwd)
 $ErrorActionPreference = 'Stop'
 $errors = New-Object System.Collections.Generic.List[string]
 try {
@@ -14,7 +15,9 @@ try {
     $archive = if ($env:HOMIES_CONTEXT_ARCHIVE) { $env:HOMIES_CONTEXT_ARCHIVE } else { Join-Path $env:USERPROFILE '.claude\homies-context' }
     New-Item -ItemType Directory -Force -Path $archive | Out-Null
     $ts = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH-mm-ssZ')
-    $cwd = if ($in -and $in.cwd) { $in.cwd } else { (Get-Location).Path }
+    # HOMIES_WORKTREE (machine-local) points git state at the task worktree when
+    # the session itself runs from another checkout.
+    $cwd = if ($env:HOMIES_WORKTREE) { $env:HOMIES_WORKTREE } elseif ($in -and $in.cwd) { $in.cwd } else { (Get-Location).Path }
 
     function Invoke-HomiesGit([string[]]$gitArgs) {
         try { (& git -C $cwd @gitArgs 2>$null) -join "`n" } catch { $errors.Add("git $($gitArgs -join ' '): $($_.Exception.Message)"); '' }

@@ -8,7 +8,9 @@ try {
     $archive = if ($env:HOMIES_CONTEXT_ARCHIVE) { $env:HOMIES_CONTEXT_ARCHIVE } else { Join-Path $env:USERPROFILE '.claude\homies-context' }
     New-Item -ItemType Directory -Force -Path $archive | Out-Null
     $ts = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH-mm-ssZ')
-    $cwd = if ($in -and $in.cwd) { $in.cwd } else { (Get-Location).Path }
+    # HOMIES_WORKTREE (machine-local) points git state at the task worktree when
+    # the session itself runs from another checkout.
+    $cwd = if ($env:HOMIES_WORKTREE) { $env:HOMIES_WORKTREE } elseif ($in -and $in.cwd) { $in.cwd } else { (Get-Location).Path }
     $head = try { (& git -C $cwd rev-parse HEAD 2>$null) -join '' } catch { '' }
     $summary = if ($in -and ($in.PSObject.Properties.Name -contains 'compact_summary')) { [string]$in.compact_summary } else { $null }
 
