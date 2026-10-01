@@ -387,3 +387,26 @@ def test_metrics_expose_pool_and_thread_pool_pressure():
                  "homies_db_pool_connections_capacity"):
         assert f"\n{name} " in body, name
     assert "\nhomies_threadpool_tokens_total 40.0" in body
+
+
+def test_a_database_outage_is_one_log_line_per_failed_worker_pass(monkeypatch, caplog):
+    """Phase A S12: a refused database produced 126 traceback lines a second."""
+    import logging
+
+    monkeypatch.setattr(worker_loop, "next_delay", lambda interval, failures: 0.01)
+    stop = threading.Event()
+    calls: list[int] = []
+
+    def outage():
+        calls.append(1)
+        if len(calls) == 3:
+            stop.set()
+        raise _operational(psycopg.OperationalError("postgresql://homies:s3cret@db/homies"))
+
+    with caplog.at_level(logging.WARNING, logger="homies.workers"):
+        worker_loop.run_loop("t-outage", stop, outage, lambda: 0.01)
+    records = [r for r in caplog.records if r.name == "homies.workers"]
+    assert len(records) == 3
+    assert all(r.exc_info is None and r.levelno == logging.WARNING for r in records)
+    assert all("database unavailable (connection)" in r.getMessage() for r in records)
+    assert "s3cret" not in caplog.text

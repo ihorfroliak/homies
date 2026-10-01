@@ -9,6 +9,8 @@ loops did not all have:
 * a pass is bounded: it only waits on the database through the deadline-guarded
   engine (app/core/db_deadline.py), so a frozen database fails it instead of
   occupying the thread for ever;
+* a database outage is one line per failed pass, not a traceback storm (Phase
+  A S12: 126 log lines/s); any other failure keeps its full traceback;
 * liveness is observable: `homies_worker_next_pass_due_timestamp_seconds` says
   when the next pass should start. A worker that is hung in a pass or whose
   thread died stops moving it, which an alert can see (WorkerOverdue) whatever
@@ -25,6 +27,8 @@ import time
 from collections.abc import Callable
 
 from prometheus_client import Counter, Gauge
+
+from app.core.db_failures import unavailability_reason
 
 log = logging.getLogger("homies.workers")
 
@@ -54,10 +58,16 @@ def run_loop(name: str, stop: threading.Event, run_pass: Callable[[], object],
     while not stop.is_set():
         try:
             run_pass()
-        except Exception:  # noqa: BLE001 — one failed pass must never end the worker
+        except Exception as exc:  # noqa: BLE001 — one failed pass must never end the worker
             failures += 1
             PASSES.labels(worker=name, outcome="failed").inc()
-            log.exception("worker %s pass failed (%d in a row)", name, failures)
+            reason = unavailability_reason(exc)
+            if reason is not None:
+                # Reason only: the message can carry the DSN or SQL (D-37).
+                log.warning("worker %s pass failed: database unavailable (%s), %d in a row",
+                            name, reason, failures)
+            else:
+                log.exception("worker %s pass failed (%d in a row)", name, failures)
         else:
             failures = 0
             PASSES.labels(worker=name, outcome="ok").inc()
