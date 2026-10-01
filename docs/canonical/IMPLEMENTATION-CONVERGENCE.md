@@ -70,7 +70,7 @@ during TASK-009 — this is **not** production DR verification.
 
 **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (R2, D-88).** Candidate on
 `claude/PR-003-db-failure-containment` from `main` `13a92ef` (PR-002
-integrated); **not merged to `main`** — founder decision. Not independently
+integrated); merged into `main` by founder authorization as `451b7e56` (parents `13a92ef7` + `e54b3eec`). Not independently
 verified; part of the milestone / production-readiness audit. Production:
 **NOT READY · NOT DEPLOYED.** [Task](../tasks/PR-003-db-failure-containment.md) ·
 D-89 … D-91.
@@ -101,7 +101,7 @@ DEPLOYED.** [Task](../tasks/PR-002-release-migration-compatibility.md) ·
 | `schema_lineage` (migration `0c4e6a8b2d91`) | **CANONICAL_ACTIVE (builder verified)** | 26 historical steps backfilled; later steps recorded by env.py |
 | migration job (`app/scripts/migrate.py`) | **CANONICAL_ACTIVE (builder verified)** | migration role; session advisory lock on the migrating connection, 10 s try-lock budget; grant convergence; post-verify incl. privileges on every table/sequence; runs in CI |
 | roles (`app/core/sql/`) | **CANONICAL_ACTIVE (builder verified)** | `homies_migrator` / `homies_app` separation; `migration_owner.sql` for pre-PR-002 databases; closes Phase A F-A3, F-A4, F-A5 by builder |
-| PR-003 debt (request DB deadlines, health isolation) | **DEFERRED** | addressed by the PR-003 candidate (section above), not merged |
+| PR-003 debt (request DB deadlines, health isolation) | **DEFERRED** | addressed by PR-003 (section above), on main at `451b7e56` |
 
 ## Integrated Backend Baseline 001 — ACCEPTED (2026-09-30)
 
