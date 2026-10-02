@@ -171,6 +171,25 @@ reconsideration (release → republish → new public generation).
 | S5-R9 | organisation AGENT with a guest account: notice, `/me/classifieds`, 201 review; a stranger: `[]` and the same 404 as a missing listing |
 | stress | 5 × (review ∥ release): no deadlock, no OPEN request left on a released listing |
 
+## Evidence (builder, local Docker; first runs and reruns kept apart)
+
+* S5 SQLite suite 15/15 first run; S5 PostgreSQL suite 11 passed / 2 failed
+  first run (test-setup bugs: reporting a paused listing) → 13/13.
+* Mutation: baseline 28/28; **13/13 killed**, each by its intended test.
+* Full SQLite (candidate tree): 1286 passed / 8 failed / 478 skipped → the 8
+  rerun: 7 passed, 1 failed again (401) → passed. All 8 were the local JWT
+  clock-step 401 class.
+* Full PostgreSQL/PostGIS with mandatory restore drill: 1766 passed / 5 failed
+  / 1 skipped → 5/5 passed on rerun; every first failure was a 401 /
+  `KeyError` on a refused token.
+* ruff, mypy (122 files) clean; Spectral 0 errors (49 pre-existing warnings);
+  AsyncAPI valid.
+* CI on `556823c9` (run 37048911922) failed in the backend Test step; the same
+  step failed on `main` `4bf66108` (run 37047555634), whose tree is identical
+  to the S2+S3 candidate that passed CI at 09:25 UTC — a failure that does not
+  depend on S5 code. The job log is not readable without GitHub
+  authentication; see the final report for the rerun.
+
 ## Legal boundary (L1–L13 unresolved)
 
 A technical reconsideration seam only. Not claimed: DSA internal complaint
