@@ -71,6 +71,7 @@ from app.modules.properties.models import (
 )
 from app.modules.properties import classification
 from app.modules.trust import hold as moderation_hold
+from app.modules.trust import reviews as moderation_reviews
 from app.modules.properties.schemas import (
     AreaRef,
     NamedRef,
@@ -767,7 +768,7 @@ def change_availability(
 
 
 @router.get("/me/classifieds", response_model=list[ClassifiedOwnerOut])
-def my_classifieds(user=Depends(require_role("host")), db: Session = Depends(get_db)):
+def my_classifieds(user=Depends(get_current_user), db: Session = Depends(get_db)):
     """Every listing this account may manage, in any status — including the
     ones the public can no longer see — with its freshness and what would
     improve it."""
@@ -780,6 +781,7 @@ def my_classifieds(user=Depends(require_role("host")), db: Session = Depends(get
     ).all()
     # Every listing's moderation head in one statement, not one per row.
     heads = moderation_hold.heads(db, "LISTING", [offer.id for offer in offers])
+    review = moderation_reviews.review_states(db, heads)
     out = []
     for offer in offers:
         last = offer.last_confirmed_available_at
@@ -802,19 +804,20 @@ def my_classifieds(user=Depends(require_role("host")), db: Session = Depends(get
                 checks=[QualityCheckOut(code=c.code, required=c.required, passed=c.passed)
                         for c in verdict.checks],
             ),
-            moderation=_moderation_state(heads.get(offer.id)),
+            moderation=_moderation_state(heads.get(offer.id), review.get(offer.id, "NONE")),
         ))
     return out
 
 
-def _moderation_state(head) -> ModerationStateOut:
+def _moderation_state(head, review: str = "NONE") -> ModerationStateOut:
     """Only a hold is shown. A head that is not a hold — a dismissal or a
     release — says nothing the owner did not already see, so it reads NONE
     (a dismissal would otherwise reveal that the listing was reported)."""
     if head is None or head.action not in moderation_hold.HOLD_ACTIONS:
         return ModerationStateOut()
     return ModerationStateOut(state="HELD", action=head.action, reason_code=head.reason_code,
-                              since=freshness.to_utc(head.effective_from))
+                              since=freshness.to_utc(head.effective_from),
+                              review=review)  # type: ignore[arg-type]
 
 
 def _page_options(stmt):
