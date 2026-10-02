@@ -66,11 +66,25 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
-## TASK-015 Slice 1 — moderation core and publication hold (2026-10-01, builder)
+## TASK-015 Slices 2+3 — listing reports and the moderation loop (2026-10-02, builder)
 
 **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (R2, D-88).** Candidate on
+`claude/TASK-015-s2-s3-report-moderation-loop` from `main` `1a65d381` (S1
+merged); **not merged**. [Task](../tasks/TASK-015-S23-listing-report-moderation-loop.md) · D-94.
+Production: **NOT READY · NOT DEPLOYED.**
+
+| Area | Classification | State |
+|---|---|---|
+| `trust.reports` API (04 §64; LISTING) | **CANDIDATE (builder verified)** | `POST /v1/reports`, `GET /v1/me/reports`; eligibility, D-4 quota, domain idempotency, snapshot allowlist |
+| moderator workflow (Phase A §6.1) | **CANDIDATE (builder verified)** | queue grouped by target, target review (IN_REVIEW once), decisions through the S1 service |
+| owner moderation state + notices (D-9) | **CANDIDATE (builder verified)** | `/me/classifieds.moderation`; TRANSACTIONAL inbox on hold/release |
+| MESSAGE reports, engagement effects, media, review requests | **PLANNED** | Slices 4–5 |
+
+## TASK-015 Slice 1 — moderation core and publication hold (2026-10-01, builder)
+
+**BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (R2, D-88).** Built on
 `claude/TASK-015-s1-moderation-core` from `main` `985db7ae` (PR-003 + Phase A);
-**not merged**. [Task](../tasks/TASK-015-S1-moderation-core.md) · D-92 (founder
+merged into `main` as `1a65d381` (2026-10-02, founder authorization). [Task](../tasks/TASK-015-S1-moderation-core.md) · D-92 (founder
 D-1 … D-9) · D-93 · 04a §23. Production: **NOT READY · NOT DEPLOYED.**
 
 | Area | Classification | State |

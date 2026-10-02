@@ -13,7 +13,8 @@ One transaction, in the coordination lock order (properties → … → offers):
 
     property lock → listing row lock → compare the expected head with the head
     → insert the decision (superseding the head) → pause (hold actions)
-    → resolve the target's live reports → audit → ModerationDecisionRecorded
+    → resolve the target's live reports → audit → managers' inbox notices
+    → ModerationDecisionRecorded
 
 The compare-and-set on the head is what makes a retry safe after an unknown
 COMMIT (PR-003): if the first attempt committed, the retry's expected head is
@@ -26,10 +27,11 @@ when its transaction commits.
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import cast
 
 from prometheus_client import Counter
-from sqlalchemy import event, select, update
+from sqlalchemy import exists, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
@@ -39,7 +41,7 @@ from app.modules.events import service as events
 from app.modules.identity.models import User
 from app.modules.properties import authority, coordination, freshness
 from app.modules.properties.models import AUTHORITY_SCOPES, PAUSABLE_FROM, ClassifiedOffer
-from app.modules.trust import hold
+from app.modules.trust import committed, hold, notices
 from app.modules.trust.models import (
     DECISION_ACTIONS,
     DECISION_TARGET_TYPES,
@@ -72,9 +74,6 @@ DECISIONS = Counter(
 for _target in DECISION_TARGET_TYPES:
     for _action in DECISION_ACTIONS:
         DECISIONS.labels(target_type=_target, action=_action)
-
-_PENDING = "trust.committed_decisions"
-
 
 class DecisionRefused(Exception):
     """The decision cannot be applied; nothing was written."""
@@ -118,6 +117,8 @@ class AppliedDecision:
     listing_status_after: str
     held: bool                     # the listing is held after this decision
     resolved_report_ids: tuple[str, ...]
+    notified_user_ids: tuple[str, ...] = ()
+    effective_from: datetime | None = None
 
 
 def apply_listing_decision(
@@ -158,11 +159,17 @@ def apply_listing_decision(
         raise TargetNotFound("listing not found")
 
     # Conflict of interest: whoever can act on the property decides nothing on
-    # it. (Reporter / participant conflicts need report and conversation
-    # context — the reporter case is checked below; participants: Slice 4.)
+    # it, and neither does anyone with a live report on the target — any of
+    # them, not one the caller names (TASK-015 S3). Re-checked under the
+    # report row locks in `_resolve_reports`. Participants: Slice 4.
     if any(authority.can_act(db, actor.id, row.property_id, scope, verified=False)
            for scope in AUTHORITY_SCOPES):
         raise ConflictOfInterest("the moderator manages this property")
+    if db.scalar(select(exists().where(
+            Report.target_type == "LISTING", Report.target_id == listing_id,
+            Report.reporter_user_id == actor.id,
+            Report.status.in_(LIVE_REPORT_STATUSES)))):
+        raise ConflictOfInterest("the moderator reported this listing")
 
     current = hold.head(db, "LISTING", listing_id)
     current_id = current.id if current else None
@@ -195,7 +202,7 @@ def apply_listing_decision(
     if action in HOLD_ACTIONS:
         status_after = _pause(db, listing_id, row.status)
 
-    resolved = _resolve_reports(db, "LISTING", listing_id, decision.id)
+    resolved = _resolve_reports(db, "LISTING", listing_id, decision.id, actor.id)
     audit(
         db,
         actor=actor.id,
@@ -210,8 +217,11 @@ def apply_listing_decision(
             "status_after": status_after,
         },
     )
+    notice = notices.kind(decision, currently_held)
+    notified = (notices.notify_listing_managers(db, decision, row.property_id, notice)
+                if notice else [])
     _emit(db, decision)
-    _count_on_commit(db, "LISTING", action)
+    committed.count_on_commit(db, DECISIONS, target_type="LISTING", action=action)
     return AppliedDecision(
         decision_id=decision.id,
         supersedes_decision_id=current_id,
@@ -220,6 +230,8 @@ def apply_listing_decision(
         listing_status_after=status_after,
         held=action in HOLD_ACTIONS,
         resolved_report_ids=resolved,
+        notified_user_ids=tuple(notified),
+        effective_from=decision.effective_from,
     )
 
 
@@ -261,15 +273,22 @@ def _pause(db: Session, listing_id: str, status_before: str) -> str:
 
 
 def _resolve_reports(db: Session, target_type: str, target_id: str,
-                     decision_id: str) -> tuple[str, ...]:
+                     decision_id: str, actor_id: str) -> tuple[str, ...]:
     """Every report live at the decision is resolved by it; a report filed
-    after this commit stays OPEN for the next review."""
-    ids = tuple(db.scalars(
-        select(Report.id).where(Report.target_type == target_type,
-                                Report.target_id == target_id,
-                                Report.status.in_(LIVE_REPORT_STATUSES))
+    after this commit stays OPEN for the next review. A moderator never
+    resolves a report of their own — checked here, under the row locks, so a
+    report they filed while the decision was being made is caught too."""
+    rows = db.execute(
+        select(Report.id, Report.reporter_user_id)
+        .where(Report.target_type == target_type,
+               Report.target_id == target_id,
+               Report.status.in_(LIVE_REPORT_STATUSES))
+        .order_by(Report.id)
         .with_for_update()
-    ))
+    ).all()
+    if any(r.reporter_user_id == actor_id for r in rows):
+        raise ConflictOfInterest("the moderator reported this listing")
+    ids = tuple(r.id for r in rows)
     if ids:
         now = freshness.db_now(db)
         db.execute(
@@ -300,33 +319,3 @@ def _emit(db: Session, decision: ModerationDecision) -> None:
     if not events.emit(db, MODERATION_DECISION_RECORDED, decision.id, event_payload(decision),
                        f"{MODERATION_DECISION_RECORDED}:{decision.id}"):
         raise RuntimeError("moderation decision event emitted twice")
-
-
-def _count_on_commit(db: Session, target_type: str, action: str) -> None:
-    """Count the decision when — and only if — its transaction commits. The
-    entry remembers the (possibly nested) transaction it was made in, so a
-    rolled-back savepoint drops only its own decisions, not earlier ones."""
-    tx = db.get_nested_transaction() or db.get_transaction()
-    db.info.setdefault(_PENDING, []).append((tx, target_type, action))
-
-
-def _within(tx, ancestor) -> bool:
-    while tx is not None:
-        if tx is ancestor:
-            return True
-        tx = tx.parent
-    return False
-
-
-@event.listens_for(Session, "after_commit")
-def _count_committed(session: Session) -> None:
-    for _tx, target_type, action in session.info.pop(_PENDING, ()):
-        DECISIONS.labels(target_type=target_type, action=action).inc()
-
-
-@event.listens_for(Session, "after_soft_rollback")
-def _forget_rolled_back(session: Session, previous_transaction) -> None:
-    pending = session.info.get(_PENDING)
-    if pending:
-        session.info[_PENDING] = [entry for entry in pending
-                                  if not _within(entry[0], previous_transaction)]

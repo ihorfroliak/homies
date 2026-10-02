@@ -831,3 +831,27 @@ NOT DEPLOYED.
 
 **Статус:** BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (D-88); у `main` не
 злито. Production: NOT READY, NOT DEPLOYED.
+
+## 2026-10-02 — TASK-015 S1 у main; Slices 2+3: перший цикл «скарга → модерація»
+
+**Інтеграція S1:** точний кандидат `1ccf1a18` злито `--no-ff` у `main`:
+`1a65d3812f5f175e3b27222401685ebf8260b67a` (дерево = кандидат; одна голова
+Alembic `a3c5e7f9b1d4`).
+
+**Slices 2+3** ([задача](tasks/TASK-015-S23-listing-report-moderation-loop.md); D-94):
+- `POST /v1/reports` (лише LISTING): верифікований email або телефон; прихований
+  лістинг — лише для тих, хто мав розмову/перегляд/розкриття контакту, інакше
+  той самий 404; власний — 409. Одна жива скарга на (автор, ціль): повтор → 200.
+  Квота D-4 (10/24 год за часом БД, 20 живих) — точна під конкуренцією (лок
+  рядка users). `GET /v1/me/reports` — лише received/reviewed.
+- Модератор: черга за ціллю (HIGH → найстаріша), огляд цілі (IN_REVIEW, час
+  першого огляду один раз, аудит доступу), рішення через сервіс S1 (STALE_HEAD
+  409, конфлікт інтересів 403 — будь-яка жива скарга модератора).
+- Власник: `moderation` у `/me/classifieds` (лише hold); TRANSACTIONAL
+  повідомлення в inbox про hold і зняття — у транзакції рішення; без email.
+- Без міграції (NO_SCHEMA_CHANGE); відкат до S1 BLOCKED (операційно).
+- Локальний flake 401: годинник Docker VM стрибає назад до 1,9 с (~4/хв) —
+  `iat` «з майбутнього»; борг MICRO-002.
+
+**Статус:** BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (D-88); у `main` не
+злито. Production: NOT READY, NOT DEPLOYED.

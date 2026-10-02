@@ -9,7 +9,7 @@ current_baseline:
   status: accepted
 production_ready: false
 deployed: false
-next_task: TASK-015 Slice 1 merge decision (founder), then Slices 2+3 (first report→moderation loop)
+next_task: TASK-015 S2+S3 merge decision (founder), then TASK-015 Slices 4+5
 ---
 
 # Project status — orientation index
@@ -65,9 +65,11 @@ PR-003                      BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — dat
   ↓
 TASK-015 Phase A            DONE (contract; founder D-1…D-9 approved, D-92) — on main at 985db7ae
   ↓
-TASK-015 Slice 1            BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — moderation core + publication hold (R2) — candidate on its branch, NOT merged
+TASK-015 Slice 1            BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — moderation core + publication hold (R2) — on main at 1a65d381 (merge of 1ccf1a18)
   ↓
-TASK-015 implementation     PLANNED   reports and moderation
+TASK-015 Slices 2+3         BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — listing reports, moderator API, owner notices (R2) — candidate on its branch, NOT merged
+  ↓
+TASK-015 Slices 4–5         PLANNED   message/conversation moderation; review requests
 ```
 
 PR-002 is **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED** (D-88): integrated into
@@ -86,10 +88,13 @@ D-91. It closes PR-001RA RA-3.
 
 TASK-015 Phase A (reports & moderation basics): [contract](tasks/TASK-015-reports-moderation-phase-a.md)
 on `main` (`985db7ae`); founder decisions D-1 … D-9 approved (D-92). TASK-015
-Slice 1 ([task](tasks/TASK-015-S1-moderation-core.md), D-93, 04a §23) is a
-candidate on `claude/TASK-015-s1-moderation-core`, **not merged**: immutable
-moderation decision chain, publication hold enforced in `make_public`, no
-public moderation API yet. Nothing after it is implemented.
+Slice 1 ([task](tasks/TASK-015-S1-moderation-core.md), D-93, 04a §23) is on
+`main` (`1a65d381`, merge of `1ccf1a18`): immutable moderation decision chain,
+publication hold enforced in `make_public`. TASK-015 Slices 2+3
+([task](tasks/TASK-015-S23-listing-report-moderation-loop.md), D-94) are a
+candidate on `claude/TASK-015-s2-s3-report-moderation-loop`, **not merged**:
+listing reports, moderator queue/review/decisions, owner moderation state and
+TRANSACTIONAL inbox notices. Nothing after it is implemented.
 MICRO-001: [scope and closure](tasks/MICRO-001-evidence-docs-test-cleanup.md).
 
 **DEFERRED:** Phase-2 transactional renting (payments, ledger), short stay,

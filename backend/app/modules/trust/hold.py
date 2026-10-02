@@ -11,6 +11,8 @@ and no hold table. Read it under the listing's row lock (`make_public`,
 under that same lock, so the head read there cannot change before commit.
 """
 
+from collections.abc import Iterable
+
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session, aliased
 
@@ -40,3 +42,28 @@ def head(db: Session, target_type: str, target_id: str) -> ModerationDecision | 
 def listing_held(db: Session, listing_id: str) -> bool:
     current = head(db, "LISTING", listing_id)
     return current is not None and current.action in HOLD_ACTIONS
+
+
+def heads(db: Session, target_type: str,
+          target_ids: Iterable[str]) -> dict[str, ModerationDecision]:
+    """The heads of many targets in one statement — for pages of listings
+    (the owner's list, the moderator queue), never one query per row. A
+    target without decisions is absent from the result. Fails closed on a
+    fork, like `head`."""
+    ids = list(dict.fromkeys(target_ids))
+    if not ids:
+        return {}
+    successor = aliased(ModerationDecision)
+    out: dict[str, ModerationDecision] = {}
+    for decision in db.scalars(
+        select(ModerationDecision).where(
+            ModerationDecision.target_type == target_type,
+            ModerationDecision.target_id.in_(ids),
+            ~exists().where(successor.supersedes_decision_id == ModerationDecision.id),
+        )
+    ):
+        if decision.target_id in out:
+            raise ForkedChain(f"{target_type} {decision.target_id} has more than one "
+                              "moderation head")
+        out[decision.target_id] = decision
+    return out

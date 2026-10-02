@@ -351,12 +351,27 @@ class FreshnessOut(BaseModel):
     auto_pause_after_days: int
 
 
+class ModerationStateOut(BaseModel):
+    """The listing's moderation state as its managers see it (TASK-015): a
+    hold's action, reason code and date. Never whether anyone reported it,
+    how many, who, why in their words, or who decided. A dismissal or a
+    release reads NONE. `review` is NONE until review requests exist
+    (Slice 5)."""
+
+    state: Literal["NONE", "HELD"] = "NONE"
+    action: str | None = None
+    reason_code: str | None = None
+    since: datetime | None = None
+    review: Literal["NONE"] = "NONE"
+
+
 class ClassifiedOwnerOut(ClassifiedOut):
     """What the owner/agent sees of their own listing, in any status."""
 
     published_at: datetime | None = None
     freshness_detail: FreshnessOut
     quality: QualityOut
+    moderation: ModerationStateOut = ModerationStateOut()
 
 
 class AvailabilityUpdate(BaseModel):

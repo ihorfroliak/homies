@@ -391,9 +391,14 @@ def test_the_inbox_admits_transactional_notices_but_preferences_stay_product_onl
             db.commit()
 
 
-def test_slice1_exposes_no_reports_or_moderation_routes(client):
-    paths = set(client.app.openapi()["paths"])
-    assert not [p for p in paths if "report" in p or "moderation" in p]
+def test_only_the_slice_2_3_reports_and_moderation_routes_exist(client):
+    """Slices 2+3 add exactly these; review requests (Slice 5) and message
+    moderation (Slice 4) do not exist yet."""
+    paths = {p for p in client.app.openapi()["paths"] if "report" in p or "moderation" in p}
+    assert paths == {
+        "/v1/reports", "/v1/me/reports", "/v1/admin/moderation/queue",
+        "/v1/admin/moderation/targets/LISTING/{listing_id}", "/v1/admin/moderation/decisions",
+    }
 
 
 # --- structural sentinels --------------------------------------------------------

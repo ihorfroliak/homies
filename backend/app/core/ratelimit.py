@@ -91,10 +91,16 @@ PREFERENCE_WRITE = Policy("preference_write", capacity=10, refill_per_second=0.1
 UNSUBSCRIBE = Policy("unsubscribe", capacity=10, refill_per_second=0.1,
                      on_store_failure="closed")
 PUBLIC_READ = Policy("public_read", capacity=120, refill_per_second=10.0)
+# TASK-015 (founder D-4): filing a report. Burst 5 (D-4); the sustained rate is
+# inherited from the stranger-facing writes (CONTACT_REVEAL, CONVERSATION_START:
+# one token per 20 s) — D-4 sets none. The per-account quota (10 per 24 h,
+# 20 waiting) is the authoritative limit, in the database.
+REPORT_CREATE = Policy("report_create", capacity=5, refill_per_second=0.05)
 
 # Future Product B categories (documented, deliberately not wired — no routes
 # exist yet): free_listing_create, free_listing_edit, free_listing_delete,
-# image_upload, search, contact_request, messaging, report, moderation_action.
+# image_upload, search, contact_request, messaging. (report: REPORT_CREATE;
+# moderation_action: the ADMIN prefix — TASK-015.)
 
 # Paths that must NEVER be throttled. Payment webhooks are retried by the
 # provider; throttling them would create inconsistent financial state, and the
@@ -269,6 +275,8 @@ def resolve_policy(method: str, path: str) -> Policy | None:
         return PROPERTY_WRITE
     if method in ("GET", "HEAD", "OPTIONS"):
         return PUBLIC_READ
+    if path.startswith("/v1/reports"):
+        return REPORT_CREATE
     if path.startswith("/v1/notifications/unsubscribe"):
         return UNSUBSCRIBE
     if path.startswith("/v1/me/notification-preferences"):
