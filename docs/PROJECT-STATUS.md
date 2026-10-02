@@ -9,7 +9,7 @@ current_baseline:
   status: accepted
 production_ready: false
 deployed: false
-next_task: TASK-015 S5 merge decision (founder), then TASK-015 Slice 4
+next_task: TASK-015 S4a merge decision (founder), then TASK-015 Slice 4b
 ---
 
 # Project status — orientation index
@@ -69,9 +69,11 @@ TASK-015 Slice 1            BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — mod
   ↓
 TASK-015 Slices 2+3         BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — listing reports, moderator API, owner notices (R2) — on main at 4bf66108 (merge of 7a51236d)
   ↓
-TASK-015 Slice 5            BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — review requests / owner reconsideration (R2) — candidate on its branch, NOT merged
+TASK-015 Slice 5            BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — review requests / owner reconsideration (R2) — on main at 1de34bf5 (merge of 3146fed3)
   ↓
-TASK-015 Slice 4            PLANNED   message/conversation/viewing/media moderation
+TASK-015 Slice 4a           BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — message reports, evidence, redaction (R2) — candidate on its branch, NOT merged
+  ↓
+TASK-015 Slice 4b           PLANNED   conversation restriction, close_engagement, viewing effects, media RESTRICTED
 ```
 
 PR-002 is **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED** (D-88): integrated into
@@ -97,9 +99,11 @@ publication hold enforced in `make_public`. TASK-015 Slices 2+3
 `main` (`4bf66108`, merge of `7a51236d`): listing reports, moderator
 queue/review/decisions, owner moderation state and TRANSACTIONAL inbox notices.
 TASK-015 Slice 5 ([task](tasks/TASK-015-S5-moderation-review-requests.md),
-D-95) is a candidate on `claude/TASK-015-s5-review-requests`, **not merged**:
-owner review requests answered by the next decision, queue re-entry, review
-state on `/me/classifieds`, authority-based owner listing access. Nothing
+D-95) is on `main` (`1de34bf5`, merge of `3146fed3`). TASK-015 Slice 4a
+([task](tasks/TASK-015-S4A-message-moderation.md), D-96) is a candidate on
+`claude/TASK-015-s4a-message-moderation`, **not merged**: message reports,
+bounded audited moderator evidence, CONTENT_REMOVED redaction; rollback to S5
+is a security barrier; L9 legal validation required before launch. Nothing
 after it is implemented.
 MICRO-001: [scope and closure](tasks/MICRO-001-evidence-docs-test-cleanup.md).
 

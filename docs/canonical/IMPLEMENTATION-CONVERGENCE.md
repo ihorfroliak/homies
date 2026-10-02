@@ -66,11 +66,26 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
-## TASK-015 Slice 5 — moderation review requests (2026-10-02, builder)
+## TASK-015 Slice 4a — message reports, evidence and redaction (2026-10-03, builder)
 
 **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (R2, D-88).** Candidate on
+`claude/TASK-015-s4a-message-moderation` from `main` `1de34bf5` (S5 merged);
+**not merged**. [Task](../tasks/TASK-015-S4A-message-moderation.md) · D-96.
+Production: **NOT READY · NOT DEPLOYED.** L9: technically implemented,
+launch legal/privacy validation required.
+
+| Area | Classification | State |
+|---|---|---|
+| MESSAGE reports (04 §64) | **CANDIDATE (builder verified)** | participants only; shared quota and idempotency |
+| moderator evidence | **CANDIDATE (builder verified)** | message ± 2, same conversation, audited |
+| `messages.redacted_at` (04 §55) | **CANDIDATE (builder verified)** | CONTENT_REMOVED; body kept; participants get none |
+| conversation restriction, close_engagement, viewing effects, media RESTRICTED | **PLANNED** | Slice 4b |
+
+## TASK-015 Slice 5 — moderation review requests (2026-10-02, builder)
+
+**BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (R2, D-88).** Built on
 `claude/TASK-015-s5-review-requests` from `main` `4bf66108` (S2+S3 merged);
-**not merged**. [Task](../tasks/TASK-015-S5-moderation-review-requests.md) · D-95.
+merged into `main` as `1de34bf5` (2026-10-03, founder authorization). [Task](../tasks/TASK-015-S5-moderation-review-requests.md) · D-95.
 Production: **NOT READY · NOT DEPLOYED.**
 
 | Area | Classification | State |
