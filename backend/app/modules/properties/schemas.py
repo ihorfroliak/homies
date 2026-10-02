@@ -355,14 +355,16 @@ class ModerationStateOut(BaseModel):
     """The listing's moderation state as its managers see it (TASK-015): a
     hold's action, reason code and date. Never whether anyone reported it,
     how many, who, why in their words, or who decided. A dismissal or a
-    release reads NONE. `review` is NONE until review requests exist
-    (Slice 5)."""
+    release reads NONE, and so does its review state. `review` (Slice 5):
+    OPEN while a review of the current hold is pending; ANSWERED when the
+    current hold is the moderator's answer to a review (the hold was kept);
+    else NONE."""
 
     state: Literal["NONE", "HELD"] = "NONE"
     action: str | None = None
     reason_code: str | None = None
     since: datetime | None = None
-    review: Literal["NONE"] = "NONE"
+    review: Literal["NONE", "OPEN", "ANSWERED"] = "NONE"
 
 
 class ClassifiedOwnerOut(ClassifiedOut):

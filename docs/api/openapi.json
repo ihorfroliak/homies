@@ -1187,6 +1187,17 @@
             "title": "Action",
             "type": "string"
           },
+          "answered_review_request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answered Review Request Id"
+          },
           "decision_id": {
             "title": "Decision Id",
             "type": "string"
@@ -2107,7 +2118,7 @@
         "type": "object"
       },
       "ModerationStateOut": {
-        "description": "The listing's moderation state as its managers see it (TASK-015): a\nhold's action, reason code and date. Never whether anyone reported it,\nhow many, who, why in their words, or who decided. A dismissal or a\nrelease reads NONE. `review` is NONE until review requests exist\n(Slice 5).",
+        "description": "The listing's moderation state as its managers see it (TASK-015): a\nhold's action, reason code and date. Never whether anyone reported it,\nhow many, who, why in their words, or who decided. A dismissal or a\nrelease reads NONE, and so does its review state. `review` (Slice 5):\nOPEN while a review of the current hold is pending; ANSWERED when the\ncurrent hold is the moderator's answer to a review (the hold was kept);\nelse NONE.",
         "properties": {
           "action": {
             "anyOf": [
@@ -2132,8 +2143,12 @@
             "title": "Reason Code"
           },
           "review": {
-            "const": "NONE",
             "default": "NONE",
+            "enum": [
+              "NONE",
+              "OPEN",
+              "ANSWERED"
+            ],
             "title": "Review",
             "type": "string"
           },
@@ -2267,6 +2282,53 @@
           "snapshot"
         ],
         "title": "ModeratorReportOut",
+        "type": "object"
+      },
+      "ModeratorReviewRequestOut": {
+        "description": "Moderator-only: the manager's request to reconsider the current hold —\ninternal requester id and their plain-text note; not their email/phone.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "requested_by_user_id": {
+            "title": "Requested By User Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "decision_id",
+          "requested_by_user_id",
+          "note",
+          "status",
+          "created_at"
+        ],
+        "title": "ModeratorReviewRequestOut",
         "type": "object"
       },
       "NamedRef": {
@@ -3613,6 +3675,10 @@
             "title": "Distinct Reporters",
             "type": "integer"
           },
+          "has_open_review_request": {
+            "title": "Has Open Review Request",
+            "type": "boolean"
+          },
           "head_action": {
             "anyOf": [
               {
@@ -3648,22 +3714,55 @@
             "type": "integer"
           },
           "max_severity": {
-            "title": "Max Severity",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Severity"
           },
           "newest_report_at": {
-            "format": "date-time",
-            "title": "Newest Report At",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Newest Report At"
           },
           "oldest_report_at": {
-            "format": "date-time",
-            "title": "Oldest Report At",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Report At"
           },
           "phone_verified_reporters": {
             "title": "Phone Verified Reporters",
             "type": "integer"
+          },
+          "review_requested_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Requested At"
           },
           "target_id": {
             "title": "Target Id",
@@ -3684,6 +3783,8 @@
           "newest_report_at",
           "distinct_reporters",
           "phone_verified_reporters",
+          "has_open_review_request",
+          "review_requested_at",
           "head_decision_id",
           "head_action",
           "held"
@@ -3928,6 +4029,56 @@
           "resets_in"
         ],
         "title": "RevealQuotaOut",
+        "type": "object"
+      },
+      "ReviewRequestIn": {
+        "additionalProperties": false,
+        "description": "Only an optional note: the hold it concerns is the listing's current\none, decided by the server.",
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "ReviewRequestIn",
+        "type": "object"
+      },
+      "ReviewRequestOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "listing_id": {
+            "title": "Listing Id",
+            "type": "string"
+          },
+          "status": {
+            "const": "OPEN",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "listing_id",
+          "status",
+          "created_at"
+        ],
+        "title": "ReviewRequestOut",
         "type": "object"
       },
       "SavedListingOut": {
@@ -4536,6 +4687,16 @@
             },
             "title": "Reports",
             "type": "array"
+          },
+          "review_request": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModeratorReviewRequestOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "target_id": {
             "title": "Target Id",
@@ -5276,7 +5437,7 @@
     },
     "/v1/admin/moderation/decisions": {
       "post": {
-        "description": "Record a moderation decision on a listing and apply it (hold, release\nor dismissal), resolving every live report on it and notifying the\nlisting's managers of a hold or a release — in one transaction.",
+        "description": "Record a moderation decision on a listing and apply it (hold, release\nor dismissal), resolving every live report on it, answering the owner's\nopen review request on the hold it supersedes, and notifying the\nlisting's managers of a hold or a release — in one transaction.",
         "operationId": "decide_v1_admin_moderation_decisions_post",
         "requestBody": {
           "content": {
@@ -5328,7 +5489,7 @@
     },
     "/v1/admin/moderation/queue": {
       "get": {
-        "description": "Targets with live reports: HIGH severity first, then the oldest\noutstanding report. Ordering only — nothing here acts on a target.",
+        "description": "Targets with moderator work — live reports or an owner's open review\nrequest: URGENT/HIGH reports first, then open review requests, then\nNORMAL reports; oldest work first within each. Ordering only — nothing\nhere acts on a target.",
         "operationId": "moderation_queue_v1_admin_moderation_queue_get",
         "parameters": [
           {
@@ -6950,6 +7111,69 @@
         "summary": "Map Classifieds",
         "tags": [
           "properties"
+        ]
+      }
+    },
+    "/v1/classifieds/{listing_id}/moderation-review": {
+      "post": {
+        "description": "Ask Homies moderation to reconsider the hold on a listing you manage.\nNothing about the listing changes; a moderator answers with a new\ndecision (keep the hold, or release it — then you republish).",
+        "operationId": "request_moderation_review_v1_classifieds__listing_id__moderation_review_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9-]+$",
+              "title": "Listing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequestIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewRequestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "No such listing, or the caller may not manage it — deliberately indistinguishable"
+          },
+          "409": {
+            "description": "Not on hold (or the hold cannot be reviewed); a review of this hold is already open; or the 3 reviews of this hold episode are used. After an unknown COMMIT, 'already open' may mean the first attempt succeeded"
+          },
+          "422": {
+            "description": "Invalid note"
+          },
+          "503": {
+            "description": "Database unavailable (PR-003)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Request Moderation Review",
+        "tags": [
+          "reports"
         ]
       }
     },
@@ -10679,7 +10903,7 @@
       "name": "notifications"
     },
     {
-      "description": "Reporting a listing to Homies moderation, and one's own reports (TASK-015).",
+      "description": "Reporting a listing to Homies moderation, one's own reports, and asking for a hold on one's listing to be reviewed (TASK-015).",
       "name": "reports"
     },
     {

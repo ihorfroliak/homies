@@ -66,11 +66,25 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
-## TASK-015 Slices 2+3 — listing reports and the moderation loop (2026-10-02, builder)
+## TASK-015 Slice 5 — moderation review requests (2026-10-02, builder)
 
 **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (R2, D-88).** Candidate on
+`claude/TASK-015-s5-review-requests` from `main` `4bf66108` (S2+S3 merged);
+**not merged**. [Task](../tasks/TASK-015-S5-moderation-review-requests.md) · D-95.
+Production: **NOT READY · NOT DEPLOYED.**
+
+| Area | Classification | State |
+|---|---|---|
+| `trust.moderation_review_requests` (04a §23 seam) | **CANDIDATE (builder verified)** | owner request, one OPEN per hold, 3 per continuous hold episode, answered by the next decision |
+| moderator queue / detail | **CANDIDATE (builder verified)** | review-only targets re-enter; detail shows the note (audited) |
+| owner listing access | **CANDIDATE (builder verified)** | `/me/classifieds` by property authority, not global role |
+| MESSAGE/CONVERSATION/VIEWING/MEDIA moderation | **PLANNED** | Slice 4 |
+
+## TASK-015 Slices 2+3 — listing reports and the moderation loop (2026-10-02, builder)
+
+**BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (R2, D-88).** Built on
 `claude/TASK-015-s2-s3-report-moderation-loop` from `main` `1a65d381` (S1
-merged); **not merged**. [Task](../tasks/TASK-015-S23-listing-report-moderation-loop.md) · D-94.
+merged); merged into `main` as `4bf66108` (2026-10-02, founder authorization). [Task](../tasks/TASK-015-S23-listing-report-moderation-loop.md) · D-94.
 Production: **NOT READY · NOT DEPLOYED.**
 
 | Area | Classification | State |
