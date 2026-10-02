@@ -1,4 +1,5 @@
-"""Filing a listing report (TASK-015 Slice 2; Phase A §5; 04a §23).
+"""Filing a report on a listing (TASK-015 Slice 2) or a message (Slice 4a;
+Phase A §5; 04a §23).
 
 A report is a signal for a moderator. It never changes its target (04
 invariant 23): no status, no visibility, no ranking — whatever the count or
@@ -44,7 +45,8 @@ from sqlalchemy import exists, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.modules.engagement.models import Conversation, Viewing
+from app.modules.engagement import access as conversation_access
+from app.modules.engagement.models import Conversation, Message, Viewing
 from app.modules.identity.models import User
 from app.modules.properties import authority, freshness
 from app.modules.properties.models import AUTHORITY_SCOPES, ClassifiedOffer, ContactReveal
@@ -60,6 +62,9 @@ LISTING_REASONS = (
     "SCAM", "FAKE", "MISLEADING_PRICE", "DISCRIMINATION", "SAFETY", "STOLEN_MEDIA",
     "DUPLICATE", "OTHER",
 )
+# Slice 4a (Phase A §5.3): what a conversation participant may report a
+# message for.
+MESSAGE_REASONS = ("HARASSMENT", "SCAM", "DISCRIMINATION", "SAFETY", "SPAM", "OTHER")
 # Derived on the server, never accepted from the client. It orders the queue
 # and does nothing else.
 HIGH_SEVERITY = ("SAFETY", "SCAM", "FAKE", "DISCRIMINATION", "HARASSMENT")
@@ -91,6 +96,7 @@ REPORTS_CREATED = Counter(
 )
 for _category in REPORT_CATEGORIES:
     REPORTS_CREATED.labels(target_type="LISTING", category=_category)
+    REPORTS_CREATED.labels(target_type="MESSAGE", category=_category)
 
 
 class ReportRefused(Exception):
@@ -107,6 +113,10 @@ class NotReportable(ReportRefused):
 
 class OwnListing(ReportRefused):
     pass
+
+
+class UnreportableMessage(ReportRefused):
+    """A SYSTEM message, or the reporter's own message (409)."""
 
 
 class InvalidReport(ReportRefused):
@@ -193,15 +203,7 @@ def file_listing_report(db: Session, *, reporter: User, listing_id: str, categor
     """File (or find) the reporter's live report on a listing. The caller
     commits. `public_projection(offer, now)` returns the listing's public
     shape as a dict (the properties module owns it)."""
-    if not reporter_verified(reporter):
-        raise NotVerified("Verify your email or phone before reporting")
-    if category not in LISTING_REASONS:
-        raise InvalidReport("This reason is not available for a listing")
-    clean = normalize_text(text)
-    if clean is not None and len(clean) > TEXT_MAX:
-        raise InvalidReport(f"The description is limited to {TEXT_MAX} characters")
-    if category == "OTHER" and meaningful_length(clean) < OTHER_TEXT_MIN:
-        raise InvalidReport(f"Describe the problem in at least {OTHER_TEXT_MIN} characters")
+    clean = _validated(reporter, category, LISTING_REASONS, "a listing", text)
 
     offer = db.get(ClassifiedOffer, listing_id)
     if offer is None:
@@ -217,12 +219,87 @@ def file_listing_report(db: Session, *, reporter: User, listing_id: str, categor
     if not (freshness.is_public(offer, now) or interacted(db, reporter.id, listing_id)):
         raise NotReportable("Listing not found")
 
+    def make() -> Report:
+        return Report(
+            reporter_user_id=reporter.id, target_type="LISTING", target_id=listing_id,
+            listing_id=listing_id, category=category, description=clean,
+            severity=severity(category), status="OPEN",
+            snapshot=snapshot(offer, public_projection(offer, now)),
+            listing_public_generation_at_report=offer.public_generation,
+        )
+    return _serialised_insert(db, reporter, "LISTING", listing_id, category, make)
+
+
+def file_message_report(db: Session, *, reporter: User, message_id: str, category: str,
+                        text: str | None) -> Filed:
+    """File (or find) the reporter's live report on a message (Slice 4a).
+
+    Only a current side of the message's conversation may report it — the
+    conversation's own access rule (`engagement.access.side`: the tenant who
+    started it, or whoever holds MANAGE_MESSAGES now), whatever the listing's
+    publicity or the conversation's status. Everyone else, and a message that
+    does not exist, get the same 404. A SYSTEM message, or one the reporter
+    sent (`sender_user_id` — never inferred from a side or an organisation),
+    is 409. Access is checked again after the reporter lock is granted: a
+    right revoked before that point no longer counts.
+
+    No body is copied: messages are not editable, so the message row itself is
+    the evidence, read by moderators through the audited evidence path."""
+    clean = _validated(reporter, category, MESSAGE_REASONS, "a message", text)
+
+    message = db.get(Message, message_id)
+    conv = db.get(Conversation, message.conversation_id) if message is not None else None
+    if message is None or conv is None or conversation_access.side(db, reporter.id, conv) is None:
+        raise NotReportable("Message not found")
+    if message.message_type != "USER":
+        raise UnreportableMessage("A system message cannot be reported")
+    if message.sender_user_id == reporter.id:
+        raise UnreportableMessage("You cannot report your own message")
+    existing = live_report(db, reporter.id, "MESSAGE", message_id)
+    if existing is not None:
+        return Filed(existing, created=False)
+
+    def recheck() -> None:
+        if conversation_access.side(db, reporter.id, conv) is None:
+            raise NotReportable("Message not found")
+
+    def make() -> Report:
+        return Report(
+            reporter_user_id=reporter.id, target_type="MESSAGE", target_id=message_id,
+            listing_id=conv.listing_id, conversation_id=conv.id, category=category,
+            description=clean, severity=severity(category), status="OPEN",
+        )
+    return _serialised_insert(db, reporter, "MESSAGE", message_id, category, make,
+                              after_lock=recheck)
+
+
+def _validated(reporter: User, category: str, allowed: tuple[str, ...], what: str,
+               text: str | None) -> str | None:
+    if not reporter_verified(reporter):
+        raise NotVerified("Verify your email or phone before reporting")
+    if category not in allowed:
+        raise InvalidReport(f"This reason is not available for {what}")
+    clean = normalize_text(text)
+    if clean is not None and len(clean) > TEXT_MAX:
+        raise InvalidReport(f"The description is limited to {TEXT_MAX} characters")
+    if category == "OTHER" and meaningful_length(clean) < OTHER_TEXT_MIN:
+        raise InvalidReport(f"Describe the problem in at least {OTHER_TEXT_MIN} characters")
+    return clean
+
+
+def _serialised_insert(db: Session, reporter: User, target_type: str, target_id: str,
+                       category: str, make, after_lock=None) -> Filed:
+    """Duplicate check, both quota counts and the insert under the reporter's
+    lock — shared by every target, so LISTING and MESSAGE reports spend one
+    account quota."""
     # Serialise this reporter's filing: duplicate check, both quota counts and
     # the insert see one consistent picture (FOR NO KEY UPDATE: the KEY SHARE
     # the reports FK check takes is not blocked by it).
     db.execute(select(User.id).where(User.id == reporter.id).with_for_update(key_share=True))
+    if after_lock is not None:
+        after_lock()
 
-    existing = live_report(db, reporter.id, "LISTING", listing_id)
+    existing = live_report(db, reporter.id, target_type, target_id)
     if existing is not None:
         return Filed(existing, created=False)
 
@@ -245,18 +322,7 @@ def file_listing_report(db: Session, *, reporter: User, listing_id: str, categor
         raise QuotaExceeded("Too many of your reports are still waiting for review",
                             int(WINDOW.total_seconds()))
 
-    report = Report(
-        reporter_user_id=reporter.id,
-        target_type="LISTING",
-        target_id=listing_id,
-        listing_id=listing_id,
-        category=category,
-        description=clean,
-        severity=severity(category),
-        status="OPEN",
-        snapshot=snapshot(offer, public_projection(offer, now)),
-        listing_public_generation_at_report=offer.public_generation,
-    )
+    report = make()
     try:
         with db.begin_nested():
             db.add(report)
@@ -266,10 +332,10 @@ def file_listing_report(db: Session, *, reporter: User, listing_id: str, categor
         # path ever skipped it, the partial UNIQUE still decides — and the
         # error, whose parameters carry the report text, is never re-raised
         # into a traceback or a log.
-        existing = live_report(db, reporter.id, "LISTING", listing_id)
+        existing = live_report(db, reporter.id, target_type, target_id)
         if existing is not None:
             return Filed(existing, created=False)
         raise RuntimeError("report insert refused by a database constraint") from None
     db.refresh(report, attribute_names=["created_at"])
-    committed.count_on_commit(db, REPORTS_CREATED, target_type="LISTING", category=category)
+    committed.count_on_commit(db, REPORTS_CREATED, target_type=target_type, category=category)
     return Filed(report, created=True)
