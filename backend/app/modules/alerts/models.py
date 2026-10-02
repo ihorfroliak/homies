@@ -107,7 +107,10 @@ class UserNotification(Base):
 
     __tablename__ = "user_notifications"
     __table_args__ = (
-        CheckConstraint("category IN ('PRODUCT')", name="ck_user_notifications_category"),
+        # TASK-015 (D-9): TRANSACTIONAL moderation notices share the inbox; they
+        # are not a preference category, so they cannot be switched off (§71).
+        CheckConstraint("category IN ('PRODUCT', 'TRANSACTIONAL')",
+                        name="ck_user_notifications_category"),
         Index("ix_user_notifications_user_created", "user_id", "created_at"),
     )
 

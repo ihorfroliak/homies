@@ -356,6 +356,7 @@ def pg_client(request, pg_migrated_engine):
     tables = (
         # Every table a test can write to. A missing name leaks state into the
         # next test: `disputes` was absent since FIN-03 and nothing noticed.
+        "moderation_review_requests moderation_decisions reports "
         "unsubscribe_tokens notification_preferences user_notifications alert_deliveries "
         "saved_search_matches saved_search_anchors saved_searches saved_listings "
         "listing_public_generations "
@@ -402,6 +403,7 @@ def pg_session(pg_migrated_engine):
     tables = (
         # Every table a test can write to. A missing name leaks state into the
         # next test: `disputes` was absent since FIN-03 and nothing noticed.
+        "moderation_review_requests moderation_decisions reports "
         "unsubscribe_tokens notification_preferences user_notifications alert_deliveries "
         "saved_search_matches saved_search_anchors saved_searches saved_listings "
         "listing_public_generations "

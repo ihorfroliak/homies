@@ -9,7 +9,7 @@ current_baseline:
   status: accepted
 production_ready: false
 deployed: false
-next_task: TASK-015 founder decisions on the Phase A contract, then TASK-015 Slice 1
+next_task: TASK-015 Slice 1 merge decision (founder), then Slices 2+3 (first report→moderation loop)
 ---
 
 # Project status — orientation index
@@ -63,7 +63,9 @@ PR-002                      BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — rel
   ↓
 PR-003                      BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — database client deadlines / failure containment (R2, D-88) — on main at 451b7e56 (merge of e54b3eec)
   ↓
-TASK-015 Phase A            DONE (contract, READY WITH DECISIONS REQUIRED) — on its branch, docs only
+TASK-015 Phase A            DONE (contract; founder D-1…D-9 approved, D-92) — on main at 985db7ae
+  ↓
+TASK-015 Slice 1            BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — moderation core + publication hold (R2) — candidate on its branch, NOT merged
   ↓
 TASK-015 implementation     PLANNED   reports and moderation
 ```
@@ -82,9 +84,12 @@ PR-003 is **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED** (D-88), integrated in
 `e54b3eec`, CI 5/5): [task](tasks/PR-003-db-failure-containment.md), D-89 …
 D-91. It closes PR-001RA RA-3.
 
-TASK-015 Phase A (reports & moderation basics) is a **contract only**:
-[task](tasks/TASK-015-reports-moderation-phase-a.md) — READY WITH DECISIONS
-REQUIRED; no TASK-015 runtime exists. Nothing after it is implemented.
+TASK-015 Phase A (reports & moderation basics): [contract](tasks/TASK-015-reports-moderation-phase-a.md)
+on `main` (`985db7ae`); founder decisions D-1 … D-9 approved (D-92). TASK-015
+Slice 1 ([task](tasks/TASK-015-S1-moderation-core.md), D-93, 04a §23) is a
+candidate on `claude/TASK-015-s1-moderation-core`, **not merged**: immutable
+moderation decision chain, publication hold enforced in `make_public`, no
+public moderation API yet. Nothing after it is implemented.
 MICRO-001: [scope and closure](tasks/MICRO-001-evidence-docs-test-cleanup.md).
 
 **DEFERRED:** Phase-2 transactional renting (payments, ledger), short stay,

@@ -146,12 +146,16 @@ def real():
 
 def test_the_real_chain_is_decided_by_ancestry(real):
     graph, m = real
-    assert m.schema_head == "0c4e6a8b2d91" and m.minimum_schema == "f3b5d7e9a1c2"
-    assert m.schema_head < m.minimum_schema  # the new head sorts before its parent
+    # TASK-015 S1: this build reads moderation_decisions, so it runs only on
+    # its own head (minimum = head; migration first).
+    assert m.schema_head == "a3c5e7f9b1d4" and m.minimum_schema == m.schema_head
     full = {r: graph.steps[r] for r in graph.ancestors(graph.head)}
     assert release.evaluate(m, graph, [m.schema_head], full).code == EXACT
-    # bootstrap: an IBB-001 database (no lineage yet) runs this build
-    assert release.evaluate(m, graph, ["f3b5d7e9a1c2"], None).code == BEHIND_SUPPORTED
+    # The previous release's head (lineage present) is too old for this build,
+    # although it sorts BEFORE it as a string — ancestry decides, not order.
+    prior = {r: graph.steps[r] for r in graph.ancestors("0c4e6a8b2d91")}
+    assert "0c4e6a8b2d91" < m.schema_head
+    assert release.evaluate(m, graph, ["0c4e6a8b2d91"], prior).code == TOO_OLD
     for older in graph.ancestors("d0f2b4c6e8a1"):
         assert release.evaluate(m, graph, [older], None).code == TOO_OLD, older
     # look-alike ids: b8d0f2a4c6e1 is much older than b8d0f2a4c6e8
@@ -257,6 +261,8 @@ def test_ahead_requires_the_known_part_of_the_lineage_to_agree():
 
 def test_the_real_build_expects_lineage_from_its_lineage_migration(real):
     graph, m = real
-    assert graph.lineage_revision == release.LINEAGE_REVISION == m.schema_head
+    assert graph.lineage_revision == release.LINEAGE_REVISION == "0c4e6a8b2d91"
+    assert graph.is_ancestor_or_equal(graph.lineage_revision, m.schema_head)
     assert release.evaluate(m, graph, [m.schema_head], None).code == LINEAGE_MISSING
-    assert not graph.expects_lineage(m.minimum_schema)
+    assert graph.expects_lineage(m.minimum_schema)
+    assert not graph.expects_lineage("f3b5d7e9a1c2")

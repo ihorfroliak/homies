@@ -101,6 +101,11 @@ from app.modules.properties.schemas import (
 
 router = APIRouter(tags=["properties"])
 
+# TASK-015: publish and confirm refuse a listing held by moderation with this
+# exact detail. The project has no machine-readable error-code convention yet
+# (IMPLEMENTATION-CONVERGENCE debt), so the stable code leads the text.
+HELD_BY_MODERATION = "HELD_BY_MODERATION: this listing is on hold by Homies moderation"
+
 
 _DERIVED_FIELDS = {"monthly_total_estimate", "move_in_total", "public_location", "place",
                    "move_in", "confirmed_on", "freshness", "utilities_basis"}
@@ -529,11 +534,13 @@ def publish_classified(
     # — generation, event and alert work item — only if it was not public.
     published = publicity.make_public(
         db, offer.id, allowed_from=PUBLISHABLE_FROM,
-        values={"status": "active", "published_at": now, "last_confirmed_available_at": now},
+        values={"published_at": now, "last_confirmed_available_at": now},
         now=now,
     )
     if not published.applied:
         db.rollback()
+        if published.held:
+            raise HTTPException(status.HTTP_409_CONFLICT, HELD_BY_MODERATION)
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             "This listing can no longer be published from its current state",
@@ -681,10 +688,21 @@ def confirm_classified(
     # The same seam as publication (TASK-014): confirming a listing that was
     # still public keeps its episode; confirming one that was not — stale, or
     # `active` whose confirmation silently expired — opens a new one.
-    publicity.make_public(
+    confirmed = publicity.make_public(
         db, offer.id, allowed_from=(prior,),
-        values={"status": "active", "last_confirmed_available_at": now}, now=now,
+        values={"last_confirmed_available_at": now}, now=now,
     )
+    # TASK-015: the result was ignored here, so a refusal would have answered
+    # 200 with the old state. Under the row lock taken above only a moderation
+    # hold can refuse; nothing (audit, freshness event) may follow a refusal.
+    if not confirmed.applied:
+        db.rollback()
+        if confirmed.held:
+            raise HTTPException(status.HTTP_409_CONFLICT, HELD_BY_MODERATION)
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Only a published or stale listing can be confirmed as current",
+        )
     db.refresh(offer)
     reactivated = prior == "stale"
     if reactivated:

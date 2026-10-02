@@ -268,3 +268,48 @@ never repaired or run broader.
 **Account status limitation.** Phase 1A has no account deletion/status
 model; for alerts "account valid" means *the user exists* (plus a verified
 email for EMAIL). No parallel account lifecycle is introduced.
+
+## 23. Reports and moderation in Phase 1A (TASK-015, founder D-1 … D-9, 2026-10-01)
+
+Refines 04 §64 (`trust.reports`) and §65 (`trust.moderation_decisions`); it
+does not replace them. Contract: `docs/tasks/TASK-015-reports-moderation-phase-a.md`.
+
+* **Report targets in Phase 1A:** LISTING and MESSAGE. The stored `target_type`
+  keeps the canonical set; USER, MEDIA and PROPERTY are not offered to users
+  in 1A (moderators act on media in a listing's context).
+* **Report lifecycle in 1A:** OPEN → IN_REVIEW → RESOLVED. TRIAGED and CLOSED
+  remain canonical values and are unused in 1A (severity is derived at
+  creation; RESOLVED is terminal). Categories are the canonical codes;
+  `MISLEADING_PRICE` covers "price or key details misleading" in the 1A UI; no
+  PRIVACY category is added.
+* **Reports never mutate targets** (04 invariant 23). Only the application of a
+  moderation decision has cross-domain effects.
+* **Decisions are immutable** (§65) and form one **chain per target**: a later
+  decision names the one it supersedes (`supersedes_decision_id`). The chain
+  cannot fork (a decision is superseded at most once; a target has at most one
+  first decision; a decision supersedes only a decision on the same target).
+  The **head** — the decision nobody supersedes — is the target's current
+  moderation state.
+* **No ModerationCase entity** in 1A: reports are grouped by target in the
+  moderator queue; the chain head and a compare-and-set on it replace a case.
+* **No separate hold table or flag.** A listing is **held** while its chain
+  head is `CONTENT_EDIT_REQUIRED` or `VISIBILITY_LIMITED`. Applying a hold
+  moves the listing to the existing `paused` status; the public-visibility rule
+  (§18) is unchanged. While held, no transition into `active` is possible
+  (the single public-transition seam refuses it). A later `NO_ACTION` decision
+  that supersedes the hold **releases** it; release never republishes — the
+  owner republishes through the normal publication, which opens a new public
+  episode (§22) and may alert saved searches (D-5).
+* **Refinement columns** (additive to §64/§65): reports — `listing_id`,
+  `conversation_id`, `snapshot`, `listing_public_generation_at_report`,
+  `first_reviewed_at`, `resolution_decision_id`; decisions —
+  `supersedes_decision_id`, `listing_id`, `reclassified_category`,
+  `close_engagement`, `listing_public_generation_at_decision`; reason codes =
+  the report categories plus `NOT_A_VIOLATION`, `REINSTATED_REMEDIED`,
+  `REINSTATED_DECISION_ERROR`.
+* **Review request seam:** `moderation_review_requests` (one open request per
+  decision) is the 1A reconsideration path implied by `appeal_eligible`; it is
+  not a formal appeal state machine.
+* **Out of 1A:** account status and suspension (§22's limitation stands; the
+  `ACCOUNT_*` actions are not used), user block, property-level holds, incidents
+  (§66, safety foundation), evidence uploads.
