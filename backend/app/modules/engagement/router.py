@@ -21,7 +21,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -30,6 +30,7 @@ from app.core.audit import audit
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import get_current_user
+from app.modules.engagement import access
 from app.modules.engagement.models import (
     PROVIDER_STAGES,
     Conversation,
@@ -69,14 +70,40 @@ class MessageIn(BaseModel):
 
 
 class MessageOut(BaseModel):
+    """A message as a conversation participant sees it. A message removed by
+    Homies moderation (TASK-015 S4a) has `body: null` and `moderation_state:
+    REMOVED` — the client renders "Removed by Homies" from its own strings. The
+    stored body is kept as evidence for moderators only: this model drops it
+    whenever the row is redacted, however the model is built, so no route can
+    hand it to a participant by accident."""
+
     id: str
     sender_user_id: str | None
     sender_organization_id: str | None
     message_type: str
     body: str | None
+    moderation_state: Literal["NONE", "REMOVED"] = "NONE"
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _redacted_has_no_body(cls, data):
+        if isinstance(data, dict):
+            redacted = data.get("redacted_at") is not None or data.get(
+                "moderation_state") == "REMOVED"
+            if redacted:
+                return {**data, "body": None, "moderation_state": "REMOVED"}
+            return data
+        if getattr(data, "redacted_at", None) is not None:
+            return {
+                "id": data.id, "sender_user_id": data.sender_user_id,
+                "sender_organization_id": data.sender_organization_id,
+                "message_type": data.message_type, "body": None,
+                "moderation_state": "REMOVED", "created_at": data.created_at,
+            }
+        return data
 
 
 class ConversationOut(BaseModel):
@@ -123,19 +150,11 @@ class StageIn(BaseModel):
 
 
 def _property_of(db: Session, conv: Conversation) -> str | None:
-    if conv.listing_id is None:
-        return None
-    offer = db.get(ClassifiedOffer, conv.listing_id)
-    return offer.property_id if offer else None
+    return access.property_of(db, conv)
 
 
 def _side(db: Session, user: User, conv: Conversation) -> str | None:
-    if conv.requester_user_id == user.id:
-        return "tenant"
-    prop = _property_of(db, conv)
-    if prop and authority.can_act(db, user.id, prop, "MANAGE_MESSAGES", verified=False):
-        return "provider"
-    return None
+    return access.side(db, user.id, conv)
 
 
 def _load(db: Session, user: User, conversation_id: str) -> tuple[Conversation, str]:
