@@ -13,7 +13,8 @@ One transaction, in the coordination lock order (properties → … → offers):
 
     property lock → listing row lock → compare the expected head with the head
     → insert the decision (superseding the head) → pause (hold actions)
-    → resolve the target's live reports → audit → managers' inbox notices
+    → resolve the target's live reports → answer the owner's open review
+    request on the superseded hold → audit → managers' inbox notices
     → ModerationDecisionRecorded
 
 The compare-and-set on the head is what makes a retry safe after an unknown
@@ -41,7 +42,7 @@ from app.modules.events import service as events
 from app.modules.identity.models import User
 from app.modules.properties import authority, coordination, freshness
 from app.modules.properties.models import AUTHORITY_SCOPES, PAUSABLE_FROM, ClassifiedOffer
-from app.modules.trust import committed, hold, notices
+from app.modules.trust import committed, hold, notices, reviews
 from app.modules.trust.models import (
     DECISION_ACTIONS,
     DECISION_TARGET_TYPES,
@@ -119,6 +120,7 @@ class AppliedDecision:
     resolved_report_ids: tuple[str, ...]
     notified_user_ids: tuple[str, ...] = ()
     effective_from: datetime | None = None
+    answered_review_request_id: str | None = None
 
 
 def apply_listing_decision(
@@ -203,6 +205,10 @@ def apply_listing_decision(
         status_after = _pause(db, listing_id, row.status)
 
     resolved = _resolve_reports(db, "LISTING", listing_id, decision.id, actor.id)
+    # The owner's open review request on the superseded hold is answered by
+    # this decision — in this transaction, so never ANSWERED by a decision
+    # that did not commit, and never left OPEN on a hold that is not current.
+    answered = reviews.answer_open_request(db, current_id, decision.id)
     audit(
         db,
         actor=actor.id,
@@ -232,6 +238,7 @@ def apply_listing_decision(
         resolved_report_ids=resolved,
         notified_user_ids=tuple(notified),
         effective_from=decision.effective_from,
+        answered_review_request_id=answered,
     )
 
 

@@ -6,6 +6,7 @@ MESSAGE targets arrive with Slice 4 as an additive widening.
     GET  /v1/admin/moderation/queue                    targets with live reports
     GET  /v1/admin/moderation/targets/LISTING/{id}     review a target (sets IN_REVIEW)
     POST /v1/admin/moderation/decisions                decide (S1 decision service)
+    POST /v1/classifieds/{id}/moderation-review        a manager asks for a hold to be reviewed
 
 Every rule lives in the services (`reports`, `moderation`, `decisions`); this
 module maps their refusals to HTTP. Database failures are not caught here:
@@ -24,7 +25,7 @@ from app.core.db import get_db
 from app.core.security import can_moderate, get_current_user
 from app.modules.properties import freshness
 from app.modules.properties.router import public_listing
-from app.modules.trust import decisions, moderation, reports
+from app.modules.trust import decisions, moderation, reports, reviews
 from app.modules.trust.models import HOLD_ACTIONS, ModerationDecision, Report
 
 Id = Annotated[str, Path(min_length=1, max_length=36, pattern=r"^[A-Za-z0-9-]+$")]
@@ -189,11 +190,15 @@ class QueueItemOut(BaseModel):
     target_id: str
     listing_id: str
     live_reports: int
-    max_severity: str
-    oldest_report_at: datetime
-    newest_report_at: datetime
+    # None when the target is here only for an open review request: no
+    # severity is invented for it.
+    max_severity: str | None
+    oldest_report_at: datetime | None
+    newest_report_at: datetime | None
     distinct_reporters: int
     phone_verified_reporters: int
+    has_open_review_request: bool
+    review_requested_at: datetime | None
     head_decision_id: str | None
     head_action: str | None
     held: bool
@@ -211,8 +216,10 @@ class QueuePage(BaseModel):
 def moderation_queue(limit: int = Query(default=50, ge=1, le=100),
                      offset: int = Query(default=0, ge=0, le=10_000),
                      db: Session = Depends(get_db)):
-    """Targets with live reports: HIGH severity first, then the oldest
-    outstanding report. Ordering only — nothing here acts on a target."""
+    """Targets with moderator work — live reports or an owner's open review
+    request: URGENT/HIGH reports first, then open review requests, then
+    NORMAL reports; oldest work first within each. Ordering only — nothing
+    here acts on a target."""
     items, total = moderation.queue(db, limit=limit, offset=offset)
     return QueuePage(
         items=[QueueItemOut(
@@ -221,6 +228,8 @@ def moderation_queue(limit: int = Query(default=50, ge=1, le=100),
             oldest_report_at=i.oldest_report_at, newest_report_at=i.newest_report_at,
             distinct_reporters=i.distinct_reporters,
             phone_verified_reporters=i.phone_verified_reporters,
+            has_open_review_request=i.has_open_review_request,
+            review_requested_at=i.review_requested_at,
             head_decision_id=i.head.id if i.head else None,
             head_action=i.head.action if i.head else None, held=i.held,
         ) for i in items],
@@ -246,6 +255,18 @@ class ModeratorReportOut(BaseModel):
     snapshot: dict | None
 
 
+class ModeratorReviewRequestOut(BaseModel):
+    """Moderator-only: the manager's request to reconsider the current hold —
+    internal requester id and their plain-text note; not their email/phone."""
+
+    id: str
+    decision_id: str
+    requested_by_user_id: str
+    note: str | None
+    status: str
+    created_at: datetime
+
+
 class ListingContextOut(BaseModel):
     id: str
     property_id: str
@@ -262,6 +283,7 @@ class TargetOut(BaseModel):
     head: HeadOut | None
     held: bool
     reports: list[ModeratorReportOut]
+    review_request: ModeratorReviewRequestOut | None = None
 
 
 @moderation_router.get(
@@ -301,9 +323,19 @@ def review_listing(listing_id: Id, moderator=Depends(require_moderator),
             listing_public_generation_at_report=r.report.listing_public_generation_at_report,
             snapshot=r.report.snapshot,
         ) for r in review.reports],
+        review_request=_review_request_out(review.review_request),
     )
     db.commit()
     return out
+
+
+def _review_request_out(request) -> ModeratorReviewRequestOut | None:
+    if request is None:
+        return None
+    return ModeratorReviewRequestOut(
+        id=request.id, decision_id=request.decision_id,
+        requested_by_user_id=request.requested_by_user_id, note=request.note,
+        status=request.status, created_at=freshness.to_utc(request.created_at))
 
 
 class DecisionIn(BaseModel):
@@ -334,6 +366,8 @@ class DecisionOut(BaseModel):
     held: bool
     resolved_reports: int
     notified_managers: int
+    # The owner's review request this decision answered (Slice 5), if any.
+    answered_review_request_id: str | None = None
 
 
 @moderation_router.post(
@@ -355,7 +389,8 @@ class DecisionOut(BaseModel):
 def decide(body: DecisionIn, moderator=Depends(require_moderator),
            db: Session = Depends(get_db)):
     """Record a moderation decision on a listing and apply it (hold, release
-    or dismissal), resolving every live report on it and notifying the
+    or dismissal), resolving every live report on it, answering the owner's
+    open review request on the hold it supersedes, and notifying the
     listing's managers of a hold or a release — in one transaction."""
     try:
         applied = decisions.apply_listing_decision(
@@ -396,4 +431,61 @@ def decide(body: DecisionIn, moderator=Depends(require_moderator),
         listing_status=applied.listing_status_after, held=applied.held,
         resolved_reports=len(applied.resolved_report_ids),
         notified_managers=len(applied.notified_user_ids),
+        answered_review_request_id=applied.answered_review_request_id,
     )
+
+
+# --- owner: review request (Slice 5) ---------------------------------------------
+class ReviewRequestIn(BaseModel):
+    """Only an optional note: the hold it concerns is the listing's current
+    one, decided by the server."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    # Plain text, up to 500 characters once control characters are removed.
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class ReviewRequestOut(BaseModel):
+    id: str
+    listing_id: str
+    status: Literal["OPEN"]
+    created_at: datetime
+
+
+@router.post(
+    "/classifieds/{listing_id}/moderation-review",
+    response_model=ReviewRequestOut,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        404: {"description": "No such listing, or the caller may not manage it — "
+                             "deliberately indistinguishable"},
+        409: {"description": "Not on hold (or the hold cannot be reviewed); a review of "
+                             "this hold is already open; or the 3 reviews of this hold "
+                             "episode are used. After an unknown COMMIT, 'already open' "
+                             "may mean the first attempt succeeded"},
+        422: {"description": "Invalid note"},
+        503: {"description": "Database unavailable (PR-003)"},
+    },
+)
+def request_moderation_review(listing_id: Id, body: ReviewRequestIn,
+                              user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """Ask Homies moderation to reconsider the hold on a listing you manage.
+    Nothing about the listing changes; a moderator answers with a new
+    decision (keep the hold, or release it — then you republish)."""
+    try:
+        requested = reviews.request_review(db, requester=user, listing_id=listing_id,
+                                           note=body.note)
+    except reviews.ListingNotFound as exc:
+        db.rollback()
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from None
+    except (reviews.NotHeld, reviews.AlreadyOpen, reviews.CapReached) as exc:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from None
+    except reviews.InvalidReview as exc:
+        db.rollback()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from None
+    db.commit()
+    request = requested.request
+    return ReviewRequestOut(id=request.id, listing_id=requested.listing_id, status="OPEN",
+                            created_at=freshness.to_utc(request.created_at))

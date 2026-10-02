@@ -68,7 +68,8 @@ TAG_DESCRIPTIONS = {
     "geography": "Countries, administrative areas and localities: public reference data.",
     "saved": "A user's saved listings and saved searches (TASK-014).",
     "notifications": "A user's inbox, notification preferences and unsubscribe (TASK-014).",
-    "reports": "Reporting a listing to Homies moderation, and one's own reports (TASK-015).",
+    "reports": "Reporting a listing to Homies moderation, one's own reports, and asking "
+               "for a hold on one's listing to be reviewed (TASK-015).",
     "moderation": "Moderators: the report queue, target review and decisions (TASK-015).",
     "admin": "Operations surface: users, audit, notifications, property authority.",
     "ops": "Health and metrics.",
