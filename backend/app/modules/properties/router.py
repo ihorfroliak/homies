@@ -70,6 +70,7 @@ from app.modules.properties.models import (
     Space,
 )
 from app.modules.properties import classification
+from app.modules.trust import hold as moderation_hold
 from app.modules.properties.schemas import (
     AreaRef,
     NamedRef,
@@ -81,6 +82,7 @@ from app.modules.properties.schemas import (
     ClassifiedCreate,
     ClassifiedOut,
     ClassifiedOwnerOut,
+    ModerationStateOut,
     FreshnessOut,
     QualityCheckOut,
     QualityOut,
@@ -196,6 +198,11 @@ def _public(offer: ClassifiedOffer, now: datetime | None = None) -> ClassifiedOu
         move_in_total=offer.move_in_total_minor or 0,
         public_location=point,
     )
+
+
+# The public projection, for other modules (TASK-015: a report's listing
+# snapshot is an allowlist over exactly what the public sees).
+public_listing = _public
 
 
 _PRICE_FIELDS = {
@@ -478,7 +485,9 @@ def create_classified(
                 "which re-reads and locks the current chain. NOT retryable (no "
                 "`Retry-After`): the space was archived; the listing can no longer be "
                 "published from its current state; the property type is not publishable "
-                "under current policy."
+                "under current policy; or the listing is on hold by Homies moderation "
+                "(detail starts with `HELD_BY_MODERATION`) — it can be published again only "
+                "after a moderator releases the hold."
             ),
             "headers": {
                 "Retry-After": {
@@ -634,8 +643,9 @@ def pause_classified(
         409: {"description": (
             "Not confirmable: the listing is a draft, paused or archived; or, when it is "
             "stale, it no longer passes a publication check (space archived, property "
-            "type not publishable). RETRYABLE only with `Retry-After` (authority chain "
-            "changed during the decision), as for publish."
+            "type not publishable); or the listing is on hold by Homies moderation "
+            "(detail starts with `HELD_BY_MODERATION`). RETRYABLE only with `Retry-After` "
+            "(authority chain changed during the decision), as for publish."
         )},
     },
 )
@@ -767,7 +777,9 @@ def my_classifieds(user=Depends(require_role("host")), db: Session = Depends(get
         .where(ClassifiedOffer.property_id.in_(
             authority.authorized_property_ids(user.id, "PUBLISH_LISTING")))
         .order_by(ClassifiedOffer.created_at.desc())
-    )
+    ).all()
+    # Every listing's moderation head in one statement, not one per row.
+    heads = moderation_hold.heads(db, "LISTING", [offer.id for offer in offers])
     out = []
     for offer in offers:
         last = offer.last_confirmed_available_at
@@ -790,8 +802,19 @@ def my_classifieds(user=Depends(require_role("host")), db: Session = Depends(get
                 checks=[QualityCheckOut(code=c.code, required=c.required, passed=c.passed)
                         for c in verdict.checks],
             ),
+            moderation=_moderation_state(heads.get(offer.id)),
         ))
     return out
+
+
+def _moderation_state(head) -> ModerationStateOut:
+    """Only a hold is shown. A head that is not a hold — a dismissal or a
+    release — says nothing the owner did not already see, so it reads NONE
+    (a dismissal would otherwise reveal that the listing was reported)."""
+    if head is None or head.action not in moderation_hold.HOLD_ACTIONS:
+        return ModerationStateOut()
+    return ModerationStateOut(state="HELD", action=head.action, reason_code=head.reason_code,
+                              since=freshness.to_utc(head.effective_from))
 
 
 def _page_options(stmt):
