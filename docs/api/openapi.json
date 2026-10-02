@@ -741,6 +741,13 @@
             ],
             "title": "Min Term Months"
           },
+          "moderation": {
+            "$ref": "#/components/schemas/ModerationStateOut",
+            "default": {
+              "review": "NONE",
+              "state": "NONE"
+            }
+          },
           "monthly_total_estimate": {
             "title": "Monthly Total Estimate",
             "type": "integer"
@@ -1068,6 +1075,183 @@
         "title": "CountryOut",
         "type": "object"
       },
+      "DecisionIn": {
+        "additionalProperties": false,
+        "description": "A decision against the target's current head. `expected_head_decision_id`\nis required (null when the target has no decision yet): a decision made\nagainst an older head is refused, never re-aimed.",
+        "properties": {
+          "action": {
+            "enum": [
+              "NO_ACTION",
+              "CONTENT_EDIT_REQUIRED",
+              "VISIBILITY_LIMITED"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "expected_head_decision_id": {
+            "anyOf": [
+              {
+                "maxLength": 36,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Head Decision Id"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "reason_code": {
+            "enum": [
+              "FAKE",
+              "DUPLICATE",
+              "SCAM",
+              "DISCRIMINATION",
+              "ILLEGAL_CONTENT",
+              "STOLEN_MEDIA",
+              "HARASSMENT",
+              "SAFETY",
+              "MISLEADING_PRICE",
+              "IMPERSONATION",
+              "SPAM",
+              "OTHER",
+              "NOT_A_VIOLATION",
+              "REINSTATED_REMEDIED",
+              "REINSTATED_DECISION_ERROR"
+            ],
+            "title": "Reason Code",
+            "type": "string"
+          },
+          "reclassified_category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "FAKE",
+                  "DUPLICATE",
+                  "SCAM",
+                  "DISCRIMINATION",
+                  "ILLEGAL_CONTENT",
+                  "STOLEN_MEDIA",
+                  "HARASSMENT",
+                  "SAFETY",
+                  "MISLEADING_PRICE",
+                  "IMPERSONATION",
+                  "SPAM",
+                  "OTHER"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reclassified Category"
+          },
+          "target_id": {
+            "maxLength": 36,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9-]+$",
+            "title": "Target Id",
+            "type": "string"
+          },
+          "target_type": {
+            "const": "LISTING",
+            "title": "Target Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_type",
+          "target_id",
+          "action",
+          "reason_code",
+          "expected_head_decision_id"
+        ],
+        "title": "DecisionIn",
+        "type": "object"
+      },
+      "DecisionOut": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": "string"
+          },
+          "effective_from": {
+            "format": "date-time",
+            "title": "Effective From",
+            "type": "string"
+          },
+          "held": {
+            "title": "Held",
+            "type": "boolean"
+          },
+          "listing_status": {
+            "title": "Listing Status",
+            "type": "string"
+          },
+          "notified_managers": {
+            "title": "Notified Managers",
+            "type": "integer"
+          },
+          "reason_code": {
+            "title": "Reason Code",
+            "type": "string"
+          },
+          "resolved_reports": {
+            "title": "Resolved Reports",
+            "type": "integer"
+          },
+          "supersedes_decision_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Decision Id"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "string"
+          },
+          "target_type": {
+            "title": "Target Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision_id",
+          "target_type",
+          "target_id",
+          "action",
+          "reason_code",
+          "supersedes_decision_id",
+          "effective_from",
+          "listing_status",
+          "held",
+          "resolved_reports",
+          "notified_managers"
+        ],
+        "title": "DecisionOut",
+        "type": "object"
+      },
       "FreshnessOut": {
         "description": "Owner view of freshness. `reconfirm_at` / `stale_at` are derived from\nthe last confirmation and the current policy, not stored (D-60).",
         "properties": {
@@ -1208,6 +1392,52 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HeadOut": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "decided_by_user_id": {
+            "title": "Decided By User Id",
+            "type": "string"
+          },
+          "effective_from": {
+            "format": "date-time",
+            "title": "Effective From",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "reason_code": {
+            "title": "Reason Code",
+            "type": "string"
+          },
+          "supersedes_decision_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Decision Id"
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "reason_code",
+          "supersedes_decision_id",
+          "decided_by_user_id",
+          "effective_from"
+        ],
+        "title": "HeadOut",
+        "type": "object"
+      },
       "LegalIdentityIn": {
         "description": "The legal name ownership is checked against — as it appears in the land\nregister, not a display name.",
         "properties": {
@@ -1290,6 +1520,45 @@
           "country_of_residence"
         ],
         "title": "LegalIdentityOut",
+        "type": "object"
+      },
+      "ListingContextOut": {
+        "properties": {
+          "current": {
+            "additionalProperties": true,
+            "title": "Current",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_public": {
+            "title": "Is Public",
+            "type": "boolean"
+          },
+          "property_id": {
+            "title": "Property Id",
+            "type": "string"
+          },
+          "public_generation": {
+            "title": "Public Generation",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "property_id",
+          "status",
+          "is_public",
+          "public_generation",
+          "current"
+        ],
+        "title": "ListingContextOut",
         "type": "object"
       },
       "LocalityOut": {
@@ -1835,6 +2104,169 @@
           "created_at"
         ],
         "title": "MessageOut",
+        "type": "object"
+      },
+      "ModerationStateOut": {
+        "description": "The listing's moderation state as its managers see it (TASK-015): a\nhold's action, reason code and date. Never whether anyone reported it,\nhow many, who, why in their words, or who decided. A dismissal or a\nrelease reads NONE. `review` is NONE until review requests exist\n(Slice 5).",
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "review": {
+            "const": "NONE",
+            "default": "NONE",
+            "title": "Review",
+            "type": "string"
+          },
+          "since": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Since"
+          },
+          "state": {
+            "default": "NONE",
+            "enum": [
+              "NONE",
+              "HELD"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "title": "ModerationStateOut",
+        "type": "object"
+      },
+      "ModeratorReportOut": {
+        "description": "Moderator-only: who reported (internal id, verification state — not\nemail or phone), what they said, and the listing as they saw it.",
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "first_reviewed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Reviewed At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "listing_public_generation_at_report": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Public Generation At Report"
+          },
+          "reporter_email_verified": {
+            "title": "Reporter Email Verified",
+            "type": "boolean"
+          },
+          "reporter_phone_verified": {
+            "title": "Reporter Phone Verified",
+            "type": "boolean"
+          },
+          "reporter_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reporter User Id"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "snapshot": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reporter_user_id",
+          "reporter_email_verified",
+          "reporter_phone_verified",
+          "category",
+          "severity",
+          "status",
+          "description",
+          "created_at",
+          "first_reviewed_at",
+          "listing_public_generation_at_report",
+          "snapshot"
+        ],
+        "title": "ModeratorReportOut",
         "type": "object"
       },
       "NamedRef": {
@@ -3174,6 +3606,122 @@
         "title": "QualityOut",
         "type": "object"
       },
+      "QueueItemOut": {
+        "description": "A target and its live workload. No report text, reporter contact,\naddress or snapshot.",
+        "properties": {
+          "distinct_reporters": {
+            "title": "Distinct Reporters",
+            "type": "integer"
+          },
+          "head_action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Action"
+          },
+          "head_decision_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Decision Id"
+          },
+          "held": {
+            "title": "Held",
+            "type": "boolean"
+          },
+          "listing_id": {
+            "title": "Listing Id",
+            "type": "string"
+          },
+          "live_reports": {
+            "title": "Live Reports",
+            "type": "integer"
+          },
+          "max_severity": {
+            "title": "Max Severity",
+            "type": "string"
+          },
+          "newest_report_at": {
+            "format": "date-time",
+            "title": "Newest Report At",
+            "type": "string"
+          },
+          "oldest_report_at": {
+            "format": "date-time",
+            "title": "Oldest Report At",
+            "type": "string"
+          },
+          "phone_verified_reporters": {
+            "title": "Phone Verified Reporters",
+            "type": "integer"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "string"
+          },
+          "target_type": {
+            "title": "Target Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_type",
+          "target_id",
+          "listing_id",
+          "live_reports",
+          "max_severity",
+          "oldest_report_at",
+          "newest_report_at",
+          "distinct_reporters",
+          "phone_verified_reporters",
+          "head_decision_id",
+          "head_action",
+          "held"
+        ],
+        "title": "QueueItemOut",
+        "type": "object"
+      },
+      "QueuePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QueueItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "QueuePage",
+        "type": "object"
+      },
       "RefreshRequest": {
         "properties": {
           "refresh_token": {
@@ -3220,6 +3768,137 @@
           "password"
         ],
         "title": "RegisterRequest",
+        "type": "object"
+      },
+      "ReportIn": {
+        "additionalProperties": false,
+        "description": "What a reporter says. Everything else — who, severity, status, the\nlisting's snapshot and generation — is the server's.",
+        "properties": {
+          "reason": {
+            "enum": [
+              "SCAM",
+              "FAKE",
+              "MISLEADING_PRICE",
+              "DISCRIMINATION",
+              "SAFETY",
+              "STOLEN_MEDIA",
+              "DUPLICATE",
+              "OTHER"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "target_id": {
+            "maxLength": 36,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9-]+$",
+            "title": "Target Id",
+            "type": "string"
+          },
+          "target_type": {
+            "const": "LISTING",
+            "title": "Target Type",
+            "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "required": [
+          "target_type",
+          "target_id",
+          "reason"
+        ],
+        "title": "ReportIn",
+        "type": "object"
+      },
+      "ReportOut": {
+        "description": "The reporter's view: never the decision, the action, other reports or\nwho reviewed it (L13).",
+        "properties": {
+          "created": {
+            "default": false,
+            "title": "Created",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "received",
+              "reviewed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "string"
+          },
+          "target_type": {
+            "title": "Target Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "target_type",
+          "target_id",
+          "reason",
+          "status",
+          "created_at"
+        ],
+        "title": "ReportOut",
+        "type": "object"
+      },
+      "ReportPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReportOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "ReportPage",
         "type": "object"
       },
       "RevealQuotaOut": {
@@ -3830,6 +4509,52 @@
           "provider_stage"
         ],
         "title": "StageIn",
+        "type": "object"
+      },
+      "TargetOut": {
+        "properties": {
+          "head": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HeadOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "held": {
+            "title": "Held",
+            "type": "boolean"
+          },
+          "listing": {
+            "$ref": "#/components/schemas/ListingContextOut"
+          },
+          "reports": {
+            "items": {
+              "$ref": "#/components/schemas/ModeratorReportOut"
+            },
+            "title": "Reports",
+            "type": "array"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "string"
+          },
+          "target_type": {
+            "title": "Target Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_type",
+          "target_id",
+          "listing",
+          "head",
+          "held",
+          "reports"
+        ],
+        "title": "TargetOut",
         "type": "object"
       },
       "TokenPair": {
@@ -4546,6 +5271,181 @@
         "summary": "Reject",
         "tags": [
           "media"
+        ]
+      }
+    },
+    "/v1/admin/moderation/decisions": {
+      "post": {
+        "description": "Record a moderation decision on a listing and apply it (hold, release\nor dismissal), resolving every live report on it and notifying the\nlisting's managers of a hold or a release — in one transaction.",
+        "operationId": "decide_v1_admin_moderation_decisions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Not a moderator, or a conflict of interest (manages the property, or has a live report on the target)"
+          },
+          "404": {
+            "description": "No such listing"
+          },
+          "409": {
+            "description": "STALE_HEAD: the target's current decision is not the expected one — refresh and decide again (never retried for you)"
+          },
+          "422": {
+            "description": "Invalid action or reason for the target's state"
+          },
+          "503": {
+            "description": "Database unavailable (PR-003). A retry with the same expected head is safe: if the first attempt committed, it is refused as STALE_HEAD"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decide",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/v1/admin/moderation/queue": {
+      "get": {
+        "description": "Targets with live reports: HIGH severity first, then the oldest\noutstanding report. Ordering only — nothing here acts on a target.",
+        "operationId": "moderation_queue_v1_admin_moderation_queue_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 10000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueuePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Not a moderator"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Moderation Queue",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/v1/admin/moderation/targets/LISTING/{listing_id}": {
+      "get": {
+        "description": "Review a listing: its live reports move to IN_REVIEW (first review time\nset once). The access is audited (ids only).",
+        "operationId": "review_listing_v1_admin_moderation_targets_LISTING__listing_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9-]+$",
+              "title": "Listing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TargetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Not a moderator"
+          },
+          "404": {
+            "description": "No such listing"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Review Listing",
+        "tags": [
+          "moderation"
         ]
       }
     },
@@ -6535,7 +7435,7 @@
             "description": "Offer not found, or the caller holds no authority on its property — deliberately indistinguishable."
           },
           "409": {
-            "description": "Not confirmable: the listing is a draft, paused or archived; or, when it is stale, it no longer passes a publication check (space archived, property type not publishable). RETRYABLE only with `Retry-After` (authority chain changed during the decision), as for publish."
+            "description": "Not confirmable: the listing is a draft, paused or archived; or, when it is stale, it no longer passes a publication check (space archived, property type not publishable); or the listing is on hold by Homies moderation (detail starts with `HELD_BY_MODERATION`). RETRYABLE only with `Retry-After` (authority chain changed during the decision), as for publish."
           },
           "422": {
             "content": {
@@ -6958,7 +7858,7 @@
             "description": "Offer not found, or the caller holds no authority on its property — deliberately indistinguishable."
           },
           "409": {
-            "description": "Conflict. RETRYABLE only when the response carries `Retry-After`: the authority chain changed while the protected decision was being taken (detail: \"The authority for this property changed while publishing. Try again.\"); send a new request, which re-reads and locks the current chain. NOT retryable (no `Retry-After`): the space was archived; the listing can no longer be published from its current state; the property type is not publishable under current policy.",
+            "description": "Conflict. RETRYABLE only when the response carries `Retry-After`: the authority chain changed while the protected decision was being taken (detail: \"The authority for this property changed while publishing. Try again.\"); send a new request, which re-reads and locks the current chain. NOT retryable (no `Retry-After`): the space was archived; the listing can no longer be published from its current state; the property type is not publishable under current policy; or the listing is on hold by Homies moderation (detail starts with `HELD_BY_MODERATION`) — it can be published again only after a moderator releases the hold.",
             "headers": {
               "Retry-After": {
                 "description": "Only on the retryable authority-change conflict; 0.",
@@ -7919,6 +8819,69 @@
         "summary": "My Notifications",
         "tags": [
           "identity"
+        ]
+      }
+    },
+    "/v1/me/reports": {
+      "get": {
+        "description": "The account's own reports, newest first, with a coarse status only.",
+        "operationId": "my_reports_v1_me_reports_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 10000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Reports",
+        "tags": [
+          "reports"
         ]
       }
     },
@@ -9365,6 +10328,71 @@
         ]
       }
     },
+    "/v1/reports": {
+      "post": {
+        "description": "Report a listing to Homies moderation. A report changes nothing about\nthe listing; a moderator reviews it.",
+        "operationId": "file_report_v1_reports_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportOut"
+                }
+              }
+            },
+            "description": "Already reported: the reporter's live report on this target (`created: false`) — also the answer to a retry"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The account has no verified email or phone"
+          },
+          "404": {
+            "description": "No such listing, or not one this account may report"
+          },
+          "409": {
+            "description": "The account manages this listing"
+          },
+          "422": {
+            "description": "Invalid reason or text"
+          },
+          "429": {
+            "description": "Report quota (10 new per 24 h, 20 waiting) or rate limit; see Retry-After"
+          },
+          "503": {
+            "description": "Database unavailable (PR-003); the retry is safe"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "File Report",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
     "/v1/spaces/{space_id}/archive": {
       "post": {
         "operationId": "archive_space_v1_spaces__space_id__archive_post",
@@ -9649,6 +10677,14 @@
     {
       "description": "A user's inbox, notification preferences and unsubscribe (TASK-014).",
       "name": "notifications"
+    },
+    {
+      "description": "Reporting a listing to Homies moderation, and one's own reports (TASK-015).",
+      "name": "reports"
+    },
+    {
+      "description": "Moderators: the report queue, target review and decisions (TASK-015).",
+      "name": "moderation"
     },
     {
       "description": "Operations surface: users, audit, notifications, property authority.",

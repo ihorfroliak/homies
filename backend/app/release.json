@@ -1,14 +1,14 @@
 {
   "manifest_version": 1,
-  "release": "TASK-015 Slice 1 — moderation core and publication hold",
+  "release": "TASK-015 Slices 2+3 — listing reports, moderator API and owner moderation notices",
   "schema_head": "a3c5e7f9b1d4",
   "minimum_schema": "a3c5e7f9b1d4",
   "maximum_schema": "a3c5e7f9b1d4",
-  "schema_transition": "EXPAND",
+  "schema_transition": "NO_SCHEMA_CHANGE",
   "rollback_to_previous": "BLOCKED",
-  "rollback_note": "Migration first: this build reads moderation_decisions on every publication, so it needs a3c5e7f9b1d4 (minimum_schema). The previous release (PR-002/PR-003, head 0c4e6a8b2d91) refuses this schema (TOO_NEW: the step is BLOCKED), because its publication ignores moderation holds and would let an owner republish a held listing. Recovery is forward repair, not a restart of the previous image.",
+  "rollback_note": "No schema change: the Slice 1 schema (a3c5e7f9b1d4) carries reports, decisions and TRANSACTIONAL inbox notices. Rollback to Slice 1 is nevertheless BLOCKED as an operational policy: once users file reports and moderators and owners rely on this loop, the Slice 1 build removes report intake and every moderator HTTP operation (holds could no longer be released over HTTP) while the reports and decisions stay in the database. Recovery is forward repair, not a restart of the previous image.",
   "previous_release": {
-    "id": "PR-003",
-    "schema_head": "0c4e6a8b2d91"
+    "id": "TASK-015-S1",
+    "schema_head": "a3c5e7f9b1d4"
   }
 }

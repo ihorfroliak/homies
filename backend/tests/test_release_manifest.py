@@ -32,6 +32,10 @@ def _parse(graph, data=None):
     return release.parse_manifest(json.dumps(MANIFEST if data is None else data), graph)
 
 
+# A previous release before the Slice 1 migration (EXPAND, rollback BLOCKED).
+PR_003 = {"id": "PR-003", "schema_head": "0c4e6a8b2d91"}
+
+
 def _with(**changes):
     data = copy.deepcopy(MANIFEST)
     for key, value in changes.items():
@@ -128,16 +132,18 @@ def test_the_image_has_no_placeholder_build_identity():
 
 
 def test_this_release_declares_its_rollback_honestly(graph):
-    """TASK-015 S1 adds the moderation tables (EXPAND) and enforces holds in
-    publication; the previous release (PR-003, head 0c4e6a8b2d91) would ignore
-    them, so rollback is BLOCKED. This build reads moderation_decisions on
-    every publication, so its minimum schema is its own head (migration first)."""
+    """TASK-015 Slices 2+3 change no schema (the Slice 1 head a3c5e7f9b1d4
+    carries reports, decisions and TRANSACTIONAL notices), yet rollback to
+    Slice 1 is BLOCKED as an operational policy: it would remove report
+    intake and the moderator HTTP operations while their data stays. The
+    build still reads moderation_decisions on every publication, so its
+    minimum schema stays its own head."""
     manifest = _parse(graph)
-    assert manifest.schema_transition == release.EXPAND
+    assert manifest.schema_transition == release.NO_SCHEMA_CHANGE
     assert manifest.rollback_to_previous == release.BLOCKED
     assert manifest.rollback_allowed() is False
-    assert manifest.previous_schema_head == "0c4e6a8b2d91"
-    assert manifest.minimum_schema == manifest.schema_head == "a3c5e7f9b1d4"
+    assert manifest.previous_schema_head == manifest.schema_head == "a3c5e7f9b1d4"
+    assert manifest.minimum_schema == manifest.schema_head
 
 
 # --- malformed manifests are errors, never compatible -----------------------------------------
@@ -157,10 +163,12 @@ def test_this_release_declares_its_rollback_honestly(graph):
     (_with(release=""), "release"),
     (_with(previous_release={"id": "IBB-001"}), "previous_release"),
     # the declared transition must match the migrations since the previous release
-    (_with(schema_transition="NO_SCHEMA_CHANGE"), "contradicts"),
+    (_with(schema_transition="EXPAND"), "contradicts"),
     (_with(schema_transition="BARRIER"), "contradicts"),
+    (_with(schema_transition="NO_SCHEMA_CHANGE", previous_release=PR_003), "contradicts"),
     # a release cannot promise SAFE across a step that declares BLOCKED
-    (_with(rollback_to_previous="SAFE"), "contradicts a migration"),
+    (_with(schema_transition="EXPAND", rollback_to_previous="SAFE",
+           previous_release=PR_003), "contradicts a migration"),
 ])
 def test_a_malformed_or_contradictory_manifest_is_refused(graph, data, message):
     with pytest.raises(release.ReleaseManifestError, match=message):
