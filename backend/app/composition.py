@@ -68,6 +68,8 @@ TAG_DESCRIPTIONS = {
     "geography": "Countries, administrative areas and localities: public reference data.",
     "saved": "A user's saved listings and saved searches (TASK-014).",
     "notifications": "A user's inbox, notification preferences and unsubscribe (TASK-014).",
+    "reports": "Reporting a listing to Homies moderation, and one's own reports (TASK-015).",
+    "moderation": "Moderators: the report queue, target review and decisions (TASK-015).",
     "admin": "Operations surface: users, audit, notifications, property authority.",
     "ops": "Health and metrics.",
     # Legacy tags — only present when a legacy test composition includes them.
@@ -90,6 +92,8 @@ def phase1_routers() -> list[APIRouter]:
     from app.modules.properties.router import router as properties_router
     from app.modules.saved.router import router as saved_router
     from app.modules.alerts.router import router as alerts_router
+    from app.modules.trust.router import moderation_router
+    from app.modules.trust.router import router as reports_router
 
     return [
         identity_router,
@@ -101,6 +105,8 @@ def phase1_routers() -> list[APIRouter]:
         geography_router,
         saved_router,
         alerts_router,
+        reports_router,
+        moderation_router,
         admin_router,
     ]
 

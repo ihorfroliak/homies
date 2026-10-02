@@ -205,6 +205,73 @@ def authorized_property_ids(user_id: str, scope: str, *, verified: bool = False)
     return _chains(user_id, scope, verified=verified)
 
 
+def holders(db: Session, property_id: str, scope: str) -> list[str]:
+    """Every account that may act on this property with `scope` today — the
+    same three chains as `_holder_parties`/`_chains`, read from the property
+    end, in one statement (no query per candidate). Distinct, sorted.
+
+    Used to address a property's managers (TASK-015 moderation notices): the
+    accounts that see the listing in `GET /v1/me/classifieds` are exactly the
+    ones that receive its notice."""
+    today = _today()
+    held_by = (
+        select(PropertyAuthority.holder_legal_party_id)
+        .join(LegalParty, LegalParty.id == PropertyAuthority.holder_legal_party_id)
+        .join(
+            PropertyAuthorityScope,
+            and_(
+                PropertyAuthorityScope.property_authority_id == PropertyAuthority.id,
+                PropertyAuthorityScope.scope == scope,
+            ),
+        )
+        .where(
+            PropertyAuthority.property_id == property_id,
+            LegalParty.status == "ACTIVE",
+            _in_force(today),
+        )
+    )
+    personal = select(PersonLegalParty.linked_user_id.label("user_id")).where(
+        PersonLegalParty.legal_party_id.in_(held_by),
+        PersonLegalParty.linked_user_id.is_not(None),
+    )
+    roles = [role for role, scopes in ROLE_SCOPES.items() if scope in scopes]
+    organisational = (
+        select(OrganizationMembership.user_id.label("user_id"))
+        .join(Organization, Organization.id == OrganizationMembership.organization_id)
+        .join(OrganizationLegalParty,
+              OrganizationLegalParty.organization_id == Organization.id)
+        .where(
+            OrganizationLegalParty.legal_party_id.in_(held_by),
+            OrganizationMembership.status == "ACTIVE",
+            OrganizationMembership.role.in_(roles),
+            Organization.status == "ACTIVE",
+        )
+    )
+    mandate_scopes = [m for m, scopes in MANDATE_PROPERTY_SCOPES.items() if scope in scopes]
+    mandated = (
+        select(RepresentationMandate.representative_user_id.label("user_id"))
+        .join(
+            RepresentationMandateScope,
+            and_(
+                RepresentationMandateScope.mandate_id == RepresentationMandate.id,
+                RepresentationMandateScope.scope.in_(mandate_scopes),
+            ),
+        )
+        .where(
+            RepresentationMandate.principal_legal_party_id.in_(held_by),
+            RepresentationMandate.status == "ACTIVE",
+            RepresentationMandate.verification_state == "VERIFIED",
+            RepresentationMandate.effective_from <= today,
+            or_(
+                RepresentationMandate.effective_until.is_(None),
+                RepresentationMandate.effective_until >= today,
+            ),
+        )
+    )
+    users = union(personal, organisational, mandated).subquery()
+    return sorted(set(db.scalars(select(users.c.user_id))))
+
+
 def can_act(db: Session, user_id: str, property_id: str, scope: str, *, verified: bool) -> bool:
     query = _chains(user_id, scope, verified=verified).where(
         PropertyAuthority.property_id == property_id
