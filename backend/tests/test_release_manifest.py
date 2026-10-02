@@ -132,12 +132,12 @@ def test_the_image_has_no_placeholder_build_identity():
 
 
 def test_this_release_declares_its_rollback_honestly(graph):
-    """TASK-015 Slices 2+3 change no schema (the Slice 1 head a3c5e7f9b1d4
-    carries reports, decisions and TRANSACTIONAL notices), yet rollback to
-    Slice 1 is BLOCKED as an operational policy: it would remove report
-    intake and the moderator HTTP operations while their data stays. The
-    build still reads moderation_decisions on every publication, so its
-    minimum schema stays its own head."""
+    """TASK-015 Slice 5 changes no schema (moderation_review_requests exists
+    since the Slice 1 head a3c5e7f9b1d4), yet rollback to Slices 2+3 is
+    BLOCKED as an operational policy: that build would strand OPEN review
+    requests (no endpoint, no queue re-entry, no answer). The build still
+    reads moderation_decisions on every publication, so its minimum schema
+    stays its own head."""
     manifest = _parse(graph)
     assert manifest.schema_transition == release.NO_SCHEMA_CHANGE
     assert manifest.rollback_to_previous == release.BLOCKED

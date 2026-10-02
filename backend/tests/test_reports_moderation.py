@@ -375,7 +375,7 @@ def test_opening_a_target_starts_its_review_once_and_is_audited(client):
             AuditLog.action == "moderation.target_viewed", AuditLog.entity_id == offer)).all()
         assert len(entries) == 2
         for entry in entries:
-            assert set(entry.data) == {"target_type", "report_ids"}
+            assert set(entry.data) == {"target_type", "report_ids", "review_request_id"}
             assert "deposit" not in json.dumps(entry.data)
     assert client.get("/v1/admin/moderation/targets/LISTING/00000000-0000-0000-0000-000000000000",
                       headers=auth(moderator)).status_code == 404
