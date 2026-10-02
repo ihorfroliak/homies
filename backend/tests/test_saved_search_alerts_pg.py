@@ -39,7 +39,10 @@ pytestmark = pytest.mark.skipif(
 OFFER = {"title": "Alerty PG", "rent_amount": 250000, "min_term_months": 12,
          "contact_mode": "message"}
 TASK013_HEAD = "d0f2b4c6e8a1"
-HEAD = "f3b5d7e9a1c2"
+# The application under test runs on the whole chain, not on the TASK-014
+# head (f3b5d7e9a1c2): since TASK-015 S1 every publication reads the
+# moderation decisions, and the release minimum is the chain head.
+HEAD = "head"
 
 
 @pytest.fixture
