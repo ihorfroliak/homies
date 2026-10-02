@@ -202,7 +202,7 @@ def test_nobody_reports_a_listing_they_manage(client):
     ({"reason": "SCAM", "reporter_user_id": "someone"}, "the reporter is the caller"),
     ({"reason": "SCAM", "status": "RESOLVED"}, "status is the server's"),
     ({"reason": "SCAM", "snapshot": {}}, "the snapshot is the server's"),
-    ({"reason": "SCAM", "target_type": "MESSAGE"}, "message reports: Slice 4"),
+    ({"reason": "FAKE", "target_type": "MESSAGE"}, "a listing reason on a message"),
 ])
 def test_invalid_reports_are_refused(client, body, why):
     _, offer = _listing(client)
