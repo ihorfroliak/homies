@@ -67,6 +67,7 @@ from app.modules.engagement.models import (
     ViewingSettings,
     ViewingWindow,
 )
+from app.modules.events import facts
 from app.modules.identity.models import User
 from app.modules.properties import authority, freshness
 from app.modules.properties.models import ClassifiedOffer
@@ -448,6 +449,7 @@ def request_viewing(listing_id: str, body: ViewingRequest,
     db.flush()
     audit(db, actor=user.id, action="viewing.requested", entity_type="viewing",
           entity_id=viewing.id)
+    facts.viewing_requested(db, viewing, settings.booking_mode)
     db.commit()
     return viewing
 
@@ -527,6 +529,7 @@ def _respond(db: Session, user: User, viewing_id: str, confirm: bool) -> Viewing
                 confirmed_by_user_id=user.id if confirm else None)
     audit(db, actor=user.id, action=f"viewing.{viewing.status.lower()}",
           entity_type="viewing", entity_id=viewing.id)
+    facts.viewing_responded(db, viewing)
     db.commit()
     return viewing
 
@@ -549,9 +552,14 @@ def cancel(viewing_id: str, user: User = Depends(get_current_user),
     """Either side may call it off before it happens."""
     _viewing_for(db, user, viewing_id)
     viewing = _locked(db, viewing_id)
+    prior = viewing.status
     _transition(db, viewing, HELD, status="CANCELLED", cancelled_at=_now())
     audit(db, actor=user.id, action="viewing.cancelled", entity_type="viewing",
           entity_id=viewing.id)
+    # The requester is the requester even when they also manage the listing.
+    facts.viewing_cancelled(
+        db, viewing_id=viewing.id, listing_id=viewing.listing_id, prior_status=prior,
+        cancelled_by="REQUESTER" if viewing.requester_user_id == user.id else "PROVIDER")
     db.commit()
     return viewing
 
@@ -569,6 +577,7 @@ def record_outcome(viewing_id: str, body: OutcomeIn, user: User = Depends(get_cu
     if _aware(viewing.starts_at) > _now():
         raise HTTPException(status.HTTP_409_CONFLICT, "The viewing has not happened yet")
     _transition(db, viewing, ("CONFIRMED",), status=body.outcome, completed_at=_now())
+    facts.viewing_outcome_recorded(db, viewing)
     db.commit()
     return viewing
 

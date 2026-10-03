@@ -47,9 +47,10 @@ from sqlalchemy.orm import Session
 from app.core.audit import audit
 from app.core.db import lock_row
 from app.core.security import can_moderate
-from app.modules.events import service as events
 from app.modules.engagement import access as conversation_access
 from app.modules.engagement.models import Conversation, Message
+from app.modules.events import facts
+from app.modules.events import service as events
 from app.modules.identity.models import User
 from app.modules.media.models import ListingMedia, MediaAsset
 from app.modules.properties import authority, coordination, freshness
@@ -231,6 +232,10 @@ def apply_listing_decision(
     status_after = row.status
     if action in HOLD_ACTIONS:
         status_after = _pause(db, listing_id, row.status)
+        facts.listing_status_changed(
+            db, listing_id=listing_id, property_id=row.property_id, from_status=row.status,
+            to_status=status_after, reason_code="MODERATION_HOLD",
+            public_generation=row.public_generation)
     closed: list[str] = []
     cancelled: list[str] = []
     if close_engagement:

@@ -107,6 +107,13 @@ def make_public(db: Session, offer_id: str, *, allowed_from: tuple[str, ...],
         raise RuntimeError("listing changed under its own row lock")
     if opening:
         _open_episode(db, offer_id, row.property_id, generation, now)
+    if row.status != "active":
+        from app.modules.events import facts  # measurement fact (GROWTH-001)
+
+        facts.listing_status_changed(
+            db, listing_id=offer_id, property_id=row.property_id, from_status=row.status,
+            to_status="active", public_generation=generation,
+            reason_code="RECONFIRMED" if row.status == "stale" else "PUBLISHED")
     return Transition(True, row.status, opening, generation)
 
 

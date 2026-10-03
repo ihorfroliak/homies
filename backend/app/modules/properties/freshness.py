@@ -236,11 +236,17 @@ def sweep(db: Session, *, limit: int = 500, as_of: datetime | None = None) -> Sw
                ClassifiedOffer.last_confirmed_available_at <= stale_cutoff)
         .values(status="stale")
         .returning(ClassifiedOffer.id, ClassifiedOffer.property_id,
-                   ClassifiedOffer.last_confirmed_available_at)
+                   ClassifiedOffer.last_confirmed_available_at,
+                   ClassifiedOffer.public_generation)
         .execution_options(synchronize_session=False)
     ).all()
-    for offer_id, property_id, last in staled:
+    from app.modules.events import facts  # measurement fact (GROWTH-001)
+
+    for offer_id, property_id, last, generation in staled:
         emit(db, LISTING_AUTO_PAUSED_STALE, offer_id, property_id, last)
+        facts.listing_status_changed(
+            db, listing_id=offer_id, property_id=property_id, from_status="active",
+            to_status="stale", reason_code="STALE_SWEEP", public_generation=generation)
         result.staled.append(offer_id)
 
     due = db.execute(

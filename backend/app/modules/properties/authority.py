@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import ColumnElement, Select
 
 from app.core.audit import audit
+from app.modules.events import facts
 from app.modules.identity.models import (
     LegalParty,
     Organization,
@@ -693,6 +694,10 @@ def revoke(db: Session, authority: PropertyAuthority, actor_id: str) -> list[str
                 ClassifiedOffer.status == "active",
             )
         ):
+            facts.listing_status_changed(
+                db, listing_id=offer.id, property_id=offer.property_id,
+                from_status=offer.status, to_status="paused", reason_code="AUTHORITY_LOST",
+                public_generation=offer.public_generation)
             offer.status = "paused"
             paused.append(offer.id)
 
