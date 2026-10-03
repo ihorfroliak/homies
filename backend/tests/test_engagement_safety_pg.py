@@ -136,6 +136,20 @@ def _user_messages(engine, conv) -> int:
                            "message_type = 'USER'", c=conv)
 
 
+def _blocked_count(engine, blocker: int, n: int) -> bool:
+    """True once at least `n` backends are blocked by `blocker`."""
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        with engine.connect() as conn:
+            waiting = conn.scalar(text(
+                "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() "
+                "AND :b = ANY(pg_blocking_pids(pid))"), {"b": blocker})
+        if waiting >= n:
+            return True
+        time.sleep(0.05)
+    return False
+
+
 def _wait_for(reached):
     assert reached.wait(20), "the first transaction never reached its commit"
 
@@ -383,7 +397,11 @@ def test_e_r5_nothing_new_is_opened_behind_close_engagement(pg_client, pg_migrat
                     s["offer"], conversations.MessageIn(body="hi"),
                     user=_user(r, newcomer_email), db=r)
         threads = [_run(result, "request", request), _run(result, "start", start)]
-        assert _blocked_on(eng, "classified_offers", _pid(a))
+        # Both must be waiting on the decision before it commits — otherwise a
+        # thread that has not yet read the listing would simply see the
+        # committed hold, and the test would not prove the lock (found when a
+        # mutation that removed start's listing lock survived intermittently).
+        assert _blocked_count(eng, _pid(a), 2)
         a.commit()
         for t in threads:
             t.join(15)
