@@ -32,7 +32,7 @@ from sqlalchemy.orm import Session
 
 from app.core.audit import audit
 from app.core.config import settings
-from app.core.db import get_db
+from app.core.db import get_db, lock_row
 from app.core.security import get_current_user, require_role
 from app.modules.identity.models import User
 from app.modules.media import sanitize, storage
@@ -214,6 +214,10 @@ def list_media(property_id: str, user: User = Depends(get_current_user),
 
 
 def _moderate(db: Session, asset_id: str, admin: User, state: str) -> MediaAsset:
+    # Upload review (approve/reject a new photo). Rejection takes the photo off
+    # every listing — destructive by design for a photo that never passed.
+    # Trust moderation of a published photo is NOT this: TASK-015 S4b
+    # CONTENT_REMOVED (trust/decisions.py) restricts it and keeps every link.
     asset = db.get(MediaAsset, asset_id)
     if asset is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Media not found")
@@ -265,7 +269,9 @@ def attach(offer_id: str, body: AttachIn, user: User = Depends(get_current_user)
            db: Session = Depends(get_db)):
     """Put an approved photo of this property on this listing."""
     offer = _owned_offer(db, user, offer_id)
-    asset = db.get(MediaAsset, body.media_asset_id)
+    # The asset row FOR SHARE, re-read: a moderation restriction holds it FOR
+    # UPDATE, so an attach waits for it and then sees RESTRICTED (S4b).
+    asset = lock_row(db, MediaAsset, body.media_asset_id, shared=True)
     if asset is None or asset.property_id != offer.property_id or asset.archived_at:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Media not found")
     if asset.moderation_state != "APPROVED" or not is_servable(asset.file):

@@ -7,7 +7,15 @@ Slice 1 implements LISTING decisions, the ones the publication hold needs:
                             republish — the owner republishes through
                             `make_public`, which opens a new public episode)
     CONTENT_EDIT_REQUIRED   hold: the listing is paused and cannot become
-    VISIBILITY_LIMITED      active while this decision is the chain head
+    VISIBILITY_LIMITED      active while this decision is the chain head;
+                            with `close_engagement` (SCAM, FAKE or SAFETY
+                            only — Slice 4b) it also closes the listing's
+                            ACTIVE conversations and cancels its future
+                            viewings (trust/effects.py)
+
+Slice 4a adds MESSAGE decisions, Slice 4b CONVERSATION (FEATURE_RESTRICTED:
+closed, with a neutral SYSTEM line) and MEDIA (CONTENT_REMOVED: RESTRICTED,
+non-destructive) — each below, with its own lock order.
 
 One transaction, in the coordination lock order (properties → … → offers):
 
@@ -37,14 +45,16 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from app.core.audit import audit
+from app.core.db import lock_row
 from app.core.security import can_moderate
 from app.modules.events import service as events
 from app.modules.engagement import access as conversation_access
 from app.modules.engagement.models import Conversation, Message
 from app.modules.identity.models import User
+from app.modules.media.models import ListingMedia, MediaAsset
 from app.modules.properties import authority, coordination, freshness
 from app.modules.properties.models import AUTHORITY_SCOPES, PAUSABLE_FROM, ClassifiedOffer
-from app.modules.trust import committed, hold, notices, reviews
+from app.modules.trust import committed, effects, hold, notices, reviews
 from app.modules.trust.models import (
     DECISION_ACTIONS,
     DECISION_TARGET_TYPES,
@@ -66,10 +76,14 @@ EVENT_PAYLOAD_KEYS = (
     "supersedes_decision_id", "effective_from",
 )
 
-# Actions Slice 1 can apply to a listing (MEDIA/CONVERSATION: Slice 4b).
+# Actions Slice 1 can apply to a listing.
 LISTING_ACTIONS = ("NO_ACTION", *HOLD_ACTIONS)
 # Slice 4a: a message is dismissed or removed (redacted for participants).
 MESSAGE_ACTIONS = ("NO_ACTION", "CONTENT_REMOVED")
+# Slice 4b: a conversation is dismissed or closed by Homies; a photo is
+# dismissed or restricted.
+CONVERSATION_ACTIONS = ("NO_ACTION", "FEATURE_RESTRICTED")
+MEDIA_ACTIONS = ("NO_ACTION", "CONTENT_REMOVED")
 
 DECISIONS = Counter(
     "homies_moderation_decisions_total",
@@ -125,6 +139,9 @@ class AppliedDecision:
     notified_user_ids: tuple[str, ...] = ()
     effective_from: datetime | None = None
     answered_review_request_id: str | None = None
+    # Slice 4b effects: conversations closed and viewings cancelled.
+    closed_conversation_ids: tuple[str, ...] = ()
+    cancelled_viewing_ids: tuple[str, ...] = ()
 
 
 def apply_listing_decision(
@@ -138,6 +155,7 @@ def apply_listing_decision(
     report_id: str | None = None,
     explanation: str | None = None,
     reclassified_category: str | None = None,
+    close_engagement: bool = False,
 ) -> AppliedDecision:
     """Record and apply one decision on a listing. The caller commits (or
     rolls back on `DecisionRefused`)."""
@@ -147,6 +165,12 @@ def apply_listing_decision(
         raise InvalidDecision(f"{action} is not a listing action in this slice")
     if reclassified_category is not None and reclassified_category not in REPORT_CATEGORIES:
         raise InvalidDecision("unknown category")
+    # Correctable holds never destroy engagement: only a visibility limit for
+    # a scam, a fake or a safety risk may close it (Phase A §6.2).
+    if close_engagement and not (action == "VISIBILITY_LIMITED"
+                                 and reason_code in effects.CLOSE_ENGAGEMENT_REASONS):
+        raise InvalidDecision("close_engagement needs VISIBILITY_LIMITED with reason "
+                              "SCAM, FAKE or SAFETY")
 
     offer = db.get(ClassifiedOffer, listing_id)
     if offer is None:
@@ -197,7 +221,7 @@ def apply_listing_decision(
         decided_by_user_id=actor.id,
         supersedes_decision_id=current_id,
         reclassified_category=reclassified_category,
-        close_engagement=False,  # Slice 4
+        close_engagement=close_engagement,
         listing_public_generation_at_decision=row.public_generation,
     )
     db.add(decision)
@@ -207,6 +231,11 @@ def apply_listing_decision(
     status_after = row.status
     if action in HOLD_ACTIONS:
         status_after = _pause(db, listing_id, row.status)
+    closed: list[str] = []
+    cancelled: list[str] = []
+    if close_engagement:
+        # Lock order continues: … listing → conversations → viewings (id order).
+        closed, cancelled = effects.close_listing_engagement(db, listing_id, decision)
 
     resolved = _resolve_reports(db, "LISTING", listing_id, decision.id, actor.id)
     # The owner's open review request on the superseded hold is answered by
@@ -230,6 +259,8 @@ def apply_listing_decision(
     notice = notices.kind(decision, currently_held)
     notified = (notices.notify_listing_managers(db, decision, row.property_id, notice)
                 if notice else [])
+    if cancelled:
+        notices.notify_viewings_cancelled(db, decision, cancelled)
     _emit(db, decision)
     committed.count_on_commit(db, DECISIONS, target_type="LISTING", action=action)
     return AppliedDecision(
@@ -243,6 +274,8 @@ def apply_listing_decision(
         notified_user_ids=tuple(notified),
         effective_from=decision.effective_from,
         answered_review_request_id=answered,
+        closed_conversation_ids=tuple(closed),
+        cancelled_viewing_ids=tuple(cancelled),
     )
 
 
@@ -466,3 +499,228 @@ def apply_message_decision(
         resolved_report_ids=resolved,
         effective_from=decision.effective_from,
     )
+
+
+# --- CONVERSATION decisions (Slice 4b) -------------------------------------------
+#
+#     NO_ACTION           dismissal (NOT_A_VIOLATION); only while not restricted
+#     FEATURE_RESTRICTED  the conversation is CLOSED with a neutral SYSTEM line
+#                         (both sides see "closed by Homies"); the requester may
+#                         not open another conversation on the listing for the
+#                         same public generation (founder G-14). Terminal: canon
+#                         defines no reopening.
+#
+# Lock order: conversation row → head CAS → insert → close → audit → event —
+# the same first lock as a message decision and as `send_message`. Never a
+# property or a listing row. Live MESSAGE reports in the conversation are
+# separate targets and stay as they are.
+
+
+def apply_conversation_decision(
+    db: Session,
+    *,
+    actor: User,
+    conversation_id: str,
+    action: str,
+    reason_code: str,
+    expected_head_decision_id: str | None,
+    explanation: str | None = None,
+    reclassified_category: str | None = None,
+) -> AppliedDecision:
+    """Record and apply one decision on a conversation. The caller commits
+    (or rolls back on `DecisionRefused`)."""
+    if not can_moderate(actor):
+        raise NotAModerator("only a moderator can decide")
+    if action not in CONVERSATION_ACTIONS:
+        raise InvalidDecision(f"{action} is not a conversation action")
+    if reclassified_category is not None and reclassified_category not in REPORT_CATEGORIES:
+        raise InvalidDecision("unknown category")
+
+    conv = effects.lock_conversation(db, conversation_id)
+    if conv is None:
+        raise TargetNotFound("conversation not found")
+
+    if conversation_access.side(db, actor.id, conv) is not None:
+        raise ConflictOfInterest("the moderator is a participant of this conversation")
+    prop = conversation_access.property_of(db, conv)
+    if prop is not None and any(authority.can_act(db, actor.id, prop, scope, verified=False)
+                                for scope in AUTHORITY_SCOPES):
+        raise ConflictOfInterest("the moderator manages this listing's property")
+    if db.scalar(select(exists().where(
+            Report.conversation_id == conversation_id, Report.reporter_user_id == actor.id,
+            Report.status.in_(LIVE_REPORT_STATUSES)))):
+        raise ConflictOfInterest("the moderator reported a message of this conversation")
+
+    current = hold.head(db, "CONVERSATION", conversation_id)
+    current_id = current.id if current else None
+    if current_id != expected_head_decision_id:
+        raise StaleHead(current_id)
+    if current is not None and current.action == "FEATURE_RESTRICTED":
+        raise InvalidDecision("the conversation was closed by Homies; it is not reopened")
+    _validate_removal(action, "FEATURE_RESTRICTED", reason_code, "a restriction")
+
+    generation = db.scalar(select(ClassifiedOffer.public_generation)
+                           .where(ClassifiedOffer.id == conv.listing_id)) \
+        if conv.listing_id else None
+    decision = ModerationDecision(
+        target_type="CONVERSATION",
+        target_id=conversation_id,
+        listing_id=conv.listing_id,
+        action=action,
+        reason_code=reason_code,
+        explanation=explanation,
+        decided_by_user_id=actor.id,
+        supersedes_decision_id=current_id,
+        reclassified_category=reclassified_category,
+        close_engagement=False,
+        listing_public_generation_at_decision=generation,
+    )
+    db.add(decision)
+    db.flush()
+    db.refresh(decision, attribute_names=["effective_from"])
+
+    closed: tuple[str, ...] = ()
+    if action == "FEATURE_RESTRICTED" and effects.close_conversation(db, conv, decision):
+        closed = (conv.id,)
+    resolved = _resolve_reports(db, "CONVERSATION", conversation_id, decision.id, actor.id)
+    audit(
+        db,
+        actor=actor.id,
+        action=f"moderation.conversation_{action.lower()}",
+        entity_type="conversation",
+        entity_id=conversation_id,
+        data={"decision_id": decision.id, "reason_code": reason_code,
+              "supersedes_decision_id": current_id, "closed": bool(closed)},
+    )
+    _emit(db, decision)
+    committed.count_on_commit(db, DECISIONS, target_type="CONVERSATION", action=action)
+    return AppliedDecision(
+        decision_id=decision.id,
+        supersedes_decision_id=current_id,
+        action=action,
+        listing_status_before="",
+        listing_status_after="",
+        held=False,
+        resolved_report_ids=resolved,
+        effective_from=decision.effective_from,
+        closed_conversation_ids=closed,
+    )
+
+
+# --- MEDIA decisions (Slice 4b) ----------------------------------------------------
+#
+#     NO_ACTION        dismissal (NOT_A_VIOLATION); only while not restricted
+#     CONTENT_REMOVED  moderation_state = RESTRICTED. Non-destructive: the file,
+#                      the asset, every listing link, the bytes and the history
+#                      stay; the public serve and projection already refuse
+#                      anything not APPROVED. Terminal in this slice.
+#
+# Never `media.router._moderate`: its rejection deletes listing links.
+# Lock order: media asset row → head CAS → insert → state → audit → notices →
+# event. `attach` takes the asset row (FOR SHARE) and re-reads its state, so a
+# restricted photo is never attached after the restriction commits.
+
+
+def apply_media_decision(
+    db: Session,
+    *,
+    actor: User,
+    media_asset_id: str,
+    action: str,
+    reason_code: str,
+    expected_head_decision_id: str | None,
+    listing_id: str | None = None,
+    explanation: str | None = None,
+    reclassified_category: str | None = None,
+) -> AppliedDecision:
+    """Record and apply one decision on a photo. `listing_id` (optional) is
+    the listing the moderator saw it on — context only, and it must show the
+    photo. The caller commits (or rolls back on `DecisionRefused`)."""
+    if not can_moderate(actor):
+        raise NotAModerator("only a moderator can decide")
+    if action not in MEDIA_ACTIONS:
+        raise InvalidDecision(f"{action} is not a media action")
+    if reclassified_category is not None and reclassified_category not in REPORT_CATEGORIES:
+        raise InvalidDecision("unknown category")
+
+    asset = lock_row(db, MediaAsset, media_asset_id)
+    if asset is None:
+        raise TargetNotFound("media not found")
+    if listing_id is not None and db.get(ListingMedia, (listing_id, media_asset_id)) is None:
+        raise InvalidDecision("the photo is not on that listing")
+
+    if any(authority.can_act(db, actor.id, asset.property_id, scope, verified=False)
+           for scope in AUTHORITY_SCOPES):
+        raise ConflictOfInterest("the moderator manages this property")
+    if db.scalar(select(exists().where(
+            Report.target_type == "MEDIA", Report.target_id == media_asset_id,
+            Report.reporter_user_id == actor.id, Report.status.in_(LIVE_REPORT_STATUSES)))):
+        raise ConflictOfInterest("the moderator reported this photo")
+
+    current = hold.head(db, "MEDIA", media_asset_id)
+    current_id = current.id if current else None
+    if current_id != expected_head_decision_id:
+        raise StaleHead(current_id)
+    if asset.moderation_state == "RESTRICTED" or (
+            current is not None and current.action == "CONTENT_REMOVED"):
+        raise InvalidDecision("the photo is restricted; restriction is not reversed in this slice")
+    _validate_removal(action, "CONTENT_REMOVED", reason_code, "a removal")
+
+    decision = ModerationDecision(
+        target_type="MEDIA",
+        target_id=media_asset_id,
+        listing_id=listing_id,
+        action=action,
+        reason_code=reason_code,
+        explanation=explanation,
+        decided_by_user_id=actor.id,
+        supersedes_decision_id=current_id,
+        reclassified_category=reclassified_category,
+        close_engagement=False,
+    )
+    db.add(decision)
+    db.flush()
+    db.refresh(decision, attribute_names=["effective_from"])
+
+    notified: list[str] = []
+    if action == "CONTENT_REMOVED":
+        restricted = cast(CursorResult, db.execute(
+            update(MediaAsset)
+            .where(MediaAsset.id == media_asset_id, MediaAsset.moderation_state != "RESTRICTED")
+            .values(moderation_state="RESTRICTED")
+            .execution_options(synchronize_session=False)
+        ))
+        if restricted.rowcount != 1:
+            raise InvalidDecision("the photo was restricted meanwhile")
+        notified = notices.notify_media_restricted(db, decision, asset.property_id)
+    resolved = _resolve_reports(db, "MEDIA", media_asset_id, decision.id, actor.id)
+    audit(
+        db,
+        actor=actor.id,
+        action=f"moderation.media_{action.lower()}",
+        entity_type="media_asset",
+        entity_id=media_asset_id,
+        data={"decision_id": decision.id, "reason_code": reason_code,
+              "supersedes_decision_id": current_id, "listing_id": listing_id},
+    )
+    _emit(db, decision)
+    committed.count_on_commit(db, DECISIONS, target_type="MEDIA", action=action)
+    return AppliedDecision(
+        decision_id=decision.id,
+        supersedes_decision_id=current_id,
+        action=action,
+        listing_status_before="",
+        listing_status_after="",
+        held=False,
+        resolved_report_ids=resolved,
+        notified_user_ids=tuple(notified),
+        effective_from=decision.effective_from,
+    )
+
+
+def _validate_removal(action: str, removal: str, reason_code: str, what: str) -> None:
+    if action == removal:
+        if reason_code not in REPORT_CATEGORIES:
+            raise InvalidDecision(f"{what} needs a policy reason (a report category)")
+    elif reason_code != NOT_A_VIOLATION:
+        raise InvalidDecision("a dismissal is NOT_A_VIOLATION")
