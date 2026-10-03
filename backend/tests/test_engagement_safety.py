@@ -481,3 +481,27 @@ def test_only_an_active_conversation_is_restricted(client):
     late = _decide(client, moderator, "CONVERSATION", conv, "FEATURE_RESTRICTED", "SCAM")
     assert late.status_code == 422 and "active" in late.json()["detail"]
     assert _head("CONVERSATION", conv) is None
+
+
+def test_f6_a_restricted_requester_cannot_request_a_viewing_for_the_same_generation(client):
+    """F6 (founder/GPT 2026-10-04): G-14 also covers viewings. The restricted
+    requester is refused with the same stable code; others are not; a new
+    public generation lifts it."""
+    owner, tenant, offer, conv, _m = _thread(client)
+    bystander = _verified(client, "f6-bystander")
+    day = _viewing_ready(client, owner, offer)
+    moderator = _moderator(client)
+    assert _decide(client, moderator, "CONVERSATION", conv, "FEATURE_RESTRICTED",
+                   "HARASSMENT").status_code == 201
+
+    refused = _request(client, tenant, offer, day, 10)
+    assert refused.status_code == 409
+    assert refused.json()["detail"].startswith("RECONTACT_BLOCKED")
+    with TestingSession() as db:
+        assert db.scalar(select(func.count()).select_from(Viewing).where(
+            Viewing.listing_id == offer)) == 0
+    assert _request(client, bystander, offer, day, 10).status_code == 201
+
+    assert client.post(f"/v1/classifieds/{offer}/pause", headers=auth(owner)).status_code == 200
+    assert client.post(f"/v1/classifieds/{offer}/publish", headers=auth(owner)).status_code == 200
+    assert _request(client, tenant, offer, day, 11).status_code == 201
