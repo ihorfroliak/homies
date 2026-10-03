@@ -1107,17 +1107,23 @@
       },
       "DecisionIn": {
         "additionalProperties": false,
-        "description": "A decision against the target's current head. `expected_head_decision_id`\nis required (null when the target has no decision yet): a decision made\nagainst an older head is refused, never re-aimed.",
+        "description": "A decision against the target's current head. `expected_head_decision_id`\nis required (null when the target has no decision yet): a decision made\nagainst an older head is refused, never re-aimed.\n\n`close_engagement` (LISTING, VISIBILITY_LIMITED with SCAM, FAKE or SAFETY\nonly): also close the listing's ACTIVE conversations and cancel its future\nviewings. `listing_id` (MEDIA only): the listing the photo was seen on.",
         "properties": {
           "action": {
             "enum": [
               "NO_ACTION",
               "CONTENT_EDIT_REQUIRED",
               "VISIBILITY_LIMITED",
-              "CONTENT_REMOVED"
+              "CONTENT_REMOVED",
+              "FEATURE_RESTRICTED"
             ],
             "title": "Action",
             "type": "string"
+          },
+          "close_engagement": {
+            "default": false,
+            "title": "Close Engagement",
+            "type": "boolean"
           },
           "expected_head_decision_id": {
             "anyOf": [
@@ -1142,6 +1148,20 @@
               }
             ],
             "title": "Explanation"
+          },
+          "listing_id": {
+            "anyOf": [
+              {
+                "maxLength": 36,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Id"
           },
           "reason_code": {
             "enum": [
@@ -1199,7 +1219,9 @@
           "target_type": {
             "enum": [
               "LISTING",
-              "MESSAGE"
+              "MESSAGE",
+              "CONVERSATION",
+              "MEDIA"
             ],
             "title": "Target Type",
             "type": "string"
@@ -1231,6 +1253,16 @@
               }
             ],
             "title": "Answered Review Request Id"
+          },
+          "cancelled_viewings": {
+            "default": 0,
+            "title": "Cancelled Viewings",
+            "type": "integer"
+          },
+          "closed_conversations": {
+            "default": 0,
+            "title": "Closed Conversations",
+            "type": "integer"
           },
           "decision_id": {
             "title": "Decision Id",
@@ -1680,6 +1712,14 @@
             "title": "Is Public",
             "type": "boolean"
           },
+          "media": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ListingMediaOut"
+            },
+            "title": "Media",
+            "type": "array"
+          },
           "property_id": {
             "title": "Property Id",
             "type": "string"
@@ -1702,6 +1742,35 @@
           "current"
         ],
         "title": "ListingContextOut",
+        "type": "object"
+      },
+      "ListingMediaOut": {
+        "description": "Every photo linked to the listing, whatever its state — the ids a\nmoderator decides on (S4b). The photo itself: /media/{id}/content.",
+        "properties": {
+          "is_cover": {
+            "title": "Is Cover",
+            "type": "boolean"
+          },
+          "media_asset_id": {
+            "title": "Media Asset Id",
+            "type": "string"
+          },
+          "moderation_state": {
+            "title": "Moderation State",
+            "type": "string"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "media_asset_id",
+          "moderation_state",
+          "is_cover",
+          "sort_order"
+        ],
+        "title": "ListingMediaOut",
         "type": "object"
       },
       "ListingReportIn": {
@@ -2175,6 +2244,59 @@
           "created_at"
         ],
         "title": "MediaAssetOut",
+        "type": "object"
+      },
+      "MediaTargetOut": {
+        "properties": {
+          "content_available": {
+            "title": "Content Available",
+            "type": "boolean"
+          },
+          "head": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HeadOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "listing_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Listing Ids",
+            "type": "array"
+          },
+          "moderation_state": {
+            "title": "Moderation State",
+            "type": "string"
+          },
+          "property_id": {
+            "title": "Property Id",
+            "type": "string"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "string"
+          },
+          "target_type": {
+            "const": "MEDIA",
+            "title": "Target Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_type",
+          "target_id",
+          "property_id",
+          "moderation_state",
+          "listing_ids",
+          "head",
+          "content_available"
+        ],
+        "title": "MediaTargetOut",
         "type": "object"
       },
       "MemberInvite": {
@@ -3738,6 +3860,11 @@
             "title": "Attendee Count",
             "type": "integer"
           },
+          "cancelled_by_homies": {
+            "default": false,
+            "title": "Cancelled By Homies",
+            "type": "boolean"
+          },
           "ends_at": {
             "format": "date-time",
             "title": "Ends At",
@@ -5219,6 +5346,11 @@
             "title": "Attendee Count",
             "type": "integer"
           },
+          "cancelled_by_homies": {
+            "default": false,
+            "title": "Cancelled By Homies",
+            "type": "boolean"
+          },
           "ends_at": {
             "format": "date-time",
             "title": "Ends At",
@@ -5701,7 +5833,7 @@
     },
     "/v1/admin/moderation/decisions": {
       "post": {
-        "description": "Record a moderation decision and apply it, in one transaction.\nLISTING: hold, release or dismissal — resolving its live reports,\nanswering the owner's open review request on the hold it supersedes and\nnotifying the listing's managers of a hold or a release. MESSAGE (S4a):\nCONTENT_REMOVED redacts the message for the participants (the stored body\nis kept as evidence) or NO_ACTION dismisses — resolving its live reports;\nnothing else about the conversation changes.",
+        "description": "Record a moderation decision and apply it, in one transaction.\nLISTING: hold, release or dismissal — resolving its live reports,\nanswering the owner's open review request on the hold it supersedes and\nnotifying the listing's managers of a hold or a release. MESSAGE (S4a):\nCONTENT_REMOVED redacts the message for the participants (the stored body\nis kept as evidence) or NO_ACTION dismisses — resolving its live reports;\nnothing else about the conversation changes. CONVERSATION (S4b):\nFEATURE_RESTRICTED closes it with a neutral SYSTEM line (terminal). MEDIA\n(S4b): CONTENT_REMOVED restricts the photo without detaching it.",
         "operationId": "decide_v1_admin_moderation_decisions_post",
         "requestBody": {
           "content": {
@@ -5728,7 +5860,7 @@
             "description": "Not a moderator, or a conflict of interest (manages the property, has a live report on the target; MESSAGE: is a current side of the conversation or wrote the message)"
           },
           "404": {
-            "description": "No such listing or message"
+            "description": "No such listing, message, conversation or photo"
           },
           "409": {
             "description": "STALE_HEAD: the target's current decision is not the expected one — refresh and decide again (never retried for you)"
@@ -5746,6 +5878,62 @@
           }
         ],
         "summary": "Decide",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/v1/admin/moderation/media/{media_asset_id}/content": {
+      "get": {
+        "description": "The photo, whatever its moderation state, for moderators only — the\npublic serve refuses anything not APPROVED, so a restricted or held\nlisting's photos are otherwise invisible to the people reviewing them.\nOnly sanitised, servable bytes (never a quarantined original); never\ncached; every access audited (ids only).",
+        "operationId": "media_content_v1_admin_moderation_media__media_asset_id__content_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_asset_id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9-]+$",
+              "title": "Media Asset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "image/*": {}
+            },
+            "description": "The photo"
+          },
+          "403": {
+            "description": "Not a moderator"
+          },
+          "404": {
+            "description": "No such photo, or its bytes are not servable"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Media Content",
         "tags": [
           "moderation"
         ]
@@ -5869,6 +6057,63 @@
           }
         ],
         "summary": "Review Listing",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/v1/admin/moderation/targets/MEDIA/{media_asset_id}": {
+      "get": {
+        "description": "A photo's moderation state and the listings it is on (ids only).",
+        "operationId": "review_media_v1_admin_moderation_targets_MEDIA__media_asset_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_asset_id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9-]+$",
+              "title": "Media Asset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaTargetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Not a moderator"
+          },
+          "404": {
+            "description": "No such photo"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Review Media",
         "tags": [
           "moderation"
         ]

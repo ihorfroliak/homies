@@ -1,11 +1,14 @@
-"""Reports and moderation over HTTP (TASK-015 Slices 2 + 3). LISTING only;
-MESSAGE targets arrive with Slice 4 as an additive widening.
+"""Reports and moderation over HTTP (TASK-015 Slices 2–5, 4a, 4b).
 
     POST /v1/reports                                   file (or find) a report
     GET  /v1/me/reports                                one's own reports, coarse status
     GET  /v1/admin/moderation/queue                    targets with live reports
     GET  /v1/admin/moderation/targets/LISTING/{id}     review a target (sets IN_REVIEW)
-    POST /v1/admin/moderation/decisions                decide (S1 decision service)
+    GET  /v1/admin/moderation/targets/MESSAGE/{id}     message evidence (S4a, audited)
+    GET  /v1/admin/moderation/targets/MEDIA/{id}       a photo's moderation state (S4b)
+    GET  /v1/admin/moderation/media/{id}/content       the photo itself, for moderators (S4b)
+    POST /v1/admin/moderation/decisions                decide: LISTING, MESSAGE,
+                                                       CONVERSATION, MEDIA
     POST /v1/classifieds/{id}/moderation-review        a manager asks for a hold to be reviewed
 
 Every rule lives in the services (`reports`, `moderation`, `decisions`); this
@@ -21,11 +24,15 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.audit import audit
 from app.core.db import get_db
 from app.core.security import can_moderate, get_current_user
+from app.modules.media import storage
+from app.modules.media.models import ListingMedia, MediaAsset
+from app.modules.media.router import is_servable
 from app.modules.properties import freshness
 from app.modules.properties.router import public_listing
-from app.modules.trust import decisions, moderation, reports, reviews
+from app.modules.trust import decisions, hold, moderation, reports, reviews
 from app.modules.trust.models import HOLD_ACTIONS, ModerationDecision, Report
 
 Id = Annotated[str, Path(min_length=1, max_length=36, pattern=r"^[A-Za-z0-9-]+$")]
@@ -39,10 +46,11 @@ ReasonCode = Literal["FAKE", "DUPLICATE", "SCAM", "DISCRIMINATION", "ILLEGAL_CON
                      "IMPERSONATION", "SPAM", "OTHER", "NOT_A_VIOLATION",
                      "REINSTATED_REMEDIED", "REINSTATED_DECISION_ERROR"]
 MessageReason = Literal["HARASSMENT", "SCAM", "DISCRIMINATION", "SAFETY", "SPAM", "OTHER"]
-# LISTING: NO_ACTION, CONTENT_EDIT_REQUIRED, VISIBILITY_LIMITED; MESSAGE (S4a):
-# NO_ACTION, CONTENT_REMOVED — the service refuses an action of the other type.
+# LISTING: NO_ACTION, CONTENT_EDIT_REQUIRED, VISIBILITY_LIMITED; MESSAGE (S4a)
+# and MEDIA (S4b): NO_ACTION, CONTENT_REMOVED; CONVERSATION (S4b): NO_ACTION,
+# FEATURE_RESTRICTED — the service refuses an action of another target type.
 DecisionAction = Literal["NO_ACTION", "CONTENT_EDIT_REQUIRED", "VISIBILITY_LIMITED",
-                         "CONTENT_REMOVED"]
+                         "CONTENT_REMOVED", "FEATURE_RESTRICTED"]
 
 router = APIRouter(tags=["reports"])
 
@@ -296,6 +304,16 @@ class ModeratorReviewRequestOut(BaseModel):
     created_at: datetime
 
 
+class ListingMediaOut(BaseModel):
+    """Every photo linked to the listing, whatever its state — the ids a
+    moderator decides on (S4b). The photo itself: /media/{id}/content."""
+
+    media_asset_id: str
+    moderation_state: str
+    is_cover: bool
+    sort_order: int
+
+
 class ListingContextOut(BaseModel):
     id: str
     property_id: str
@@ -303,6 +321,7 @@ class ListingContextOut(BaseModel):
     is_public: bool
     public_generation: int
     current: dict
+    media: list[ListingMediaOut] = []
 
 
 class TargetOut(BaseModel):
@@ -332,12 +351,22 @@ def review_listing(listing_id: Id, moderator=Depends(require_moderator),
     offer = review.offer
     now = freshness.db_now(db)
     current = reports.snapshot(offer, _public_dict(offer, now))
+    media = [ListingMediaOut(media_asset_id=r.id, moderation_state=r.moderation_state,
+                             is_cover=r.is_cover, sort_order=r.sort_order)
+             for r in db.execute(
+                 select(MediaAsset.id, MediaAsset.moderation_state, ListingMedia.is_cover,
+                        ListingMedia.sort_order)
+                 .join(ListingMedia, ListingMedia.media_asset_id == MediaAsset.id)
+                 .where(ListingMedia.listing_id == offer.id)
+                 .order_by(ListingMedia.is_cover.desc(), ListingMedia.sort_order,
+                           MediaAsset.id))]
     out = TargetOut(
         target_type="LISTING",
         target_id=offer.id,
         listing=ListingContextOut(id=offer.id, property_id=offer.property_id,
                                   status=offer.status, is_public=review.is_public,
-                                  public_generation=offer.public_generation, current=current),
+                                  public_generation=offer.public_generation, current=current,
+                                  media=media),
         head=_head_out(review.head),
         held=review.head is not None and review.head.action in HOLD_ACTIONS,
         reports=[ModeratorReportOut(
@@ -458,17 +487,24 @@ def _review_request_out(request) -> ModeratorReviewRequestOut | None:
 class DecisionIn(BaseModel):
     """A decision against the target's current head. `expected_head_decision_id`
     is required (null when the target has no decision yet): a decision made
-    against an older head is refused, never re-aimed."""
+    against an older head is refused, never re-aimed.
+
+    `close_engagement` (LISTING, VISIBILITY_LIMITED with SCAM, FAKE or SAFETY
+    only): also close the listing's ACTIVE conversations and cancel its future
+    viewings. `listing_id` (MEDIA only): the listing the photo was seen on."""
 
     model_config = ConfigDict(extra="forbid")
 
-    target_type: Literal["LISTING", "MESSAGE"]
+    target_type: Literal["LISTING", "MESSAGE", "CONVERSATION", "MEDIA"]
     target_id: str = Field(min_length=1, max_length=36, pattern=r"^[A-Za-z0-9-]+$")
     action: DecisionAction
     reason_code: ReasonCode
     expected_head_decision_id: str | None = Field(max_length=36)
     explanation: str | None = Field(default=None, max_length=2000)
     reclassified_category: Category | None = None
+    close_engagement: bool = False
+    listing_id: str | None = Field(default=None, min_length=1, max_length=36,
+                                   pattern=r"^[A-Za-z0-9-]+$")
 
 
 class DecisionOut(BaseModel):
@@ -485,6 +521,9 @@ class DecisionOut(BaseModel):
     notified_managers: int
     # The owner's review request this decision answered (Slice 5), if any.
     answered_review_request_id: str | None = None
+    # Slice 4b effects.
+    closed_conversations: int = 0
+    cancelled_viewings: int = 0
 
 
 @moderation_router.post(
@@ -495,7 +534,7 @@ class DecisionOut(BaseModel):
         403: {"description": "Not a moderator, or a conflict of interest (manages the "
                              "property, has a live report on the target; MESSAGE: is a "
                              "current side of the conversation or wrote the message)"},
-        404: {"description": "No such listing or message"},
+        404: {"description": "No such listing, message, conversation or photo"},
         409: {"description": "STALE_HEAD: the target's current decision is not the expected "
                              "one — refresh and decide again (never retried for you)"},
         422: {"description": "Invalid action or reason for the target's state"},
@@ -512,9 +551,34 @@ def decide(body: DecisionIn, moderator=Depends(require_moderator),
     notifying the listing's managers of a hold or a release. MESSAGE (S4a):
     CONTENT_REMOVED redacts the message for the participants (the stored body
     is kept as evidence) or NO_ACTION dismisses — resolving its live reports;
-    nothing else about the conversation changes."""
+    nothing else about the conversation changes. CONVERSATION (S4b):
+    FEATURE_RESTRICTED closes it with a neutral SYSTEM line (terminal). MEDIA
+    (S4b): CONTENT_REMOVED restricts the photo without detaching it."""
+    if body.close_engagement and body.target_type != "LISTING":
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                            "INVALID_DECISION: close_engagement is for listings")
+    if body.listing_id is not None and body.target_type != "MEDIA":
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                            "INVALID_DECISION: listing_id is for photos")
     try:
-        if body.target_type == "MESSAGE":
+        if body.target_type == "CONVERSATION":
+            applied = decisions.apply_conversation_decision(
+                db, actor=moderator, conversation_id=body.target_id, action=body.action,
+                reason_code=body.reason_code,
+                expected_head_decision_id=body.expected_head_decision_id,
+                explanation=reports.normalize_text(body.explanation),
+                reclassified_category=body.reclassified_category,
+            )
+        elif body.target_type == "MEDIA":
+            applied = decisions.apply_media_decision(
+                db, actor=moderator, media_asset_id=body.target_id, action=body.action,
+                reason_code=body.reason_code,
+                expected_head_decision_id=body.expected_head_decision_id,
+                listing_id=body.listing_id,
+                explanation=reports.normalize_text(body.explanation),
+                reclassified_category=body.reclassified_category,
+            )
+        elif body.target_type == "MESSAGE":
             applied = decisions.apply_message_decision(
                 db, actor=moderator, message_id=body.target_id, action=body.action,
                 reason_code=body.reason_code,
@@ -529,6 +593,7 @@ def decide(body: DecisionIn, moderator=Depends(require_moderator),
                 expected_head_decision_id=body.expected_head_decision_id,
                 explanation=reports.normalize_text(body.explanation),
                 reclassified_category=body.reclassified_category,
+                close_engagement=body.close_engagement,
             )
     except decisions.StaleHead as exc:
         db.rollback()
@@ -544,8 +609,7 @@ def decide(body: DecisionIn, moderator=Depends(require_moderator),
     except decisions.TargetNotFound:
         db.rollback()
         raise HTTPException(status.HTTP_404_NOT_FOUND,
-                            "Message not found" if body.target_type == "MESSAGE"
-                            else "Listing not found") from None
+                            f"{_TARGET_NAMES[body.target_type]} not found") from None
     except decisions.NotAModerator:
         db.rollback()
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient role") from None
@@ -565,7 +629,71 @@ def decide(body: DecisionIn, moderator=Depends(require_moderator),
         resolved_reports=len(applied.resolved_report_ids),
         notified_managers=len(applied.notified_user_ids),
         answered_review_request_id=applied.answered_review_request_id,
+        closed_conversations=len(applied.closed_conversation_ids),
+        cancelled_viewings=len(applied.cancelled_viewing_ids),
     )
+
+
+_TARGET_NAMES = {"LISTING": "Listing", "MESSAGE": "Message", "CONVERSATION": "Conversation",
+                 "MEDIA": "Media"}
+
+
+# --- moderator: photos (Slice 4b) -------------------------------------------------
+
+
+class MediaTargetOut(BaseModel):
+    target_type: Literal["MEDIA"]
+    target_id: str
+    property_id: str
+    moderation_state: str
+    listing_ids: list[str]
+    head: HeadOut | None
+    content_available: bool
+
+
+@moderation_router.get(
+    "/targets/MEDIA/{media_asset_id}",
+    response_model=MediaTargetOut,
+    responses={403: {"description": "Not a moderator"}, 404: {"description": "No such photo"}},
+)
+def review_media(media_asset_id: Id, moderator=Depends(require_moderator),
+                 db: Session = Depends(get_db)):
+    """A photo's moderation state and the listings it is on (ids only)."""
+    asset = db.get(MediaAsset, media_asset_id)
+    if asset is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Media not found")
+    listing_ids = list(db.scalars(select(ListingMedia.listing_id)
+                                  .where(ListingMedia.media_asset_id == asset.id)
+                                  .order_by(ListingMedia.listing_id)))
+    return MediaTargetOut(target_type="MEDIA", target_id=asset.id, property_id=asset.property_id,
+                          moderation_state=asset.moderation_state, listing_ids=listing_ids,
+                          head=_head_out(hold.head(db, "MEDIA", asset.id)),
+                          content_available=is_servable(asset.file))
+
+
+@moderation_router.get(
+    "/media/{media_asset_id}/content",
+    responses={200: {"content": {"image/*": {}}, "description": "The photo"},
+               403: {"description": "Not a moderator"},
+               404: {"description": "No such photo, or its bytes are not servable"}},
+)
+def media_content(media_asset_id: Id, moderator=Depends(require_moderator),
+                  db: Session = Depends(get_db)):
+    """The photo, whatever its moderation state, for moderators only — the
+    public serve refuses anything not APPROVED, so a restricted or held
+    listing's photos are otherwise invisible to the people reviewing them.
+    Only sanitised, servable bytes (never a quarantined original); never
+    cached; every access audited (ids only)."""
+    asset = db.get(MediaAsset, media_asset_id)
+    if asset is None or not is_servable(asset.file):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Media not found")
+    audit(db, actor=moderator.id, action="moderation.media_viewed", entity_type="media_asset",
+          entity_id=asset.id, data={"media_asset_id": asset.id})
+    db.commit()
+    data = storage.storage().get(asset.file.storage_key)
+    return Response(content=data, media_type=asset.file.mime_type or "application/octet-stream",
+                    headers={"Cache-Control": "private, no-store",
+                             "X-Content-Type-Options": "nosniff"})
 
 
 # --- owner: review request (Slice 5) ---------------------------------------------

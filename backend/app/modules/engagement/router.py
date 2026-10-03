@@ -10,6 +10,16 @@ way to talk before a viewing. Who may read and write:
 
 Anyone else gets 404: a conversation's existence is nobody else's business.
 
+Closure (TASK-015 S4b). A conversation Homies closed — on its own
+(FEATURE_RESTRICTED) or with its listing (close_engagement) — takes no
+message once the closure has committed. `send_message` locks the
+conversation row first (the first lock of every moderation path on it) and
+reads its status under that lock. Starting a conversation reads the listing
+row FOR SHARE first, so it waits for a listing decision in progress and then
+sees its outcome; continuing an existing thread locks that thread too. After
+FEATURE_RESTRICTED the requester cannot open a new thread on the listing for
+the same public generation (founder G-14).
+
 A tenant may start a bounded number of new conversations per rolling 24 hours.
 Messaging is the channel for people who have not verified a phone, so it is
 also the cheapest way to blast every owner on the board with the same scam;
@@ -28,7 +38,7 @@ from sqlalchemy.orm import Session
 
 from app.core.audit import audit
 from app.core.config import settings
-from app.core.db import get_db
+from app.core.db import get_db, lock_row
 from app.core.security import get_current_user
 from app.modules.engagement import access
 from app.modules.engagement.models import (
@@ -45,6 +55,10 @@ from app.modules.identity.models import (
 )
 from app.modules.properties import authority, freshness
 from app.modules.properties.models import ClassifiedOffer, PropertyAuthority
+from app.modules.trust import hold
+
+CONVERSATION_CLOSED = "CONVERSATION_CLOSED"
+RECONTACT_BLOCKED = "RECONTACT_BLOCKED"
 
 router = APIRouter(tags=["conversations"])
 
@@ -240,10 +254,33 @@ def _post(db: Session, user: User, conv: Conversation, side: str, body: str) -> 
 
 
 def _active_thread(db: Session, listing_id: str, requester_id: str) -> Conversation | None:
-    return db.scalar(select(Conversation).where(
+    """The requester's ACTIVE thread on the listing, locked and re-read — a
+    moderator may have closed it while we looked (S4b)."""
+    conv = db.scalar(select(Conversation).where(
         Conversation.listing_id == listing_id, Conversation.requester_user_id == requester_id,
         Conversation.status == "ACTIVE",
     ))
+    if conv is None:
+        return None
+    locked = _lock(db, conv.id)
+    return locked if locked is not None and locked.status == "ACTIVE" else None
+
+
+def _lock(db: Session, conversation_id: str) -> Conversation | None:
+    return db.scalar(select(Conversation).where(Conversation.id == conversation_id)
+                     .with_for_update().execution_options(populate_existing=True))
+
+
+def _closed() -> HTTPException:
+    return HTTPException(status.HTTP_409_CONFLICT,
+                         f"{CONVERSATION_CLOSED}: this conversation is closed")
+
+
+def _refuse_recontact(db: Session, offer: ClassifiedOffer, user: User) -> None:
+    if hold.recontact_blocked(db, offer.id, user.id, offer.public_generation):
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            f"{RECONTACT_BLOCKED}: Homies closed your conversation about this "
+                            "listing; a new one is not possible for this publication")
 
 
 @router.post("/classifieds/{offer_id}/conversations", response_model=ConversationDetail,
@@ -254,7 +291,10 @@ def start_conversation(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    offer = db.get(ClassifiedOffer, offer_id)
+    # The listing row FOR SHARE first (S4b): a listing decision holds it FOR
+    # UPDATE while it closes engagement, so a start waits for that decision
+    # and then sees its outcome — never a thread opened behind a closure.
+    offer = lock_row(db, ClassifiedOffer, offer_id, shared=True)
     # The one public-visibility rule (freshness.py): a stale listing takes no
     # new conversation, exactly like an unpublished one.
     if offer is None or not freshness.is_public(offer, freshness.db_now(db)):
@@ -272,6 +312,7 @@ def start_conversation(
     # One conversation per tenant per listing: writing again continues it.
     conv = _active_thread(db, offer.id, user.id)
     if conv is None:
+        _refuse_recontact(db, offer, user)
         started = db.scalar(
             select(func.count()).select_from(Conversation).where(
                 Conversation.requester_user_id == user.id,
@@ -293,6 +334,7 @@ def start_conversation(
             # that did not come through here). Continue the thread it made.
             existing = _active_thread(db, offer.id, user.id)
             if existing is None:
+                _refuse_recontact(db, offer, user)
                 raise
             conv = existing
             message = _post(db, user, conv, "tenant", body.body)
@@ -352,9 +394,13 @@ def send_message(
     db: Session = Depends(get_db),
 ):
     conv, side = _load(db, user, conversation_id)
-    if conv.status != "ACTIVE":
-        raise HTTPException(status.HTTP_409_CONFLICT, "This conversation is closed")
-    message = _post(db, user, conv, side, body.body)
+    # The conversation row first, then its status under the lock: a closure
+    # that committed before this point is seen; one that comes later waits
+    # for this message (S4b, invariant I-1).
+    locked = _lock(db, conv.id)
+    if locked is None or locked.status != "ACTIVE":
+        raise _closed()
+    message = _post(db, user, locked, side, body.body)
     db.commit()
     return message
 
@@ -378,6 +424,8 @@ def assign(
                                              verified=False):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             "That person cannot answer for this listing")
+    # Locked and re-read, so the version bump never overwrites a closure's.
+    conv = _lock(db, conv.id) or conv
     conv.assigned_to_user_id = body.user_id
     conv.version += 1
     db.commit()
@@ -394,6 +442,7 @@ def set_stage(
     conv, side = _load(db, user, conversation_id)
     if side != "provider":
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
+    conv = _lock(db, conv.id) or conv
     conv.provider_stage = body.provider_stage
     conv.version += 1
     db.commit()

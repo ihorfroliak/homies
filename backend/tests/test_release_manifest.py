@@ -132,22 +132,23 @@ def test_the_image_has_no_placeholder_build_identity():
 
 
 def test_this_release_declares_its_rollback_honestly(graph):
-    """TASK-015 Slice 4a changes no schema (message redaction columns and
-    MESSAGE decisions exist since the Slice 1 head a3c5e7f9b1d4), yet
-    rollback to Slice 5 is BLOCKED — a security/privacy barrier: that build
-    serialises messages.body without looking at redacted_at and would show
-    removed messages to participants again. The build still reads
-    moderation_decisions on every publication, so its minimum schema stays
-    its own head."""
+    """TASK-015 Slice 4b changes no schema (CONVERSATION/MEDIA decisions,
+    close_engagement and RESTRICTED exist since the Slice 1 head
+    a3c5e7f9b1d4), yet rollback to Slice 4a is BLOCKED — a safety barrier:
+    that build confirms viewings under a hold, lets a closed-out requester
+    reopen (G-14) and does not lock a conversation before sending. The build
+    still reads moderation_decisions on every publication, so its minimum
+    schema stays its own head."""
     manifest = _parse(graph)
     assert manifest.schema_transition == release.NO_SCHEMA_CHANGE
     assert manifest.rollback_to_previous == release.BLOCKED
     assert manifest.rollback_allowed() is False
     assert manifest.previous_schema_head == manifest.schema_head == "a3c5e7f9b1d4"
     assert manifest.minimum_schema == manifest.schema_head
-    # The barrier is a privacy one and names the build it protects against.
-    assert MANIFEST["previous_release"]["id"] == "TASK-015-S5"
-    assert "SECURITY/PRIVACY BARRIER" in MANIFEST["rollback_note"]
+    # The barrier names the build it protects against, and keeps the S4a one.
+    assert MANIFEST["previous_release"]["id"] == "TASK-015-S4a"
+    assert "SAFETY BARRIER" in MANIFEST["rollback_note"]
+    assert "privacy barrier still stands" in MANIFEST["rollback_note"]
 
 
 # --- malformed manifests are errors, never compatible -----------------------------------------

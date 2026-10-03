@@ -66,11 +66,27 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
+## TASK-015 Slice 4b — engagement safety (2026-10-03, builder)
+
+**BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (R2, D-88).** Built on
+`claude/TASK-015-s4b-engagement-safety` from `main` `03268432` (S4a merged)
+plus PROGRAM-001 P0; integrated into the PROGRAM-001 branch, **not on
+`main`**. [Task](../tasks/TASK-015-S4B-engagement-safety.md) · D-97 · G-14.
+Production: **NOT READY · NOT DEPLOYED.** L11: wording open.
+
+| Area | Classification | State |
+|---|---|---|
+| `close_engagement` (04 §65, Phase A §6.2) | **CANDIDATE (builder verified)** | SCAM/FAKE/SAFETY only; conversations closed, future viewings cancelled |
+| viewing confirmation under a hold (Phase A §11) | **CANDIDATE (builder verified)** | 409 LISTING_HELD |
+| CONVERSATION FEATURE_RESTRICTED (04 §65) | **CANDIDATE (builder verified)** | CLOSED + SYSTEM line; terminal; G-14 re-contact bar |
+| MEDIA CONTENT_REMOVED → RESTRICTED (04 §36) | **CANDIDATE (builder verified)** | non-destructive; moderator-only audited view |
+
 ## TASK-015 Slice 4a — message reports, evidence and redaction (2026-10-03, builder)
 
-**BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (R2, D-88).** Candidate on
+**BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (R2, D-88).** Built on
 `claude/TASK-015-s4a-message-moderation` from `main` `1de34bf5` (S5 merged);
-**not merged**. [Task](../tasks/TASK-015-S4A-message-moderation.md) · D-96.
+externally reviewed (GPT-5.6 Sol) and merged into `main` as `03268432`
+(2026-10-03, PROGRAM-001 P0). [Task](../tasks/TASK-015-S4A-message-moderation.md) · D-96.
 Production: **NOT READY · NOT DEPLOYED.** L9: technically implemented,
 launch legal/privacy validation required.
 
@@ -79,7 +95,7 @@ launch legal/privacy validation required.
 | MESSAGE reports (04 §64) | **CANDIDATE (builder verified)** | participants only; shared quota and idempotency |
 | moderator evidence | **CANDIDATE (builder verified)** | message ± 2, same conversation, audited |
 | `messages.redacted_at` (04 §55) | **CANDIDATE (builder verified)** | CONTENT_REMOVED; body kept; participants get none |
-| conversation restriction, close_engagement, viewing effects, media RESTRICTED | **PLANNED** | Slice 4b |
+| conversation restriction, close_engagement, viewing effects, media RESTRICTED | see Slice 4b | Slice 4b |
 
 ## TASK-015 Slice 5 — moderation review requests (2026-10-02, builder)
 

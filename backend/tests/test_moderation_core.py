@@ -392,15 +392,18 @@ def test_the_inbox_admits_transactional_notices_but_preferences_stay_product_onl
 
 
 def test_only_the_reports_moderation_and_review_routes_exist(client):
-    """Slices 2+3, 5 and 4a add exactly these: messages are reported through
+    """Slices 2+3, 5, 4a and 4b add exactly these: messages are reported through
     /v1/reports and decided through /decisions; a review is answered by a
-    decision, not an endpoint; there is no conversation-closure route (4b)."""
+    decision, not an endpoint; conversations and photos are decided through
+    /decisions too — 4b adds only the moderator's view of a photo."""
     paths = {p for p in client.app.openapi()["paths"] if "report" in p or "moderation" in p}
     assert paths == {
         "/v1/reports", "/v1/me/reports", "/v1/admin/moderation/queue",
         "/v1/admin/moderation/targets/LISTING/{listing_id}", "/v1/admin/moderation/decisions",
         "/v1/classifieds/{listing_id}/moderation-review",
         "/v1/admin/moderation/targets/MESSAGE/{message_id}",
+        "/v1/admin/moderation/targets/MEDIA/{media_asset_id}",
+        "/v1/admin/moderation/media/{media_asset_id}/content",
     }
 
 
