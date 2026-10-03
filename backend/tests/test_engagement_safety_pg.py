@@ -696,67 +696,85 @@ def test_the_closure_line_is_last_and_cancellations_carry_the_decisions_instant(
 
 # --- adversarial review repairs (S4b) ---------------------------------------------
 
-def test_e_r11_a_conversation_decision_and_close_engagement_do_not_deadlock(
-        pg_client, pg_migrated_engine):
-    """F2: a conversation decision inserts a decision referencing the listing
-    (a foreign-key check: FOR KEY SHARE on it). Taken after its conversation
-    lock, that closed a cycle with close_engagement (listing FOR UPDATE →
-    conversations). The decision now takes the listing FOR KEY SHARE before
-    the conversation, so close_engagement waits for it; no deadlock."""
-    eng = pg_migrated_engine
-    s = _setup(pg_client)
-    m1, m2 = _account(eng, role="admin"), _account(eng, role="admin")
+def _paused_at_head(monkeypatch, target_type):
+    """Hold a decision of `target_type` right after its locks are taken and
+    before it inserts (the head read sits exactly there)."""
+    real = decisions.hold.head
+    gate, reached = threading.Event(), threading.Event()
+
+    def head(db, t, target_id):
+        if t == target_type and not reached.is_set():
+            reached.set()
+            assert gate.wait(20), "never released"
+        return real(db, t, target_id)
+    monkeypatch.setattr(decisions.hold, "head", head)
+    return gate, reached
+
+
+def _race_decision_against_close_engagement(eng, s, monkeypatch, target_type, decide):
+    """T1 = the conversation/message decision, held between its locks and its
+    insert; T2 = close_engagement on the listing. With the listing taken first
+    by T1, T2 waits at the listing and both finish. Without it, T2 holds the
+    listing and waits for T1's conversation while T1's insert (a foreign-key
+    check, FOR KEY SHARE on the listing) waits for T2: a deadlock."""
+    m2 = _account(eng, role="admin")
     deadlocks = _deadlocks(eng)
-    a = _session(eng)
+    gate, reached = _paused_at_head(monkeypatch, target_type)
     result: dict = {}
+    t1 = _run(result, "decision", decide)
     try:
-        restricted = _restrict(a, s["conv"], m1)  # holds listing KEY SHARE + conversation
+        assert reached.wait(20)
 
         def close():
             with _session(eng) as d:
                 applied = _close_engagement(d, s["offer"], m2)
                 d.commit()
                 return applied
-        t = _run(result, "close", close)
-        assert _blocked_on(eng, "classified_offers", _pid(a))  # waits at the listing
-        a.commit()
-        t.join(15)
+        t2 = _run(result, "close", close)
+        time.sleep(0.5)  # let T2 take whatever it can before T1 inserts
+        gate.set()
+        t1.join(20)
+        t2.join(20)
     finally:
-        a.close()
-    assert restricted.closed_conversation_ids == (s["conv"],)
-    assert result["close"].closed_conversation_ids == ()  # already closed
+        gate.set()
+    assert not isinstance(result["decision"], Exception), result["decision"]
+    assert not isinstance(result["close"], Exception), result["close"]
     assert _deadlocks(eng) == deadlocks
+    return result
 
 
-def test_e_r12_a_message_decision_takes_the_listing_before_its_conversation(
-        pg_client, pg_migrated_engine):
-    """The same order for message decisions: a listing decision in progress
-    (holding the listing) makes the message decision wait at the listing, not
-    at the conversation it would otherwise hold."""
+def test_e_r11_a_conversation_decision_and_close_engagement_do_not_deadlock(
+        pg_client, pg_migrated_engine, monkeypatch):
     eng = pg_migrated_engine
     s = _setup(pg_client)
-    m1, m2 = _account(eng, role="admin"), _account(eng, role="admin")
+    m1 = _account(eng, role="admin")
+
+    def restrict():
+        with _session(eng) as d:
+            applied = _restrict(d, s["conv"], m1)
+            d.commit()
+            return applied
+    result = _race_decision_against_close_engagement(eng, s, monkeypatch, "CONVERSATION",
+                                                     restrict)
+    assert result["decision"].closed_conversation_ids == (s["conv"],)
+    assert result["close"].closed_conversation_ids == ()  # already closed
+
+
+def test_e_r12_a_message_decision_and_close_engagement_do_not_deadlock(
+        pg_client, pg_migrated_engine, monkeypatch):
+    eng = pg_migrated_engine
+    s = _setup(pg_client)
+    m1 = _account(eng, role="admin")
     owner_msg = pg_client.post(f"/v1/conversations/{s['conv']}/messages",
                                json={"body": "transfer first"},
                                headers=auth(s["owner_token"])).json()["id"]
-    deadlocks = _deadlocks(eng)
-    a = _session(eng)
-    result: dict = {}
-    try:
-        _close_engagement(a, s["offer"], m1)  # holds the listing and the conversation
 
-        def remove():
-            with _session(eng) as d:
-                applied = decisions.apply_message_decision(
-                    d, actor=_user(d, m2), message_id=owner_msg, action="CONTENT_REMOVED",
-                    reason_code="SCAM", expected_head_decision_id=None)
-                d.commit()
-                return applied
-        t = _run(result, "remove", remove)
-        assert _blocked_on(eng, "classified_offers", _pid(a))
-        a.commit()
-        t.join(15)
-    finally:
-        a.close()
-    assert not isinstance(result["remove"], Exception), result["remove"]
-    assert _deadlocks(eng) == deadlocks
+    def remove():
+        with _session(eng) as d:
+            applied = decisions.apply_message_decision(
+                d, actor=_user(d, m1), message_id=owner_msg, action="CONTENT_REMOVED",
+                reason_code="SCAM", expected_head_decision_id=None)
+            d.commit()
+            return applied
+    result = _race_decision_against_close_engagement(eng, s, monkeypatch, "MESSAGE", remove)
+    assert result["close"].closed_conversation_ids == (s["conv"],)
