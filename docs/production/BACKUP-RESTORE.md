@@ -14,7 +14,11 @@
   1. create synthetic data through the real API and import seams — reference
      geography, structured addresses, properties with exact points, spaces,
      published listings with price components, one listing past its
-     freshness window, authorities;
+     freshness window, authorities; TASK-014 saved state; TASK-015 reports,
+     the moderation decision chain and a review request; and (TASK-015
+     closure) a live conversation with a message redacted by moderation, a
+     conversation closed by Homies, a CONFIRMED viewing, and two photos — one
+     public cover, one RESTRICTED;
   2. `pg_dump --format=custom` (streamed);
   3. create a brand-new database;
   4. `pg_restore --exit-on-error` into it;
@@ -24,6 +28,12 @@
      (stale listing still hidden); and on the copy the invariants still refuse:
      public EXACT precision, unknown listing status, a cycle in the
      administrative hierarchy (trigger), two properties sharing one address.
+     TASK-015 on the copy: the decision chain is append-only and cannot fork;
+     the closed conversation ends with its SYSTEM line; the redacted message
+     stays redacted; the viewing stays CONFIRMED; the re-contact block (G-14)
+     still applies; the public projection still shows only the approved photo
+     while the restricted one stays linked. Photo bytes live under
+     `MEDIA_ROOT`, not in the dump (see below).
 
 Run locally (disposable database only):
 

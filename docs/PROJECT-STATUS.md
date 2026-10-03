@@ -74,6 +74,8 @@ TASK-015 Slice 5            BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — rev
 TASK-015 Slice 4a           BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — message reports, evidence, redaction (R2) — on main at 03268432 (merge of ff433303)
   ↓
 TASK-015 Slice 4b           BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — conversation closure, close_engagement, viewing protection, photo restriction (R2) — on the PROGRAM-001 branch, NOT on main
+  ↓
+TASK-015 closure            COMPLETE FOR PHASE 1A — restore drill covers conversations, redacted messages, viewings, photos (S6 absorbed; no S6) — on the PROGRAM-001 branch, NOT on main
 ```
 
 PR-002 is **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED** (D-88): integrated into
