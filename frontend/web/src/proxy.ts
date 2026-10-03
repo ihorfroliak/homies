@@ -26,7 +26,15 @@ export function proxy(request: NextRequest): NextResponse {
   forwarded.set("x-request-id", requestId);
   forwarded.set("content-security-policy", csp);
 
-  const response = NextResponse.next({ request: { headers: forwarded } });
+  // A malformed percent-escape ("/wynajem/%C0") makes Next.js's own param
+  // decoding throw (a 500). It names no page: answer 404 here, with the headers.
+  let response: NextResponse;
+  try {
+    decodeURIComponent(new URL(request.url).pathname);
+    response = NextResponse.next({ request: { headers: forwarded } });
+  } catch {
+    response = new NextResponse("Nie znaleźliśmy tej strony.", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
+  }
   response.headers.set("content-security-policy", csp);
   response.headers.set("x-request-id", requestId);
   for (const [name, value] of Object.entries(staticSecurityHeaders(httpsOnly))) response.headers.set(name, value);
@@ -37,7 +45,10 @@ export function proxy(request: NextRequest): NextResponse {
 
 export const config = {
   matcher: [
-    // Everything except static build output and the photo passthrough.
-    { source: "/((?!_next/static|_next/image|v1/media|favicon.ico).*)" },
+    // Everything except static build output, the photo passthrough and the map
+    // worker files (a module worker takes the CSP of its own response; the
+    // page's nonce policy would block the worker's same-origin import).
+    // Anchored exclusions: "/v1/media-x" or "/favicon.ico/x" still get the headers.
+    { source: "/((?!_next/static/|_next/image$|v1/media/|vendor/|favicon\\.ico$).*)" },
   ],
 };

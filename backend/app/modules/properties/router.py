@@ -181,7 +181,7 @@ def _public_facts(offer: ClassifiedOffer) -> PublicFacts | None:
     return PublicFacts(
         category=prop.category, subtype=prop.subtype, rooms=prop.rooms, area_m2=prop.area_m2,
         space_area_m2=float(space_area) if space_area is not None else None,
-        floor=prop.floor, floors_total=prop.floors_total, has_elevator=prop.has_elevator,
+        floor=prop.floor, has_elevator=prop.has_elevator,
         furnished=prop.furnished, parking=prop.parking, pets_allowed=prop.pets_allowed,
     )
 

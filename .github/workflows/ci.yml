@@ -8,6 +8,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Least privilege for the workflow token (PROGRAM-001 security review).
+permissions:
+  contents: read
+
 # A newer push to a task branch supersedes an older run of it. On `main` every
 # commit keeps its own run (PR-001R F10): the group is per-commit there, so a
 # later merge can neither cancel nor replace a queued run of an earlier one.
@@ -287,6 +291,9 @@ jobs:
       API_INTERNAL_URL: http://127.0.0.1:8000
       NEXT_PUBLIC_E2E_HOOKS: "1"
       NEXT_PUBLIC_ANALYTICS_SINK: memory
+      # The E2E build proxies /v1/media itself and runs on http://localhost; a
+      # production build refuses both (next.config.ts, env.ts).
+      HOMIES_WEB_ENV: development
       E2E_BACKEND: "1"
     defaults:
       run:

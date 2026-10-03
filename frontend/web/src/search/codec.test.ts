@@ -33,6 +33,9 @@ describe("parseSearch", () => {
     expect(parseSearch(["Kraków"], p("")).badPath).toBe(true);
     expect(parseSearch(["krakow--x"], p("")).badPath).toBe(true);
     expect(parseSearch(["KRAKOW"], p("")).state.city).toBe("krakow");
+    expect(parseSearch(["%C0"], p("")).badPath).toBe(true);
+    expect(parseSearch(["a".repeat(121)], p("")).badPath).toBe(true);
+    expect(parseSearch(["a".repeat(120)], p("")).badPath).toBe(false);
   });
 
   it("caps the page at the backend offset limit", () => {

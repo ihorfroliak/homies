@@ -3937,7 +3937,7 @@
         "type": "object"
       },
       "PublicFacts": {
-        "description": "What the flat is, as the public may know it (FE-002, gap G1).\n\nSearch already filters and sorts on these (min_rooms, min_area_m2,\nsize_desc …), so they are public by design; the listing just did not show\nthem. Built field by field; nothing about where it is (that stays in\ncity/district/public_location) and nothing about who owns it. `rooms` and\n`area_m2` describe the whole property; for a ROOM listing `space_area_m2`\nis the room's own size when the owner gave it.",
+        "description": "What the flat is, as the public may know it (FE-002, gap G1).\n\nSearch already filters and sorts on most of these (min_rooms, min_area_m2,\nfurnished, parking, pets_allowed, has_elevator, size_desc …); the listing\njust did not show them. Built field by field; nothing about where it is\n(that stays in city/district/public_location) and nothing about who owns\nit. `rooms` and `area_m2` describe the whole property; for a ROOM listing\n`space_area_m2` is the room's own size when the owner gave it.\n\n`floor` is shown because seekers need it; the building's height\n(`floors_total`) is deliberately NOT public: with the ~550 m public grid\ncell and the subtype it can single out a building (PROGRAM-001 security\nreview). Whether either may be public is CANONICAL DECISION REQUIRED (D-101).",
         "properties": {
           "area_m2": {
             "anyOf": [
@@ -3971,17 +3971,6 @@
               }
             ],
             "title": "Floor"
-          },
-          "floors_total": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Floors Total"
           },
           "furnished": {
             "title": "Furnished",

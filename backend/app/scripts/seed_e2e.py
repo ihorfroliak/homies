@@ -20,11 +20,12 @@ from __future__ import annotations
 
 import io
 import os
+import re
 from dataclasses import dataclass
 
 from fastapi.testclient import TestClient
 from PIL import Image
-from sqlalchemy import func, select
+from sqlalchemy import func, make_url, select
 
 from app.composition import create_phase1_app
 from app.core.config import DEV_ENVIRONMENTS, settings
@@ -123,11 +124,22 @@ LISTINGS = [
 ]
 
 
+DISPOSABLE_DATABASE = re.compile(r"^[a-z0-9_]+_(e2e|test|ci)$")
+
+
 def _guard() -> None:
+    """Three independent locks (SEC-004): the explicit opt-in, an ENV that was
+    actually set (never the `local` default of an operator's shell) and is a
+    development environment, and a database whose name says it is disposable
+    (`*_e2e`, `*_test`, `*_ci`). A production URL exported in a shell fails the
+    last two even with the opt-in."""
     if os.environ.get("HOMIES_ALLOW_E2E_SEED") != "1":
         raise SystemExit("Refusing: set HOMIES_ALLOW_E2E_SEED=1 (development/E2E databases only).")
-    if settings.env.lower() not in DEV_ENVIRONMENTS:
-        raise SystemExit(f"Refusing: ENV={settings.env!r} is not a development/E2E environment.")
+    if "env" not in settings.model_fields_set or settings.env.lower() not in DEV_ENVIRONMENTS:
+        raise SystemExit("Refusing: set ENV explicitly to a development environment (local, test, ci).")
+    database = make_url(settings.database_url).database or ""
+    if not DISPOSABLE_DATABASE.match(database):
+        raise SystemExit("Refusing: the database name must end in _e2e, _test or _ci (disposable databases only).")
 
 
 def _reference_data() -> dict[str, str]:

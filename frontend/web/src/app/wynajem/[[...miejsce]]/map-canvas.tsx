@@ -2,7 +2,7 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import { LngLatBounds, Map as MapLibre, Marker, NavigationControl, type StyleSpecification } from "maplibre-gl";
+import { getVersion, LngLatBounds, Map as MapLibre, Marker, NavigationControl, setWorkerUrl, type StyleSpecification } from "maplibre-gl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -70,6 +70,8 @@ export function MapCanvas({ state, points, areaName }: { state: SearchState; poi
 
   useEffect(() => {
     if (!container.current || failed) return;
+    // The worker is served same-origin from public/vendor (scripts/copy-map-worker.mjs).
+    setWorkerUrl(`/vendor/maplibre-gl-${getVersion()}/maplibre-gl-worker.mjs`);
     const map = new MapLibre({
       container: container.current,
       style: process.env.NEXT_PUBLIC_MAP_STYLE_URL || BLANK_STYLE,
@@ -139,6 +141,15 @@ export function MapCanvas({ state, points, areaName }: { state: SearchState; poi
   );
 }
 
+/** A stack lists at most this many; the card says so when there are more. */
+const CARD_LIMIT = 10;
+/** Details already read in this page view (bounded), so reopening a stack costs nothing. */
+const details = new Map<string, Classified>();
+function remember(l: Classified) {
+  details.set(l.id, l);
+  if (details.size > 200) details.delete(details.keys().next().value as string);
+}
+
 /** MapPoint has no title or cover (gap G5): the card reads the public detail through the BFF. */
 function MapCard({ stack, onClose }: { stack: Stack; onClose: () => void }) {
   const [items, setItems] = useState<Classified[] | null>(null);
@@ -149,9 +160,16 @@ function MapCard({ stack, onClose }: { stack: Stack; onClose: () => void }) {
     close.current?.focus();
     const controller = new AbortController();
     Promise.all(
-      stack.points.slice(0, 10).map((p) =>
-        fetch(`/bff/v1/classifieds/${encodeURIComponent(p.id)}`, { signal: controller.signal, headers: { accept: "application/json" } }).then((r) => (r.ok ? (r.json() as Promise<Classified>) : null)),
-      ),
+      stack.points.slice(0, CARD_LIMIT).map((p) => {
+        const known = details.get(p.id);
+        if (known) return Promise.resolve(known);
+        return fetch(`/bff/v1/classifieds/${encodeURIComponent(p.id)}`, { signal: controller.signal, headers: { accept: "application/json" } })
+          .then((r) => (r.ok ? (r.json() as Promise<Classified>) : null))
+          .then((l) => {
+            if (l) remember(l);
+            return l;
+          });
+      }),
     )
       .then((rows) => setItems(rows.filter((r): r is Classified => r !== null)))
       .catch((e) => {
@@ -167,6 +185,7 @@ function MapCard({ stack, onClose }: { stack: Stack; onClose: () => void }) {
       </button>
       {error ? <p>{t.errors.unavailable}</p> : null}
       {!items && !error ? <p role="status">{t.a11y.loading}</p> : null}
+      {stack.points.length > CARD_LIMIT ? <p className="small muted">{fmt(t.map.showingSome, { shown: CARD_LIMIT, total: stack.points.length })}</p> : null}
       <ul className={styles.mapCardList}>
         {items?.map((l) => {
           const cover = coverOf(l);

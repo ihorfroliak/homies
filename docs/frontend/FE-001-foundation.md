@@ -154,3 +154,21 @@ indexable set when enabled is DESIGN-001 §8 (`src/seo`).
 `docs/api/openapi.json`) · `typecheck` · `lint` · `test` (Vitest) · `build` ·
 `e2e` (Playwright, desktop + mobile, axe, budget). CI job `web`. Results of
 the actual runs are in the PROGRAM-001 evidence and the handoff.
+
+## 11. Security review repairs (PROGRAM-001, independent adversarial review)
+
+No P1 was found. Repaired: **SEC-001** a rotation whose response the browser
+aborted no longer logs the user out — a successful refresh is remembered by
+the old token for 120 s (bounded, 10 000 entries; `unavailable` never
+remembered; accepted: the holder of the old token within the window gets the
+new pair, the power it had a moment earlier). A backend timeout *after* a
+rotation still loses the pair: a short reuse grace on the backend is proposed
+as **BG-5**. **SEC-003** a production build refuses to proxy `/v1/media`
+(`MEDIA_VIA_EDGE=1` required; rewrites are fixed at build). P3: request bodies
+read with a hard cap (login 4 KB, BFF 64 KB, chunked bodies cut off);
+production `style-src 'self' 'nonce-…'` with `style-src-attr 'unsafe-inline'`
+only; anchored proxy-matcher exclusions; `ip:port` / `[v6]:port` from the
+ingress normalised; malformed percent-escapes answered 404 in `proxy.ts`;
+workflow token `permissions: contents: read`. Open: actions pinned by tag,
+not SHA (normal debt); `HOMIES_WEB_ENV=development` disables the production
+guards by design — it is set only for the E2E build.

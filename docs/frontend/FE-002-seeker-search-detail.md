@@ -113,3 +113,17 @@ results/detail, budget, map, analytics). Backend: ruff, mypy (126 files),
 OpenAPI drift check, SQLite full **1352 passed / 508 skipped / 0 failed**,
 targeted PG **230 passed**. CI job `web` runs the same chain on a PostGIS
 service with the seed.
+
+## 10. Security review repairs (PROGRAM-001)
+
+**SEC-002** slug resolution uses a bounded LRU (2 000 cities × 10 min) that
+caches each city with its areas, so random slugs neither grow memory nor
+multiply backend calls. **SEC-004** the E2E seed needs the opt-in, an
+explicitly set development `ENV` and a database named `*_e2e|*_test|*_ci`
+(7 tests). Public facts no longer carry `floors_total` (building height + the
+~550 m cell + subtype can single out a building); `floor` stays — both are
+**CANONICAL DECISION REQUIRED (D-101)**. Over-long or malformed place slugs are
+404. The map card says "Pokazujemy 10 z N" and reuses fetched details. Found
+while adding the CSP check: the maplibre module worker had never loaded (the
+bundler does not emit it); it is now served same-origin from
+`public/vendor/maplibre-gl-<version>/` and the map sets the URL explicitly.

@@ -161,3 +161,28 @@ test("list mode never loads the map library", async ({ page }) => {
   expect(scripts.some((u) => /maplibre/i.test(u))).toBe(false);
   expect(await page.locator(".maplibregl-map").count()).toBe(0);
 });
+
+test("results, map and detail run under the production CSP without violations", async ({ page }) => {
+  const problems: string[] = [];
+  page.on("console", (m) => {
+    if (m.type() === "error" && !/Failed to load resource/.test(m.text())) problems.push(m.text());
+  });
+  page.on("pageerror", (e) => problems.push(e.message));
+  for (const path of ["/wynajem/krakow", "/wynajem/krakow?widok=mapa"]) {
+    await page.goto(path, { waitUntil: "load" });
+    await page.waitForTimeout(1500);
+  }
+  await expect(page.locator(".maplibregl-marker")).not.toHaveCount(0);
+  await page.goto("/wynajem/krakow");
+  await page.locator("#wyniki article h3 a").first().click();
+  await expect(page).toHaveURL(/\/oferta\//);
+  await page.waitForTimeout(800);
+  expect(problems).toEqual([]);
+});
+
+test("malformed or over-long place paths are 404, not an error page", async ({ page }) => {
+  for (const path of ["/wynajem/%C0", `/wynajem/${"a".repeat(121)}`]) {
+    const response = await page.goto(path);
+    expect(response!.status(), path).toBe(404);
+  }
+});

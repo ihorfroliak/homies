@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 
 import { backendFetch } from "@/server/backend";
+import { readCapped } from "@/server/body";
 import { currentContext } from "@/server/bff";
 import { checkCsrf } from "@/server/csrf";
 import { serverEnv } from "@/server/env";
@@ -20,7 +21,10 @@ export async function POST(request: Request): Promise<Response> {
   }
   let payload: { email?: unknown; password?: unknown };
   try {
-    payload = (await request.json()) as typeof payload;
+    // An e-mail and a password never need more than 4 KB.
+    const raw = await readCapped(request, 4096);
+    if (raw === null) return Response.json({ detail: "Request too large" }, { status: 413 });
+    payload = JSON.parse(new TextDecoder().decode(raw)) as typeof payload;
   } catch {
     return Response.json({ detail: "Invalid body" }, { status: 422 });
   }
