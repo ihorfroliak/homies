@@ -122,6 +122,14 @@ jobs:
         # elements, not from lines of the one-line XML. Fails if no drill
         # passed, or if any drill was skipped or failed.
         run: python scripts/ci/junit_drills.py junit.xml
+      - name: Name the failed tests (public annotations)
+        if: failure()
+        working-directory: backend
+        # PROGRAM-001 P0: job logs need admin rights to read, annotations do
+        # not. Without this, an intermittent Test failure had no visible cause.
+        # After the drill count (which must follow Test directly); failure()
+        # still runs it when Test failed and the steps between were skipped.
+        run: python scripts/ci/junit_failures.py junit.xml
       - name: Coverage threshold
         working-directory: backend
         # Fails under 80% branch coverage. Config in pyproject [tool.coverage].
