@@ -470,6 +470,16 @@
             "title": "District",
             "type": "string"
           },
+          "facts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicFacts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "freshness": {
             "anyOf": [
               {
@@ -698,6 +708,16 @@
           "district": {
             "title": "District",
             "type": "string"
+          },
+          "facts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicFacts"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "freshness": {
             "anyOf": [
@@ -1107,17 +1127,23 @@
       },
       "DecisionIn": {
         "additionalProperties": false,
-        "description": "A decision against the target's current head. `expected_head_decision_id`\nis required (null when the target has no decision yet): a decision made\nagainst an older head is refused, never re-aimed.",
+        "description": "A decision against the target's current head. `expected_head_decision_id`\nis required (null when the target has no decision yet): a decision made\nagainst an older head is refused, never re-aimed.\n\n`close_engagement` (LISTING, VISIBILITY_LIMITED with SCAM, FAKE or SAFETY\nonly): also close the listing's ACTIVE conversations and cancel its future\nviewings. `listing_id` (MEDIA only): the listing the photo was seen on.",
         "properties": {
           "action": {
             "enum": [
               "NO_ACTION",
               "CONTENT_EDIT_REQUIRED",
               "VISIBILITY_LIMITED",
-              "CONTENT_REMOVED"
+              "CONTENT_REMOVED",
+              "FEATURE_RESTRICTED"
             ],
             "title": "Action",
             "type": "string"
+          },
+          "close_engagement": {
+            "default": false,
+            "title": "Close Engagement",
+            "type": "boolean"
           },
           "expected_head_decision_id": {
             "anyOf": [
@@ -1142,6 +1168,20 @@
               }
             ],
             "title": "Explanation"
+          },
+          "listing_id": {
+            "anyOf": [
+              {
+                "maxLength": 36,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Id"
           },
           "reason_code": {
             "enum": [
@@ -1199,7 +1239,9 @@
           "target_type": {
             "enum": [
               "LISTING",
-              "MESSAGE"
+              "MESSAGE",
+              "CONVERSATION",
+              "MEDIA"
             ],
             "title": "Target Type",
             "type": "string"
@@ -1231,6 +1273,16 @@
               }
             ],
             "title": "Answered Review Request Id"
+          },
+          "cancelled_viewings": {
+            "default": 0,
+            "title": "Cancelled Viewings",
+            "type": "integer"
+          },
+          "closed_conversations": {
+            "default": 0,
+            "title": "Closed Conversations",
+            "type": "integer"
           },
           "decision_id": {
             "title": "Decision Id",
@@ -1680,6 +1732,14 @@
             "title": "Is Public",
             "type": "boolean"
           },
+          "media": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ListingMediaOut"
+            },
+            "title": "Media",
+            "type": "array"
+          },
           "property_id": {
             "title": "Property Id",
             "type": "string"
@@ -1702,6 +1762,35 @@
           "current"
         ],
         "title": "ListingContextOut",
+        "type": "object"
+      },
+      "ListingMediaOut": {
+        "description": "Every photo linked to the listing, whatever its state — the ids a\nmoderator decides on (S4b). The photo itself: /media/{id}/content.",
+        "properties": {
+          "is_cover": {
+            "title": "Is Cover",
+            "type": "boolean"
+          },
+          "media_asset_id": {
+            "title": "Media Asset Id",
+            "type": "string"
+          },
+          "moderation_state": {
+            "title": "Moderation State",
+            "type": "string"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "media_asset_id",
+          "moderation_state",
+          "is_cover",
+          "sort_order"
+        ],
+        "title": "ListingMediaOut",
         "type": "object"
       },
       "ListingReportIn": {
@@ -2175,6 +2264,59 @@
           "created_at"
         ],
         "title": "MediaAssetOut",
+        "type": "object"
+      },
+      "MediaTargetOut": {
+        "properties": {
+          "content_available": {
+            "title": "Content Available",
+            "type": "boolean"
+          },
+          "head": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HeadOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "listing_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Listing Ids",
+            "type": "array"
+          },
+          "moderation_state": {
+            "title": "Moderation State",
+            "type": "string"
+          },
+          "property_id": {
+            "title": "Property Id",
+            "type": "string"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "string"
+          },
+          "target_type": {
+            "const": "MEDIA",
+            "title": "Target Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_type",
+          "target_id",
+          "property_id",
+          "moderation_state",
+          "listing_ids",
+          "head",
+          "content_available"
+        ],
+        "title": "MediaTargetOut",
         "type": "object"
       },
       "MemberInvite": {
@@ -3738,6 +3880,11 @@
             "title": "Attendee Count",
             "type": "integer"
           },
+          "cancelled_by_homies": {
+            "default": false,
+            "title": "Cancelled By Homies",
+            "type": "boolean"
+          },
           "ends_at": {
             "format": "date-time",
             "title": "Ends At",
@@ -3787,6 +3934,101 @@
           "requester_note"
         ],
         "title": "ProviderViewingOut",
+        "type": "object"
+      },
+      "PublicFacts": {
+        "description": "What the flat is, as the public may know it (FE-002, gap G1).\n\nSearch already filters and sorts on most of these (min_rooms, min_area_m2,\nfurnished, parking, pets_allowed, has_elevator, size_desc …); the listing\njust did not show them. Built field by field; nothing about where it is\n(that stays in city/district/public_location) and nothing about who owns\nit. `rooms` and `area_m2` describe the whole property; for a ROOM listing\n`space_area_m2` is the room's own size when the owner gave it.\n\n`floor` is shown because seekers need it; the building's height\n(`floors_total`) is deliberately NOT public: with the ~550 m public grid\ncell and the subtype it can single out a building (PROGRAM-001 security\nreview). Whether either may be public is CANONICAL DECISION REQUIRED (D-101).",
+        "properties": {
+          "area_m2": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area M2"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "floor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Floor"
+          },
+          "furnished": {
+            "title": "Furnished",
+            "type": "string"
+          },
+          "has_elevator": {
+            "title": "Has Elevator",
+            "type": "boolean"
+          },
+          "parking": {
+            "title": "Parking",
+            "type": "string"
+          },
+          "pets_allowed": {
+            "title": "Pets Allowed",
+            "type": "boolean"
+          },
+          "rooms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rooms"
+          },
+          "space_area_m2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Space Area M2"
+          },
+          "subtype": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtype"
+          }
+        },
+        "required": [
+          "has_elevator",
+          "furnished",
+          "parking",
+          "pets_allowed"
+        ],
+        "title": "PublicFacts",
         "type": "object"
       },
       "PublicLocation": {
@@ -5219,6 +5461,11 @@
             "title": "Attendee Count",
             "type": "integer"
           },
+          "cancelled_by_homies": {
+            "default": false,
+            "title": "Cancelled By Homies",
+            "type": "boolean"
+          },
           "ends_at": {
             "format": "date-time",
             "title": "Ends At",
@@ -5701,7 +5948,7 @@
     },
     "/v1/admin/moderation/decisions": {
       "post": {
-        "description": "Record a moderation decision and apply it, in one transaction.\nLISTING: hold, release or dismissal — resolving its live reports,\nanswering the owner's open review request on the hold it supersedes and\nnotifying the listing's managers of a hold or a release. MESSAGE (S4a):\nCONTENT_REMOVED redacts the message for the participants (the stored body\nis kept as evidence) or NO_ACTION dismisses — resolving its live reports;\nnothing else about the conversation changes.",
+        "description": "Record a moderation decision and apply it, in one transaction.\nLISTING: hold, release or dismissal — resolving its live reports,\nanswering the owner's open review request on the hold it supersedes and\nnotifying the listing's managers of a hold or a release. MESSAGE (S4a):\nCONTENT_REMOVED redacts the message for the participants (the stored body\nis kept as evidence) or NO_ACTION dismisses — resolving its live reports;\nnothing else about the conversation changes. CONVERSATION (S4b):\nFEATURE_RESTRICTED closes it with a neutral SYSTEM line (terminal). MEDIA\n(S4b): CONTENT_REMOVED restricts the photo without detaching it.",
         "operationId": "decide_v1_admin_moderation_decisions_post",
         "requestBody": {
           "content": {
@@ -5728,7 +5975,7 @@
             "description": "Not a moderator, or a conflict of interest (manages the property, has a live report on the target; MESSAGE: is a current side of the conversation or wrote the message)"
           },
           "404": {
-            "description": "No such listing or message"
+            "description": "No such listing, message, conversation or photo"
           },
           "409": {
             "description": "STALE_HEAD: the target's current decision is not the expected one — refresh and decide again (never retried for you)"
@@ -5746,6 +5993,62 @@
           }
         ],
         "summary": "Decide",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/v1/admin/moderation/media/{media_asset_id}/content": {
+      "get": {
+        "description": "The photo, whatever its moderation state, for moderators only — the\npublic serve refuses anything not APPROVED, so a restricted or held\nlisting's photos are otherwise invisible to the people reviewing them.\nOnly sanitised, servable bytes (never a quarantined original); never\ncached; every access audited (ids only).",
+        "operationId": "media_content_v1_admin_moderation_media__media_asset_id__content_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_asset_id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9-]+$",
+              "title": "Media Asset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "image/*": {}
+            },
+            "description": "The photo"
+          },
+          "403": {
+            "description": "Not a moderator"
+          },
+          "404": {
+            "description": "No such photo, or its bytes are not servable"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Media Content",
         "tags": [
           "moderation"
         ]
@@ -5869,6 +6172,63 @@
           }
         ],
         "summary": "Review Listing",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/v1/admin/moderation/targets/MEDIA/{media_asset_id}": {
+      "get": {
+        "description": "A photo's moderation state and the listings it is on (ids only).",
+        "operationId": "review_media_v1_admin_moderation_targets_MEDIA__media_asset_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_asset_id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9-]+$",
+              "title": "Media Asset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaTargetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Not a moderator"
+          },
+          "404": {
+            "description": "No such photo"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Review Media",
         "tags": [
           "moderation"
         ]
@@ -8863,6 +9223,66 @@
           }
         },
         "summary": "Localities",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/v1/geo/localities/by-slug": {
+      "get": {
+        "description": "Active localities whose URL slug is exactly `slug` (FE-002, gap G7).\n\nPublic result URLs carry the slug (\"/wynajem/lodz\"); the name search above\nis prefix-on-name and cannot find \"Łódź\" from \"lodz\". Slugs are not unique\n(many villages share a name), so this returns every match — cities first,\nthen by name — and the caller decides; at most 20.",
+        "operationId": "localities_by_slug_v1_geo_localities_by_slug_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "country",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Z]{2}$",
+              "title": "Country",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LocalityOut"
+                  },
+                  "title": "Response Localities By Slug V1 Geo Localities By Slug Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Localities By Slug",
         "tags": [
           "geography"
         ]

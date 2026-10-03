@@ -479,9 +479,12 @@ def test_a_moderator_with_any_live_report_on_the_target_cannot_decide(client):
 
 
 @pytest.mark.parametrize("change,why", [
-    ({"action": "CONTENT_REMOVED"}, "a Slice 4 action"),
+    ({"action": "CONTENT_REMOVED"}, "not a listing action"),
     ({"action": "ACCOUNT_SUSPENDED"}, "no account status"),
-    ({"close_engagement": True}, "close_engagement: Slice 4"),
+    ({"close_engagement": True, "action": "CONTENT_EDIT_REQUIRED"},
+     "close_engagement only with VISIBILITY_LIMITED (S4b)"),
+    ({"close_engagement": True, "reason_code": "MISLEADING_PRICE"},
+     "close_engagement only for SCAM, FAKE or SAFETY (S4b)"),
     ({"report_id": "x"}, "no caller-selected report"),
     ({"target_type": "MESSAGE"}, "message moderation: Slice 4"),
     ({"reason_code": "REINSTATED_REMEDIED"}, "no hold to release"),

@@ -16,6 +16,7 @@ from collections.abc import Iterable
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session, aliased
 
+from app.modules.engagement.models import Conversation
 from app.modules.trust.models import HOLD_ACTIONS, ModerationDecision
 
 
@@ -67,3 +68,19 @@ def heads(db: Session, target_type: str,
                               "moderation head")
         out[decision.target_id] = decision
     return out
+
+
+def recontact_blocked(db: Session, listing_id: str, requester_id: str,
+                      public_generation: int) -> bool:
+    """Founder G-14: after Homies closes a conversation (FEATURE_RESTRICTED),
+    its requester cannot open another one on the same listing for the same
+    public generation. A republish (a new generation) lifts it."""
+    return bool(db.scalar(select(exists().where(
+        ModerationDecision.target_type == "CONVERSATION",
+        ModerationDecision.action == "FEATURE_RESTRICTED",
+        ModerationDecision.listing_id == listing_id,
+        ModerationDecision.listing_public_generation_at_decision == public_generation,
+        ModerationDecision.target_id.in_(
+            select(Conversation.id).where(Conversation.listing_id == listing_id,
+                                          Conversation.requester_user_id == requester_id)),
+    ))))

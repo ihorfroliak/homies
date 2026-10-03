@@ -41,6 +41,7 @@ from app.core.audit import audit
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import get_current_user, require_role
+from app.modules.events import facts
 from app.modules.geography import service as geography
 from app.modules.geography.models import Address
 from app.modules.identity import organizations
@@ -94,6 +95,7 @@ from app.modules.properties.schemas import (
     PropertyCreate,
     PriceComponentOut,
     PriceUpdate,
+    PublicFacts,
     PublicLocation,
     PropertyOut,
     RevealQuotaOut,
@@ -110,7 +112,7 @@ router = APIRouter(tags=["properties"])
 HELD_BY_MODERATION = "HELD_BY_MODERATION: this listing is on hold by Homies moderation"
 
 
-_DERIVED_FIELDS = {"monthly_total_estimate", "move_in_total", "public_location", "place",
+_DERIVED_FIELDS = {"monthly_total_estimate", "move_in_total", "public_location", "place", "facts",
                    "move_in", "confirmed_on", "freshness", "utilities_basis"}
 
 
@@ -169,6 +171,21 @@ def _move_in(offer: ClassifiedOffer, now: datetime) -> Literal["UNKNOWN", "NOW",
     return "NOW" if offer.available_from <= freshness.utc_date(now) else "FROM_DATE"
 
 
+def _public_facts(offer: ClassifiedOffer) -> PublicFacts | None:
+    """Field by field from the property and the space (gap G1); never the row."""
+    prop = offer.listed_property
+    if prop is None:
+        return None
+    space = offer.space
+    space_area = space.area_m2 if space is not None and space.space_type != "WHOLE_PROPERTY" else None
+    return PublicFacts(
+        category=prop.category, subtype=prop.subtype, rooms=prop.rooms, area_m2=prop.area_m2,
+        space_area_m2=float(space_area) if space_area is not None else None,
+        floor=prop.floor, has_elevator=prop.has_elevator,
+        furnished=prop.furnished, parking=prop.parking, pets_allowed=prop.pets_allowed,
+    )
+
+
 def _public(offer: ClassifiedOffer, now: datetime | None = None) -> ClassifiedOut:
     """`now` is the request's decision instant from the database clock; pass
     it when serialising many offers so the clock is read once, not per row."""
@@ -189,6 +206,7 @@ def _public(offer: ClassifiedOffer, now: datetime | None = None) -> ClassifiedOu
     return ClassifiedOut(
         **{k: getattr(offer, k) for k in ClassifiedOut.model_fields if k not in _DERIVED_FIELDS},
         place=place,
+        facts=_public_facts(offer),
         move_in=_move_in(offer, now),
         utilities_basis=(
             "INCLUDED" if offer.utilities_included
@@ -629,6 +647,9 @@ def pause_classified(
     if paused.rowcount != 1:
         db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, "This listing is archived")
+    facts.listing_status_changed(
+        db, listing_id=offer.id, property_id=offer.property_id, from_status=offer.status,
+        to_status="paused", reason_code="OWNER_PAUSE", public_generation=offer.public_generation)
     db.commit()
     db.refresh(offer)
     return _public(offer)

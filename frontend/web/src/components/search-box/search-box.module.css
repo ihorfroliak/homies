@@ -1,0 +1,15 @@
+.box {
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  background: var(--c-surface);
+  border: var(--bw, 1px) solid var(--c-line);
+  border-radius: var(--r-lg);
+  margin-bottom: var(--sp-5);
+}
+.box :global(.field) { margin: 0; }
+.box button { min-height: 48px; }
+
+@media (min-width: 768px) {
+  .box { grid-template-columns: 2fr 1.4fr auto; align-items: end; }
+}

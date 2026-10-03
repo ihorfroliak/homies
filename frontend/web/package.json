@@ -1,0 +1,48 @@
+{
+  "name": "homies-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Homies public web (Next.js + TypeScript, canon 03 §3). FE-001 foundation.",
+  "engines": {
+    "node": ">=24 <27"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "prebuild": "node scripts/copy-map-worker.mjs",
+    "predev": "node scripts/copy-map-worker.mjs",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "gen:api": "openapi-typescript ../../docs/api/openapi.json -o src/api/schema.d.ts",
+    "check:api": "openapi-typescript ../../docs/api/openapi.json -o .api-check.d.ts && node scripts/same-file.mjs src/api/schema.d.ts .api-check.d.ts"
+  },
+  "dependencies": {
+    "maplibre-gl": "6.11.2",
+    "next": "16.3.8",
+    "openapi-fetch": "0.17.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "server-only": "0.0.1"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.7",
+    "@types/node": "24.19.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.8",
+    "jsdom": "30.1.1",
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3",
+    "vitest": "5.0.3"
+  }
+}

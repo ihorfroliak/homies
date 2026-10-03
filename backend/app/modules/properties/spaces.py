@@ -19,6 +19,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.audit import audit
+from app.modules.events import facts
 from app.modules.properties.models import ClassifiedOffer, Space
 
 
@@ -98,6 +99,10 @@ def archive(db: Session, space: Space, actor_id: str) -> list[str]:
             ClassifiedOffer.space_id == space.id, ClassifiedOffer.status == "active"
         )
     ):
+        facts.listing_status_changed(
+            db, listing_id=offer.id, property_id=offer.property_id, from_status=offer.status,
+            to_status="paused", reason_code="SPACE_ARCHIVED",
+            public_generation=offer.public_generation)
         offer.status = "paused"
         paused.append(offer.id)
 

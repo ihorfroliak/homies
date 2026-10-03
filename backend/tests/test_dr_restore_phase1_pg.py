@@ -35,11 +35,12 @@ from app.modules.alerts import delivery, worker
 from app.modules.geography import service
 from app.modules.geography.models import GeoArea, GeoSource
 from app.modules.properties import freshness
+from app.modules.properties import router as properties_router
 from app.modules.properties.models import ClassifiedOffer
 from app.modules.saved import service as saved_service
 from app.modules.saved.models import SavedSearch
 from app.modules.identity.models import User
-from app.modules.trust import decisions, hold
+from app.modules.trust import decisions, effects, hold
 from app.modules.trust.models import ModerationReviewRequest, Report
 from tests.conftest import (
     TEST_DATABASE_URL,
@@ -58,7 +59,9 @@ from tests.test_dr_restore_pg import (
     _run,
     _with_database,
 )
+from tests.test_engagement_safety import WARSAW, _slot
 from tests.test_geography import PL_AREAS, PL_LOCALITIES, SOURCE
+from tests.test_media import _approved
 from tests.test_saved_search_alerts import Mailbox
 
 pytestmark = pytest.mark.skipif(not DRILL_AVAILABLE, reason=DRILL_SKIP_REASON)
@@ -76,11 +79,20 @@ TABLES = ("countries", "geo_sources", "admin_areas", "localities", "geo_areas",
           # database is judged by the same compatibility decision
           "schema_lineage",
           # TASK-015: reports and the immutable moderation decision chain
-          "reports", "moderation_decisions", "moderation_review_requests")
+          "reports", "moderation_decisions", "moderation_review_requests",
+          # TASK-015 closure: the engagement and media state moderation acts on
+          # — conversations (one closed by Homies), messages (one redacted, the
+          # SYSTEM closure line), viewings, and photos (one RESTRICTED)
+          "conversations", "conversation_participants", "messages", "viewing_settings",
+          "viewing_windows", "viewings", "file_objects", "media_assets", "listing_media")
 TASK014_TABLES = ("listing_public_generations", "saved_listings", "saved_searches",
                   "saved_search_anchors", "saved_search_matches", "alert_deliveries",
                   "user_notifications", "notification_preferences", "unsubscribe_tokens")
-TASK015_TABLES = ("reports", "moderation_decisions", "moderation_review_requests")
+TASK015_TABLES = ("reports", "moderation_decisions", "moderation_review_requests",
+                  "conversations", "conversation_participants", "messages", "viewing_settings",
+                  "viewing_windows", "viewings", "file_objects", "media_assets", "listing_media")
+# Redacted by moderation before the backup: it must stay redacted after the restore.
+REDACTED_TEXT = "tekst usuniety przez moderacje"
 TOKEN = re.compile(r"/unsubscribe\?token=([A-Za-z0-9_-]+)")
 
 
@@ -141,7 +153,77 @@ def _seed(pg_client, pg_session, pg_migrated_engine, monkeypatch):
                {"t": datetime.now(timezone.utc) - timedelta(days=30), "o": offers[2]})
     db.commit()
     _seed_moderation(pg_client, sessions, offers[2], renter_email="dr-phase1-renter@example.com")
-    return offers, saved.json()["id"], tokens
+    engagement = _seed_engagement(pg_client, sessions, owner, renter, offers)
+    return offers, saved.json()["id"], tokens, engagement
+
+
+def _seed_engagement(pg_client, sessions, owner, renter, offers):
+    """On the public listings (the drill's public answer is unchanged):
+    a live conversation with one message redacted by moderation, a second
+    conversation closed by Homies (G-14 re-contact block), a CONFIRMED
+    viewing, and two photos — one public cover, one RESTRICTED."""
+    assert pg_client.post("/v1/me/verify/email/start", headers=auth(owner)).status_code == 200
+    assert pg_client.post("/v1/me/verify/email/confirm", json={"code": last_code()},
+                          headers=auth(owner)).status_code == 200
+    live = pg_client.post(f"/v1/classifieds/{offers[0]}/conversations",
+                          json={"body": "Dzień dobry, czy aktualne?"}, headers=auth(renter))
+    assert live.status_code == 201, live.text
+    live_id = live.json()["conversation"]["id"]
+    sent = pg_client.post(f"/v1/conversations/{live_id}/messages",
+                          json={"body": REDACTED_TEXT}, headers=auth(renter))
+    assert sent.status_code == 201, sent.text
+    other = register_and_login(pg_client, "dr-phase1-tenant2@example.com", "guest")
+    assert pg_client.post("/v1/me/verify/email/start", headers=auth(other)).status_code == 200
+    assert pg_client.post("/v1/me/verify/email/confirm", json={"code": last_code()},
+                          headers=auth(other)).status_code == 200
+    closed = pg_client.post(f"/v1/classifieds/{offers[1]}/conversations",
+                            json={"body": "Pytanie o mieszkanie"}, headers=auth(other))
+    assert closed.status_code == 201, closed.text
+    closed_id = closed.json()["conversation"]["id"]
+
+    day = datetime.now(WARSAW).date() + timedelta(days=5)
+    assert pg_client.put(f"/v1/classifieds/{offers[0]}/viewing-settings", json={
+        "booking_mode": "REQUEST_APPROVAL", "duration_minutes": 30,
+        "minimum_notice_minutes": 0, "max_concurrent_bookings": 5},
+        headers=auth(owner)).status_code == 200
+    assert pg_client.post(f"/v1/classifieds/{offers[0]}/viewing-windows", json={
+        "window_type": "ONE_OFF", "local_date": day.isoformat(), "local_start_time": "10:00",
+        "local_end_time": "12:00"}, headers=auth(owner)).status_code == 201
+    viewing = pg_client.post(f"/v1/classifieds/{offers[0]}/viewings",
+                             json={"starts_at": _slot(day, 10)}, headers=auth(renter))
+    assert viewing.status_code == 201, viewing.text
+    assert pg_client.post(f"/v1/viewings/{viewing.json()['id']}/confirm",
+                          headers=auth(owner)).status_code == 200
+
+    with sessions() as db:
+        prop = db.scalar(select(ClassifiedOffer.property_id).where(ClassifiedOffer.id == offers[1]))
+    cover = _approved(pg_client, owner, prop)
+    stolen = _approved(pg_client, owner, prop)
+    for asset, is_cover in ((cover, True), (stolen, False)):
+        assert pg_client.post(f"/v1/classifieds/{offers[1]}/media",
+                              json={"media_asset_id": asset, "is_cover": is_cover},
+                              headers=auth(owner)).status_code == 201
+
+    with sessions() as db:
+        moderator = db.scalar(select(User).where(User.email == "dr-phase1-moderator@example.com"))
+        message_id = db.scalar(text("SELECT id FROM messages WHERE body = :b"),
+                               {"b": REDACTED_TEXT})
+        decisions.apply_message_decision(
+            db, actor=moderator, message_id=message_id, action="CONTENT_REMOVED",
+            reason_code="HARASSMENT", expected_head_decision_id=None)
+        db.commit()
+        decisions.apply_conversation_decision(
+            db, actor=moderator, conversation_id=closed_id, action="FEATURE_RESTRICTED",
+            reason_code="HARASSMENT", expected_head_decision_id=None)
+        db.commit()
+        decisions.apply_media_decision(
+            db, actor=moderator, media_asset_id=stolen, action="CONTENT_REMOVED",
+            reason_code="STOLEN_MEDIA", expected_head_decision_id=None)
+        db.commit()
+        other_id = db.scalar(select(User.id).where(User.email == "dr-phase1-tenant2@example.com"))
+    return {"live": live_id, "closed": closed_id, "message": message_id,
+            "viewing": viewing.json()["id"], "cover": cover, "stolen": stolen,
+            "closed_requester": other_id}
 
 
 def _seed_moderation(pg_client, sessions, listing_id, *, renter_email):
@@ -195,7 +277,7 @@ def _public_ids(url):
 
 def test_phase1_data_survives_backup_destroy_restore(pg_client, pg_session,
                                                      pg_migrated_engine, monkeypatch):
-    offers, search_id, tokens = _seed(pg_client, pg_session, pg_migrated_engine, monkeypatch)
+    offers, search_id, tokens, e = _seed(pg_client, pg_session, pg_migrated_engine, monkeypatch)
     with pg_migrated_engine.connect() as conn:
         before = {t: _rows(conn, t) for t in TABLES}
         # Every TASK-014 table holds real state, or "identical after restore" proves nothing.
@@ -203,7 +285,8 @@ def test_phase1_data_survives_backup_destroy_restore(pg_client, pg_session,
             {t: len(before[t]) for t in TASK014_TABLES}
         assert all(before[t] for t in TASK015_TABLES), \
             {t: len(before[t]) for t in TASK015_TABLES}
-        assert len(before["moderation_decisions"]) == 3
+        # 3 on the held listing + message removal, conversation restriction, photo removal
+        assert len(before["moderation_decisions"]) == 6
         assert conn.scalar(text("SELECT count(DISTINCT channel) FROM alert_deliveries")) == 2
         geogs_before = conn.execute(text(
             "SELECT p.id, ST_AsText(p.exact_geog::geometry), ST_AsText(o.public_geog::geometry) "
@@ -281,6 +364,34 @@ def test_phase1_data_survives_backup_destroy_restore(pg_client, pg_session,
         with pytest.raises(IntegrityError), restored.begin() as conn:  # one match per episode
             conn.execute(text("INSERT INTO saved_search_matches SELECT * FROM "
                               "saved_search_matches LIMIT 1"))
+        # TASK-015 closure on the copy: engagement and media moderation state.
+        with restored.connect() as conn:
+            assert conn.scalar(text("SELECT status FROM conversations WHERE id = :c"),
+                               {"c": e["closed"]}) == "CLOSED"
+            assert conn.scalar(text("SELECT status FROM conversations WHERE id = :c"),
+                               {"c": e["live"]}) == "ACTIVE"
+            last = conn.execute(text("SELECT message_type, body FROM messages "
+                                     "WHERE conversation_id = :c ORDER BY created_at DESC, id "
+                                     "LIMIT 1"), {"c": e["closed"]}).one()
+            assert tuple(last) == ("SYSTEM", effects.CLOSED_BY_HOMIES)
+            assert conn.scalar(text("SELECT redacted_at IS NOT NULL AND redaction_reason_code "
+                                    "= 'HARASSMENT' FROM messages WHERE id = :m"),
+                               {"m": e["message"]})
+            assert conn.scalar(text("SELECT status FROM viewings WHERE id = :v"),
+                               {"v": e["viewing"]}) == "CONFIRMED"
+            states = dict(conn.execute(text(
+                "SELECT id, moderation_state FROM media_assets WHERE id IN (:a, :b)"),
+                {"a": e["cover"], "b": e["stolen"]}).all())
+            assert states == {e["cover"]: "APPROVED", e["stolen"]: "RESTRICTED"}
+        with Session(restored) as db:
+            offer = db.get(ClassifiedOffer, offers[1])
+            # G-14 holds on the copy, and the public projection still shows only
+            # the approved photo (the restricted one stays linked, never public).
+            assert hold.recontact_blocked(db, offers[1], e["closed_requester"],
+                                          offer.public_generation)
+            assert [m.id for m in properties_router.public_listing(offer).media] == [e["cover"]]
+            assert db.scalar(text("SELECT count(*) FROM listing_media WHERE media_asset_id = :s"),
+                             {"s": e["stolen"]}) == 1
         # TASK-015 on the copy: the chain and its head survive, the decisions
         # stay immutable, and the chain still cannot fork.
         with Session(restored) as db:

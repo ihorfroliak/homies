@@ -28,11 +28,24 @@ inside its window (TASK-001 F-08).
 Lifecycle transitions are conditional on the viewing's current state, read
 under a row lock (TASK-001 F-06). Lock order, always:
 
-    1. viewing_settings  (capacity for the listing — confirm, request)
-    2. viewings          (the viewing being changed)
+    1. classified_offers (the listing, FOR SHARE — confirm, request; S4b)
+    2. viewing_settings  (capacity for the listing — confirm, request)
+    3. viewings          (the viewing being changed)
 
-Confirm takes both, in that order. Decline, cancel and outcome take only the
-viewing row, so none of them can wait on settings while holding a viewing.
+Confirm and request take them in that order. Decline, cancel and outcome take
+only the viewing row, so none of them can wait on settings or the listing
+while holding a viewing.
+
+Moderation (TASK-015 S4b). A listing decision locks the listing FOR UPDATE,
+then its conversations, then its viewings — so taking the listing FOR SHARE
+first makes request and confirm wait for a decision in progress and then see
+its outcome:
+
+* a held listing confirms nothing (409 LISTING_HELD) and, being paused, takes
+  no request (404, the existing public rule);
+* a close-engagement decision cancels every future REQUESTED/CONFIRMED
+  viewing; none can be requested or confirmed behind it. Such a viewing reads
+  `cancelled_by_homies: true` (trust/effects.py).
 """
 
 from datetime import date, datetime, time, timedelta, timezone
@@ -46,7 +59,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from app.core.audit import audit
-from app.core.db import get_db
+from app.core.db import get_db, lock_row
 from app.core.security import get_current_user
 from app.modules.engagement.models import (
     Viewing,
@@ -54,9 +67,13 @@ from app.modules.engagement.models import (
     ViewingSettings,
     ViewingWindow,
 )
+from app.modules.events import facts
 from app.modules.identity.models import User
 from app.modules.properties import authority, freshness
 from app.modules.properties.models import ClassifiedOffer
+from app.modules.trust import effects, hold
+
+LISTING_HELD = "LISTING_HELD"
 
 router = APIRouter(tags=["viewings"])
 
@@ -155,6 +172,9 @@ class ViewingOut(BaseModel):
     ends_at: datetime
     status: str
     attendee_count: int
+    # CANCELLED by a Homies moderation decision (close engagement), not by
+    # either side. Never a reason: the requester is not told why.
+    cancelled_by_homies: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -176,6 +196,25 @@ def _listing(db: Session, listing_id: str) -> ClassifiedOffer:
     if offer is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
     return offer
+
+
+def _shared_listing(db: Session, listing_id: str) -> ClassifiedOffer:
+    """The listing as committed now, FOR SHARE: the first lock of request and
+    confirm (see the module docstring)."""
+    offer = lock_row(db, ClassifiedOffer, listing_id, shared=True)
+    if offer is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
+    return offer
+
+
+def _outs(db: Session, viewings: list[Viewing], model=None) -> list:
+    """Viewings as responses, with `cancelled_by_homies` from one lookup."""
+    model = model or ViewingOut
+    by_homies = effects.cancelled_by_homies(db, viewings)
+    return [model.model_validate({**{c: getattr(v, c) for c in model.model_fields
+                                     if c != "cancelled_by_homies"},
+                                  "cancelled_by_homies": v.id in by_homies})
+            for v in viewings]
 
 
 def _provider_listing(db: Session, user: User, listing_id: str) -> ClassifiedOffer:
@@ -375,7 +414,7 @@ def list_slots(listing_id: str, start: date | None = None,
              status_code=201)
 def request_viewing(listing_id: str, body: ViewingRequest,
                     user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    offer = _listing(db, listing_id)
+    offer = _shared_listing(db, listing_id)
     if not freshness.is_public(offer, freshness.db_now(db)):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
     if _is_provider(db, user, offer):
@@ -410,6 +449,7 @@ def request_viewing(listing_id: str, body: ViewingRequest,
     db.flush()
     audit(db, actor=user.id, action="viewing.requested", entity_type="viewing",
           entity_id=viewing.id)
+    facts.viewing_requested(db, viewing, settings.booking_mode)
     db.commit()
     return viewing
 
@@ -460,6 +500,13 @@ def _respond(db: Session, user: User, viewing_id: str, confirm: bool) -> Viewing
     viewing, provider = _viewing_for(db, user, viewing_id)
     if not provider:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Viewing not found")
+    if confirm:
+        # A held listing confirms no viewing (Phase A §11). The head is read
+        # under the listing lock every listing decision is written under.
+        _shared_listing(db, viewing.listing_id)
+        if hold.listing_held(db, viewing.listing_id):
+            raise HTTPException(status.HTTP_409_CONFLICT,
+                                f"{LISTING_HELD}: the listing is under moderation review")
     settings = _settings(db, viewing.listing_id, lock=True) if confirm else None
     # Re-read under the row lock: a cancel may have committed while we waited
     # for the settings lock (TASK-001 F-06).
@@ -482,6 +529,7 @@ def _respond(db: Session, user: User, viewing_id: str, confirm: bool) -> Viewing
                 confirmed_by_user_id=user.id if confirm else None)
     audit(db, actor=user.id, action=f"viewing.{viewing.status.lower()}",
           entity_type="viewing", entity_id=viewing.id)
+    facts.viewing_responded(db, viewing)
     db.commit()
     return viewing
 
@@ -504,9 +552,14 @@ def cancel(viewing_id: str, user: User = Depends(get_current_user),
     """Either side may call it off before it happens."""
     _viewing_for(db, user, viewing_id)
     viewing = _locked(db, viewing_id)
+    prior = viewing.status
     _transition(db, viewing, HELD, status="CANCELLED", cancelled_at=_now())
     audit(db, actor=user.id, action="viewing.cancelled", entity_type="viewing",
           entity_id=viewing.id)
+    # The requester is the requester even when they also manage the listing.
+    facts.viewing_cancelled(
+        db, viewing_id=viewing.id, listing_id=viewing.listing_id, prior_status=prior,
+        cancelled_by="REQUESTER" if viewing.requester_user_id == user.id else "PROVIDER")
     db.commit()
     return viewing
 
@@ -524,6 +577,7 @@ def record_outcome(viewing_id: str, body: OutcomeIn, user: User = Depends(get_cu
     if _aware(viewing.starts_at) > _now():
         raise HTTPException(status.HTTP_409_CONFLICT, "The viewing has not happened yet")
     _transition(db, viewing, ("CONFIRMED",), status=body.outcome, completed_at=_now())
+    facts.viewing_outcome_recorded(db, viewing)
     db.commit()
     return viewing
 
@@ -532,12 +586,12 @@ def record_outcome(viewing_id: str, body: OutcomeIn, user: User = Depends(get_cu
 def provider_viewings(listing_id: str, user: User = Depends(get_current_user),
                       db: Session = Depends(get_db)):
     _provider_listing(db, user, listing_id)
-    return list(db.scalars(select(Viewing).where(Viewing.listing_id == listing_id)
-                           .order_by(Viewing.starts_at)))
+    return _outs(db, list(db.scalars(select(Viewing).where(Viewing.listing_id == listing_id)
+                                     .order_by(Viewing.starts_at))), ProviderViewingOut)
 
 
 @router.get("/me/viewings", response_model=list[ViewingOut])
 def my_viewings(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return list(db.scalars(select(Viewing).where(Viewing.requester_user_id == user.id)
-                           .order_by(Viewing.starts_at)))
+    return _outs(db, list(db.scalars(select(Viewing).where(Viewing.requester_user_id == user.id)
+                                     .order_by(Viewing.starts_at))))
 

@@ -1,6 +1,9 @@
-/* Homies design tokens (UI-01).
-   Framework-agnostic CSS custom properties. A future React/Expo app consumes
-   the same token names. Light + dark. Contrast targets WCAG 2.2 AA. */
+/* Homies design tokens — Design System v1 (DESIGN-001, PROGRAM-001; UI-01 base).
+   Framework-agnostic CSS custom properties: the single token source for the
+   public web app (frontend/web imports this file) and the future Expo app.
+   Light is the launch theme; dark is defined under [data-theme="dark"].
+   Contrast targets WCAG 2.2 AA. docs/product/DESIGN-SYSTEM-v1.md explains
+   every group; Figma mirrors the Light values (variables "Homies / Color"). */
 
 :root {
   /* --- Brand & neutrals --- */
@@ -16,6 +19,7 @@
   --c-ink-500: #5b6675; /* secondary text — 4.6:1 on white */
   --c-ink-300: #97a1af; /* muted/placeholder */
   --c-line:    #e3e7ec; /* borders */
+  --c-line-strong: #c7ced7; /* input borders, secondary buttons (3:1 UI contrast) */
   --c-surface: #ffffff;
   --c-surface-2: #f6f8fa; /* app background */
   --c-surface-3: #eef1f5; /* subtle fills */
@@ -25,11 +29,30 @@
   --c-warning-fg: #8a5a00; --c-warning-bg: #fdf1dc;
   --c-danger-fg:  #b3261e; --c-danger-bg:  #fbe9e7;
   --c-info-fg:    #0b5cad; --c-info-bg:    #e7f0fb;
-  --c-verified:   #0c7d5e;
+  --c-verified:   #0c7d5e; /* deprecated alias of --c-trust-fg */
+  --c-trust-fg:   #0c7d5e; --c-trust-bg: #e6f6ef;
+  /* deprecated (booking-era "promoted"/"free" badges conflict with no fake
+     urgency, DESIGN-001 P8/P9) — kept only for the UI-01 showcase */
   --c-promoted-fg: #7a4d00; --c-promoted-bg: #fbeccb;
   --c-free-fg:    #0b5cad; --c-free-bg:    #e7f0fb;
 
+  /* --- Status (v1) — never colour alone: always with text and an icon --- */
+  --c-fresh-fg: var(--c-success-fg);   --c-fresh-bg: var(--c-success-bg);
+  --c-held-fg: var(--c-warning-fg);    --c-held-bg: var(--c-warning-bg);     /* owner-only */
+  --c-requested-fg: var(--c-info-fg);  --c-requested-bg: var(--c-info-bg);
+  --c-confirmed-fg: var(--c-success-fg); --c-confirmed-bg: var(--c-success-bg);
+  --c-cancelled-fg: var(--c-ink-500);  --c-cancelled-bg: var(--c-surface-3); /* also declined */
+  --c-removed-fg: var(--c-ink-500);    /* "Usunięte przez Homies", italic */
+
+  /* --- Map (v1) — the public cell, never a pin --- */
+  --c-map-bg: #e8eef2;
+  --c-cell-fill: rgba(15, 157, 118, 0.16); --c-cell-stroke: var(--c-brand-600);
+  --c-marker-bg: var(--c-surface); --c-marker-fg: var(--c-ink-900);
+  --c-marker-selected-bg: var(--c-ink-900); --c-marker-selected-fg: #ffffff;
+
   --c-focus: #0b5cad; /* visible focus ring, distinct from brand */
+  /* two-tone ring: visible on photos and on brand fills (WCAG 2.4.7/2.4.11) */
+  --focus-ring: 0 0 0 2px var(--c-surface), 0 0 0 4px var(--c-focus);
 
   /* --- Typography --- */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -37,23 +60,36 @@
   --fs-h1: 1.5rem;       --lh-h1: 1.2;
   --fs-h2: 1.25rem;      --lh-h2: 1.25;
   --fs-h3: 1.0625rem;    --lh-h3: 1.3;
-  --fs-body: 0.9375rem;  --lh-body: 1.5;
+  --fs-body: 1rem;       --lh-body: 1.5; /* v1: 16px (readability; no iOS input zoom) */
   --fs-small: 0.8125rem; --lh-small: 1.45;
+  --fs-price-lg: 1.5rem; --fs-price: 1.125rem; --fs-caption: 0.8125rem;
   --fw-regular: 400; --fw-medium: 550; --fw-bold: 700;
+  --num: tabular-nums; /* amounts and counts */
 
   /* --- Spacing (4px base) --- */
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
   --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px;
+  --sp-0-5: 2px; --sp-9: 96px;
+  --size-control-sm: 36px; --size-control-md: 44px; --size-control-lg: 52px;
+  --icon-sm: 16px; --icon-md: 20px; --icon-lg: 24px;
 
   /* --- Radius / shadow / motion --- */
-  --r-sm: 6px; --r-md: 10px; --r-lg: 16px; --r-pill: 999px;
+  --r-sm: 6px; --r-md: 10px; --r-lg: 16px; --r-xl: 24px; --r-pill: 999px;
+  --bw-1: 1px; --bw-2: 2px;
   --sh-1: 0 1px 2px rgba(20,24,31,.06), 0 1px 3px rgba(20,24,31,.08);
   --sh-2: 0 4px 12px rgba(20,24,31,.10);
   --sh-3: 0 12px 32px rgba(20,24,31,.16);
-  --motion-fast: 120ms ease; --motion: 200ms ease;
+  --motion-fast: 120ms ease; --motion: 200ms ease; /* deprecated: use --dur-* + --ease-standard */
+  --dur-fast: 120ms; --dur-base: 200ms; --dur-slow: 320ms;
+  --ease-standard: cubic-bezier(.2, 0, 0, 1);
+  --z-sticky: 10; --z-map-ui: 20; --z-drawer: 40; --z-modal: 50; --z-toast: 60;
 
   /* --- Layout --- */
   --container: 1120px;
+  --container-wide: 1440px;
+  /* breakpoints (min-width; CSS cannot read variables in media queries — the
+     values are mirrored in frontend/web/src/ui/breakpoints.ts):
+     sm 0 · md 480 · lg 768 (tablet) · xl 1024 (list/map split) · 2xl 1440 */
   --tap-min: 44px; /* minimum touch target (WCAG 2.2 AA 2.5.8) */
 }
 
@@ -75,5 +111,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0.01ms; --dur-base: 0.01ms; --dur-slow: 0.01ms; }
   * { transition: none !important; animation: none !important; }
 }

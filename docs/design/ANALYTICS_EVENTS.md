@@ -1,5 +1,7 @@
 # Analytics event taxonomy
 
+> **HISTORICAL — superseded by [docs/growth/EVENTS-v1.md](../growth/EVENTS-v1.md)** (GROWTH-001, PROGRAM-001). Booking-era events (booking_started, payment_started, …) do not describe the Phase-1 product. Kept for history only.
+
 UI-01. The event contract the frontend emits. The showcase already fires these
 via `track()` (console + an on-page feed) to prove the taxonomy; **no analytics
 backend is built** — a sink (self-hosted or a vendor) is a future decision.

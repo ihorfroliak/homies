@@ -1,0 +1,11 @@
+node_modules/
+.next/
+next-env.d.ts
+playwright-report/
+test-results/
+*.tsbuildinfo
+.env*.local
+.api-check.d.ts
+.npm-install.log
+.web.sh
+public/vendor/

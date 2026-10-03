@@ -8,6 +8,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Least privilege for the workflow token (PROGRAM-001 security review).
+permissions:
+  contents: read
+
 # A newer push to a task branch supersedes an older run of it. On `main` every
 # commit keeps its own run (PR-001R F10): the group is per-commit there, so a
 # later merge can neither cancel nor replace a queued run of an earlier one.
@@ -122,6 +126,14 @@ jobs:
         # elements, not from lines of the one-line XML. Fails if no drill
         # passed, or if any drill was skipped or failed.
         run: python scripts/ci/junit_drills.py junit.xml
+      - name: Name the failed tests (public annotations)
+        if: failure()
+        working-directory: backend
+        # PROGRAM-001 P0: job logs need admin rights to read, annotations do
+        # not. Without this, an intermittent Test failure had no visible cause.
+        # After the drill count (which must follow Test directly); failure()
+        # still runs it when Test failed and the steps between were skipped.
+        run: python scripts/ci/junit_failures.py junit.xml
       - name: Coverage threshold
         working-directory: backend
         # Fails under 80% branch coverage. Config in pyproject [tool.coverage].
@@ -245,3 +257,92 @@ jobs:
       - name: Validate AsyncAPI catalog
         working-directory: ops/contracts
         run: npm run validate:asyncapi
+
+  # FE-001/FE-002: the public web app (frontend/web). Exactly pinned toolchain
+  # (package-lock.json, npm ci); the typed API client is generated from
+  # docs/api/openapi.json and must not drift from it. E2E runs the production
+  # build against the real Phase-1 API on PostGIS with the fictional E2E seed
+  # (backend/app/scripts/seed_e2e.py). The API's rate limiting is off for this
+  # job only: every Playwright worker shares one client IP.
+  web:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4@sha256:44126d872ac91993766c341e369c539e8196614321765d36a6f1bab0419a5fa5
+        env:
+          POSTGRES_USER: homies
+          POSTGRES_PASSWORD: homies
+          POSTGRES_DB: homies_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U homies -d homies_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      DATABASE_URL: postgresql+psycopg://homies:homies@localhost:5432/homies_e2e
+      ALEMBIC_DATABASE_URL: postgresql+psycopg://homies:homies@localhost:5432/homies_e2e
+      ENV: local
+      MEDIA_ROOT: /tmp/homies-e2e-media
+      # Web build/run: the E2E build exposes test hooks and an in-memory
+      # analytics sink (never a deployable artifact; no deploy pipeline exists).
+      API_INTERNAL_URL: http://127.0.0.1:8000
+      NEXT_PUBLIC_E2E_HOOKS: "1"
+      NEXT_PUBLIC_ANALYTICS_SINK: memory
+      # The E2E build proxies /v1/media itself and runs on http://localhost; a
+      # production build refuses both (next.config.ts, env.ts).
+      HOMIES_WEB_ENV: development
+      E2E_BACKEND: "1"
+    defaults:
+      run:
+        working-directory: frontend/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/web/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/pyproject.toml
+            backend/constraints.txt
+      - name: Install (pinned)
+        run: npm ci --no-audit --no-fund
+      - name: API client matches the OpenAPI contract
+        run: npm run check:api
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Backend for E2E (pinned install, migrate, fictional seed, serve)
+        working-directory: backend
+        run: |
+          pip install -c constraints.txt ".[dev]"  # the seed drives the API through TestClient (httpx)
+          python -m app.scripts.migrate --allow-barrier
+          HOMIES_ALLOW_E2E_SEED=1 python -m app.scripts.seed_e2e
+          RATE_LIMIT_ENABLED=false nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > "$RUNNER_TEMP/api.log" 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8000/healthz >/dev/null && exit 0; sleep 1; done
+          cat "$RUNNER_TEMP/api.log"; exit 1
+      - name: Build
+        run: npm run build
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: E2E (foundation, seeker slice, accessibility, budget)
+        run: npm run e2e
+      - name: Keep E2E traces and the API log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-e2e-traces
+          path: |
+            frontend/web/test-results
+            ${{ runner.temp }}/api.log
+          retention-days: 7

@@ -101,6 +101,28 @@ def localities(
             for loc in found]
 
 
+@router.get("/localities/by-slug", response_model=list[LocalityOut])
+def localities_by_slug(
+    country: str = Query(pattern="^[A-Z]{2}$"),
+    slug: str = Query(min_length=1, max_length=120, pattern="^[a-z0-9]+(-[a-z0-9]+)*$"),
+    db: Session = Depends(get_db),
+):
+    """Active localities whose URL slug is exactly `slug` (FE-002, gap G7).
+
+    Public result URLs carry the slug ("/wynajem/lodz"); the name search above
+    is prefix-on-name and cannot find "Łódź" from "lodz". Slugs are not unique
+    (many villages share a name), so this returns every match — cities first,
+    then by name — and the caller decides; at most 20.
+    """
+    found = db.scalars(select(Locality).where(
+        Locality.country_code == country, Locality.slug == slug, Locality.status == "ACTIVE")
+        .order_by((Locality.kind != "CITY"), Locality.official_name, Locality.id).limit(20))
+    return [LocalityOut(id=loc.id, country_code=loc.country_code, kind=loc.kind,
+                        name=loc.official_name, slug=loc.slug,
+                        areas=[_area(a) for a in service.area_path(db, loc.admin_area_id)])
+            for loc in found]
+
+
 @router.get("/localities/{locality_id}/areas", response_model=list[GeoAreaOut])
 def locality_search_areas(locality_id: str, db: Session = Depends(get_db)):
     """Search areas (districts, neighbourhoods) of a locality."""

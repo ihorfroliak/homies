@@ -138,6 +138,17 @@ def test_ci_counts_the_restore_drill_test_cases_it_ran():
     assert _steps("backend")[drills]["run"] == "python scripts/ci/junit_drills.py junit.xml"
 
 
+def test_ci_names_failed_tests_in_public_annotations():
+    """PROGRAM-001 P0: job logs need admin rights; when Test fails, a later
+    step (if: failure()) turns each failed JUnit case into an annotation."""
+    steps = _steps("backend")
+    test_at = next(i for i, step in enumerate(steps)
+                   if "--junitxml=junit.xml" in step.get("run", ""))
+    [named] = [(i, s) for i, s in enumerate(steps)
+               if s.get("run") == "python scripts/ci/junit_failures.py junit.xml"]
+    assert named[0] > test_at and named[1].get("if") == "failure()"
+
+
 def _collect_drills(env_overrides: dict[str, str]) -> subprocess.CompletedProcess:
     env = {k: v for k, v in os.environ.items() if k != "HOMIES_REQUIRE_RESTORE_DRILL"}
     env.update(env_overrides)

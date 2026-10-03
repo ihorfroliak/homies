@@ -252,7 +252,13 @@ def test_health_answers_while_every_thread_pool_token_is_taken():
             for path in ("/healthz", "/metrics"):
                 started = time.monotonic()
                 assert client.get(path).status_code == 200
-                assert time.monotonic() - started < 1.0, path
+                # A probe queued behind the pool would wait for `release`
+                # (30 s). 5 s separates the two with room for a loaded CI
+                # runner, where 1 s failed intermittently with 45 threads
+                # competing for the CPU (PROGRAM-001 P0, named by the new
+                # failure annotations). The structural guard is the coroutine
+                # test above.
+                assert time.monotonic() - started < 5.0, path
         finally:
             release.set()
             for t in occupiers:

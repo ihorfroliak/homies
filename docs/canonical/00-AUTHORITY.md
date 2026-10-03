@@ -43,6 +43,25 @@ decided silently in code.
 | `docs/PROJECT_CHARTER.md`, `docs/strategy/*`, `docs/business/*`, `docs/PRODUCT_MODEL.md`, `docs/RELEASE_PLAN.md`, `RELEASE.md` | Managed hospitality / "give us the keys" / operator revenue loop as the current strategy; commission-bearing short and monthly stays as Phase 1 | 01, 02: long-term marketplace first; MONTHLY is Phase 2, SHORT_STAY Phase 3 |
 | `docs/DECISIONS.md` product entries before 2026-09-24 (incl. D-07, D-44 wording) | Product sequencing and scope | 02. Engineering decisions in that log (money, ledger, append-only, DB roles, CI) remain in force unless contradicted by 03 |
 
+## Registered document families (PROGRAM-001, 2026-10-03)
+
+Founder-approved for the PROGRAM-001 candidate. These families **refine** 02,
+03 and 07 for product, interface and growth work; they sit at level 7 (the
+specification of an approved task) and never contradict a higher level. A
+conflict found while writing them is recorded as CANONICAL DECISION REQUIRED,
+not resolved in the family. They become current when the PROGRAM-001
+candidate is merged with founder approval.
+
+| Family | Path | Owns | Entry document |
+|---|---|---|---|
+| Product & interface | [`docs/product/`](../product/) | information architecture, journeys, UI states, Design System v1, copy rules, URL design | [DESIGN-001](../product/DESIGN-001-product-ui-foundation.md) |
+| Frontend engineering | [`docs/frontend/`](../frontend/) | the public web app: BFF/session, security headers, API client, i18n, measurement seams, slices | [FE-001](../frontend/FE-001-foundation.md), [FE-002](../frontend/FE-002-seeker-search-detail.md) |
+| Growth & measurement | [`docs/growth/`](../growth/) | metric, event, attribution, experiment, data-quality, unit-economics and consent definitions | [GROWTH-001](../growth/GROWTH-001-marketplace-growth-foundation.md) |
+
+Superseded by these families (historical, banner-marked):
+`docs/design/PRODUCT_UX.md`, `docs/design/DESIGN_SYSTEM.md` (UI-01 drafts) and
+`docs/design/ANALYTICS_EVENTS.md` (booking era).
+
 ## Source status of levels 2–4
 
 The founder's Constitution v2, Business Logic and System Architecture v1.1 were

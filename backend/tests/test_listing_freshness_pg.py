@@ -18,6 +18,7 @@ import pytest
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
 
+from app.modules.events import facts
 from app.modules.properties import freshness
 from app.modules.properties.models import ClassifiedOffer, Space
 from tests.conftest import TEST_DATABASE_URL, admin_login, auth, register_and_login
@@ -194,13 +195,23 @@ def test_a_confirmation_waiting_behind_the_sweep_reactivates_the_listing(
     with pg_migrated_engine.connect() as conn:
         events = conn.execute(text(
             "SELECT event_type FROM domain_events WHERE correlation_id = :o "
-            "AND event_type <> 'ListingBecamePublic' ORDER BY occurred_at"),
-            {"o": offer}).scalars().all()
+            "AND event_type NOT IN ('ListingBecamePublic', :changed) ORDER BY occurred_at"),
+            {"o": offer, "changed": facts.LISTING_STATUS_CHANGED}).scalars().all()
+        # GROWTH-001 measurement facts ride in the same transactions: the sweep
+        # records STALE_SWEEP, the confirmation that won behind it RECONFIRMED.
+        changes = conn.execute(text(
+            "SELECT payload->>'from_status', payload->>'to_status', payload->>'reason_code' "
+            "FROM domain_events WHERE correlation_id = :o AND event_type = :changed "
+            "ORDER BY occurred_at"),
+            {"o": offer, "changed": facts.LISTING_STATUS_CHANGED}).all()
         episodes = conn.execute(text(
             "SELECT dedup_key FROM domain_events WHERE correlation_id = :o "
             "AND event_type = 'ListingBecamePublic' ORDER BY occurred_at"),
             {"o": offer}).scalars().all()
     assert events == [freshness.LISTING_AUTO_PAUSED_STALE, freshness.LISTING_REACTIVATED]
+    assert [tuple(c) for c in changes] == [("draft", "active", "PUBLISHED"),
+                                           ("active", "stale", "STALE_SWEEP"),
+                                           ("stale", "active", "RECONFIRMED")]
     # TASK-014: publication opened episode 1; the reactivation of the stale
     # listing opened episode 2 — exactly once, behind the sweep's lock.
     assert episodes == [f"ListingBecamePublic:{offer}:1", f"ListingBecamePublic:{offer}:2"]

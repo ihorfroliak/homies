@@ -1,5 +1,7 @@
 # Product UX — primary journeys
 
+> **HISTORICAL — superseded by [docs/product/DESIGN-001-product-ui-foundation.md](../product/DESIGN-001-product-ui-foundation.md)** (PROGRAM-001). Booking-era roles and journeys (Guest/Host, booking, payments) do not describe the Phase-1 product.
+
 UI-01. The journeys the design system must serve. Backend capability for each
 step is noted so design and implementation stay honest about what exists today.
 

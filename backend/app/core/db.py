@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from prometheus_client import Gauge
-from sqlalchemy import Engine, create_engine, event
+from sqlalchemy import Engine, create_engine, event, select
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import QueuePool
@@ -158,3 +158,19 @@ def close_quietly(db: Session) -> None:
     except (sa_exc.OperationalError, sa_exc.TimeoutError) as exc:
         log.warning("session close after a database failure: %s",
                     type(getattr(exc, "orig", exc)).__name__)
+
+
+def lock_row(db: Session, model: Any, row_id: str, *, shared: bool = False) -> Any | None:
+    """Lock one row by primary key (FOR UPDATE, or FOR SHARE with `shared`)
+    and return the entity as committed now — or None if it does not exist.
+
+    The lock is taken on the bare id: a model with a joined eager
+    relationship cannot be selected FOR UPDATE/SHARE whole, because
+    PostgreSQL refuses a row lock on the nullable side of the outer join the
+    eager load adds (TASK-015 S4b found it; SQLite ignores row locks, so only
+    the PostgreSQL suite sees it). The entity is then re-read under the lock.
+    """
+    pk = model.__mapper__.primary_key[0]
+    if db.scalar(select(pk).where(pk == row_id).with_for_update(read=shared)) is None:
+        return None
+    return db.get(model, row_id, populate_existing=True)
