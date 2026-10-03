@@ -164,3 +164,26 @@ def test_a_rolled_back_change_leaves_no_fact(client, monkeypatch):
     assert _decide(client, moderator, "LISTING", offer, "VISIBILITY_LIMITED",
                    "SCAM").status_code == 422
     assert len(_facts(facts.LISTING_STATUS_CHANGED, offer)) == before
+
+
+def test_the_asyncapi_catalogue_matches_the_payloads_the_code_writes():
+    """docs/api/events.asyncapi.yaml is the Phase-1 catalogue (GROWTH-001):
+    every measurement fact and moderation decision is listed, with exactly
+    the payload keys the code writes."""
+    from pathlib import Path
+
+    import yaml
+
+    from app.modules.trust import decisions as trust_decisions
+
+    spec = yaml.safe_load((Path(__file__).resolve().parents[2] / "docs" / "api"
+                           / "events.asyncapi.yaml").read_text(encoding="utf-8"))
+    messages = spec["components"]["messages"]
+    expected = {**facts.PAYLOAD_KEYS,
+                trust_decisions.MODERATION_DECISION_RECORDED: trust_decisions.EVENT_PAYLOAD_KEYS}
+    for name, keys in expected.items():
+        payload = messages[name]["payload"]
+        assert payload["additionalProperties"] is False, name
+        assert tuple(payload["properties"]) == keys, name
+        assert tuple(payload["required"]) == keys, name
+    assert not {"BookingRequested", "PaymentCaptured", "UserRegistered"} & set(messages)
