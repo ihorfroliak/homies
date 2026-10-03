@@ -900,3 +900,30 @@ Alembic `a3c5e7f9b1d4`).
 
 **Статус:** BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (D-88); у `main` не
 злито. Production: NOT READY, NOT DEPLOYED.
+
+## 2026-10-03 — PROGRAM-001: S4a у main; P0; TASK-015 Slice 4b
+
+**S4a:** точний кандидат `ff433303` (зовнішнє рев'ю GPT-5.6 Sol, CI 37080274514)
+злито `--no-ff` у `main`: `03268432f664ec6283f427b2f528a8bb6f814065` (дерево = кандидат).
+Програмна гілка: `claude/PROGRAM-001-product-growth-frontend`.
+
+**P0 (CI-докази):** провалені тести тепер іменуються в публічних анотаціях
+check-run (логи потребують прав адміністратора). Перший такий прогін назвав
+справжню причину періодичних падінь Test: SQLite-тест `/healthz` з межею 1 с
+під 45 потоками. Межу змінено на 5 с (черговий запит чекав би 30 с); тест
+блокування міграції PR-002 тепер вимірює лише очікування блокування.
+
+**Slice 4b** ([задача](tasks/TASK-015-S4B-engagement-safety.md); D-97; G-14):
+- `close_engagement` лише для VISIBILITY_LIMITED з SCAM/FAKE/SAFETY: закриває
+  активні розмови (нейтральний SYSTEM-рядок) і скасовує майбутні перегляди.
+- Підтвердження перегляду при утриманні — 409 LISTING_HELD.
+- CONVERSATION FEATURE_RESTRICTED — закриття, остаточне; повторний контакт тим
+  самим запитувачем у тій самій публікації заборонено (G-14).
+- MEDIA CONTENT_REMOVED — RESTRICTED без руйнування (зв'язки, файл, байти
+  зберігаються); аудитований перегляд для модератора.
+- PostgreSQL-тести знайшли дефект, прихований SQLite: `FOR SHARE` на сутності з
+  eager outer join; виправлено (`core.db.lock_row`). Також виправлено порядок:
+  рядок закриття завжди останній.
+
+**Статус:** BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (D-88); на програмній
+гілці, не в `main`. Production: NOT READY, NOT DEPLOYED.

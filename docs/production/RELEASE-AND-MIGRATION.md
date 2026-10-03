@@ -302,4 +302,5 @@ No universal N−1 promise is made; there is no promise beyond N−1.
 | TASK-015 S1 | `a3c5e7f9b1d4` (EXPAND) | BLOCKED | the previous publication ignores moderation holds |
 | TASK-015 S2+S3 | no change | BLOCKED (operational) | removes report intake and moderator operations |
 | TASK-015 S5 | no change | BLOCKED (operational) | strands open review requests |
+| **TASK-015 S4b** | no change | **BLOCKED — safety barrier** | the S4a build confirms viewings on a held listing, ignores the G-14 re-contact bar and does not lock a conversation before sending; the S4a privacy barrier stands behind it |
 | **TASK-015 S4a** | no change | **BLOCKED — security/privacy barrier** | the S5 build serialises `messages.body` without reading `redacted_at`: rolling back re-exposes every removed message. Never restart an older image once a redaction exists |

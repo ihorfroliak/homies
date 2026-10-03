@@ -9,7 +9,7 @@ current_baseline:
   status: accepted
 production_ready: false
 deployed: false
-next_task: TASK-015 S4a merge decision (founder), then TASK-015 Slice 4b
+next_task: PROGRAM-001 (program branch claude/PROGRAM-001-product-growth-frontend) — external review, then founder merge decision
 ---
 
 # Project status — orientation index
@@ -71,9 +71,9 @@ TASK-015 Slices 2+3         BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — lis
   ↓
 TASK-015 Slice 5            BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — review requests / owner reconsideration (R2) — on main at 1de34bf5 (merge of 3146fed3)
   ↓
-TASK-015 Slice 4a           BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — message reports, evidence, redaction (R2) — candidate on its branch, NOT merged
+TASK-015 Slice 4a           BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — message reports, evidence, redaction (R2) — on main at 03268432 (merge of ff433303)
   ↓
-TASK-015 Slice 4b           PLANNED   conversation restriction, close_engagement, viewing effects, media RESTRICTED
+TASK-015 Slice 4b           BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — conversation closure, close_engagement, viewing protection, photo restriction (R2) — on the PROGRAM-001 branch, NOT on main
 ```
 
 PR-002 is **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED** (D-88): integrated into
@@ -100,11 +100,14 @@ publication hold enforced in `make_public`. TASK-015 Slices 2+3
 queue/review/decisions, owner moderation state and TRANSACTIONAL inbox notices.
 TASK-015 Slice 5 ([task](tasks/TASK-015-S5-moderation-review-requests.md),
 D-95) is on `main` (`1de34bf5`, merge of `3146fed3`). TASK-015 Slice 4a
-([task](tasks/TASK-015-S4A-message-moderation.md), D-96) is a candidate on
-`claude/TASK-015-s4a-message-moderation`, **not merged**: message reports,
+([task](tasks/TASK-015-S4A-message-moderation.md), D-96) is on `main`
+(`03268432`, merge of `ff433303`, externally reviewed): message reports,
 bounded audited moderator evidence, CONTENT_REMOVED redaction; rollback to S5
-is a security barrier; L9 legal validation required before launch. Nothing
-after it is implemented.
+is a security barrier; L9 legal validation required before launch. TASK-015
+Slice 4b ([task](tasks/TASK-015-S4B-engagement-safety.md), D-97) is on the
+PROGRAM-001 branch, **not on `main`**: close_engagement, conversation
+restriction (G-14), viewing protection under a hold, non-destructive photo
+restriction; rollback to S4a is a safety barrier.
 MICRO-001: [scope and closure](tasks/MICRO-001-evidence-docs-test-cleanup.md).
 
 **DEFERRED:** Phase-2 transactional renting (payments, ledger), short stay,
