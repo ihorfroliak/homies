@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **PHASE A — READY WITH DECISIONS REQUIRED.** Contract only; **no TASK-015 runtime, migration or API exists**. Implementation starts after founder approval of this contract and of the decisions in §17 |
+| Status | **TASK-015 COMPLETE FOR PHASE 1A** (PROGRAM-001, 2026-10-03): S1, S2+S3, S5, S4a merged to `main`; S4b and the closure (restore-drill coverage) are PROGRAM-001 candidates, **not merged to `main`**. The S6 hardening slice was absorbed into S4b and the closure — **there is no S6**. Production NOT READY, NOT DEPLOYED. *(Phase A contract text below is kept as written.)* |
 | Risk class (implementation) | **R2** (authorization, publication gating, privacy, migration) |
 | Roadmap | 06 Phase 1A item 6 — "Reports and moderation basics; incidents" (incidents: see §3, non-goal for this slice) |
 | Baseline | `main` `451b7e566a1958097b2df2266e2bb7cc41314621` = IBB-001 + MICRO-001 + PR-002 + PR-003 (PR-003 merged by this task's entry gate: parents `13a92ef7` + `e54b3eec`) |
@@ -551,7 +551,7 @@ not touch the moderation tables.
 | S3 — moderator API (listings) | queue, target detail (IN_REVIEW), decisions for LISTING (NO_ACTION, CONTENT_EDIT_REQUIRED, VISIBILITY_LIMITED incl. release), CoI, owner TRANSACTIONAL notice, owner `moderation` field, decision counter | medium |
 | S4 — messages, conversations, viewings, media | MESSAGE reports; redaction read path; conversation close (locked send); `close_engagement`; viewing confirm refusal and cancel; media RESTRICTED writer | medium |
 | S5 — review requests | owner review request + moderator answer | small |
-| S6 — hardening | adversarial/concurrency/mutation suite completion, restore drill coverage, docs | small |
+| ~~S6 — hardening~~ | **absorbed** (PROGRAM-001): adversarial review, PG race suite and mutation testing in S4b; restore-drill coverage of conversations, messages (redacted), viewings and media in the TASK-015 closure | — |
 
 S1 first: it is the invariant every later slice relies on and is reviewable on
 its own. S2+S3 together make the first usable listing-report loop.
