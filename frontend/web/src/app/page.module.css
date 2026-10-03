@@ -38,3 +38,17 @@
 @media (min-width: 768px) {
   .pillars { grid-template-columns: repeat(3, 1fr); }
 }
+
+.rail { margin-top: var(--sp-6); }
+.rail h2, .owner h2 { font-size: var(--fs-h2); color: var(--c-ink-900); margin: 0 0 var(--sp-3); }
+.railList { display: grid; gap: var(--sp-4); list-style: none; padding: 0; margin: 0 0 var(--sp-3); }
+@media (min-width: 768px) { .railList { grid-template-columns: repeat(3, 1fr); } }
+.skeletonCard { height: 320px; border-radius: var(--r-lg); }
+
+.owner {
+  margin-top: var(--sp-6);
+  padding: var(--sp-4);
+  background: var(--c-brand-50);
+  border-radius: var(--r-lg);
+}
+.owner p { margin: 0; color: var(--c-ink-700); }

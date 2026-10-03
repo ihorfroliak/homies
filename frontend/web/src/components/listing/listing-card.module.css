@@ -1,0 +1,84 @@
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-surface);
+  border: var(--bw, 1px) solid var(--c-line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.card:focus-within { box-shadow: var(--focus-ring); }
+
+.media {
+  aspect-ratio: 4 / 3;
+  background: var(--c-surface-3);
+  display: grid;
+  place-items: center;
+}
+
+.media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.noPhoto { color: var(--c-ink-500); font-size: var(--fs-small); }
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+}
+
+.price {
+  margin: 0;
+  font-size: var(--fs-price-lg);
+  font-weight: 700;
+  color: var(--c-ink-900);
+  order: -2;
+}
+
+.secondary {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--c-ink-500);
+  order: -1;
+}
+
+.title {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-h3);
+  line-height: var(--lh-h3);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* The title link covers the whole card: one tab stop, one name. */
+.link {
+  color: var(--c-ink-900);
+  text-decoration: none;
+}
+.link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.link:focus-visible { box-shadow: none; }
+
+.meta {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--c-ink-700);
+}
+
+.fresh {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-caption);
+  color: var(--c-fresh-fg);
+  font-weight: 600;
+}

@@ -17,7 +17,11 @@ export function SiteHeader() {
           Homies
         </Link>
         <nav aria-label={t.a11y.mainNavigation}>
-          <ul className={styles.links}>{/* FE-002 adds Szukaj → /wynajem */}</ul>
+          <ul className={styles.links}>
+            <li>
+              <Link href="/wynajem">{t.nav.search}</Link>
+            </li>
+          </ul>
         </nav>
       </div>
     </header>

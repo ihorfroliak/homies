@@ -48,7 +48,7 @@ test("unknown pages answer 404 with a way forward", async ({ page }) => {
   const response = await page.goto("/to-nie-istnieje");
   expect(response!.status()).toBe(404);
   await expect(page.getByRole("heading", { name: "Nie znaleźliśmy tej strony" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Przejdź na stronę główną" })).toHaveAttribute("href", "/");
+  await expect(page.getByRole("link", { name: "Przejdź do wyszukiwania" })).toHaveAttribute("href", "/wynajem");
 });
 
 test("BFF refuses cross-site writes and unknown routes", async ({ request, baseURL }) => {

@@ -999,6 +999,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/geo/localities/by-slug": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Localities By Slug
+         * @description Active localities whose URL slug is exactly `slug` (FE-002, gap G7).
+         *
+         *     Public result URLs carry the slug ("/wynajem/lodz"); the name search above
+         *     is prefix-on-name and cannot find "Łódź" from "lodz". Slugs are not unique
+         *     (many villages share a name), so this returns every match — cities first,
+         *     then by name — and the caller decides; at most 20.
+         */
+        get: operations["localities_by_slug_v1_geo_localities_by_slug_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/geo/localities/{locality_id}/areas": {
         parameters: {
             query?: never;
@@ -2006,6 +2031,7 @@ export interface components {
             description: string;
             /** District */
             district: string;
+            facts?: components["schemas"]["PublicFacts"] | null;
             /** Freshness */
             freshness?: ("FRESH" | "RECONFIRM_DUE" | "STALE") | null;
             /** Id */
@@ -2085,6 +2111,7 @@ export interface components {
             description: string;
             /** District */
             district: string;
+            facts?: components["schemas"]["PublicFacts"] | null;
             /** Freshness */
             freshness?: ("FRESH" | "RECONFIRM_DUE" | "STALE") | null;
             freshness_detail: components["schemas"]["FreshnessOut"];
@@ -3279,6 +3306,41 @@ export interface components {
             starts_at: string;
             /** Status */
             status: string;
+        };
+        /**
+         * PublicFacts
+         * @description What the flat is, as the public may know it (FE-002, gap G1).
+         *
+         *     Search already filters and sorts on these (min_rooms, min_area_m2,
+         *     size_desc …), so they are public by design; the listing just did not show
+         *     them. Built field by field; nothing about where it is (that stays in
+         *     city/district/public_location) and nothing about who owns it. `rooms` and
+         *     `area_m2` describe the whole property; for a ROOM listing `space_area_m2`
+         *     is the room's own size when the owner gave it.
+         */
+        PublicFacts: {
+            /** Area M2 */
+            area_m2?: number | null;
+            /** Category */
+            category?: string | null;
+            /** Floor */
+            floor?: number | null;
+            /** Floors Total */
+            floors_total?: number | null;
+            /** Furnished */
+            furnished: string;
+            /** Has Elevator */
+            has_elevator: boolean;
+            /** Parking */
+            parking: string;
+            /** Pets Allowed */
+            pets_allowed: boolean;
+            /** Rooms */
+            rooms?: number | null;
+            /** Space Area M2 */
+            space_area_m2?: number | null;
+            /** Subtype */
+            subtype?: string | null;
         };
         /** PublicLocation */
         PublicLocation: {
@@ -5703,6 +5765,38 @@ export interface operations {
                 q: string;
                 admin_area_id?: string | null;
                 limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocalityOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    localities_by_slug_v1_geo_localities_by_slug_get: {
+        parameters: {
+            query: {
+                country: string;
+                slug: string;
             };
             header?: never;
             path?: never;

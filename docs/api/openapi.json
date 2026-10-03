@@ -470,6 +470,16 @@
             "title": "District",
             "type": "string"
           },
+          "facts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicFacts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "freshness": {
             "anyOf": [
               {
@@ -698,6 +708,16 @@
           "district": {
             "title": "District",
             "type": "string"
+          },
+          "facts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicFacts"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "freshness": {
             "anyOf": [
@@ -3914,6 +3934,112 @@
           "requester_note"
         ],
         "title": "ProviderViewingOut",
+        "type": "object"
+      },
+      "PublicFacts": {
+        "description": "What the flat is, as the public may know it (FE-002, gap G1).\n\nSearch already filters and sorts on these (min_rooms, min_area_m2,\nsize_desc …), so they are public by design; the listing just did not show\nthem. Built field by field; nothing about where it is (that stays in\ncity/district/public_location) and nothing about who owns it. `rooms` and\n`area_m2` describe the whole property; for a ROOM listing `space_area_m2`\nis the room's own size when the owner gave it.",
+        "properties": {
+          "area_m2": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area M2"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "floor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Floor"
+          },
+          "floors_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Floors Total"
+          },
+          "furnished": {
+            "title": "Furnished",
+            "type": "string"
+          },
+          "has_elevator": {
+            "title": "Has Elevator",
+            "type": "boolean"
+          },
+          "parking": {
+            "title": "Parking",
+            "type": "string"
+          },
+          "pets_allowed": {
+            "title": "Pets Allowed",
+            "type": "boolean"
+          },
+          "rooms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rooms"
+          },
+          "space_area_m2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Space Area M2"
+          },
+          "subtype": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtype"
+          }
+        },
+        "required": [
+          "has_elevator",
+          "furnished",
+          "parking",
+          "pets_allowed"
+        ],
+        "title": "PublicFacts",
         "type": "object"
       },
       "PublicLocation": {
@@ -9108,6 +9234,66 @@
           }
         },
         "summary": "Localities",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/v1/geo/localities/by-slug": {
+      "get": {
+        "description": "Active localities whose URL slug is exactly `slug` (FE-002, gap G7).\n\nPublic result URLs carry the slug (\"/wynajem/lodz\"); the name search above\nis prefix-on-name and cannot find \"Łódź\" from \"lodz\". Slugs are not unique\n(many villages share a name), so this returns every match — cities first,\nthen by name — and the caller decides; at most 20.",
+        "operationId": "localities_by_slug_v1_geo_localities_by_slug_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "country",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Z]{2}$",
+              "title": "Country",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LocalityOut"
+                  },
+                  "title": "Response Localities By Slug V1 Geo Localities By Slug Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Localities By Slug",
         "tags": [
           "geography"
         ]

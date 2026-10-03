@@ -12,7 +12,7 @@ export default function NotFound() {
     <div className="container state" role="region" aria-labelledby="nf-title">
       <h1 id="nf-title">{t.errors.notFoundTitle}</h1>
       <p>{t.errors.notFoundBody}</p>
-      <Link className="btn btn--primary" href="/">
+      <Link className="btn btn--primary" href="/wynajem">
         {t.errors.notFoundAction}
       </Link>
     </div>

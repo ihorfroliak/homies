@@ -144,9 +144,9 @@ indexable set when enabled is DESIGN-001 §8 (`src/seo`).
 | # | Gap | Effect now |
 |---|---|---|
 | BG-1 | no logout / refresh-token revocation endpoint | logout clears this device's cookies; the refresh token stays valid server-side until expiry |
-| BG-2 | no slug → locality lookup | FE-002 resolves city slugs via `/v1/geo/localities` search (G7) |
+| BG-2 | no slug → locality lookup | resolved in FE-002: `GET /v1/geo/localities/by-slug` |
 | BG-3 | commit-unknown has no stable code | any 503 on a write → `outcome_unknown` (G10) |
-| BG-4 | no E2E seed | FE-002 adds a development-only seed script with fictional data |
+| BG-4 | no E2E seed | resolved in FE-002: `app/scripts/seed_e2e.py` (fictional, dev/CI only) |
 
 ## 10. Verification
 

@@ -1,0 +1,35 @@
+.page { padding-top: var(--sp-4); padding-bottom: var(--sp-6); }
+
+.header { margin-bottom: var(--sp-4); }
+.title { font-size: var(--fs-h1); line-height: var(--lh-h1); color: var(--c-ink-900); margin: 0 0 var(--sp-1); }
+.place { margin: 0; color: var(--c-ink-700); }
+.fresh { margin: var(--sp-2) 0 0; color: var(--c-fresh-fg); font-weight: 600; font-size: var(--fs-small); }
+
+.gallery ul {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 100%; gap: var(--sp-2);
+  overflow-x: auto; scroll-snap-type: x mandatory; list-style: none; padding: 0; margin: 0 0 var(--sp-5);
+}
+.gallery li { scroll-snap-align: start; }
+.gallery img { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--r-lg); display: block; background: var(--c-surface-3); }
+@media (min-width: 768px) { .gallery ul { grid-auto-columns: 60%; } }
+
+.columns { display: grid; gap: var(--sp-5); }
+@media (min-width: 1024px) { .columns { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; } .aside { position: sticky; top: 72px; } }
+
+.section { margin-bottom: var(--sp-5); }
+.section h2, .costs h2, .contact h2 { font-size: var(--fs-h2); margin: 0 0 var(--sp-3); color: var(--c-ink-900); }
+
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3) var(--sp-4); margin: 0; }
+.facts dt { font-size: var(--fs-small); color: var(--c-ink-500); }
+.facts dd { margin: 0; color: var(--c-ink-900); font-weight: 600; }
+
+.description { white-space: pre-line; color: var(--c-ink-700); }
+
+.aside { display: grid; gap: var(--sp-4); }
+.costs, .contact { background: var(--c-surface); border: var(--bw, 1px) solid var(--c-line); border-radius: var(--r-lg); padding: var(--sp-4); }
+.total { font-size: var(--fs-price-lg); font-weight: 700; color: var(--c-ink-900); margin: 0 0 var(--sp-3); }
+.breakdown { margin: 0 0 var(--sp-2); display: grid; gap: var(--sp-2); }
+.breakdown div { display: flex; justify-content: space-between; gap: var(--sp-3); }
+.breakdown dt { color: var(--c-ink-700); }
+.breakdown dd { margin: 0; color: var(--c-ink-900); text-align: right; }
+.strong { border-top: var(--bw, 1px) solid var(--c-line); padding-top: var(--sp-2); font-weight: 700; }
