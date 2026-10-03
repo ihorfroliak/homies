@@ -66,6 +66,16 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
+## DESIGN-001 — product / UX / UI foundation (2026-10-03, builder)
+
+On the PROGRAM-001 branch, **not on `main`**. [Foundation](../product/DESIGN-001-product-ui-foundation.md) · D-100.
+
+| Area | Classification | State |
+|---|---|---|
+| IA, journeys, responsive strategy, state map, copy, URL/indexing rules | **SPECIFIED** | docs/product/* |
+| Design System v1 tokens | **CANDIDATE** | `frontend/design-system/tokens.css` v1 |
+| high-fidelity design | **PARTIAL** | Figma: tokens, components, desktop Home/Results/404; desktop Detail clipped; mobile not created (Starter MCP limit) |
+
 ## GROWTH-001 — marketplace growth & measurement foundation (2026-10-03, builder)
 
 On the PROGRAM-001 branch, **not on `main`**. [Foundation](../growth/GROWTH-001-marketplace-growth-foundation.md) · D-98 · D-99.

@@ -1,5 +1,7 @@
 # Homies Design System
 
+> **PARTLY HISTORICAL — converged into [docs/product/DESIGN-SYSTEM-v1.md](../product/DESIGN-SYSTEM-v1.md)** (PROGRAM-001). The token file stays the source (`frontend/design-system/tokens.css`, now v1); booking-era parts (promoted/free badges, service fee, cancellation policy) are not Phase-1 product.
+
 UI-01. A framework-agnostic design system: design tokens + reference component
 implementations. **No frontend framework exists in the repo yet** (`apps/` is
 empty), so this establishes the token and component contract that the future

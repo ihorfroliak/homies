@@ -30,8 +30,9 @@ a { color: var(--c-brand-600); }
   border: 1px solid transparent; cursor: pointer; transition: background var(--motion-fast), transform var(--motion-fast);
 }
 .btn:active { transform: translateY(1px); }
-.btn--primary { background: var(--c-brand-500); color: #fff; }
-.btn--primary:hover { background: var(--c-brand-600); }
+/* v1: white on brand-500 is ~3.4:1 and fails AA; brand-600 is ~5.1:1 */
+.btn--primary { background: var(--c-brand-600); color: #fff; }
+.btn--primary:hover { background: var(--c-brand-700); }
 .btn--secondary { background: var(--c-surface); color: var(--c-ink-900); border-color: var(--c-line); }
 .btn--secondary:hover { background: var(--c-surface-3); }
 .btn--ghost { background: transparent; color: var(--c-brand-600); }
