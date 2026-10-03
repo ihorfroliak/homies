@@ -38,7 +38,11 @@ ReasonCode = Literal["FAKE", "DUPLICATE", "SCAM", "DISCRIMINATION", "ILLEGAL_CON
                      "STOLEN_MEDIA", "HARASSMENT", "SAFETY", "MISLEADING_PRICE",
                      "IMPERSONATION", "SPAM", "OTHER", "NOT_A_VIOLATION",
                      "REINSTATED_REMEDIED", "REINSTATED_DECISION_ERROR"]
-ListingAction = Literal["NO_ACTION", "CONTENT_EDIT_REQUIRED", "VISIBILITY_LIMITED"]
+MessageReason = Literal["HARASSMENT", "SCAM", "DISCRIMINATION", "SAFETY", "SPAM", "OTHER"]
+# LISTING: NO_ACTION, CONTENT_EDIT_REQUIRED, VISIBILITY_LIMITED; MESSAGE (S4a):
+# NO_ACTION, CONTENT_REMOVED — the service refuses an action of the other type.
+DecisionAction = Literal["NO_ACTION", "CONTENT_EDIT_REQUIRED", "VISIBILITY_LIMITED",
+                         "CONTENT_REMOVED"]
 
 router = APIRouter(tags=["reports"])
 
@@ -55,9 +59,9 @@ moderation_router = APIRouter(prefix="/admin/moderation", tags=["moderation"],
 
 
 # --- reporter -------------------------------------------------------------------
-class ReportIn(BaseModel):
-    """What a reporter says. Everything else — who, severity, status, the
-    listing's snapshot and generation — is the server's."""
+class ListingReportIn(BaseModel):
+    """What a reporter says about a listing. Everything else — who, severity,
+    status, the listing's snapshot and generation — is the server's."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -67,6 +71,22 @@ class ReportIn(BaseModel):
     # Plain text, up to 1000 characters once control characters are removed;
     # at least 20 for OTHER.
     text: str | None = Field(default=None, max_length=2000)
+
+
+class MessageReportIn(BaseModel):
+    """What a conversation participant says about another participant's
+    message (Slice 4a). The conversation, listing, severity and status are
+    the server's; no part of the conversation is copied."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    target_type: Literal["MESSAGE"]
+    target_id: str = Field(min_length=1, max_length=36, pattern=r"^[A-Za-z0-9-]+$")
+    reason: MessageReason
+    text: str | None = Field(default=None, max_length=2000)
+
+
+ReportIn = Annotated[ListingReportIn | MessageReportIn, Field(discriminator="target_type")]
 
 
 class ReportOut(BaseModel):
@@ -109,8 +129,11 @@ def _public_dict(offer, now):
               "description": "Already reported: the reporter's live report on this target "
                              "(`created: false`) — also the answer to a retry"},
         403: {"description": "The account has no verified email or phone"},
-        404: {"description": "No such listing, or not one this account may report"},
-        409: {"description": "The account manages this listing"},
+        404: {"description": "No such listing or message, or not one this account may "
+                             "report (MESSAGE: not a current side of its conversation) — "
+                             "indistinguishable"},
+        409: {"description": "LISTING: the account manages it. MESSAGE: a SYSTEM message, "
+                             "or the account's own message"},
         422: {"description": "Invalid reason or text"},
         429: {"description": "Report quota (10 new per 24 h, 20 waiting) or rate limit; "
                              "see Retry-After"},
@@ -119,19 +142,24 @@ def _public_dict(offer, now):
 )
 def file_report(body: ReportIn, response: Response, user=Depends(get_current_user),
                 db: Session = Depends(get_db)):
-    """Report a listing to Homies moderation. A report changes nothing about
-    the listing; a moderator reviews it."""
+    """Report a listing, or a message in one of your conversations, to Homies
+    moderation. A report changes nothing about its target; a moderator
+    reviews it."""
     try:
-        filed = reports.file_listing_report(db, reporter=user, listing_id=body.target_id,
-                                            category=body.reason, text=body.text,
-                                            public_projection=_public_dict)
+        if isinstance(body, MessageReportIn):
+            filed = reports.file_message_report(db, reporter=user, message_id=body.target_id,
+                                                category=body.reason, text=body.text)
+        else:
+            filed = reports.file_listing_report(db, reporter=user, listing_id=body.target_id,
+                                                category=body.reason, text=body.text,
+                                                public_projection=_public_dict)
     except reports.NotVerified as exc:
         db.rollback()
         raise HTTPException(status.HTTP_403_FORBIDDEN, str(exc)) from None
     except reports.NotReportable as exc:
         db.rollback()
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from None
-    except reports.OwnListing as exc:
+    except (reports.OwnListing, reports.UnreportableMessage) as exc:
         db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from None
     except reports.InvalidReport as exc:
@@ -188,7 +216,8 @@ class QueueItemOut(BaseModel):
 
     target_type: str
     target_id: str
-    listing_id: str
+    listing_id: str | None
+    conversation_id: str | None = None   # MESSAGE targets: the conversation's id only
     live_reports: int
     # None when the target is here only for an open review request: no
     # severity is invented for it.
@@ -224,7 +253,7 @@ def moderation_queue(limit: int = Query(default=50, ge=1, le=100),
     return QueuePage(
         items=[QueueItemOut(
             target_type=i.target_type, target_id=i.target_id, listing_id=i.listing_id,
-            live_reports=i.live_reports, max_severity=i.max_severity,
+            conversation_id=i.conversation_id, live_reports=i.live_reports, max_severity=i.max_severity,
             oldest_report_at=i.oldest_report_at, newest_report_at=i.newest_report_at,
             distinct_reporters=i.distinct_reporters,
             phone_verified_reporters=i.phone_verified_reporters,
@@ -329,6 +358,94 @@ def review_listing(listing_id: Id, moderator=Depends(require_moderator),
     return out
 
 
+class EvidenceMessageOut(BaseModel):
+    """One message of the bounded evidence window — moderator-only. `body` is
+    the STORED body, including the original of a message removed for the
+    participants; ids only for people (no email, phone or profile)."""
+
+    id: str
+    is_target: bool
+    sender_user_id: str | None
+    sender_organization_id: str | None
+    message_type: str
+    body: str | None
+    created_at: datetime
+    redacted_at: datetime | None
+    redaction_reason_code: str | None
+
+
+class ConversationContextOut(BaseModel):
+    id: str
+    listing_id: str | None
+    status: str
+
+
+class MessageTargetOut(BaseModel):
+    target_type: Literal["MESSAGE"]
+    target_id: str
+    conversation: ConversationContextOut
+    # The reported message and at most 2 messages before and 2 after it, from
+    # the same conversation, oldest first.
+    evidence: list[EvidenceMessageOut]
+    head: HeadOut | None
+    removed: bool
+    reports: list[ModeratorReportOut]
+
+
+@moderation_router.get(
+    "/targets/MESSAGE/{message_id}",
+    response_model=MessageTargetOut,
+    responses={403: {"description": "Not a moderator"},
+               404: {"description": "No such message"}},
+)
+def review_message(message_id: Id, moderator=Depends(require_moderator),
+                   db: Session = Depends(get_db)):
+    """Review a reported message with the narrowest private evidence: the
+    message and up to two messages either side, from its own conversation.
+    Its live reports move to IN_REVIEW (first review time set once). Every
+    access is audited as `moderation.message_evidence_viewed` (ids only).
+    Legal/privacy validation of moderator access to private messages (L9) is
+    open: technically implemented, launch validation required."""
+    review = moderation.review_message(db, moderator=moderator, message_id=message_id)
+    if review is None:
+        db.rollback()
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Message not found")
+    out = MessageTargetOut(
+        target_type="MESSAGE",
+        target_id=review.message.id,
+        conversation=ConversationContextOut(id=review.conversation.id,
+                                            listing_id=review.conversation.listing_id,
+                                            status=review.conversation.status),
+        evidence=[EvidenceMessageOut(
+            id=m.id, is_target=m.id == review.message.id, sender_user_id=m.sender_user_id,
+            sender_organization_id=m.sender_organization_id, message_type=m.message_type,
+            body=m.body, created_at=freshness.to_utc(m.created_at),
+            redacted_at=freshness.to_utc(m.redacted_at) if m.redacted_at else None,
+            redaction_reason_code=m.redaction_reason_code,
+        ) for m in review.evidence],
+        head=_head_out(review.head),
+        removed=review.message.redacted_at is not None,
+        reports=[_moderator_report_out(r) for r in review.reports],
+    )
+    db.commit()
+    return out
+
+
+def _moderator_report_out(r) -> ModeratorReportOut:
+    return ModeratorReportOut(
+        id=r.report.id, reporter_user_id=r.report.reporter_user_id,
+        reporter_email_verified=r.reporter_email_verified,
+        reporter_phone_verified=r.reporter_phone_verified,
+        category=r.report.category, severity=r.report.severity, status=r.report.status,
+        description=r.report.description,
+        created_at=freshness.to_utc(r.report.created_at),
+        first_reviewed_at=(freshness.to_utc(r.report.first_reviewed_at)
+                           if r.report.first_reviewed_at else None),
+        listing_public_generation_at_report=r.report.listing_public_generation_at_report,
+        snapshot=r.report.snapshot,
+    )
+
+
 def _review_request_out(request) -> ModeratorReviewRequestOut | None:
     if request is None:
         return None
@@ -345,9 +462,9 @@ class DecisionIn(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    target_type: Literal["LISTING"]
+    target_type: Literal["LISTING", "MESSAGE"]
     target_id: str = Field(min_length=1, max_length=36, pattern=r"^[A-Za-z0-9-]+$")
-    action: ListingAction
+    action: DecisionAction
     reason_code: ReasonCode
     expected_head_decision_id: str | None = Field(max_length=36)
     explanation: str | None = Field(default=None, max_length=2000)
@@ -362,7 +479,7 @@ class DecisionOut(BaseModel):
     reason_code: str
     supersedes_decision_id: str | None
     effective_from: datetime
-    listing_status: str
+    listing_status: str | None   # LISTING targets
     held: bool
     resolved_reports: int
     notified_managers: int
@@ -376,8 +493,9 @@ class DecisionOut(BaseModel):
     status_code=status.HTTP_201_CREATED,
     responses={
         403: {"description": "Not a moderator, or a conflict of interest (manages the "
-                             "property, or has a live report on the target)"},
-        404: {"description": "No such listing"},
+                             "property, has a live report on the target; MESSAGE: is a "
+                             "current side of the conversation or wrote the message)"},
+        404: {"description": "No such listing or message"},
         409: {"description": "STALE_HEAD: the target's current decision is not the expected "
                              "one — refresh and decide again (never retried for you)"},
         422: {"description": "Invalid action or reason for the target's state"},
@@ -388,18 +506,30 @@ class DecisionOut(BaseModel):
 )
 def decide(body: DecisionIn, moderator=Depends(require_moderator),
            db: Session = Depends(get_db)):
-    """Record a moderation decision on a listing and apply it (hold, release
-    or dismissal), resolving every live report on it, answering the owner's
-    open review request on the hold it supersedes, and notifying the
-    listing's managers of a hold or a release — in one transaction."""
+    """Record a moderation decision and apply it, in one transaction.
+    LISTING: hold, release or dismissal — resolving its live reports,
+    answering the owner's open review request on the hold it supersedes and
+    notifying the listing's managers of a hold or a release. MESSAGE (S4a):
+    CONTENT_REMOVED redacts the message for the participants (the stored body
+    is kept as evidence) or NO_ACTION dismisses — resolving its live reports;
+    nothing else about the conversation changes."""
     try:
-        applied = decisions.apply_listing_decision(
-            db, actor=moderator, listing_id=body.target_id, action=body.action,
-            reason_code=body.reason_code,
-            expected_head_decision_id=body.expected_head_decision_id,
-            explanation=reports.normalize_text(body.explanation),
-            reclassified_category=body.reclassified_category,
-        )
+        if body.target_type == "MESSAGE":
+            applied = decisions.apply_message_decision(
+                db, actor=moderator, message_id=body.target_id, action=body.action,
+                reason_code=body.reason_code,
+                expected_head_decision_id=body.expected_head_decision_id,
+                explanation=reports.normalize_text(body.explanation),
+                reclassified_category=body.reclassified_category,
+            )
+        else:
+            applied = decisions.apply_listing_decision(
+                db, actor=moderator, listing_id=body.target_id, action=body.action,
+                reason_code=body.reason_code,
+                expected_head_decision_id=body.expected_head_decision_id,
+                explanation=reports.normalize_text(body.explanation),
+                reclassified_category=body.reclassified_category,
+            )
     except decisions.StaleHead as exc:
         db.rollback()
         raise HTTPException(
@@ -413,7 +543,9 @@ def decide(body: DecisionIn, moderator=Depends(require_moderator),
                             f"CONFLICT_OF_INTEREST: {exc}") from None
     except decisions.TargetNotFound:
         db.rollback()
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Listing not found") from None
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                            "Message not found" if body.target_type == "MESSAGE"
+                            else "Listing not found") from None
     except decisions.NotAModerator:
         db.rollback()
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient role") from None
@@ -424,11 +556,12 @@ def decide(body: DecisionIn, moderator=Depends(require_moderator),
     db.commit()
     assert applied.effective_from is not None
     return DecisionOut(
-        decision_id=applied.decision_id, target_type="LISTING", target_id=body.target_id,
+        decision_id=applied.decision_id, target_type=body.target_type, target_id=body.target_id,
         action=applied.action, reason_code=body.reason_code,
         supersedes_decision_id=applied.supersedes_decision_id,
         effective_from=freshness.to_utc(applied.effective_from),
-        listing_status=applied.listing_status_after, held=applied.held,
+        listing_status=(applied.listing_status_after if body.target_type == "LISTING"
+                        else None), held=applied.held,
         resolved_reports=len(applied.resolved_report_ids),
         notified_managers=len(applied.notified_user_ids),
         answered_review_request_id=applied.answered_review_request_id,

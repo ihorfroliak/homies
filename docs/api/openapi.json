@@ -960,6 +960,36 @@
         "title": "ContactRevealOut",
         "type": "object"
       },
+      "ConversationContextOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "listing_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "listing_id",
+          "status"
+        ],
+        "title": "ConversationContextOut",
+        "type": "object"
+      },
       "ConversationDetail": {
         "properties": {
           "conversation": {
@@ -1083,7 +1113,8 @@
             "enum": [
               "NO_ACTION",
               "CONTENT_EDIT_REQUIRED",
-              "VISIBILITY_LIMITED"
+              "VISIBILITY_LIMITED",
+              "CONTENT_REMOVED"
             ],
             "title": "Action",
             "type": "string"
@@ -1166,7 +1197,10 @@
             "type": "string"
           },
           "target_type": {
-            "const": "LISTING",
+            "enum": [
+              "LISTING",
+              "MESSAGE"
+            ],
             "title": "Target Type",
             "type": "string"
           }
@@ -1212,8 +1246,15 @@
             "type": "boolean"
           },
           "listing_status": {
-            "title": "Listing Status",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Status"
           },
           "notified_managers": {
             "title": "Notified Managers",
@@ -1261,6 +1302,97 @@
           "notified_managers"
         ],
         "title": "DecisionOut",
+        "type": "object"
+      },
+      "EvidenceMessageOut": {
+        "description": "One message of the bounded evidence window — moderator-only. `body` is\nthe STORED body, including the original of a message removed for the\nparticipants; ids only for people (no email, phone or profile).",
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_target": {
+            "title": "Is Target",
+            "type": "boolean"
+          },
+          "message_type": {
+            "title": "Message Type",
+            "type": "string"
+          },
+          "redacted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redacted At"
+          },
+          "redaction_reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redaction Reason Code"
+          },
+          "sender_organization_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sender Organization Id"
+          },
+          "sender_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sender User Id"
+          }
+        },
+        "required": [
+          "id",
+          "is_target",
+          "sender_user_id",
+          "sender_organization_id",
+          "message_type",
+          "body",
+          "created_at",
+          "redacted_at",
+          "redaction_reason_code"
+        ],
+        "title": "EvidenceMessageOut",
         "type": "object"
       },
       "FreshnessOut": {
@@ -1570,6 +1702,57 @@
           "current"
         ],
         "title": "ListingContextOut",
+        "type": "object"
+      },
+      "ListingReportIn": {
+        "additionalProperties": false,
+        "description": "What a reporter says about a listing. Everything else — who, severity,\nstatus, the listing's snapshot and generation — is the server's.",
+        "properties": {
+          "reason": {
+            "enum": [
+              "SCAM",
+              "FAKE",
+              "MISLEADING_PRICE",
+              "DISCRIMINATION",
+              "SAFETY",
+              "STOLEN_MEDIA",
+              "DUPLICATE",
+              "OTHER"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "target_id": {
+            "maxLength": 36,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9-]+$",
+            "title": "Target Id",
+            "type": "string"
+          },
+          "target_type": {
+            "const": "LISTING",
+            "title": "Target Type",
+            "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "required": [
+          "target_type",
+          "target_id",
+          "reason"
+        ],
+        "title": "ListingReportIn",
         "type": "object"
       },
       "LocalityOut": {
@@ -2058,6 +2241,7 @@
         "type": "object"
       },
       "MessageOut": {
+        "description": "A message as a conversation participant sees it. A message removed by\nHomies moderation (TASK-015 S4a) has `body: null` and `moderation_state:\nREMOVED` — the client renders \"Removed by Homies\" from its own strings. The\nstored body is kept as evidence for moderators only: this model drops it\nwhenever the row is redacted, however the model is built, so no route can\nhand it to a participant by accident.",
         "properties": {
           "body": {
             "anyOf": [
@@ -2081,6 +2265,15 @@
           },
           "message_type": {
             "title": "Message Type",
+            "type": "string"
+          },
+          "moderation_state": {
+            "default": "NONE",
+            "enum": [
+              "NONE",
+              "REMOVED"
+            ],
+            "title": "Moderation State",
             "type": "string"
           },
           "sender_organization_id": {
@@ -2115,6 +2308,110 @@
           "created_at"
         ],
         "title": "MessageOut",
+        "type": "object"
+      },
+      "MessageReportIn": {
+        "additionalProperties": false,
+        "description": "What a conversation participant says about another participant's\nmessage (Slice 4a). The conversation, listing, severity and status are\nthe server's; no part of the conversation is copied.",
+        "properties": {
+          "reason": {
+            "enum": [
+              "HARASSMENT",
+              "SCAM",
+              "DISCRIMINATION",
+              "SAFETY",
+              "SPAM",
+              "OTHER"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "target_id": {
+            "maxLength": 36,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9-]+$",
+            "title": "Target Id",
+            "type": "string"
+          },
+          "target_type": {
+            "const": "MESSAGE",
+            "title": "Target Type",
+            "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "required": [
+          "target_type",
+          "target_id",
+          "reason"
+        ],
+        "title": "MessageReportIn",
+        "type": "object"
+      },
+      "MessageTargetOut": {
+        "properties": {
+          "conversation": {
+            "$ref": "#/components/schemas/ConversationContextOut"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceMessageOut"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "head": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HeadOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "removed": {
+            "title": "Removed",
+            "type": "boolean"
+          },
+          "reports": {
+            "items": {
+              "$ref": "#/components/schemas/ModeratorReportOut"
+            },
+            "title": "Reports",
+            "type": "array"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "string"
+          },
+          "target_type": {
+            "const": "MESSAGE",
+            "title": "Target Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_type",
+          "target_id",
+          "conversation",
+          "evidence",
+          "head",
+          "removed",
+          "reports"
+        ],
+        "title": "MessageTargetOut",
         "type": "object"
       },
       "ModerationStateOut": {
@@ -3671,6 +3968,17 @@
       "QueueItemOut": {
         "description": "A target and its live workload. No report text, reporter contact,\naddress or snapshot.",
         "properties": {
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
           "distinct_reporters": {
             "title": "Distinct Reporters",
             "type": "integer"
@@ -3706,8 +4014,15 @@
             "type": "boolean"
           },
           "listing_id": {
-            "title": "Listing Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Id"
           },
           "live_reports": {
             "title": "Live Reports",
@@ -3869,57 +4184,6 @@
           "password"
         ],
         "title": "RegisterRequest",
-        "type": "object"
-      },
-      "ReportIn": {
-        "additionalProperties": false,
-        "description": "What a reporter says. Everything else — who, severity, status, the\nlisting's snapshot and generation — is the server's.",
-        "properties": {
-          "reason": {
-            "enum": [
-              "SCAM",
-              "FAKE",
-              "MISLEADING_PRICE",
-              "DISCRIMINATION",
-              "SAFETY",
-              "STOLEN_MEDIA",
-              "DUPLICATE",
-              "OTHER"
-            ],
-            "title": "Reason",
-            "type": "string"
-          },
-          "target_id": {
-            "maxLength": 36,
-            "minLength": 1,
-            "pattern": "^[A-Za-z0-9-]+$",
-            "title": "Target Id",
-            "type": "string"
-          },
-          "target_type": {
-            "const": "LISTING",
-            "title": "Target Type",
-            "type": "string"
-          },
-          "text": {
-            "anyOf": [
-              {
-                "maxLength": 2000,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Text"
-          }
-        },
-        "required": [
-          "target_type",
-          "target_id",
-          "reason"
-        ],
-        "title": "ReportIn",
         "type": "object"
       },
       "ReportOut": {
@@ -5437,7 +5701,7 @@
     },
     "/v1/admin/moderation/decisions": {
       "post": {
-        "description": "Record a moderation decision on a listing and apply it (hold, release\nor dismissal), resolving every live report on it, answering the owner's\nopen review request on the hold it supersedes, and notifying the\nlisting's managers of a hold or a release — in one transaction.",
+        "description": "Record a moderation decision and apply it, in one transaction.\nLISTING: hold, release or dismissal — resolving its live reports,\nanswering the owner's open review request on the hold it supersedes and\nnotifying the listing's managers of a hold or a release. MESSAGE (S4a):\nCONTENT_REMOVED redacts the message for the participants (the stored body\nis kept as evidence) or NO_ACTION dismisses — resolving its live reports;\nnothing else about the conversation changes.",
         "operationId": "decide_v1_admin_moderation_decisions_post",
         "requestBody": {
           "content": {
@@ -5461,10 +5725,10 @@
             "description": "Successful Response"
           },
           "403": {
-            "description": "Not a moderator, or a conflict of interest (manages the property, or has a live report on the target)"
+            "description": "Not a moderator, or a conflict of interest (manages the property, has a live report on the target; MESSAGE: is a current side of the conversation or wrote the message)"
           },
           "404": {
-            "description": "No such listing"
+            "description": "No such listing or message"
           },
           "409": {
             "description": "STALE_HEAD: the target's current decision is not the expected one — refresh and decide again (never retried for you)"
@@ -5605,6 +5869,63 @@
           }
         ],
         "summary": "Review Listing",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/v1/admin/moderation/targets/MESSAGE/{message_id}": {
+      "get": {
+        "description": "Review a reported message with the narrowest private evidence: the\nmessage and up to two messages either side, from its own conversation.\nIts live reports move to IN_REVIEW (first review time set once). Every\naccess is audited as `moderation.message_evidence_viewed` (ids only).\nLegal/privacy validation of moderator access to private messages (L9) is\nopen: technically implemented, launch validation required.",
+        "operationId": "review_message_v1_admin_moderation_targets_MESSAGE__message_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9-]+$",
+              "title": "Message Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageTargetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Not a moderator"
+          },
+          "404": {
+            "description": "No such message"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Review Message",
         "tags": [
           "moderation"
         ]
@@ -10554,13 +10875,28 @@
     },
     "/v1/reports": {
       "post": {
-        "description": "Report a listing to Homies moderation. A report changes nothing about\nthe listing; a moderator reviews it.",
+        "description": "Report a listing, or a message in one of your conversations, to Homies\nmoderation. A report changes nothing about its target; a moderator\nreviews it.",
         "operationId": "file_report_v1_reports_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ReportIn"
+                "discriminator": {
+                  "mapping": {
+                    "LISTING": "#/components/schemas/ListingReportIn",
+                    "MESSAGE": "#/components/schemas/MessageReportIn"
+                  },
+                  "propertyName": "target_type"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/ListingReportIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/MessageReportIn"
+                  }
+                ],
+                "title": "Body"
               }
             }
           },
@@ -10591,10 +10927,10 @@
             "description": "The account has no verified email or phone"
           },
           "404": {
-            "description": "No such listing, or not one this account may report"
+            "description": "No such listing or message, or not one this account may report (MESSAGE: not a current side of its conversation) — indistinguishable"
           },
           "409": {
-            "description": "The account manages this listing"
+            "description": "LISTING: the account manages it. MESSAGE: a SYSTEM message, or the account's own message"
           },
           "422": {
             "description": "Invalid reason or text"

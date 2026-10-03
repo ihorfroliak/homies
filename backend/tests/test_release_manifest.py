@@ -132,18 +132,22 @@ def test_the_image_has_no_placeholder_build_identity():
 
 
 def test_this_release_declares_its_rollback_honestly(graph):
-    """TASK-015 Slice 5 changes no schema (moderation_review_requests exists
-    since the Slice 1 head a3c5e7f9b1d4), yet rollback to Slices 2+3 is
-    BLOCKED as an operational policy: that build would strand OPEN review
-    requests (no endpoint, no queue re-entry, no answer). The build still
-    reads moderation_decisions on every publication, so its minimum schema
-    stays its own head."""
+    """TASK-015 Slice 4a changes no schema (message redaction columns and
+    MESSAGE decisions exist since the Slice 1 head a3c5e7f9b1d4), yet
+    rollback to Slice 5 is BLOCKED — a security/privacy barrier: that build
+    serialises messages.body without looking at redacted_at and would show
+    removed messages to participants again. The build still reads
+    moderation_decisions on every publication, so its minimum schema stays
+    its own head."""
     manifest = _parse(graph)
     assert manifest.schema_transition == release.NO_SCHEMA_CHANGE
     assert manifest.rollback_to_previous == release.BLOCKED
     assert manifest.rollback_allowed() is False
     assert manifest.previous_schema_head == manifest.schema_head == "a3c5e7f9b1d4"
     assert manifest.minimum_schema == manifest.schema_head
+    # The barrier is a privacy one and names the build it protects against.
+    assert MANIFEST["previous_release"]["id"] == "TASK-015-S5"
+    assert "SECURITY/PRIVACY BARRIER" in MANIFEST["rollback_note"]
 
 
 # --- malformed manifests are errors, never compatible -----------------------------------------

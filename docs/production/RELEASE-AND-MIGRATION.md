@@ -293,3 +293,13 @@ No universal N−1 promise is made; there is no promise beyond N−1.
 5. Roll replicas; each start logs `schema_compatibility`.
 6. Readiness, smoke, observe.
 7. Record image, SHA, database revision before/after.
+
+
+## Rollback barriers recorded per release (TASK-015)
+
+| Release | Schema | Rollback to previous | Why |
+|---|---|---|---|
+| TASK-015 S1 | `a3c5e7f9b1d4` (EXPAND) | BLOCKED | the previous publication ignores moderation holds |
+| TASK-015 S2+S3 | no change | BLOCKED (operational) | removes report intake and moderator operations |
+| TASK-015 S5 | no change | BLOCKED (operational) | strands open review requests |
+| **TASK-015 S4a** | no change | **BLOCKED — security/privacy barrier** | the S5 build serialises `messages.body` without reading `redacted_at`: rolling back re-exposes every removed message. Never restart an older image once a redaction exists |

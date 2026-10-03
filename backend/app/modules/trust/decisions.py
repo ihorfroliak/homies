@@ -39,6 +39,8 @@ from sqlalchemy.orm import Session
 from app.core.audit import audit
 from app.core.security import can_moderate
 from app.modules.events import service as events
+from app.modules.engagement import access as conversation_access
+from app.modules.engagement.models import Conversation, Message
 from app.modules.identity.models import User
 from app.modules.properties import authority, coordination, freshness
 from app.modules.properties.models import AUTHORITY_SCOPES, PAUSABLE_FROM, ClassifiedOffer
@@ -64,8 +66,10 @@ EVENT_PAYLOAD_KEYS = (
     "supersedes_decision_id", "effective_from",
 )
 
-# Actions Slice 1 can apply to a listing (MEDIA/MESSAGE/CONVERSATION: Slice 4).
+# Actions Slice 1 can apply to a listing (MEDIA/CONVERSATION: Slice 4b).
 LISTING_ACTIONS = ("NO_ACTION", *HOLD_ACTIONS)
+# Slice 4a: a message is dismissed or removed (redacted for participants).
+MESSAGE_ACTIONS = ("NO_ACTION", "CONTENT_REMOVED")
 
 DECISIONS = Counter(
     "homies_moderation_decisions_total",
@@ -326,3 +330,139 @@ def _emit(db: Session, decision: ModerationDecision) -> None:
     if not events.emit(db, MODERATION_DECISION_RECORDED, decision.id, event_payload(decision),
                        f"{MODERATION_DECISION_RECORDED}:{decision.id}"):
         raise RuntimeError("moderation decision event emitted twice")
+
+
+
+# --- MESSAGE decisions (Slice 4a) ------------------------------------------------
+#
+#     NO_ACTION        resolves the live reports; the message is untouched.
+#                      Only while the message is not removed: S4a defines no
+#                      restoration — a removed message is never shown again.
+#     CONTENT_REMOVED  redacts the message for the conversation's participants
+#                      (`redacted_at`, `redaction_reason_code`); the stored body
+#                      stays, as evidence read only through the audited
+#                      moderator path. Nothing else changes: no conversation
+#                      closure, no listing hold, no viewing or account effect.
+#
+# Lock order: conversation row → message row → head CAS → insert → redaction →
+# the target's live reports (FOR UPDATE, id order) → audit → event. A message
+# decision never locks a property or a listing, so it cannot close a cycle
+# with a listing decision (property → listing → …); Slice 4b's conversation
+# locking can take the conversation row first, as here.
+
+
+def apply_message_decision(
+    db: Session,
+    *,
+    actor: User,
+    message_id: str,
+    action: str,
+    reason_code: str,
+    expected_head_decision_id: str | None,
+    explanation: str | None = None,
+    reclassified_category: str | None = None,
+) -> AppliedDecision:
+    """Record and apply one decision on a message. The caller commits (or
+    rolls back on `DecisionRefused`)."""
+    if not can_moderate(actor):
+        raise NotAModerator("only a moderator can decide")
+    if action not in MESSAGE_ACTIONS:
+        raise InvalidDecision(f"{action} is not a message action in this slice")
+    if reclassified_category is not None and reclassified_category not in REPORT_CATEGORIES:
+        raise InvalidDecision("unknown category")
+
+    message = db.get(Message, message_id)
+    if message is None:
+        raise TargetNotFound("message not found")
+    conv = db.execute(select(Conversation).where(Conversation.id == message.conversation_id)
+                      .with_for_update()).scalar_one_or_none()
+    row = db.execute(select(Message.redacted_at, Message.sender_user_id)
+                     .where(Message.id == message_id).with_for_update()).one_or_none()
+    if conv is None or row is None:
+        raise TargetNotFound("message not found")
+
+    # Conflict of interest: a current side of the conversation (its tenant, or
+    # whoever holds MANAGE_MESSAGES on the listing's property now), anyone with
+    # authority over that property, the message's own sender, or a moderator
+    # with a live report on it. A former provider with no current right is not
+    # conflicted by history alone.
+    if conversation_access.side(db, actor.id, conv) is not None:
+        raise ConflictOfInterest("the moderator is a participant of this conversation")
+    prop = conversation_access.property_of(db, conv)
+    if prop is not None and any(authority.can_act(db, actor.id, prop, scope, verified=False)
+                                for scope in AUTHORITY_SCOPES):
+        raise ConflictOfInterest("the moderator manages this listing's property")
+    if row.sender_user_id == actor.id:
+        raise ConflictOfInterest("the moderator wrote this message")
+    if db.scalar(select(exists().where(
+            Report.target_type == "MESSAGE", Report.target_id == message_id,
+            Report.reporter_user_id == actor.id,
+            Report.status.in_(LIVE_REPORT_STATUSES)))):
+        raise ConflictOfInterest("the moderator reported this message")
+
+    current = hold.head(db, "MESSAGE", message_id)
+    current_id = current.id if current else None
+    if current_id != expected_head_decision_id:
+        raise StaleHead(current_id)
+    removed = row.redacted_at is not None or (
+        current is not None and current.action == "CONTENT_REMOVED")
+    if removed:
+        raise InvalidDecision("the message was removed; removal is not reversed in this slice")
+    if action == "CONTENT_REMOVED":
+        if reason_code not in REPORT_CATEGORIES:
+            raise InvalidDecision("a removal needs a policy reason (a report category)")
+    elif reason_code != NOT_A_VIOLATION:
+        raise InvalidDecision("NO_ACTION on a message is NOT_A_VIOLATION")
+
+    decision = ModerationDecision(
+        target_type="MESSAGE",
+        target_id=message_id,
+        listing_id=conv.listing_id,
+        action=action,
+        reason_code=reason_code,
+        explanation=explanation,
+        decided_by_user_id=actor.id,
+        supersedes_decision_id=current_id,
+        reclassified_category=reclassified_category,
+        close_engagement=False,  # Slice 4b
+    )
+    db.add(decision)
+    db.flush()  # the database refuses a fork here even if the lock were missing
+    db.refresh(decision, attribute_names=["effective_from"])
+
+    if action == "CONTENT_REMOVED":
+        redacted = cast(CursorResult, db.execute(
+            update(Message)
+            .where(Message.id == message_id, Message.redacted_at.is_(None))
+            .values(redacted_at=decision.effective_from, redaction_reason_code=reason_code)
+            .execution_options(synchronize_session=False)
+        ))
+        if redacted.rowcount != 1:
+            raise InvalidDecision("the message was removed meanwhile")
+
+    resolved = _resolve_reports(db, "MESSAGE", message_id, decision.id, actor.id)
+    audit(
+        db,
+        actor=actor.id,
+        action=f"moderation.message_{action.lower()}",
+        entity_type="message",
+        entity_id=message_id,
+        data={
+            "decision_id": decision.id,
+            "reason_code": reason_code,
+            "supersedes_decision_id": current_id,
+            "conversation_id": conv.id,
+        },
+    )
+    _emit(db, decision)
+    committed.count_on_commit(db, DECISIONS, target_type="MESSAGE", action=action)
+    return AppliedDecision(
+        decision_id=decision.id,
+        supersedes_decision_id=current_id,
+        action=action,
+        listing_status_before="",
+        listing_status_after="",
+        held=False,
+        resolved_report_ids=resolved,
+        effective_from=decision.effective_from,
+    )
