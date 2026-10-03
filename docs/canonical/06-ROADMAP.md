@@ -37,8 +37,21 @@ Engineering status per area is in
    ([contract](../tasks/TASK-013-search-map-marketplace-discovery.md))
    → TASK-013A → TASK-013R: **ACCEPTED** at `3f324b6` (D-77).
 10. **TASK-014** — saved listings, saved search & alerts
-    ([contract](../tasks/TASK-014-saved-listings-saved-search-alerts.md)).
-    Builder complete; awaiting adjudication and independent audit (TASK-014A).
+    ([contract](../tasks/TASK-014-saved-listings-saved-search-alerts.md))
+    → TASK-014R: **ACCEPTED** at `7ffb4f5` (TASK-014RA); integrated with
+    PR-001 into **IBB-001** = `5abfd7b` (CONV-001, accepted for continued
+    development; production NOT READY).
+11. **PR-002, PR-003** — release/migration compatibility and database client
+    deadlines: builder verified, on `main`, milestone audit deferred (D-88).
+12. **TASK-015** — reports & moderation basics: Phase A contract, Slices 1,
+    2+3, 5 and 4a on `main` (milestone audit deferred); Slice 4b and the
+    closure (restore-drill coverage; S6 absorbed) are **PROGRAM-001
+    candidates, not on `main`**. Complete for Phase 1A once merged.
+13. **PROGRAM-001** (candidate, not on `main`; external review then founder
+    approval): GROWTH-001 measurement foundation, DESIGN-001 product/UI
+    foundation, FE-001 web foundation, FE-002 seeker slice (search → results
+    → map/list → listing detail). FE-003 (save → conversation → viewing) is
+    **not authorised**.
 
 Carried-forward maintenance (not a task on its own, done when the files are
 next touched): E01/E02/E03 PostgreSQL regression tests and mutation-review
@@ -66,12 +79,16 @@ awaits founder approval; each item becomes a Task Contract:
    (reconfirm/stale)~~ (TASK-012; expiry not built), publication eligibility
    service.
 5. ~~Saved property, saved search.~~ Saved **listing** (04a §22 supersedes Saved Property
-   for Phase 1A) and saved search with alerts — TASK-014 (candidate).
-6. Reports and moderation basics; incidents.
+   for Phase 1A) and saved search with alerts — TASK-014 (accepted, in IBB-001).
+6. ~~Reports and moderation basics~~ — TASK-015 (complete for Phase 1A as a
+   candidate; see Now 12); **incidents** not built.
 7. Safety foundation: safety profile, typed requirements, hazards, versioned
    attestations.
 8. Media derivatives and a vetted processing path (after the C8 audit).
-9. Server-side outcome events for analytics via the outbox.
+9. Server-side outcome events for analytics via the outbox — measurement
+   facts for listing status, viewings and lead stages in GROWTH-001
+   (candidate); the housing-outcome capture (G-15) is designed and belongs
+   to the owner-flow slice.
 10. Organization ↔ LegalParty multi-relationship with one active primary.
 
 ## Phase 1B — SALE classifieds
