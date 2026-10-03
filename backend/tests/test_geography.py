@@ -372,3 +372,42 @@ def test_a_rename_is_what_display_and_the_city_filter_follow(client, geo):
     stale = {o["id"] for o in client.get("/v1/classifieds",
                                          params={"city": "Kraków"}).json()["items"]}
     assert offer in found and offer not in stale
+
+
+# --- slug resolution for public result URLs (FE-002, gap G7) ---------------------------
+
+
+def test_a_locality_is_found_by_its_url_slug_whatever_its_diacritics(client, geo):
+    # The name search is a prefix on the official name, so "krakow" finds nothing.
+    assert client.get("/v1/geo/localities", params={"country": "PL", "q": "krakow"}).json() == []
+    found = client.get("/v1/geo/localities/by-slug", params={"country": "PL", "slug": "krakow"})
+    assert found.status_code == 200, found.text
+    assert [(loc["id"], loc["name"], loc["kind"]) for loc in found.json()] == [
+        (geo["krakow"], "Kraków", "CITY")]
+    assert [a["kind_code"] for a in found.json()[0]["areas"]] == [
+        "PL_VOIVODESHIP", "PL_COUNTY", "PL_MUNICIPALITY"]
+
+
+def test_slug_resolution_is_exact_scoped_and_validated(client, geo):
+    assert client.get("/v1/geo/localities/by-slug",
+                      params={"country": "PL", "slug": "krak"}).json() == []
+    assert client.get("/v1/geo/localities/by-slug",
+                      params={"country": "DE", "slug": "krakow"}).json() == []
+    for bad in ("Krakow", "krakow/../x", "kra kow", "-krakow", ""):
+        assert client.get("/v1/geo/localities/by-slug",
+                          params={"country": "PL", "slug": bad}).status_code == 422, bad
+
+
+def test_slug_resolution_lists_cities_first_and_skips_retired(client, geo):
+    from app.modules.geography.models import Locality
+    with TestingSession() as db:
+        krakow = db.get(Locality, geo["krakow"])
+        village = Locality(country_code="PL", admin_area_id=krakow.admin_area_id, kind="VILLAGE",
+                           official_name="Balice", slug="krakow")
+        retired = Locality(country_code="PL", admin_area_id=krakow.admin_area_id, kind="CITY",
+                           official_name="Aaa", slug="krakow", status="RETIRED")
+        db.add_all([village, retired])
+        db.commit()
+    kinds = [loc["kind"] for loc in client.get(
+        "/v1/geo/localities/by-slug", params={"country": "PL", "slug": "krakow"}).json()]
+    assert kinds == ["CITY", "VILLAGE"]

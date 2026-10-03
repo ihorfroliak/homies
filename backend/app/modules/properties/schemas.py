@@ -256,6 +256,30 @@ class PublicLocation(BaseModel):
     precision: str
 
 
+class PublicFacts(BaseModel):
+    """What the flat is, as the public may know it (FE-002, gap G1).
+
+    Search already filters and sorts on these (min_rooms, min_area_m2,
+    size_desc …), so they are public by design; the listing just did not show
+    them. Built field by field; nothing about where it is (that stays in
+    city/district/public_location) and nothing about who owns it. `rooms` and
+    `area_m2` describe the whole property; for a ROOM listing `space_area_m2`
+    is the room's own size when the owner gave it.
+    """
+
+    category: str | None = None
+    subtype: str | None = None
+    rooms: int | None = None
+    area_m2: int | None = None
+    space_area_m2: float | None = None
+    floor: int | None = None
+    floors_total: int | None = None
+    has_elevator: bool
+    furnished: str
+    parking: str
+    pets_allowed: bool
+
+
 class ClassifiedOut(BaseModel):
     """Public shape. Deliberately has no phone field — see the module docstring.
 
@@ -281,6 +305,7 @@ class ClassifiedOut(BaseModel):
     district: str
     public_location: PublicLocation | None = None
     place: PublicPlace | None = None
+    facts: PublicFacts | None = None
     media: list[PublicMedia] = []
     title: str
     description: str
