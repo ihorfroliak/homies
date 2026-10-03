@@ -1,265 +1,220 @@
 asyncapi: 3.0.0
 info:
-  title: Homies Domain Events
-  version: 0.1.0
+  title: Homies Phase-1 Domain Events
+  version: 1.0.0
   description: >
-    Catalog of domain events published on the event bus (ADR-0004).
-    16 events across 5 channels. Events are past-tense facts, carry a
-    UUIDv7 event_id and occurred_at timestamp, and are consumed
-    idempotently. Money is integer minor units (ADR-0002).
+    The domain events the Phase-1 application actually writes to its
+    transactional outbox (`domain_events`), reconciled in GROWTH-001
+    (docs/growth/EVENTS-v1.md). There is no external bus: an event is a row
+    written in the same transaction as the change it records, idempotent by a
+    unique dedup key. Payloads hold identifiers, closed codes and database
+    instants only — never a message body, note, report text, moderator
+    explanation, address, coordinate, price input or contact. Payloads only
+    gain optional keys; a breaking change gets a new event name. None of
+    these events is routed to a notification. The booking-era catalogue
+    (UserRegistered, Booking*, Payment*, PayoutSent, Task*, ReviewSubmitted)
+    is LEGACY_DORMANT and kept in events.legacy-booking.asyncapi.yaml.
 defaultContentType: application/json
 channels:
-  identity:
-    address: homies.identity
-    messages:
-      UserRegistered:
-        $ref: '#/components/messages/UserRegistered'
-      UserVerified:
-        $ref: '#/components/messages/UserVerified'
   listings:
-    address: homies.listings
+    address: outbox.listings
+    description: Publication and freshness of listings (properties module).
     messages:
-      ListingPublished:
-        $ref: '#/components/messages/ListingPublished'
-      ListingUpdated:
-        $ref: '#/components/messages/ListingUpdated'
-      ListingArchived:
-        $ref: '#/components/messages/ListingArchived'
-  bookings:
-    address: homies.bookings
+      ListingBecamePublic:
+        $ref: '#/components/messages/ListingBecamePublic'
+      ListingConfirmed:
+        $ref: '#/components/messages/ListingConfirmed'
+      ListingReactivated:
+        $ref: '#/components/messages/ListingReactivated'
+      ListingReconfirmationDue:
+        $ref: '#/components/messages/ListingReconfirmationDue'
+      ListingAutoPausedStale:
+        $ref: '#/components/messages/ListingAutoPausedStale'
+      ListingStatusChanged:
+        $ref: '#/components/messages/ListingStatusChanged'
+  moderation:
+    address: outbox.moderation
+    description: Moderation decisions (trust module, TASK-015).
     messages:
-      BookingRequested:
-        $ref: '#/components/messages/BookingRequested'
-      BookingConfirmed:
-        $ref: '#/components/messages/BookingConfirmed'
-      BookingCancelled:
-        $ref: '#/components/messages/BookingCancelled'
-      BookingCompleted:
-        $ref: '#/components/messages/BookingCompleted'
-  payments:
-    address: homies.payments
+      ModerationDecisionRecorded:
+        $ref: '#/components/messages/ModerationDecisionRecorded'
+  engagement:
+    address: outbox.engagement
+    description: Viewing transitions and provider lead stages (GROWTH-001 measurement facts).
     messages:
-      PaymentAuthorized:
-        $ref: '#/components/messages/PaymentAuthorized'
-      PaymentCaptured:
-        $ref: '#/components/messages/PaymentCaptured'
-      PaymentFailed:
-        $ref: '#/components/messages/PaymentFailed'
-      PayoutSent:
-        $ref: '#/components/messages/PayoutSent'
-  operations:
-    address: homies.operations
-    messages:
-      TaskCreated:
-        $ref: '#/components/messages/TaskCreated'
-      TaskCompleted:
-        $ref: '#/components/messages/TaskCompleted'
-      ReviewSubmitted:
-        $ref: '#/components/messages/ReviewSubmitted'
+      ViewingRequested:
+        $ref: '#/components/messages/ViewingRequested'
+      ViewingResponded:
+        $ref: '#/components/messages/ViewingResponded'
+      ViewingCancelled:
+        $ref: '#/components/messages/ViewingCancelled'
+      ViewingOutcomeRecorded:
+        $ref: '#/components/messages/ViewingOutcomeRecorded'
+      ConversationStageChanged:
+        $ref: '#/components/messages/ConversationStageChanged'
 operations:
-  publishIdentityEvents:
-    action: send
-    channel:
-      $ref: '#/channels/identity'
-  publishListingEvents:
+  recordListingEvents:
     action: send
     channel:
       $ref: '#/channels/listings'
-  publishBookingEvents:
+  recordModerationEvents:
     action: send
     channel:
-      $ref: '#/channels/bookings'
-  publishPaymentEvents:
+      $ref: '#/channels/moderation'
+  recordEngagementEvents:
     action: send
     channel:
-      $ref: '#/channels/payments'
-  publishOperationsEvents:
-    action: send
-    channel:
-      $ref: '#/channels/operations'
+      $ref: '#/channels/engagement'
 components:
   messages:
-    UserRegistered:
-      name: UserRegistered
+    ListingBecamePublic:
+      name: ListingBecamePublic
+      summary: A listing opened a new public episode (dedup ListingBecamePublic:{listing}:{generation}).
       payload:
-        allOf:
-          - $ref: '#/components/schemas/EventEnvelope'
-          - type: object
-            required: [user_id, role]
-            properties:
-              user_id: { type: string, format: uuid }
-              role: { type: string, enum: [client, worker, manager, admin] }
-              email: { type: string, format: email }
-    UserVerified:
-      name: UserVerified
+        type: object
+        additionalProperties: false
+        required: [listing_id, property_id, public_generation, became_public_at]
+        properties:
+          listing_id: { $ref: '#/components/schemas/Id' }
+          property_id: { $ref: '#/components/schemas/Id' }
+          public_generation: { type: integer, minimum: 1 }
+          became_public_at: { $ref: '#/components/schemas/Instant' }
+    ListingConfirmed:
+      name: ListingConfirmed
+      summary: The owner confirmed the listing is still available.
+      payload: { $ref: '#/components/schemas/FreshnessPayload' }
+    ListingReactivated:
+      name: ListingReactivated
+      summary: A stale listing was confirmed and is public again.
+      payload: { $ref: '#/components/schemas/FreshnessPayload' }
+    ListingReconfirmationDue:
+      name: ListingReconfirmationDue
+      summary: The listing needs a reconfirmation (14 days).
+      payload: { $ref: '#/components/schemas/FreshnessPayload' }
+    ListingAutoPausedStale:
+      name: ListingAutoPausedStale
+      summary: The freshness sweep marked the listing stale (21 days).
+      payload: { $ref: '#/components/schemas/FreshnessPayload' }
+    ListingStatusChanged:
+      name: ListingStatusChanged
+      summary: Every write of a listing's status, with its reason (GROWTH-001).
       payload:
-        allOf:
-          - $ref: '#/components/schemas/EventEnvelope'
-          - type: object
-            required: [user_id]
-            properties:
-              user_id: { type: string, format: uuid }
-    ListingPublished:
-      name: ListingPublished
+        type: object
+        additionalProperties: false
+        required: [listing_id, property_id, from_status, to_status, reason_code, public_generation, changed_at]
+        properties:
+          listing_id: { $ref: '#/components/schemas/Id' }
+          property_id: { $ref: '#/components/schemas/Id' }
+          from_status: { $ref: '#/components/schemas/ListingStatus' }
+          to_status: { $ref: '#/components/schemas/ListingStatus' }
+          reason_code:
+            type: string
+            enum: [PUBLISHED, RECONFIRMED, OWNER_PAUSE, MODERATION_HOLD, AUTHORITY_LOST, SPACE_ARCHIVED, STALE_SWEEP]
+          public_generation: { type: integer, minimum: 0 }
+          changed_at: { $ref: '#/components/schemas/Instant' }
+    ModerationDecisionRecorded:
+      name: ModerationDecisionRecorded
+      summary: A moderation decision was recorded (TASK-015; ids and codes only).
       payload:
-        allOf:
-          - $ref: '#/components/schemas/EventEnvelope'
-          - type: object
-            required: [listing_id, owner_id, city]
-            properties:
-              listing_id: { type: string, format: uuid }
-              owner_id: { type: string, format: uuid }
-              city: { type: string }
-    ListingUpdated:
-      name: ListingUpdated
+        type: object
+        additionalProperties: false
+        required: [decision_id, target_type, target_id, listing_id, action, reason_code, supersedes_decision_id, effective_from]
+        properties:
+          decision_id: { $ref: '#/components/schemas/Id' }
+          target_type: { type: string, enum: [LISTING, MEDIA, MESSAGE, CONVERSATION] }
+          target_id: { $ref: '#/components/schemas/Id' }
+          listing_id: { $ref: '#/components/schemas/NullableId' }
+          action:
+            type: string
+            enum: [NO_ACTION, CONTENT_EDIT_REQUIRED, VISIBILITY_LIMITED, CONTENT_REMOVED, FEATURE_RESTRICTED]
+          reason_code: { type: string }
+          supersedes_decision_id: { $ref: '#/components/schemas/NullableId' }
+          effective_from: { $ref: '#/components/schemas/Instant' }
+    ViewingRequested:
+      name: ViewingRequested
       payload:
-        allOf:
-          - $ref: '#/components/schemas/EventEnvelope'
-          - type: object
-            required: [listing_id]
-            properties:
-              listing_id: { type: string, format: uuid }
-              changed_fields:
-                type: array
-                items: { type: string }
-    ListingArchived:
-      name: ListingArchived
+        type: object
+        additionalProperties: false
+        required: [viewing_id, listing_id, booking_mode, initial_status, starts_at, requested_at]
+        properties:
+          viewing_id: { $ref: '#/components/schemas/Id' }
+          listing_id: { $ref: '#/components/schemas/Id' }
+          booking_mode: { type: string, enum: [INSTANT_BOOKING, REQUEST_APPROVAL] }
+          initial_status: { type: string, enum: [REQUESTED, CONFIRMED] }
+          starts_at: { $ref: '#/components/schemas/Instant' }
+          requested_at: { $ref: '#/components/schemas/Instant' }
+    ViewingResponded:
+      name: ViewingResponded
       payload:
-        allOf:
-          - $ref: '#/components/schemas/EventEnvelope'
-          - type: object
-            required: [listing_id]
-            properties:
-              listing_id: { type: string, format: uuid }
-    BookingRequested:
-      name: BookingRequested
+        type: object
+        additionalProperties: false
+        required: [viewing_id, listing_id, to_status, responded_at]
+        properties:
+          viewing_id: { $ref: '#/components/schemas/Id' }
+          listing_id: { $ref: '#/components/schemas/Id' }
+          to_status: { type: string, enum: [CONFIRMED, DECLINED] }
+          responded_at: { $ref: '#/components/schemas/Instant' }
+    ViewingCancelled:
+      name: ViewingCancelled
       payload:
-        allOf:
-          - $ref: '#/components/schemas/EventEnvelope'
-          - $ref: '#/components/schemas/BookingEventBody'
-    BookingConfirmed:
-      name: BookingConfirmed
+        type: object
+        additionalProperties: false
+        required: [viewing_id, listing_id, prior_status, cancelled_by, moderation_decision_id, cancelled_at]
+        properties:
+          viewing_id: { $ref: '#/components/schemas/Id' }
+          listing_id: { $ref: '#/components/schemas/Id' }
+          prior_status: { type: string, enum: [REQUESTED, CONFIRMED] }
+          cancelled_by: { type: string, enum: [REQUESTER, PROVIDER, HOMIES] }
+          moderation_decision_id: { $ref: '#/components/schemas/NullableId' }
+          cancelled_at: { $ref: '#/components/schemas/Instant' }
+    ViewingOutcomeRecorded:
+      name: ViewingOutcomeRecorded
       payload:
-        allOf:
-          - $ref: '#/components/schemas/EventEnvelope'
-          - $ref: '#/components/schemas/BookingEventBody'
-    BookingCancelled:
-      name: BookingCancelled
+        type: object
+        additionalProperties: false
+        required: [viewing_id, listing_id, outcome, starts_at, recorded_at]
+        properties:
+          viewing_id: { $ref: '#/components/schemas/Id' }
+          listing_id: { $ref: '#/components/schemas/Id' }
+          outcome: { type: string, enum: [COMPLETED, NO_SHOW] }
+          starts_at: { $ref: '#/components/schemas/Instant' }
+          recorded_at: { $ref: '#/components/schemas/Instant' }
+    ConversationStageChanged:
+      name: ConversationStageChanged
       payload:
-        allOf:
-          - $ref: '#/components/schemas/EventEnvelope'
-          - $ref: '#/components/schemas/BookingEventBody'
-          - type: object
-            properties:
-              reason: { type: string }
-    BookingCompleted:
-      name: BookingCompleted
-      description: >
-        Fan-out example (ADR-0004): consumed independently by
-        Notifications (guest thank-you), Operations (cleaning task),
-        and Reviews (review invitation).
-      payload:
-        allOf:
-          - $ref: '#/components/schemas/EventEnvelope'
-          - $ref: '#/components/schemas/BookingEventBody'
-    PaymentAuthorized:
-      name: PaymentAuthorized
-      payload:
-        allOf:
-          - $ref: '#/components/schemas/EventEnvelope'
-          - $ref: '#/components/schemas/PaymentEventBody'
-    PaymentCaptured:
-      name: PaymentCaptured
-      payload:
-        allOf:
-          - $ref: '#/components/schemas/EventEnvelope'
-          - $ref: '#/components/schemas/PaymentEventBody'
-    PaymentFailed:
-      name: PaymentFailed
-      payload:
-        allOf:
-          - $ref: '#/components/schemas/EventEnvelope'
-          - $ref: '#/components/schemas/PaymentEventBody'
-          - type: object
-            properties:
-              failure_code: { type: string }
-    PayoutSent:
-      name: PayoutSent
-      payload:
-        allOf:
-          - $ref: '#/components/schemas/EventEnvelope'
-          - type: object
-            required: [payout_id, owner_id, money]
-            properties:
-              payout_id: { type: string, format: uuid }
-              owner_id: { type: string, format: uuid }
-              money: { $ref: '#/components/schemas/Money' }
-    TaskCreated:
-      name: TaskCreated
-      payload:
-        allOf:
-          - $ref: '#/components/schemas/EventEnvelope'
-          - $ref: '#/components/schemas/TaskEventBody'
-    TaskCompleted:
-      name: TaskCompleted
-      payload:
-        allOf:
-          - $ref: '#/components/schemas/EventEnvelope'
-          - $ref: '#/components/schemas/TaskEventBody'
-    ReviewSubmitted:
-      name: ReviewSubmitted
-      payload:
-        allOf:
-          - $ref: '#/components/schemas/EventEnvelope'
-          - type: object
-            required: [review_id, booking_id, rating]
-            properties:
-              review_id: { type: string, format: uuid }
-              booking_id: { type: string, format: uuid }
-              rating: { type: integer, minimum: 1, maximum: 5 }
+        type: object
+        additionalProperties: false
+        required: [conversation_id, listing_id, from_stage, to_stage, changed_at]
+        properties:
+          conversation_id: { $ref: '#/components/schemas/Id' }
+          listing_id: { $ref: '#/components/schemas/NullableId' }
+          from_stage: { $ref: '#/components/schemas/NullableStage' }
+          to_stage: { $ref: '#/components/schemas/NullableStage' }
+          changed_at: { $ref: '#/components/schemas/Instant' }
   schemas:
-    EventEnvelope:
+    Id:
+      type: string
+      maxLength: 36
+    NullableId:
+      type: [string, 'null']
+      maxLength: 36
+    Instant:
+      type: string
+      description: Database instant, UTC, microseconds, `YYYY-MM-DDTHH:MM:SS.ffffffZ`.
+    ListingStatus:
+      type: string
+      enum: [draft, active, paused, stale, archived]
+    NullableStage:
+      type: [string, 'null']
+      enum: [NEW, REPLIED, VIEWING, APPLICATION, SHORTLISTED, ACCEPTED, REJECTED, ARCHIVED, null]
+    FreshnessPayload:
       type: object
-      required: [event_id, occurred_at, schema_version]
+      additionalProperties: false
+      required: [listing_id, property_id, last_confirmed_available_at, confirmation_valid_days, auto_pause_after_days]
       properties:
-        event_id:
-          type: string
-          format: uuid
-          description: UUIDv7 — consumers deduplicate on this
-        occurred_at:
-          type: string
-          format: date-time
-        schema_version:
-          type: integer
-          default: 1
-    Money:
-      type: object
-      required: [amount, currency]
-      properties:
-        amount: { type: integer, description: Minor units (ADR-0002) }
-        currency: { type: string }
-    BookingEventBody:
-      type: object
-      required: [booking_id, listing_id, tenant_id]
-      properties:
-        booking_id: { type: string, format: uuid }
-        listing_id: { type: string, format: uuid }
-        tenant_id: { type: string, format: uuid }
-        check_in: { type: string, format: date }
-        check_out: { type: string, format: date }
-        total: { $ref: '#/components/schemas/Money' }
-    PaymentEventBody:
-      type: object
-      required: [payment_id, booking_id, money]
-      properties:
-        payment_id: { type: string, format: uuid }
-        booking_id: { type: string, format: uuid }
-        money: { $ref: '#/components/schemas/Money' }
-    TaskEventBody:
-      type: object
-      required: [task_id, listing_id, kind]
-      properties:
-        task_id: { type: string, format: uuid }
-        listing_id: { type: string, format: uuid }
-        kind: { type: string, enum: [cleaning, maintenance, inspection, checkin] }
-        assignee_id: { type: string, format: uuid }
+        listing_id: { $ref: '#/components/schemas/Id' }
+        property_id: { $ref: '#/components/schemas/Id' }
+        last_confirmed_available_at:
+          type: [string, 'null']
+        confirmation_valid_days: { type: integer }
+        auto_pause_after_days: { type: integer }

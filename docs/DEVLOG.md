@@ -927,3 +927,22 @@ check-run (логи потребують прав адміністратора).
 
 **Статус:** BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (D-88); на програмній
 гілці, не в `main`. Production: NOT READY, NOT DEPLOYED.
+
+## 2026-10-03 — PROGRAM-001: S4b — виправлення після adversarial review; GROWTH-001
+
+**S4b, ремонт** (спеціалізований агент-рецензент, лише читання):
+- P1: маршрут перевірки завантажень міг знову схвалити фото з RESTRICTED → тепер 409.
+- P2: взаємоблокування між рішенням щодо розмови/повідомлення та close_engagement
+  (через FK-блокування) → лістинг блокується першим (FOR KEY SHARE). Перша спроба
+  (FOR NO KEY UPDATE) порушувала інваріант S3 R6 — відкликано.
+- P3: обмежувати можна лише активну розмову; assign/stage блокують рядок.
+- Мутаційне тестування: 24/24 вбито.
+
+**GROWTH-001** ([фундамент](growth/GROWTH-001-marketplace-growth-foundation.md); D-98, D-99):
+- рішення засновника G-1…G-15 записано (D-98);
+- у outbox — факти вимірювання: зміни статусу лістингу, переходи переглядів
+  (хто скасував), результат перегляду, стадія ліда; без зміни схеми;
+- METRICS-v1, EVENTS-v1, ATTRIBUTION-v1, EXPERIMENTS-v1, DATA-QUALITY-v1,
+  UNIT-ECONOMICS-v1, PRIVACY-CONSENT-v1; каталог AsyncAPI узгоджено з кодом.
+
+**Статус:** на програмній гілці, не в `main`. Production: NOT READY, NOT DEPLOYED.

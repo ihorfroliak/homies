@@ -66,6 +66,17 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
+## GROWTH-001 — marketplace growth & measurement foundation (2026-10-03, builder)
+
+On the PROGRAM-001 branch, **not on `main`**. [Foundation](../growth/GROWTH-001-marketplace-growth-foundation.md) · D-98 · D-99.
+
+| Area | Classification | State |
+|---|---|---|
+| server-side outcome events via the outbox (06 Phase 1A item 9) | **CANDIDATE (builder verified)** | measurement facts: listing status changes, viewing transitions, outcome, lead stage |
+| metric dictionary, event contract, attribution, experiments, data quality, unit economics, consent | **SPECIFIED** | docs/growth/* |
+| product-analytics ingestion, attribution storage, exclusions table, snapshots | **NOT IMPLEMENTED** | NEXT PHASE; ingestion legal-gated (G-12) |
+| `ListingOutcomeReported` (North Star) | **DESIGNED** | owner-flow slice (G-15) |
+
 ## TASK-015 Slice 4b — engagement safety (2026-10-03, builder)
 
 **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (R2, D-88).** Built on

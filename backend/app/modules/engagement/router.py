@@ -47,6 +47,7 @@ from app.modules.engagement.models import (
     ConversationParticipant,
     Message,
 )
+from app.modules.events import facts
 from app.modules.identity.models import (
     OrganizationLegalParty,
     OrganizationMembership,
@@ -443,8 +444,10 @@ def set_stage(
     if side != "provider":
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
     conv = _lock(db, conv.id) or conv
+    before = conv.provider_stage
     conv.provider_stage = body.provider_stage
     conv.version += 1
+    facts.conversation_stage_changed(db, conv, before)
     db.commit()
     return _out(conv, "provider")
 

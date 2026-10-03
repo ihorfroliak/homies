@@ -7,7 +7,7 @@
   },
   "scripts": {
     "lint:openapi": "spectral lint ../../docs/api/openapi.json --ruleset ../../.spectral.yaml",
-    "validate:asyncapi": "asyncapi validate ../../docs/api/events.asyncapi.yaml"
+    "validate:asyncapi": "asyncapi validate ../../docs/api/events.asyncapi.yaml && asyncapi validate ../../docs/api/events.legacy-booking.asyncapi.yaml"
   },
   "devDependencies": {
     "@asyncapi/cli": "6.2.0",

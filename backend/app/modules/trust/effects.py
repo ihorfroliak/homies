@@ -27,6 +27,8 @@ from sqlalchemy.orm import Session
 
 from app.core.audit import audit
 from app.modules.engagement.models import Conversation, Message, Viewing
+from app.modules.events import facts
+from app.modules.properties import freshness
 from app.modules.trust.models import ModerationDecision
 
 # The SYSTEM line a closed conversation ends with — a client string key.
@@ -80,13 +82,14 @@ def close_listing_engagement(db: Session, listing_id: str,
     ).all()
     closed = [c.id for c in conversations if close_conversation(db, c, decision)]
 
-    viewing_ids = list(db.scalars(
-        select(Viewing.id)
+    viewings = db.execute(
+        select(Viewing.id, Viewing.status)
         .where(Viewing.listing_id == listing_id, Viewing.status.in_(CANCELLABLE),
                Viewing.starts_at > effective)
         .order_by(Viewing.id)
         .with_for_update()
-    ))
+    ).all()
+    viewing_ids = [v.id for v in viewings]
     if viewing_ids:
         db.execute(
             update(Viewing)
@@ -94,6 +97,11 @@ def close_listing_engagement(db: Session, listing_id: str,
             .values(status="CANCELLED", cancelled_at=effective, version=Viewing.version + 1)
             .execution_options(synchronize_session=False)
         )
+        for v in viewings:
+            facts.viewing_cancelled(
+                db, viewing_id=v.id, listing_id=listing_id, prior_status=v.status,
+                cancelled_by="HOMIES", moderation_decision_id=decision.id,
+                cancelled_at=freshness.canonical_instant(effective))
     if closed or viewing_ids:
         audit(db, actor=decision.decided_by_user_id, action="moderation.engagement_closed",
               entity_type="classified_offer", entity_id=listing_id,

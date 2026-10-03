@@ -27,10 +27,14 @@ Rather than hand-maintain a spec that will drift again, the contract is now
 generated and guarded. Decision recorded in `docs/DECISIONS.md` (D-27); the
 retired specs remain in git history.
 
-## `events.asyncapi.yaml` — domain event catalog (design artifact)
+## `events.asyncapi.yaml` — Phase-1 domain event catalog
 
-The AsyncAPI catalog is a **design-time** description of domain events, not a
-generated runtime contract (there is no external event bus yet — events are an
-in-process outbox). It has also drifted from the events the code actually emits
-(OAT-02/03 added several). Aligning it is tracked separately as a smaller
-follow-up; it is not auto-generated because the events are internal.
+The events the Phase-1 application writes to its transactional outbox
+(`domain_events`) — listings, moderation, engagement — reconciled with the code
+in GROWTH-001 ([EVENTS-v1](../growth/EVENTS-v1.md)). There is no external bus.
+`backend/tests/test_measurement_facts.py` pins the catalogue's payload keys to
+the ones the code writes; CI validates it (`ops/contracts`).
+
+`events.legacy-booking.asyncapi.yaml` is the booking-era catalogue
+(UserRegistered, Booking*, Payment*, PayoutSent, Task*, ReviewSubmitted) —
+**LEGACY_DORMANT**, kept for history and still validated.

@@ -41,6 +41,7 @@ from app.core.audit import audit
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import get_current_user, require_role
+from app.modules.events import facts
 from app.modules.geography import service as geography
 from app.modules.geography.models import Address
 from app.modules.identity import organizations
@@ -629,6 +630,9 @@ def pause_classified(
     if paused.rowcount != 1:
         db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, "This listing is archived")
+    facts.listing_status_changed(
+        db, listing_id=offer.id, property_id=offer.property_id, from_status=offer.status,
+        to_status="paused", reason_code="OWNER_PAUSE", public_generation=offer.public_generation)
     db.commit()
     db.refresh(offer)
     return _public(offer)
