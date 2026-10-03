@@ -30,6 +30,8 @@ export class ApiError extends Error {
   readonly code: string | undefined;
   readonly retryAfterSeconds: number | undefined;
   readonly requestId: string | undefined;
+  /** For a 422: the query/body parameters the backend refused. */
+  readonly invalid: string[];
 
   constructor(init: {
     kind: ApiErrorKind;
@@ -37,6 +39,7 @@ export class ApiError extends Error {
     code?: string;
     retryAfterSeconds?: number;
     requestId?: string;
+    invalid?: string[];
     message?: string;
   }) {
     super(init.message ?? init.kind);
@@ -46,6 +49,7 @@ export class ApiError extends Error {
     this.code = init.code;
     this.retryAfterSeconds = init.retryAfterSeconds;
     this.requestId = init.requestId;
+    this.invalid = init.invalid ?? [];
   }
 
   /** Whether repeating the same request automatically is safe. */
@@ -79,6 +83,7 @@ export function errorFromResponse(method: string, status: number, headers: Heade
     code: domainCode(detail),
     requestId: headers.get("x-request-id") ?? undefined,
     retryAfterSeconds: retryAfter(headers.get("retry-after")),
+    invalid: invalidParams(body),
     message: typeof detail === "string" ? detail : `HTTP ${status}`,
   };
   if (status === 401) return new ApiError({ kind: "unauthorized", ...base });

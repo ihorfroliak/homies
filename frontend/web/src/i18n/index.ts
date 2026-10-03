@@ -75,3 +75,8 @@ export function formatCalendarDate(isoDate: string): string {
 export function formatInstant(iso: string): string {
   return dateTimeFormat.format(new Date(iso));
 }
+
+/** Fill "{name}" placeholders. Values are inserted as text (React escapes them). */
+export function fmt(template: string, values: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (whole, key: string) => (key in values ? String(values[key]) : whole));
+}
