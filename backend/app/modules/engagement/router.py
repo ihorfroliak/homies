@@ -397,10 +397,10 @@ def send_message(
     # The conversation row first, then its status under the lock: a closure
     # that committed before this point is seen; one that comes later waits
     # for this message (S4b, invariant I-1).
-    conv = _lock(db, conv.id)
-    if conv is None or conv.status != "ACTIVE":
+    locked = _lock(db, conv.id)
+    if locked is None or locked.status != "ACTIVE":
         raise _closed()
-    message = _post(db, user, conv, side, body.body)
+    message = _post(db, user, locked, side, body.body)
     db.commit()
     return message
 

@@ -193,6 +193,37 @@ def test_e_r1b_send_first_the_closure_waits_and_the_message_stands(pg_client,
                         "body = 'first in'", c=s["conv"]) == 1
 
 
+def test_e_r1c_continuing_a_thread_waits_for_its_closure_and_is_barred(pg_client,
+                                                                       pg_migrated_engine):
+    """`start_conversation` on a listing with an ACTIVE thread continues it:
+    that path locks the thread too, so it waits for a restriction in
+    progress, then finds it closed — and G-14 bars a new one."""
+    eng = pg_migrated_engine
+    s = _setup(pg_client)
+    mod = _account(eng, role="admin")
+    a = _session(eng)
+    result: dict = {}
+    try:
+        _restrict(a, s["conv"], mod)
+
+        def again():
+            with _session(eng) as r:
+                return conversations.start_conversation(
+                    s["offer"], conversations.MessageIn(body="me again"),
+                    user=_user(r, s["tenant"]), db=r)
+        t = _run(result, "start", again)
+        assert _blocked_on(eng, "conversations", _pid(a))
+        a.commit()
+        t.join(15)
+    finally:
+        a.close()
+    assert getattr(result["start"], "status_code", None) == 409
+    assert result["start"].detail.startswith("RECONTACT_BLOCKED")
+    assert _user_messages(eng, s["conv"]) == 1
+    assert _scalar(eng, "SELECT count(*) FROM conversations WHERE listing_id = :o",
+                   o=s["offer"]) == 1
+
+
 # --- E-R2 two moderators -----------------------------------------------------------
 
 def test_e_r2_two_moderators_restrict_once(pg_client, pg_migrated_engine):
