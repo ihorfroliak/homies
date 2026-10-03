@@ -55,8 +55,9 @@ row lock). G-14 uses the decision's recorded public generation.
 | Path | Order |
 |---|---|
 | listing decision (incl. close_engagement) | property → listing `FOR UPDATE` → conversations `FOR UPDATE ORDER BY id` → viewings `FOR UPDATE ORDER BY id` → reports(id) → review request |
-| conversation decision | conversation `FOR UPDATE` → head CAS → effects → reports(id) |
-| message decision (S4a) | conversation → message → head → reports(id) |
+| conversation decision | listing `FOR KEY SHARE` → conversation `FOR UPDATE` → head CAS → effects → reports(id) |
+| message decision (S4a, reordered in S4b) | listing `FOR KEY SHARE` → conversation → message → head → reports(id) |
+| message report | reporter users row → listing `FOR KEY SHARE` → insert (FK checks) |
 | media decision | media asset `FOR UPDATE` → head CAS → state → reports(id) |
 | send message | conversation `FOR UPDATE` |
 | start conversation | listing `FOR SHARE` → reporter users row (`FOR NO KEY UPDATE`) → the continued thread `FOR UPDATE` |
@@ -65,9 +66,11 @@ row lock). G-14 uses the decision's recorded public generation.
 | decline / cancel / outcome | viewing `FOR UPDATE` only |
 | attach photo | media asset `FOR SHARE` |
 
-Every path that also takes the listing takes it first; paths that lock only
-their own row never wait on a listing while holding it. No reverse order
-exists (stress test: deadlock counter unchanged).
+Every path that also takes the listing takes it first — including the
+implicit `FOR KEY SHARE` a foreign-key check takes when a row referencing the
+listing is inserted; paths that lock only their own row never wait on a
+listing while holding it (stress test and E-R11/E-R12: deadlock counter
+unchanged).
 
 **Defect found by the PostgreSQL suite and fixed** (`core.db.lock_row`):
 `SELECT … FOR SHARE` on an entity with a joined eager relationship fails in
@@ -79,6 +82,17 @@ bare id, then the entity is re-read under the lock.
 decision's instant (its transaction's start), which can precede a message
 that committed while the decision waited for the row; it is now stamped no
 earlier than 1 µs after the latest message, read under the conversation lock.
+
+## Adversarial review (specialist agent, read-only) and repairs
+
+| # | Finding | Severity | Repair |
+|---|---|---|---|
+| F1 | upload review (`/admin/media/{id}/approve|reject`) could re-approve or reject a RESTRICTED photo — serving it again on every listing, or deleting its links; a concurrent approve could overwrite RESTRICTED | P1 | the asset row is locked; RESTRICTED → **409 `MEDIA_RESTRICTED`** (only its decision chain changes it) |
+| F2 | a conversation/message decision held its conversation and then inserted a decision referencing the listing (FK check = `FOR KEY SHARE`), while close_engagement held the listing and waited for the conversation → deadlock (40P01 → 500) | P2 | listing `FOR KEY SHARE` first in conversation and message decisions and in message-report filing; E-R11/E-R12. (A first attempt — the listing decision taking `FOR NO KEY UPDATE` — broke S3 invariant R6, a moderator's own concurrent report being caught, and was reverted.) |
+| F3 | FEATURE_RESTRICTED on an already closed conversation recorded the listing's *current* generation for G-14 | P3 | only an ACTIVE conversation can be restricted (422) |
+| F4 | lead assign/stage incremented the version unlocked (could overwrite a closure's version bump) | P3 | the conversation row is locked first |
+| F5 | (hypothesis) FK trigger order after a restore could invert report locks | P3 | covered by F2's explicit listing lock in report filing |
+| F6 | a restricted requester may still request a viewing on the same publication (G-14 covers conversations) | — | **PROPOSED FOUNDER DECISION** — not changed |
 
 ## Invariants and their proof (PostgreSQL, `tests/test_engagement_safety_pg.py`)
 
@@ -100,6 +114,8 @@ earlier than 1 µs after the latest message, read under the conversation lock.
 | E-R10 | decision COMMIT outcome unknown (PR-003 proxy) | committed → retry STALE_HEAD; rolled back → retry applies; exactly one SYSTEM line |
 | stress | 4 × (close_engagement ∥ restriction ∥ send ∥ confirm) | deadlock counter unchanged; final state consistent |
 | order | closure line vs a later-stamped message | the SYSTEM line is last; cancellations carry the decision's instant |
+| E-R11 | conversation decision vs close_engagement | close_engagement waits at the listing; no deadlock |
+| E-R12 | message decision vs close_engagement | the message decision waits at the listing; no deadlock |
 
 SQLite behaviour suite: `tests/test_engagement_safety.py` (validation
 matrix, effects, history untouched, hold vs confirm, G-14 incl. republish,

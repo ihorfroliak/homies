@@ -218,9 +218,15 @@ def _moderate(db: Session, asset_id: str, admin: User, state: str) -> MediaAsset
     # every listing — destructive by design for a photo that never passed.
     # Trust moderation of a published photo is NOT this: TASK-015 S4b
     # CONTENT_REMOVED (trust/decisions.py) restricts it and keeps every link.
-    asset = db.get(MediaAsset, asset_id)
+    asset = lock_row(db, MediaAsset, asset_id)
     if asset is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Media not found")
+    if asset.moderation_state == "RESTRICTED":
+        # Restricted by a trust decision (its chain head): only that chain
+        # changes it. Approving here would serve it again on every listing;
+        # rejecting would delete the links the restriction keeps as evidence.
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "MEDIA_RESTRICTED: this photo was restricted by Homies moderation")
     asset.moderation_state = state
     file = db.get(FileObject, asset.file_id)
     assert file is not None

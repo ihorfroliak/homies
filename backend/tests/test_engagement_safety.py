@@ -446,3 +446,38 @@ def test_the_effects_happen_in_the_decisions_transaction_or_not_at_all(client, m
     resp = _decide(client, moderator, "CONVERSATION", conv, "FEATURE_RESTRICTED", "SCAM")
     assert resp.status_code == 422 and _status(Conversation, conv) == "ACTIVE"
     assert _head("CONVERSATION", conv) is None
+
+
+# --- adversarial review repairs (S4b) ---------------------------------------------
+
+def test_upload_review_cannot_undo_a_restriction(client):
+    """F1: approve/reject are upload review; a photo trust moderation
+    restricted is changed only by its decision chain — approving would serve
+    it again on every listing, rejecting would delete the links it keeps."""
+    from tests.conftest import admin_login
+
+    owner, _t, offer, _prop, cover, _other = _photo_listing(client)
+    moderator = _moderator(client)
+    assert _decide(client, moderator, "MEDIA", cover, "CONTENT_REMOVED",
+                   "STOLEN_MEDIA").status_code == 201
+    admin = admin_login(client)
+    for verb in ("approve", "reject"):
+        resp = client.post(f"/v1/admin/media/{cover}/{verb}", headers=auth(admin))
+        assert resp.status_code == 409 and "MEDIA_RESTRICTED" in resp.json()["detail"]
+    with TestingSession() as db:
+        assert db.get(MediaAsset, cover).moderation_state == "RESTRICTED"
+        assert db.get(ListingMedia, (offer, cover)) is not None
+    assert client.get(f"/v1/media/{cover}").status_code == 404
+
+
+def test_only_an_active_conversation_is_restricted(client):
+    """F3: the G-14 bar is recorded against the listing's current publication,
+    which is a conversation's own only while it is active."""
+    _o, _t, offer, conv, _m = _thread(client)
+    moderator = _moderator(client)
+    closed = _decide(client, moderator, "LISTING", offer, "VISIBILITY_LIMITED", "SCAM",
+                     close_engagement=True)
+    assert closed.status_code == 201 and _status(Conversation, conv) == "CLOSED"
+    late = _decide(client, moderator, "CONVERSATION", conv, "FEATURE_RESTRICTED", "SCAM")
+    assert late.status_code == 422 and "active" in late.json()["detail"]
+    assert _head("CONVERSATION", conv) is None

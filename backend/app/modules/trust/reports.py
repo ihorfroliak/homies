@@ -260,6 +260,12 @@ def file_message_report(db: Session, *, reporter: User, message_id: str, categor
         return Filed(existing, created=False)
 
     def recheck() -> None:
+        # The listing FOR KEY SHARE before the insert's foreign-key checks, so
+        # the listing is always taken before the conversation (S4b lock order,
+        # whatever order the database fires the two checks in).
+        if conv.listing_id is not None:
+            db.execute(select(ClassifiedOffer.id).where(ClassifiedOffer.id == conv.listing_id)
+                       .with_for_update(read=True, key_share=True))
         if conversation_access.side(db, reporter.id, conv) is None:
             raise NotReportable("Message not found")
 

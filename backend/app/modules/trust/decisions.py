@@ -377,11 +377,10 @@ def _emit(db: Session, decision: ModerationDecision) -> None:
 #                      moderator path. Nothing else changes: no conversation
 #                      closure, no listing hold, no viewing or account effect.
 #
-# Lock order: conversation row → message row → head CAS → insert → redaction →
-# the target's live reports (FOR UPDATE, id order) → audit → event. A message
-# decision never locks a property or a listing, so it cannot close a cycle
-# with a listing decision (property → listing → …); Slice 4b's conversation
-# locking can take the conversation row first, as here.
+# Lock order: the listing (FOR KEY SHARE, S4b) → conversation row → message
+# row → head CAS → insert → redaction → the target's live reports (FOR
+# UPDATE, id order) → audit → event — the listing → conversation order of
+# close_engagement (see `_share_listing_of`).
 
 
 def apply_message_decision(
@@ -407,6 +406,7 @@ def apply_message_decision(
     message = db.get(Message, message_id)
     if message is None:
         raise TargetNotFound("message not found")
+    _share_listing_of(db, message.conversation_id)
     conv = db.execute(select(Conversation).where(Conversation.id == message.conversation_id)
                       .with_for_update()).scalar_one_or_none()
     row = db.execute(select(Message.redacted_at, Message.sender_user_id)
@@ -510,10 +510,10 @@ def apply_message_decision(
 #                         same public generation (founder G-14). Terminal: canon
 #                         defines no reopening.
 #
-# Lock order: conversation row → head CAS → insert → close → audit → event —
-# the same first lock as a message decision and as `send_message`. Never a
-# property or a listing row. Live MESSAGE reports in the conversation are
-# separate targets and stay as they are.
+# Lock order: the listing (FOR KEY SHARE) → conversation row → head CAS →
+# insert → close → audit → event — listing before conversation, as in
+# close_engagement. Live MESSAGE reports in the conversation are separate
+# targets and stay as they are.
 
 
 def apply_conversation_decision(
@@ -536,6 +536,7 @@ def apply_conversation_decision(
     if reclassified_category is not None and reclassified_category not in REPORT_CATEGORIES:
         raise InvalidDecision("unknown category")
 
+    _share_listing_of(db, conversation_id)
     conv = effects.lock_conversation(db, conversation_id)
     if conv is None:
         raise TargetNotFound("conversation not found")
@@ -558,6 +559,10 @@ def apply_conversation_decision(
     if current is not None and current.action == "FEATURE_RESTRICTED":
         raise InvalidDecision("the conversation was closed by Homies; it is not reopened")
     _validate_removal(action, "FEATURE_RESTRICTED", reason_code, "a restriction")
+    if action == "FEATURE_RESTRICTED" and conv.status != "ACTIVE":
+        # The G-14 bar is recorded against the listing's current publication,
+        # which is this conversation's own only while it is active.
+        raise InvalidDecision("only an active conversation can be restricted")
 
     generation = db.scalar(select(ClassifiedOffer.public_generation)
                            .where(ClassifiedOffer.id == conv.listing_id)) \
@@ -716,6 +721,23 @@ def apply_media_decision(
         notified_user_ids=tuple(notified),
         effective_from=decision.effective_from,
     )
+
+
+def _share_listing_of(db: Session, conversation_id: str) -> None:
+    """The conversation's listing FOR KEY SHARE, before the conversation row.
+
+    A conversation or message decision inserts a decision referencing the
+    listing; that foreign-key check takes FOR KEY SHARE on it. Taken there —
+    after the conversation lock — it closed a cycle with close_engagement
+    (listing FOR UPDATE → conversations), a deadlock found in the S4b
+    adversarial review. Taken first, every path orders listing → conversation.
+    The listing id of a conversation never changes, so reading it unlocked is
+    safe."""
+    listing_id = db.scalar(select(Conversation.listing_id)
+                           .where(Conversation.id == conversation_id))
+    if listing_id is not None:
+        db.execute(select(ClassifiedOffer.id).where(ClassifiedOffer.id == listing_id)
+                   .with_for_update(read=True, key_share=True))
 
 
 def _validate_removal(action: str, removal: str, reason_code: str, what: str) -> None:

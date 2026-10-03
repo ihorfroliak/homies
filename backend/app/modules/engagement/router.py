@@ -424,6 +424,8 @@ def assign(
                                              verified=False):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             "That person cannot answer for this listing")
+    # Locked and re-read, so the version bump never overwrites a closure's.
+    conv = _lock(db, conv.id) or conv
     conv.assigned_to_user_id = body.user_id
     conv.version += 1
     db.commit()
@@ -440,6 +442,7 @@ def set_stage(
     conv, side = _load(db, user, conversation_id)
     if side != "provider":
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
+    conv = _lock(db, conv.id) or conv
     conv.provider_stage = body.provider_stage
     conv.version += 1
     db.commit()
