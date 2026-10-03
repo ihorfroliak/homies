@@ -172,6 +172,32 @@ BARRIER**: the S5 build serialises `messages.body` without reading
 participants again. Never restart an older image once a redaction exists;
 forward repair only. A test pins the barrier and its note.
 
+## Evidence (builder, local Docker; first runs and reruns kept apart)
+
+* S4a SQLite suite (+ affected S1/S2/S3/S5, release, conversations): 190
+  passed / 1 failed first run — the failure a refused-token `KeyError` in an
+  S1 setup (local clock class).
+* S4a PostgreSQL M-R1…M-R8 + stress: 10/10 on first execution.
+* Mutation: baseline 85/85; **14/14 killed**, each by its intended test (M13
+  for the right reason: the side transaction's redaction survives the
+  rollback).
+* Full PostgreSQL/PostGIS with mandatory restore drill: 1800 passed / 2
+  failed / 1 skipped. Both are pre-existing timing assertions on a slow host
+  (45-minute run): PR-003 `/healthz` under a full thread pool (1.27 s vs
+  < 1 s) — passed on rerun; PR-002
+  `test_a_second_runner_waits_at_most_the_lock_timeout` (12.6 s vs < 12 s) —
+  fails on every local rerun, because the bound includes the runner's
+  pre-lock setup (~2.5 s here); it fails the same way on the S1 baseline.
+* Full SQLite: 1314 passed / 488 skipped / 1 error (refused token) → passed on
+  rerun. (A first attempt was invalid: run with the restore-drill flag and
+  no database, which aborts collection.)
+* ruff, mypy (123 files) clean; Spectral 0 errors (49 pre-existing warnings);
+  AsyncAPI valid.
+* CI on `2f0af3d2` (run 37071488807) failed in the backend Test step, as did
+  37047555634 (`main` 4bf66108) and 37048911922 (S5) on code that passed on
+  rerun. The job log is not readable without GitHub authentication; the
+  timing tests above are the suspected class (debt).
+
 ## Legal boundary
 
 **L9 — moderator access to private messages: TECHNICALLY IMPLEMENTED —
