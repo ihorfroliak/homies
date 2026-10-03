@@ -99,7 +99,7 @@ Detail and results are `noindex` while the kill switch is off.
 | FE2-2 | `published_at` not public (G2) | "Najnowsze" relies on the backend `newest` sort; no "dodano X dni temu" |
 | FE2-3 | No photo alt/caption or variants (G5) | photos use positional alt ("Zdjęcie 1 z 3"); full-size images on cards |
 | FE2-4 | Attributes/amenities not shown or filterable in the UI | `has=` exists in the API; UI later |
-| FE2-5 | Parking cost semantics (G4, **CANONICAL DECISION REQUIRED**) | parking fee shown as a separate line; the backend counts it in the monthly total |
+| FE2-5 | Parking cost semantics — **decided (D-102, 04a §24 G4)**: only mandatory, non-separable parking belongs in the total; the owner input cannot yet say optional vs mandatory (modelling gap), so a stated parking fee stays a mandatory component — no heuristic change | parking fee shown as a separate line in the breakdown |
 | FE2-6 | Mobile high-fidelity frames missing (Figma Starter limit) | mobile layout follows DESIGN-001 §4 rules, not drawn frames |
 | FE2-7 | Next.js logs "The destination stream closed early" when a test closes a page mid-stream | benign client-abort log; tests unaffected |
 | FE2-8 | E2E backend runs with rate limiting off (all Playwright workers share one IP) | 429 UI is covered by unit tests of the error model, not by E2E |

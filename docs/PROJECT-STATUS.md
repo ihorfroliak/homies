@@ -20,7 +20,7 @@ next_task: PROGRAM-001 (program branch claude/PROGRAM-001-product-growth-fronten
 > and [DECISIONS](DECISIONS.md). If this page disagrees with them, they win —
 > fix this page. Nothing is accepted because it is listed here.
 
-**As of:** 2026-10-03 (BASELINE-001; updated by PR-002 and PR-003 integration, TASK-015 and the PROGRAM-001 candidate)
+**As of:** 2026-10-04 (BASELINE-001; updated by PR-002 and PR-003 integration, TASK-015 and the PROGRAM-001 merge)
 
 ## Current accepted backend baseline
 
@@ -73,22 +73,25 @@ TASK-015 Slice 5            BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — rev
   ↓
 TASK-015 Slice 4a           BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — message reports, evidence, redaction (R2) — on main at 03268432 (merge of ff433303)
   ↓
-TASK-015 Slice 4b           BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — conversation closure, close_engagement, viewing protection, photo restriction (R2) — on the PROGRAM-001 branch, NOT on main
+TASK-015 Slice 4b           BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — conversation closure, close_engagement, viewing protection, photo restriction (R2) — on main at c32ac63a (merge of 779b30fe, PROGRAM-001)
   ↓
-TASK-015 closure            COMPLETE FOR PHASE 1A — restore drill covers conversations, redacted messages, viewings, photos (S6 absorbed; no S6) — on the PROGRAM-001 branch, NOT on main
+TASK-015 closure            COMPLETE FOR PHASE 1A — restore drill covers conversations, redacted messages, viewings, photos (S6 absorbed; no S6) — on main at c32ac63a (merge of 779b30fe, PROGRAM-001)
   ↓
-GROWTH-001                  BUILDER VERIFIED — measurement facts in the outbox + metric/event/attribution/experiment/consent definitions (R1/R2) — on the PROGRAM-001 branch, NOT on main
+GROWTH-001                  BUILDER VERIFIED — measurement facts in the outbox + metric/event/attribution/experiment/consent definitions (R1/R2) — on main at c32ac63a (merge of 779b30fe, PROGRAM-001)
   ↓
-DESIGN-001                  BUILDER VERIFIED — product/UI foundation, Design System v1 tokens, Figma desktop seeker frames (mobile not drawn: Starter limit) — on the PROGRAM-001 branch, NOT on main
+DESIGN-001                  BUILDER VERIFIED — product/UI foundation, Design System v1 tokens, Figma desktop seeker frames (mobile not drawn: Starter limit) — on main at c32ac63a (merge of 779b30fe, PROGRAM-001)
   ↓
-FE-001                      BUILDER VERIFIED — Next.js public web foundation: BFF/session, CSRF, CSP, typed client, i18n, consent-gated measurement (R2) — on the PROGRAM-001 branch, NOT on main
+FE-001                      BUILDER VERIFIED — Next.js public web foundation: BFF/session, CSRF, CSP, typed client, i18n, consent-gated measurement (R2) — on main at c32ac63a (merge of 779b30fe, PROGRAM-001)
   ↓
-FE-002                      BUILDER VERIFIED — seeker slice search → results → map/list → detail; ClassifiedOut.facts, localities by slug, E2E seed (R2) — on the PROGRAM-001 branch, NOT on main
+FE-002                      BUILDER VERIFIED — seeker slice search → results → map/list → detail; ClassifiedOut.facts, localities by slug, E2E seed (R2) — on main at c32ac63a (merge of 779b30fe, PROGRAM-001)
 ```
 
-PROGRAM-001 is one candidate (branch `claude/PROGRAM-001-product-growth-frontend`):
-external review (GPT-5.6 Sol) and founder approval come before any of it
-reaches `main`. Production NOT READY, NOT DEPLOYED.
+PROGRAM-001 (`779b30fe`) was reviewed by GPT-5.6 Sol (accepted with
+conditions), approved by the founder and merged to `main` at `c32ac63a`
+(2026-10-04). Its adjudications are D-102 (canon 04a §24); F6 enforcement and
+the decision records follow on `main` as a bounded integration commit.
+Next: DESIGN-001C (in progress, D-103) → FE-003 contract (draft only; not
+authorised). Production NOT READY, NOT DEPLOYED.
 
 PR-002 is **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED** (D-88): integrated into
 `main` for continued development after green CI — merge commit
