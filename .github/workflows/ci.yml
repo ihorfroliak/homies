@@ -253,3 +253,44 @@ jobs:
       - name: Validate AsyncAPI catalog
         working-directory: ops/contracts
         run: npm run validate:asyncapi
+
+  # FE-001: the public web app (frontend/web). Exactly pinned toolchain
+  # (package-lock.json, npm ci); the typed API client is generated from
+  # docs/api/openapi.json and must not drift from it.
+  web:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    defaults:
+      run:
+        working-directory: frontend/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/web/package-lock.json
+      - name: Install (pinned)
+        run: npm ci --no-audit --no-fund
+      - name: API client matches the OpenAPI contract
+        run: npm run check:api
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: E2E (foundation, accessibility, budget)
+        run: npm run e2e
+      - name: Keep E2E traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-e2e-traces
+          path: frontend/web/test-results
+          retention-days: 7

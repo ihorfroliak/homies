@@ -1,0 +1,6 @@
+.footer {
+  margin-top: var(--sp-8);
+  padding: var(--sp-5) 0;
+  background: var(--c-surface);
+  border-top: var(--bw, 1px) solid var(--c-line);
+}
