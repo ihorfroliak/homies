@@ -6,6 +6,7 @@ import { ApiError, errorFromResponse } from "@/api/errors";
 import type { components } from "@/api/schema";
 import { backendClient, type CallContext } from "@/server/backend";
 import { currentContext } from "@/server/bff";
+import { TtlLru } from "@/server/lru";
 
 import { FILTER_KEYS, MAX_OFFSET, PAGE_SIZE, apiQuery, changed, type FilterKey, type PlaceIds, type SearchState } from "./codec";
 
@@ -39,9 +40,12 @@ async function unwrapServer<T>(call: Promise<Result<T>>): Promise<T> {
   throw errorFromResponse("GET", result.response.status, result.response.headers, result.error);
 }
 
-// Reference data changes rarely; one lookup per slug per 10 minutes per process.
+// Reference data changes rarely. One resolution per city slug per 10 minutes
+// per process, in a bounded LRU (SEC-002): the city's areas are cached with
+// it, so an unknown area slug costs no backend call, and random slugs can
+// neither grow memory without limit nor multiply backend calls.
 const PLACE_TTL_MS = 10 * 60 * 1000;
-const placeCache = new Map<string, { at: number; value: ResolvedPlace | null }>();
+const cities = new TtlLru<{ locality: Locality; areas: GeoArea[] } | null>(2_000, PLACE_TTL_MS);
 
 export interface ResolvedPlace extends PlaceIds {
   locality?: Locality;
@@ -49,25 +53,29 @@ export interface ResolvedPlace extends PlaceIds {
   areas: GeoArea[];
 }
 
-/** City/area slugs → ids. `null` = a slug that names nothing (the page answers 404). */
-export async function resolvePlace(city: string | undefined, area: string | undefined): Promise<ResolvedPlace | null> {
-  if (!city) return { areas: [] };
-  const key = `${city}/${area ?? ""}`;
-  const hit = placeCache.get(key);
-  if (hit && Date.now() - hit.at < PLACE_TTL_MS) return hit.value;
+async function city(slug: string): Promise<{ locality: Locality; areas: GeoArea[] } | null> {
+  const hit = cities.get(slug);
+  if (hit) return hit.value;
   const api = backendClient(await ctx());
-  const matches = await unwrapServer(api.GET("/v1/geo/localities/by-slug", { params: { query: { country: "PL", slug: city } } }));
+  const matches = await unwrapServer(api.GET("/v1/geo/localities/by-slug", { params: { query: { country: "PL", slug } } }));
   // Slugs are not unique; the backend lists cities first. Only a city is a
   // result page; a village slug without a city is not resolved silently.
   const locality = matches.find((l) => l.kind === "CITY");
-  let value: ResolvedPlace | null = null;
-  if (locality) {
-    const areas = await unwrapServer(api.GET("/v1/geo/localities/{locality_id}/areas", { params: { path: { locality_id: locality.id } } }));
-    const found = area ? areas.find((a) => a.slug === area) : undefined;
-    value = area && !found ? null : { localityId: locality.id, areaId: found?.id, locality, area: found, areas };
-  }
-  placeCache.set(key, { at: Date.now(), value });
+  const value = locality
+    ? { locality, areas: await unwrapServer(api.GET("/v1/geo/localities/{locality_id}/areas", { params: { path: { locality_id: locality.id } } })) }
+    : null;
+  cities.set(slug, value);
   return value;
+}
+
+/** City/area slugs → ids. `null` = a slug that names nothing (the page answers 404). */
+export async function resolvePlace(citySlug: string | undefined, area: string | undefined): Promise<ResolvedPlace | null> {
+  if (!citySlug) return { areas: [] };
+  const found = await city(citySlug);
+  if (!found) return null;
+  const match = area ? found.areas.find((a) => a.slug === area) : undefined;
+  if (area && !match) return null;
+  return { localityId: found.locality.id, areaId: match?.id, locality: found.locality, area: match, areas: found.areas };
 }
 
 export async function searchPage(state: SearchState, place: PlaceIds): Promise<ClassifiedPage> {

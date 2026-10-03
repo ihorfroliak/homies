@@ -21,9 +21,11 @@ export function contentSecurityPolicy({ nonce, development, httpsOnly, mapOrigin
     "default-src": "'self'",
     // 'unsafe-eval' only in development: React's dev tooling needs it.
     "script-src": `'self' 'nonce-${nonce}' 'strict-dynamic'${development ? " 'unsafe-eval'" : ""}`,
-    // Next.js injects style tags for CSS Modules in development; production
-    // styles are files. Inline style attributes stay allowed (React `style`).
-    "style-src": `'self' 'unsafe-inline'`,
+    // Next.js injects <style> tags in development only; production styles are
+    // files (or carry the nonce). Inline style ATTRIBUTES stay allowed — React
+    // `style` props and maplibre markers — but no injected <style> element.
+    "style-src": development ? `'self' 'unsafe-inline'` : `'self' 'nonce-${nonce}'`,
+    "style-src-attr": `'unsafe-inline'`,
     "img-src": `'self' data: blob:${map ? ` ${map}` : ""}`,
     "font-src": "'self'",
     "connect-src": `'self'${map ? ` ${map}` : ""}${development ? " ws:" : ""}`,

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { errorMessage } from "@/api/messages";
-import type { ApiError } from "@/api/errors";
+import { ApiError } from "@/api/errors";
 import { SearchTracker } from "@/analytics/trackers";
 import { ListingCard } from "@/components/listing/listing-card";
 import { fmt, plural, t } from "@/i18n";
@@ -30,7 +30,14 @@ async function load(props: Props) {
   const segments = (await props.params).miejsce ?? [];
   const parsed = parseSearch(segments, toParams(await props.searchParams));
   if (parsed.badPath) notFound();
-  const place = await resolvePlace(parsed.state.city, parsed.state.area);
+  let place: ResolvedPlace | null;
+  try {
+    place = await resolvePlace(parsed.state.city, parsed.state.area);
+  } catch (e) {
+    // A slug the backend refuses (422) names no place: 404, not the error page.
+    if (e instanceof ApiError && (e.kind === "validation" || e.kind === "not_found")) notFound();
+    throw e;
+  }
   if (place === null) notFound();
   return { ...parsed, place };
 }

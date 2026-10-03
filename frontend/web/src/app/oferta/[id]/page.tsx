@@ -98,7 +98,7 @@ export default async function ListingPage({ params }: Props) {
               {f?.area_m2 ? <Fact term={t.detail.area} value={`${f.area_m2} m²`} /> : null}
               {l.space_type === "ROOM" && f?.space_area_m2 ? <Fact term={t.detail.roomArea} value={`${Math.round(f.space_area_m2)} m²`} /> : null}
               {f && f.floor !== null && f.floor !== undefined ? (
-                <Fact term={t.detail.floor} value={f.floors_total ? fmt(t.detail.floorOf, { floor: f.floor === 0 ? t.detail.ground : f.floor, total: f.floors_total }) : f.floor === 0 ? t.detail.ground : String(f.floor)} />
+                <Fact term={t.detail.floor} value={f.floor === 0 ? t.detail.ground : String(f.floor)} />
               ) : null}
               {f ? <Fact term={t.detail.elevator} value={f.has_elevator ? t.detail.yes : t.detail.no} /> : null}
               {f ? <Fact term={t.detail.furnished} value={t.filters.furnishedValues[f.furnished as "full" | "partial" | "none"] ?? f.furnished} /> : null}

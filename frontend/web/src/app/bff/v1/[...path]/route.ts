@@ -1,4 +1,5 @@
 import { backendFetch } from "@/server/backend";
+import { readCapped } from "@/server/body";
 import { currentContext, withSession } from "@/server/bff";
 import { matchRoute, safeApiPath } from "@/server/bff-routes";
 import { checkCsrf } from "@/server/csrf";
@@ -25,10 +26,10 @@ async function handle(request: Request, { params }: Params): Promise<Response> {
   const csrf = checkCsrf(request.method, request.headers, serverEnv().publicOrigin);
   if (!csrf.ok) return Response.json({ detail: "Cross-site request refused" }, { status: 403 });
 
-  let body: ArrayBuffer | null = null;
+  let body: Uint8Array<ArrayBuffer> | null = null;
   if (request.method !== "GET" && request.method !== "HEAD") {
-    body = await request.arrayBuffer();
-    if (body.byteLength > MAX_BODY_BYTES) return Response.json({ detail: "Request too large" }, { status: 413 });
+    body = await readCapped(request, MAX_BODY_BYTES);
+    if (body === null) return Response.json({ detail: "Request too large" }, { status: 413 });
   }
 
   const search = new URL(request.url).search;

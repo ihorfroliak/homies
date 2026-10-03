@@ -53,7 +53,8 @@ const FURNISHED_SLUG = Object.fromEntries(Object.entries(FURNISHED).map(([k, v])
 const PARKING: Record<string, Parking> = { ulica: "street", miejsce: "spot", garaz: "garage" };
 const PARKING_SLUG = Object.fromEntries(Object.entries(PARKING).map(([k, v]) => [v, k])) as Record<Parking, string>;
 
-const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+// Same shape and limit as the backend (GET /v1/geo/localities/by-slug: 120).
+const SLUG = /^(?=.{1,120}$)[a-z0-9]+(-[a-z0-9]+)*$/;
 const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /** Whole złoty, 1 … 10 000 000 (the backend caps money far above any rent). */
@@ -97,7 +98,16 @@ export function parseSearch(segments: readonly string[], params: URLSearchParams
   const state: SearchState = { sort: "newest", page: 1, view: "list" };
   const dropped: string[] = [];
   let badPath = segments.length > 2;
-  const [city, area] = segments.map((s) => decodeURIComponent(s).toLowerCase());
+  // A malformed escape ("/wynajem/%C0") is a bad path (404), never an exception.
+  const decoded = segments.map((s) => {
+    try {
+      return decodeURIComponent(s).toLowerCase();
+    } catch {
+      badPath = true;
+      return "";
+    }
+  });
+  const [city, area] = decoded;
   if (city !== undefined) {
     if (SLUG.test(city)) state.city = city;
     else badPath = true;

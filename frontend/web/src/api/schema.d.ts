@@ -3311,12 +3311,17 @@ export interface components {
          * PublicFacts
          * @description What the flat is, as the public may know it (FE-002, gap G1).
          *
-         *     Search already filters and sorts on these (min_rooms, min_area_m2,
-         *     size_desc …), so they are public by design; the listing just did not show
-         *     them. Built field by field; nothing about where it is (that stays in
-         *     city/district/public_location) and nothing about who owns it. `rooms` and
-         *     `area_m2` describe the whole property; for a ROOM listing `space_area_m2`
-         *     is the room's own size when the owner gave it.
+         *     Search already filters and sorts on most of these (min_rooms, min_area_m2,
+         *     furnished, parking, pets_allowed, has_elevator, size_desc …); the listing
+         *     just did not show them. Built field by field; nothing about where it is
+         *     (that stays in city/district/public_location) and nothing about who owns
+         *     it. `rooms` and `area_m2` describe the whole property; for a ROOM listing
+         *     `space_area_m2` is the room's own size when the owner gave it.
+         *
+         *     `floor` is shown because seekers need it; the building's height
+         *     (`floors_total`) is deliberately NOT public: with the ~550 m public grid
+         *     cell and the subtype it can single out a building (PROGRAM-001 security
+         *     review). Whether either may be public is CANONICAL DECISION REQUIRED (D-101).
          */
         PublicFacts: {
             /** Area M2 */
@@ -3325,8 +3330,6 @@ export interface components {
             category?: string | null;
             /** Floor */
             floor?: number | null;
-            /** Floors Total */
-            floors_total?: number | null;
             /** Furnished */
             furnished: string;
             /** Has Elevator */

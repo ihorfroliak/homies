@@ -8,3 +8,4 @@ test-results/
 .api-check.d.ts
 .npm-install.log
 .web.sh
+public/vendor/

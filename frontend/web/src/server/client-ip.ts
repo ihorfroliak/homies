@@ -21,7 +21,11 @@ const IPV6 = /^[0-9a-fA-F:.]{2,45}$/;
 
 function sane(value: string | undefined): string | undefined {
   if (!value) return undefined;
-  const v = value.trim();
+  let v = value.trim();
+  // Ingresses may append "ip:port" or "[v6]:port": keep the address only.
+  const bracketed = /^\[([0-9a-fA-F:.]+)\](?::\d{1,5})?$/.exec(v);
+  if (bracketed) v = bracketed[1] ?? "";
+  else if (/^\d{1,3}(\.\d{1,3}){3}:\d{1,5}$/.test(v)) v = v.slice(0, v.lastIndexOf(":"));
   if (IPV4.test(v) && v.split(".").every((o) => Number(o) <= 255)) return v;
   if (v.includes(":") && IPV6.test(v)) return v;
   return undefined;

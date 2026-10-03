@@ -56,6 +56,9 @@ describe("clientIp", () => {
     expect(clientIp("not-an-ip", undefined, 1)).toBeUndefined();
     expect(clientIp("999.1.1.1", undefined, 1)).toBeUndefined();
     expect(clientIp("2001:db8::1", undefined, 1)).toBe("2001:db8::1");
+    expect(clientIp("203.0.113.7:51234", undefined, 1)).toBe("203.0.113.7");
+    expect(clientIp("[2001:db8::1]:443", undefined, 1)).toBe("2001:db8::1");
+    expect(clientIp("[2001:db8::1]", undefined, 1)).toBe("2001:db8::1");
   });
 });
 
@@ -126,6 +129,28 @@ describe("session cookies", () => {
     clearSession(j);
     expect(j.store.get(ACCESS_COOKIE)?.options.maxAge).toBe(0);
     expect(j.store.get(REFRESH_COOKIE)?.value).toBe("");
+  });
+
+  it("remembers a rotation so a caller whose response was lost still gets the new pair (SEC-001)", async () => {
+    resetRefreshFlights();
+    let clock = 0;
+    const call = vi.fn(async (t: string) => ({ ok: true as const, pair: { access_token: "a-" + t, refresh_token: "next-" + t, expires_in: 1800 } }));
+    const first = await refreshOnce("old", call, () => clock);
+    clock = 60_000; // the browser aborted; a minute later the old cookie comes back
+    const again = await refreshOnce("old", call, () => clock);
+    expect(call).toHaveBeenCalledTimes(1);
+    expect(again).toEqual(first);
+    clock = 121_000; // past the window: the backend decides (and will refuse the revoked token)
+    await refreshOnce("old", call, () => clock);
+    expect(call).toHaveBeenCalledTimes(2);
+  });
+
+  it("never remembers an unavailable refresh", async () => {
+    resetRefreshFlights();
+    const call = vi.fn(async () => ({ ok: false as const, reason: "unavailable" as const }));
+    await refreshOnce("t", call);
+    await refreshOnce("t", call);
+    expect(call).toHaveBeenCalledTimes(2);
   });
 
   it("single-flights concurrent refreshes of one token (backend revokes on use)", async () => {

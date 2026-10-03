@@ -56,16 +56,48 @@ export function clearSession(cookies: CookieWriter): void {
 
 export type RefreshResult = { ok: true; pair: TokenPair } | { ok: false; reason: "rejected" | "unavailable" };
 
-const inFlight = new Map<string, Promise<RefreshResult>>();
+/**
+ * Rotation memory (SEC-001). The backend revokes the old refresh token the
+ * moment it rotates it. If the browser aborts the request that triggered the
+ * rotation (a filter count, a closed map card, a navigation), the Set-Cookie
+ * with the new pair never arrives and the next call would present a revoked
+ * token — a silent logout. So a successful rotation is remembered, keyed by
+ * the OLD token, for ROTATION_TTL_MS: a later caller presenting the old token
+ * gets the same new pair (and its cookies) instead of a backend refresh.
+ *
+ * Bounded (MAX_ROTATIONS, oldest evicted first). An `unavailable` outcome is
+ * never remembered (the next caller retries). Accepted trade-off: whoever
+ * holds the old token within the window obtains the new pair — the same power
+ * the old token gave them a moment earlier; recorded in FE-001 §3.
+ */
+export const ROTATION_TTL_MS = 120_000;
+export const MAX_ROTATIONS = 10_000;
 
-export function refreshOnce(refreshToken: string, call: (token: string) => Promise<RefreshResult>): Promise<RefreshResult> {
+const inFlight = new Map<string, Promise<RefreshResult>>();
+const rotated = new Map<string, { at: number; result: RefreshResult }>();
+
+function remember(token: string, result: RefreshResult, now: number): void {
+  rotated.set(token, { at: now, result });
+  while (rotated.size > MAX_ROTATIONS) {
+    const oldest = rotated.keys().next().value;
+    if (oldest === undefined) break;
+    rotated.delete(oldest);
+  }
+}
+
+export function refreshOnce(refreshToken: string, call: (token: string) => Promise<RefreshResult>, now: () => number = Date.now): Promise<RefreshResult> {
+  const known = rotated.get(refreshToken);
+  if (known && now() - known.at < ROTATION_TTL_MS) return Promise.resolve(known.result);
+  if (known) rotated.delete(refreshToken);
   const existing = inFlight.get(refreshToken);
   if (existing) return existing;
-  const pending = call(refreshToken).finally(() => {
-    // Keep the settled result briefly so a request that read the old cookie a
-    // moment later still gets the rotated pair instead of a revoked-token 401.
-    setTimeout(() => inFlight.delete(refreshToken), 10_000).unref?.();
-  });
+  const pending = call(refreshToken)
+    .then((result) => {
+      // A rejection is final too (the token is dead): remembering it spares the backend.
+      if (result.ok || result.reason === "rejected") remember(refreshToken, result, now());
+      return result;
+    })
+    .finally(() => inFlight.delete(refreshToken));
   inFlight.set(refreshToken, pending);
   return pending;
 }
@@ -73,4 +105,5 @@ export function refreshOnce(refreshToken: string, call: (token: string) => Promi
 /** Test hook. */
 export function resetRefreshFlights(): void {
   inFlight.clear();
+  rotated.clear();
 }
