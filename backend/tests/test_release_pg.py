@@ -198,19 +198,38 @@ def _hold_lock(url):
     return engine, conn
 
 
-def test_a_second_runner_waits_at_most_the_lock_timeout(scratch_url):  # noqa: F811
+def _time_lock_wait(monkeypatch) -> list[float]:
+    """Times only `_acquire_lock`, the bounded wait itself. The runner's
+    pre-lock work (engine, role check, release graph) is not part of the
+    budget, and on a slow host it alone pushed an end-to-end bound over its
+    limit (PROGRAM-001 P0: the bound measured setup, not the wait)."""
+    waits: list[float] = []
+    real = migrate._acquire_lock
+
+    def timed(conn):
+        started = time.monotonic()
+        try:
+            real(conn)
+        finally:
+            waits.append(time.monotonic() - started)
+
+    monkeypatch.setattr(migrate, "_acquire_lock", timed)
+    return waits
+
+
+def test_a_second_runner_waits_at_most_the_lock_timeout(scratch_url, monkeypatch):  # noqa: F811
     migrate.upgrade(scratch_url)
     engine, holder = _hold_lock(scratch_url)
+    waits = _time_lock_wait(monkeypatch)
     try:
-        started = time.monotonic()
         with pytest.raises(migrate.MigrationRefused) as caught:
             migrate.upgrade(scratch_url)
-        waited = time.monotonic() - started
     finally:
         holder.close()
         engine.dispose()
     assert caught.value.code == "MIGRATION_LOCK_TIMEOUT"
-    assert 9.5 <= waited < 12, waited
+    assert len(waits) == 1
+    assert 9.5 <= waits[0] < 11, waits
 
 
 def test_the_lock_budget_is_enforced_by_the_runner_not_by_lock_timeout(scratch_url, monkeypatch):  # noqa: F811
@@ -220,16 +239,16 @@ def test_the_lock_budget_is_enforced_by_the_runner_not_by_lock_timeout(scratch_u
     migrate.upgrade(scratch_url)
     monkeypatch.setattr(migrate, "LOCK_WAIT_SECONDS", 1.0)
     engine, holder = _hold_lock(scratch_url)
+    waits = _time_lock_wait(monkeypatch)
     try:
-        started = time.monotonic()
         with pytest.raises(migrate.MigrationRefused) as caught:
             migrate.upgrade(scratch_url)
-        waited = time.monotonic() - started
     finally:
         holder.close()
         engine.dispose()
     assert caught.value.code == "MIGRATION_LOCK_TIMEOUT"
-    assert 0.9 <= waited < 4, waited
+    assert len(waits) == 1
+    assert 0.9 <= waits[0] < 2, waits
 
 
 def test_the_migrating_session_holds_the_lock_for_the_whole_migration(scratch_url, monkeypatch):  # noqa: F811

@@ -427,8 +427,13 @@ def test_health_and_metrics_answer_while_a_frozen_database_saturates_the_process
                       for path in ("/healthz", "/metrics", "/readyz")}
             print("\n[PR-003] under saturation: " + ", ".join(
                 f"{p} {s} in {d:.2f} s" for p, (s, _, d) in probes.items()))
-            assert probes["/healthz"][0] == 200 and probes["/healthz"][2] < 1.0
-            assert probes["/metrics"][0] == 200 and probes["/metrics"][2] < 1.0
+            # That the probes never take a thread-pool token is pinned
+            # structurally (tests/test_db_deadlines.py: their endpoints are
+            # coroutines). Here they must answer within the client deadline
+            # under saturation; a 1 s bound failed on a loaded host where 60
+            # client threads compete for the CPU (1.27 s seen; PROGRAM-001 P0).
+            assert probes["/healthz"][0] == 200 and probes["/healthz"][2] < DEADLINE_S
+            assert probes["/metrics"][0] == 200 and probes["/metrics"][2] < DEADLINE_S
             assert probes["/readyz"][0] == 503
             assert probes["/readyz"][2] < health.PROBE_DEADLINE_S + 1.0
 
