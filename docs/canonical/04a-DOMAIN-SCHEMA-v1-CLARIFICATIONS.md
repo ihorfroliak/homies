@@ -313,3 +313,36 @@ does not replace them. Contract: `docs/tasks/TASK-015-reports-moderation-phase-a
 * **Out of 1A:** account status and suspension (§22's limitation stands; the
   `ACCOUNT_*` actions are not used), user block, property-level holds, incidents
   (§66, safety foundation), evidence uploads.
+
+## 24. Seeker surfaces: public facts, totals, address disclosure, re-contact (PROGRAM-001 adjudication, founder + GPT-5.6 Sol, 2026-10-04)
+
+Recorded as D-102. Refines §16 (public location), §21 (honest money) and §23
+(moderation); it replaces none of them.
+
+* **Public floor facts (D-101).** A public Listing may show the property's
+  `floor`. It does **not** show the building's total floors (`floors_total`)
+  for now: together with the privacy-reduced public point (§16) and the
+  subtype it raises re-identification risk. The owner-facing record keeps it.
+* **Parking in the monthly total (G4).** Parking is part of the
+  authoritative monthly total **only** when it is a mandatory, non-separable
+  recurring payment required for that Listing; optional parking is shown
+  separately and never added. Totals are never adjusted heuristically: where
+  the stored price does not say whether a parking charge is mandatory, it is a
+  modelling gap to close (owner input must state it), not a guess. Today the
+  only parking input is a fee the owner states, stored as a mandatory monthly
+  component — the gap is recorded in the roadmap, not resolved by changing
+  totals.
+* **Exact address and meeting details (G9).** The exact address, or meeting
+  instructions (the provider may choose a meeting point instead of the flat's
+  address), may be disclosed **only** after a Viewing reaches `CONFIRMED`,
+  **only** to the parties of that Viewing, and **only** through an explicitly
+  privacy-safe participant surface. They never enter the public Listing DTO,
+  public SEO, analytics events, attribution or generic logs. Until a
+  participant-only delivery model exists, nothing is disclosed (FE-003/API
+  work).
+* **Re-contact after a restriction (F6, extends G-14).** A requester whose
+  conversation Homies restricted (`FEATURE_RESTRICTED`) can neither open a new
+  conversation **nor request a Viewing** on that Listing for the same public
+  generation (`listing_public_generation_at_decision`); a later legitimate
+  publication generation may engage again under the normal rules. Both
+  refusals carry the stable code `RECONTACT_BLOCKED`.

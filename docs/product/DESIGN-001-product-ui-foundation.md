@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **FOUNDATION (builder) — PROGRAM-001**, on the program branch, not on `main` |
+| Status | **FOUNDATION — on `main`** (PROGRAM-001, `c32ac63`). Visual direction: **1C Dzielnica** selected (D-103); **DESIGN-001C Product Convergence IN PROGRESS** — see §0 |
 | Authority | subordinate to the canon ([07](../canonical/07-PRODUCT-GROWTH-DOCTRINE.md), [02](../canonical/02-BUSINESS-LOGIC.md), [03 §3](../canonical/03-SYSTEM-ARCHITECTURE-v1.1.md)); founder decisions D-98 (G-1, G-3, G-5, G-11, G-13) |
 | Family | this document · [DESIGN-SYSTEM-v1](DESIGN-SYSTEM-v1.md) · [UI-STATE-MAP](UI-STATE-MAP.md) |
 | Supersedes | `docs/design/PRODUCT_UX.md` (booking-era journeys) and the booking-specific parts of `docs/design/DESIGN_SYSTEM.md` |
@@ -11,6 +11,24 @@
 Grounded in the real API (`docs/api/openapi.json`). Where the UI needs
 something the API lacks, it is listed under **API gaps** — never invented in
 the client.
+
+## 0. Design sync (2026-10-04, D-103)
+
+| | |
+|---|---|
+| Selected direction | DESIGN-001B → **1C Dzielnica** (founder) |
+| Current design task | **DESIGN-001C — Product Convergence: IN PROGRESS** (Claude Design, in parallel) |
+| Authoritative next input | the DESIGN-001C handoff, once reviewed by GPT-5.6 Sol and approved by the founder |
+
+Known invariants: expressive district/area colour is the selected identity,
+and **area colour never means quality, trust or status**; Seeker v1
+validated behaviour is preserved; the FE-002 architecture is the
+implementation foundation; mobile web exists now; native is one
+Expo/React Native app for renter, owner and agent capabilities and Admin
+stays a separate secure web app (03 §2). Design System v1 below is what
+production uses today. **No 1C token, layout or prototype value enters
+production code before the approved DESIGN-001C handoff** — this document is
+not a completed high-fidelity design.
 
 ## 1. Brief and principles (acceptance criteria)
 

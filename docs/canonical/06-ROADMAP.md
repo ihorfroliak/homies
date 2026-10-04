@@ -43,15 +43,30 @@ Engineering status per area is in
     development; production NOT READY).
 11. **PR-002, PR-003** — release/migration compatibility and database client
     deadlines: builder verified, on `main`, milestone audit deferred (D-88).
-12. **TASK-015** — reports & moderation basics: Phase A contract, Slices 1,
-    2+3, 5 and 4a on `main` (milestone audit deferred); Slice 4b and the
-    closure (restore-drill coverage; S6 absorbed) are **PROGRAM-001
-    candidates, not on `main`**. Complete for Phase 1A once merged.
-13. **PROGRAM-001** (candidate, not on `main`; external review then founder
-    approval): GROWTH-001 measurement foundation, DESIGN-001 product/UI
-    foundation, FE-001 web foundation, FE-002 seeker slice (search → results
-    → map/list → listing detail). FE-003 (save → conversation → viewing) is
-    **not authorised**.
+12. **TASK-015** — reports & moderation basics: **complete for Phase 1A**
+    on `main` (Slices 1, 2+3, 5, 4a, 4b and the closure; S6 absorbed;
+    milestone audit deferred, D-88). F6 (viewings covered by G-14) added by
+    D-102.
+13. **PROGRAM-001** — reviewed by GPT-5.6 Sol and founder-approved; merged to
+    `main` at `c32ac63` (2026-10-04): GROWTH-001, DESIGN-001, FE-001, FE-002
+    (search → results → map/list → listing detail). Adjudications D-102.
+14. **DESIGN-001C** — 1C Dzielnica product convergence (Claude Design):
+    **in progress** (D-103). Its approved handoff is the input for the final
+    FE-003 contract and the next visual implementation pass.
+15. **FE-003** — save → conversation → viewing: readiness inventory and a
+    contract **draft** exist ([draft](../tasks/FE-003-save-conversation-viewing-DRAFT.md));
+    **implementation not authorised** until the contract is finalised after
+    the DESIGN-001C handoff and approved.
+
+**Beta prerequisites (before FE-003 matures or any external beta):**
+BG-1 backend logout/refresh revocation; BG-5 refresh reuse/grace semantics
+(the FE's 120 s rotation memory is a mitigation, not the design);
+authority-correct supply routes (remove the legacy `host` role gate where
+PropertyAuthority must decide — agency supply, concierge/import, Property OS);
+G9 participant-only address/meeting delivery; G4 mandatory/optional parking
+input; an explicit immutable viewing cancellation source (REQUESTER /
+PROVIDER / HOMIES) before disputes or UI depend on it; first-party analytics
+ingestion, consent evidence and retention (legal-gated, G-12).
 
 Carried-forward maintenance (not a task on its own, done when the files are
 next touched): E01/E02/E03 PostgreSQL regression tests and mutation-review

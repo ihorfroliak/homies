@@ -74,6 +74,8 @@ from app.modules.properties.models import ClassifiedOffer
 from app.modules.trust import effects, hold
 
 LISTING_HELD = "LISTING_HELD"
+# The same stable code as a refused conversation start (engagement/router.py).
+RECONTACT_BLOCKED = "RECONTACT_BLOCKED"
 
 router = APIRouter(tags=["viewings"])
 
@@ -419,6 +421,16 @@ def request_viewing(listing_id: str, body: ViewingRequest,
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
     if _is_provider(db, user, offer):
         raise HTTPException(status.HTTP_409_CONFLICT, "This is your own listing")
+    # F6 (founder/GPT, 2026-10-04; extends G-14): a requester whose
+    # conversation Homies restricted cannot route around it by requesting a
+    # viewing for the same publication generation; a republish lifts it, as for
+    # conversations. Read after the listing lock: a restriction committed
+    # before this point is seen; one committing later orders after this
+    # request, exactly like a viewing that already existed at the decision.
+    if hold.recontact_blocked(db, offer.id, user.id, offer.public_generation):
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            f"{RECONTACT_BLOCKED}: Homies closed your conversation about this "
+                            "listing; a viewing is not possible for this publication")
     # Locked: capacity is read and then relied on, and two requests for the
     # last place must not both read it free.
     settings = _settings(db, listing_id, lock=True)

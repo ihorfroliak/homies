@@ -92,7 +92,7 @@ earlier than 1 µs after the latest message, read under the conversation lock.
 | F3 | FEATURE_RESTRICTED on an already closed conversation recorded the listing's *current* generation for G-14 | P3 | only an ACTIVE conversation can be restricted (422) |
 | F4 | lead assign/stage incremented the version unlocked (could overwrite a closure's version bump) | P3 | the conversation row is locked first |
 | F5 | (hypothesis) FK trigger order after a restore could invert report locks | P3 | covered by F2's explicit listing lock in report filing |
-| F6 | a restricted requester may still request a viewing on the same publication (G-14 covers conversations) | — | **PROPOSED FOUNDER DECISION** — not changed |
+| F6 | a restricted requester may still request a viewing on the same publication (G-14 covers conversations) | — | **DECIDED (D-102) and enforced** — `request_viewing` refuses with `RECONTACT_BLOCKED` for the same generation (PROGRAM-001 integration) |
 
 ## Invariants and their proof (PostgreSQL, `tests/test_engagement_safety_pg.py`)
 

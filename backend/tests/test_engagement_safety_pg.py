@@ -778,3 +778,61 @@ def test_e_r12_a_message_decision_and_close_engagement_do_not_deadlock(
             return applied
     result = _race_decision_against_close_engagement(eng, s, monkeypatch, "MESSAGE", remove)
     assert result["close"].closed_conversation_ids == (s["conv"],)
+
+
+# --- F6: a G-14 restriction also covers viewings --------------------------------
+
+def _request_viewing(eng, s, hour):
+    """Request as the tenant in its own transaction; the id, or the exception."""
+    with _session(eng) as c:
+        v = viewings.request_viewing(s["offer"], viewings.ViewingRequest(
+            starts_at=_slot(s["day"], hour)), user=_user(c, s["tenant"]), db=c)
+        return v.id
+
+
+def _viewings_of(eng, offer) -> int:
+    return _scalar(eng, "SELECT count(*) FROM viewings WHERE listing_id = :o", o=offer)
+
+
+def test_f6a_restriction_committed_first_the_viewing_is_refused(pg_client, pg_migrated_engine):
+    eng = pg_migrated_engine
+    s = _setup(pg_client)
+    mod = _account(eng, role="admin")
+    with _session(eng) as a:
+        _restrict(a, s["conv"], mod)
+        a.commit()
+    result: dict = {}
+    _run(result, "request", lambda: _request_viewing(eng, s, 10)).join(15)
+    assert getattr(result["request"], "status_code", None) == 409
+    assert result["request"].detail.startswith("RECONTACT_BLOCKED")
+    assert _viewings_of(eng, s["offer"]) == 0
+
+
+def test_f6b_a_restriction_in_flight_neither_blocks_the_request_nor_is_bypassed_after(
+        pg_client, pg_migrated_engine):
+    """The request takes the listing FOR SHARE, the decision FOR KEY SHARE:
+    they do not wait for each other. A request that reads before the decision
+    commits orders before it (as a viewing that already existed would); once
+    the decision is committed, the same requester is refused."""
+    eng = pg_migrated_engine
+    s = _setup(pg_client)
+    mod = _account(eng, role="admin")
+    a = _session(eng)
+    result: dict = {}
+    try:
+        _restrict(a, s["conv"], mod)  # uncommitted: conversation FOR UPDATE, listing KEY SHARE
+        t = _run(result, "first", lambda: _request_viewing(eng, s, 10))
+        t.join(15)
+        assert not t.is_alive(), "the viewing request waited on the decision"
+        assert isinstance(result["first"], str), result["first"]
+        a.commit()
+    finally:
+        a.close()
+    assert _status(eng, "viewings", result["first"]) == "REQUESTED"
+    # The requester calls it off and tries again: now the restriction stands.
+    with _session(eng) as c:
+        viewings.cancel(result["first"], user=_user(c, s["tenant"]), db=c)
+    _run(result, "again", lambda: _request_viewing(eng, s, 11)).join(15)
+    assert getattr(result["again"], "status_code", None) == 409
+    assert result["again"].detail.startswith("RECONTACT_BLOCKED")
+    assert _viewings_of(eng, s["offer"]) == 1
