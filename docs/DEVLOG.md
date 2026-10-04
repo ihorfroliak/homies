@@ -1045,3 +1045,22 @@ fast path повтору (BP-8). **BP-9:** канонічне правило —
 
 **Статус:** `FE-003 CONTRACT APPROVED — IMPLEMENTATION NOT AUTHORIZED`;
 `FE-003 IMPLEMENTATION AUTHORIZED: NO`. Гілка `claude/FE-003-contract`, не в `main`.
+
+## 2026-10-05 — P-0: DESIGN-001C implementation handoff (чернетка на рев'ю)
+
+Створено `docs/design/DESIGN-001C-HANDOFF.md` з `main` `c87616a`: лише правила,
+відновлювані з канону, контракту FE-003, DESIGN-001, DESIGN-SYSTEM-v1,
+UI-STATE-MAP і FE-002 (сирий `.dc.html` 1C недоступний — нічого з нього не
+взято). 30 розділів + IMPLEMENTATION BINDING CHECKLIST; 8 невирішених
+візуальних питань (U-1…U-8) і 7 розбіжностей між документами (C-1…C-7), серед
+них: «Odwołane przez Homies» у UI-STATE-MAP проти контракту; IA Panel проти
+ContextSwitch; фільтри — `<details>`, не діалог.
+
+**Статус:** P-0 READY FOR FOUNDER/GPT REVIEW; `FE-003 IMPLEMENTATION AUTHORIZED: NO`.
+
+**P-0 рев'ю (2026-10-05):** *PASS WITH BOUNDED OWNER DECISIONS* → `P-0 APPROVED —
+IMPLEMENTATION BINDING READY`. Вирішено: C-1 (лише «Oglądanie odwołane»), C-2/U-8
+(IA Panel: `/panel/leady`, `/panel/ogladania`; ContextSwitch = Szukam ↔ Panel),
+C-3/U-3 (повний CostBreakdown угорі на мобільному), U-2 (dock ховає нижню
+навігацію на деталі), U-4 (слоти ≥ 1024 — модальний діалог, підтвердження —
+наступний крок), U-6, C-4…C-7. Невирішені й неблокуючі: U-1, U-5, U-7 (FE-VIS-001).
