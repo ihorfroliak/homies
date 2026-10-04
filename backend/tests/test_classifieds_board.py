@@ -221,6 +221,7 @@ def test_a_user_without_a_verified_phone_is_refused(client):
 
     resp = client.post(f"/v1/classifieds/{offer_id}/contact", headers=auth(seeker))
     assert resp.status_code == 403, resp.text
+    assert resp.json()["detail"].startswith("PHONE_NOT_VERIFIED: ")
     assert PHONE not in resp.text
 
 
@@ -286,6 +287,7 @@ def test_message_only_owners_never_disclose_a_number(client):
     resp = client.post(f"/v1/classifieds/{offer_id}/contact", headers=auth(seeker))
     assert resp.status_code == 409
     assert "message" in resp.text.lower()
+    assert resp.json()["detail"].startswith("MESSAGES_ONLY: ")
 
 
 def test_phone_mode_requires_a_number(client):

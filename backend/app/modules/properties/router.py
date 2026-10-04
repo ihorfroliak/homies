@@ -110,6 +110,10 @@ router = APIRouter(tags=["properties"])
 # exact detail. The project has no machine-readable error-code convention yet
 # (IMPLEMENTATION-CONVERGENCE debt), so the stable code leads the text.
 HELD_BY_MODERATION = "HELD_BY_MODERATION: this listing is on hold by Homies moderation"
+# Contact-reveal refusals (FE-003 BP-1), same "CODE: " convention.
+PHONE_NOT_VERIFIED = "PHONE_NOT_VERIFIED"
+MESSAGES_ONLY = "MESSAGES_ONLY"
+REVEAL_QUOTA = "REVEAL_QUOTA"
 
 
 _DERIVED_FIELDS = {"monthly_total_estimate", "move_in_total", "public_location", "place", "facts",
@@ -1009,7 +1013,18 @@ def my_reveal_quota(user=Depends(get_current_user), db: Session = Depends(get_db
     )
 
 
-@router.post("/classifieds/{offer_id}/contact", response_model=ContactRevealOut)
+@router.post(
+    "/classifieds/{offer_id}/contact", response_model=ContactRevealOut,
+    responses={
+        403: {"description": "`PHONE_NOT_VERIFIED`: the caller has no verified phone."},
+        404: {"description": "No public listing with this id."},
+        409: {"description": "`MESSAGES_ONLY`: the owner accepts messages only."},
+        429: {"description": "`REVEAL_QUOTA`: the daily limit of owner contacts is reached, "
+                             "or the rate limit (no code). Both send `Retry-After`.",
+              "headers": {"Retry-After": {"description": "Seconds until a retry can succeed.",
+                                          "schema": {"type": "integer"}}}},
+    },
+)
 def reveal_contact(
     offer_id: str,
     user=Depends(get_current_user),
@@ -1030,7 +1045,7 @@ def reveal_contact(
     if user.phone_verified_at is None:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Verify your phone number before contacting owners",
+            f"{PHONE_NOT_VERIFIED}: verify your phone number before contacting owners",
         )
     offer = db.get(ClassifiedOffer, offer_id)
     if offer is None or not freshness.is_public(offer, freshness.db_now(db)):
@@ -1039,7 +1054,8 @@ def reveal_contact(
         # The owner chose messages. Saying so is not a leak, and pretending the
         # offer does not exist would be a lie.
         raise HTTPException(
-            status.HTTP_409_CONFLICT, "This owner accepts messages only, not phone calls"
+            status.HTTP_409_CONFLICT,
+            f"{MESSAGES_ONLY}: this owner accepts messages only, not phone calls",
         )
 
     # Serialise this viewer's disclosure decisions (TASK-001 F-03). Counting
@@ -1068,7 +1084,8 @@ def reveal_contact(
         REVEALS.labels(outcome="quota_blocked").inc()
         raise HTTPException(
             status.HTTP_429_TOO_MANY_REQUESTS,
-            "Daily limit of owner contacts reached. It frees up as today's views age out.",
+            f"{REVEAL_QUOTA}: daily limit of owner contacts reached. "
+            "It frees up as today's views age out.",
             headers={"Retry-After": str(retry_after)},
         )
 

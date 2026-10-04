@@ -174,5 +174,6 @@ def test_the_per_user_cap_holds(client, owner, renter, geo, monkeypatch):
     assert client.post(f"/v1/me/saved-listings/{ids[1]}", headers=auth(renter)).status_code == 201
     capped = client.post(f"/v1/me/saved-listings/{ids[2]}", headers=auth(renter))
     assert capped.status_code == 409
+    assert capped.json()["detail"].startswith("SAVED_LIMIT: ")
     # Re-saving an existing one is still an idempotent 200, not a cap error.
     assert client.post(f"/v1/me/saved-listings/{ids[0]}", headers=auth(renter)).status_code == 200

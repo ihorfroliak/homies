@@ -121,6 +121,7 @@ def test_the_next_one_is_refused(client, owner, seeker, small_quota):
     blocked = _reveal(client, seeker, offers[-1])
     assert blocked.status_code == 429, blocked.text
     assert "500 111 222" not in blocked.text, "the number leaked in the refusal"
+    assert blocked.json()["detail"].startswith("REVEAL_QUOTA: ")
 
 
 def test_the_refusal_says_when_to_come_back(client, owner, seeker, small_quota):
@@ -132,6 +133,7 @@ def test_the_refusal_says_when_to_come_back(client, owner, seeker, small_quota):
     blocked = _reveal(client, seeker, offers[-1])
     retry_after = int(blocked.headers["Retry-After"])
     assert 0 < retry_after <= 24 * 3600
+    assert blocked.json()["detail"].startswith("REVEAL_QUOTA: ")
 
 
 def test_no_row_is_written_for_a_blocked_attempt(client, owner, seeker, small_quota):

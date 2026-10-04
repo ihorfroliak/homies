@@ -151,8 +151,10 @@ def test_only_an_offered_slot_can_be_requested(client, tenant, summer_window):
     """The time at someone's door is theirs to set."""
     resp = _request(client, tenant, summer_window, _utc(SUMMER, 10, 10))
     assert resp.status_code == 409
+    assert resp.json()["detail"].startswith("SLOT_NOT_OFFERED: ")
     resp = _request(client, tenant, summer_window, _utc(SUMMER, 22))
     assert resp.status_code == 409
+    assert resp.json()["detail"].startswith("SLOT_NOT_OFFERED: ")
 
 
 def test_approval_mode_waits_for_the_provider(client, owner, tenant, summer_window):
@@ -184,6 +186,8 @@ def test_the_last_place_cannot_be_confirmed_twice(client, owner, tenant, summer_
                        headers=auth(owner)).status_code == 200
     full = client.post(f"/v1/viewings/{second['id']}/confirm", headers=auth(owner))
     assert full.status_code == 409, full.text
+    assert full.json()["detail"].startswith("SLOT_FULL: ")
+    assert client.get("/v1/me/viewings", headers=auth(other)).json()[0]["status"] == "REQUESTED"
 
 
 def test_capacity_above_one_admits_that_many(client, owner, tenant, listing):
@@ -208,11 +212,15 @@ def test_buffers_keep_the_next_slot_free(client, owner, tenant, listing):
 
 def test_one_booked_viewing_per_tenant_per_flat(client, tenant, summer_window):
     assert _request(client, tenant, summer_window, _utc(SUMMER, 10)).status_code == 201
-    assert _request(client, tenant, summer_window, _utc(SUMMER, 11)).status_code == 409
+    again = _request(client, tenant, summer_window, _utc(SUMMER, 11))
+    assert again.status_code == 409
+    assert again.json()["detail"].startswith("VIEWING_ALREADY_BOOKED: ")
 
 
 def test_you_cannot_book_a_viewing_of_your_own_flat(client, owner, summer_window):
-    assert _request(client, owner, summer_window, _utc(SUMMER, 10)).status_code == 409
+    own = _request(client, owner, summer_window, _utc(SUMMER, 10))
+    assert own.status_code == 409
+    assert own.json()["detail"].startswith("OWN_LISTING: ")
 
 
 # --- who may do what ----------------------------------------------------------
@@ -264,6 +272,7 @@ def test_an_outcome_waits_for_the_viewing_to_happen(client, owner, tenant, summe
     resp = client.post(f"/v1/viewings/{viewing['id']}/outcome", json={"outcome": "COMPLETED"},
                        headers=auth(owner))
     assert resp.status_code == 409
+    assert resp.json()["detail"].startswith("VIEWING_NOT_STARTED: ")
 
 
 # --- validation ---------------------------------------------------------------
@@ -315,3 +324,83 @@ def test_viewing_writes_are_throttled(client):
 
     assert rl.resolve_policy("POST", "/v1/viewings/x/confirm") is rl.PROPERTY_WRITE
     assert rl.resolve_policy("POST", "/v1/classifieds/x/viewings") is rl.PROPERTY_WRITE
+
+
+# --- stable refusal codes (FE-003 BP-1) ------------------------------------------
+
+
+def _code(resp) -> str:
+    return resp.json()["detail"].split(":", 1)[0]
+
+
+def _count_viewings(listing) -> int:
+    with TestingSession() as db:
+        return db.query(Viewing).filter(Viewing.listing_id == listing).count()
+
+
+def test_a_listing_without_viewings_says_so(client, owner, tenant, listing):
+    """No settings, or settings switched off: the listing takes no viewings at
+    all — a different answer from "that time is not offered"."""
+    at = _utc(SUMMER, 10)
+    resp = _request(client, tenant, listing, at)
+    assert (resp.status_code, _code(resp)) == (409, "VIEWINGS_NOT_OFFERED")
+
+    _settings(client, owner, listing, enabled=False)
+    _one_off(client, owner, listing, SUMMER)
+    resp = _request(client, tenant, listing, at)
+    assert (resp.status_code, _code(resp)) == (409, "VIEWINGS_NOT_OFFERED")
+    assert _count_viewings(listing) == 0
+
+
+def test_an_action_on_a_finished_viewing_is_a_state_conflict(client, owner, tenant,
+                                                              summer_window):
+    viewing = _request(client, tenant, summer_window, _utc(SUMMER, 10)).json()
+    outcome = client.post(f"/v1/viewings/{viewing['id']}/outcome",
+                          json={"outcome": "COMPLETED"}, headers=auth(owner))
+    assert (outcome.status_code, _code(outcome)) == (409, "VIEWING_STATE_CONFLICT")
+
+    assert client.post(f"/v1/viewings/{viewing['id']}/cancel",
+                       headers=auth(tenant)).status_code == 200
+    for actor, action in ((tenant, "cancel"), (owner, "confirm"), (owner, "decline")):
+        resp = client.post(f"/v1/viewings/{viewing['id']}/{action}", headers=auth(actor))
+        assert (resp.status_code, _code(resp)) == (409, "VIEWING_STATE_CONFLICT"), action
+    with TestingSession() as db:
+        assert db.get(Viewing, viewing["id"]).status == "CANCELLED"
+
+
+def test_a_request_whose_time_has_passed_cannot_be_confirmed(client, owner, tenant,
+                                                             summer_window):
+    viewing = _request(client, tenant, summer_window, _utc(SUMMER, 10)).json()
+    past = datetime.now(timezone.utc) - timedelta(hours=1)
+    with TestingSession() as db:
+        row = db.get(Viewing, viewing["id"])
+        row.starts_at, row.ends_at = past, past + timedelta(minutes=30)
+        db.commit()
+    resp = client.post(f"/v1/viewings/{viewing['id']}/confirm", headers=auth(owner))
+    assert (resp.status_code, _code(resp)) == (409, "VIEWING_TIME_PASSED")
+    with TestingSession() as db:
+        assert db.get(Viewing, viewing["id"]).status == "REQUESTED"
+
+
+def test_a_transition_on_a_changed_viewing_is_viewing_changed(client, tenant, summer_window):
+    """The version compare-and-set behind every transition: a change committed
+    after the viewing was read is never overwritten."""
+    from fastapi import HTTPException
+
+    from app.modules.engagement import viewings
+
+    viewing_id = _request(client, tenant, summer_window, _utc(SUMMER, 10)).json()["id"]
+    stale = TestingSession()
+    try:
+        row = stale.get(Viewing, viewing_id)
+        with TestingSession() as other:
+            other.get(Viewing, viewing_id).version += 1
+            other.commit()
+        with pytest.raises(HTTPException) as refused:
+            viewings._transition(stale, row, ("REQUESTED",), status="CANCELLED")
+        assert refused.value.status_code == 409
+        assert str(refused.value.detail).startswith("VIEWING_CHANGED: ")
+    finally:
+        stale.close()
+    with TestingSession() as db:
+        assert db.get(Viewing, viewing_id).status == "REQUESTED"

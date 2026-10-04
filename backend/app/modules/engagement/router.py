@@ -27,6 +27,7 @@ the cap makes that expensive without getting in the way of someone looking
 for a flat.
 """
 
+import math
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
@@ -60,6 +61,10 @@ from app.modules.trust import hold
 
 CONVERSATION_CLOSED = "CONVERSATION_CLOSED"
 RECONTACT_BLOCKED = "RECONTACT_BLOCKED"
+# Stable refusal codes (FE-003 BP-1): the client reads the "CODE: " prefix of
+# `detail`, never the English text after it.
+OWN_LISTING = "OWN_LISTING"
+CONVERSATION_QUOTA = "CONVERSATION_QUOTA"
 
 router = APIRouter(tags=["conversations"])
 
@@ -284,8 +289,39 @@ def _refuse_recontact(db: Session, offer: ClassifiedOffer, user: User) -> None:
                             "listing; a new one is not possible for this publication")
 
 
-@router.post("/classifieds/{offer_id}/conversations", response_model=ConversationDetail,
-             status_code=201)
+def _quota_retry_after(db: Session, requester_id: str, started: int, now: datetime) -> int:
+    """Seconds until a new conversation fits under the rolling 24 h quota: the
+    start that must age out is the (started − quota + 1)-th oldest in the
+    window, counted on the same clock and rows as the quota itself."""
+    rows = list(db.scalars(
+        select(Conversation.created_at).where(
+            Conversation.requester_user_id == requester_id,
+            Conversation.created_at >= now - CONVERSATION_WINDOW,
+        ).order_by(Conversation.created_at)
+    ))
+    index = min(max(started - settings.conversation_daily_quota, 0), len(rows) - 1)
+    if index < 0:
+        return 1
+    oldest = rows[index]
+    oldest = oldest if oldest.tzinfo else oldest.replace(tzinfo=timezone.utc)
+    return max(1, math.ceil((oldest + CONVERSATION_WINDOW - now).total_seconds()))
+
+
+@router.post(
+    "/classifieds/{offer_id}/conversations", response_model=ConversationDetail,
+    status_code=201,
+    responses={
+        404: {"description": "No public listing with this id."},
+        409: {"description": "Stable codes: `OWN_LISTING` (the caller manages this listing); "
+                             "`RECONTACT_BLOCKED` (G-14: Homies closed the caller's conversation "
+                             "for this publication)."},
+        429: {"description": "`CONVERSATION_QUOTA`: the daily limit of new conversations is "
+                             "reached (existing threads continue), or the rate limit (no code). "
+                             "Both send `Retry-After`.",
+              "headers": {"Retry-After": {"description": "Seconds until a retry can succeed.",
+                                          "schema": {"type": "integer"}}}},
+    },
+)
 def start_conversation(
     offer_id: str,
     body: MessageIn,
@@ -301,7 +337,7 @@ def start_conversation(
     if offer is None or not freshness.is_public(offer, freshness.db_now(db)):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
     if authority.can_act(db, user.id, offer.property_id, "MANAGE_MESSAGES", verified=False):
-        raise HTTPException(status.HTTP_409_CONFLICT, "This is your own listing")
+        raise HTTPException(status.HTTP_409_CONFLICT, f"{OWN_LISTING}: this is your own listing")
 
     # Serialise this sender's conversation starts (TASK-001 F-09): looking for
     # an existing thread, counting today's new ones and creating one are one
@@ -314,16 +350,19 @@ def start_conversation(
     conv = _active_thread(db, offer.id, user.id)
     if conv is None:
         _refuse_recontact(db, offer, user)
+        now = _now()
         started = db.scalar(
             select(func.count()).select_from(Conversation).where(
                 Conversation.requester_user_id == user.id,
-                Conversation.created_at >= _now() - CONVERSATION_WINDOW,
+                Conversation.created_at >= now - CONVERSATION_WINDOW,
             )
         ) or 0
         if started >= settings.conversation_daily_quota:
             raise HTTPException(
                 status.HTTP_429_TOO_MANY_REQUESTS,
-                "Daily limit of new conversations reached. Existing ones stay open.",
+                f"{CONVERSATION_QUOTA}: daily limit of new conversations reached. "
+                "Existing ones stay open.",
+                headers={"Retry-After": str(_quota_retry_after(db, user.id, started, now))},
             )
         conv = Conversation(listing_id=offer.id, requester_user_id=user.id)
         try:
@@ -386,8 +425,13 @@ def read_conversation(
                               messages=[MessageOut.model_validate(m) for m in messages])
 
 
-@router.post("/conversations/{conversation_id}/messages", response_model=MessageOut,
-             status_code=201)
+@router.post(
+    "/conversations/{conversation_id}/messages", response_model=MessageOut, status_code=201,
+    responses={
+        404: {"description": "No conversation this account is a side of."},
+        409: {"description": "Stable code: `CONVERSATION_CLOSED` (Homies closed it)."},
+    },
+)
 def send_message(
     conversation_id: str,
     body: MessageIn,

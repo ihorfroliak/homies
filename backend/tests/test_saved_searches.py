@@ -62,6 +62,7 @@ def test_parameter_order_does_not_change_the_fingerprint(client, renter):
     duplicate = _create(client, renter, "category=HOUSE&max_rent=300000&category=APARTMENT",
                         name="Same search, other order")
     assert duplicate.status_code == 409
+    assert duplicate.json()["detail"].startswith("SAVED_SEARCH_DUPLICATE: ")
     assert duplicate.headers["location"] == f"/v1/me/saved-searches/{a.json()['id']}"
     with TestingSession() as db:
         stored = db.get(SavedSearch, a.json()["id"])
@@ -121,7 +122,10 @@ def test_the_per_user_cap_holds(client, renter, monkeypatch):
     monkeypatch.setattr(settings, "saved_searches_per_user", 2)
     assert _create(client, renter, "min_rooms=1").status_code == 201
     assert _create(client, renter, "min_rooms=2").status_code == 201
-    assert _create(client, renter, "min_rooms=3").status_code == 409
+    capped = _create(client, renter, "min_rooms=3")
+    assert capped.status_code == 409
+    assert capped.json()["detail"].startswith("SAVED_SEARCH_LIMIT: ")
+    assert client.get("/v1/me/saved-searches", headers=auth(renter)).json()["total"] == 2
 
 
 def test_saved_searches_are_private_to_their_owner(client, renter):
@@ -166,6 +170,8 @@ def test_a_new_query_gets_a_new_baseline(client, renter):
                          json={"expected_version": 1, "query": "category=HOUSE"},
                          headers=auth(renter))
     assert clash.status_code == 409
+    assert clash.json()["detail"].startswith("SAVED_SEARCH_DUPLICATE: ")
+    assert clash.headers["location"] == f"/v1/me/saved-searches/{changed['id']}"
 
 
 def test_delete_removes_the_search(client, renter):
