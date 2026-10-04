@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **P-0 DRAFT — READY FOR FOUNDER/GPT REVIEW.** Documentation only. `FE-003 IMPLEMENTATION AUTHORIZED: NO` |
+| Status | **P-0 APPROVED — IMPLEMENTATION BINDING READY** (founder/GPT review 2026-10-05: *PASS WITH BOUNDED OWNER DECISIONS*, applied in §30). Documentation only. `FE-003 IMPLEMENTATION AUTHORIZED: NO` |
 | Baseline | `main` = `c87616ad52e61ec2c97899f2f5e5b04c2dcec61d` |
 | Direction | **1C Dzielnica** (D-103), DESIGN-001C founder/GPT **APPROVED at design-contract level** (D-104/D-105) |
 | Binds | [FE-003 contract](../tasks/FE-003-save-conversation-viewing-DRAFT.md) (approved, §0.2 P-0) and the later FE-VIS-001 |
@@ -12,9 +12,10 @@
 
 Only rules **already approved or recoverable from repository records** are
 encoded. Each rule names its source. Anything that only the inaccessible
-`.dc.html` could settle is listed in §28 as **UNRESOLVED** — it is not
-guessed. Where two repository records disagree, §30 lists the conflict and
-the precedence used.
+`.dc.html` could settle was listed in §28 — not guessed; the founder/GPT
+review then decided U-2, U-3, U-4, U-6 and U-8 and left U-1, U-5, U-7 as
+nonblocking visual items. Where two repository records disagree, §30 records
+the final resolution.
 
 **Sources (precedence high → low for this handoff):**
 
@@ -71,8 +72,9 @@ recoverable** (§27, §28).
 ## 4. Breakpoints
 
 Token source S3 (`tokens.css` layout group); runtime S5 uses the same values
-in CSS Modules. **Note:** DESIGN-SYSTEM-v1 says breakpoints are mirrored in
-`frontend/web/src/ui/breakpoints.ts`; that file does not exist (§30 C-6).
+in CSS Modules. DESIGN-SYSTEM-v1's reference to
+`frontend/web/src/ui/breakpoints.ts` is stale (no such file) — nonblocking
+documentation debt (§30 C-6); no code file is created for it.
 
 | Name | Width | Approved layout (S2 §4) | Runtime today (S5) |
 |---|---|---|---|
@@ -110,8 +112,12 @@ etap"); below 1024 the aside follows the main column, so the cost summary is
 
 FE-003 composition (S1 §6.2–6.3): the `aside` becomes the **EngagementRail**
 ≥ 1024 (price summary + shipped actions); below 1024 the **MobileActionDock**
-carries the monthly total and the primary action. Where the full mobile cost
-summary sits is §28 U-3.
+carries the compact monthly total and the primary action + save.
+
+**Decided (C-3/U-3):** below 1024 the **full CostBreakdown** sits **near the
+top of the content** — after the title / place context and before the
+long-form description and location. The MobileActionDock does **not** replace
+it. Values are always the API's; nothing is recomputed.
 
 ## 7. EngagementRail (≥ 1024)
 
@@ -129,7 +135,11 @@ wording) and one primary action (viewing when FE-003e is shipped, else
 message) + save; other actions in a sheet; `region` "Akcje oferty"; respects
 `env(safe-area-inset-bottom)`; page bottom padding keeps focused content
 visible (WCAG 2.4.11); hidden while the keyboard is open in the composer.
-Stacking with the seeker bottom navigation (S2 §2) on the detail page: §28 U-2.
+
+**Decided (U-2):** on the listing-detail route below 1024, when the dock is
+present it **replaces/hides the seeker bottom navigation** — never two fixed
+bottom bars. The page keeps its normal back/header navigation so the user is
+not trapped. Every other seeker route keeps the normal bottom navigation.
 
 ## 9. SaveButton
 
@@ -143,10 +153,16 @@ cards, labelled in rail/dock.
 
 S1 §3.3, §6.4: slots are the **derived** instants from `viewing-slots`, never
 computed or extended by the client; a ViewingSlot is a UI representation, not
-an entity; grouped by local day in the **API-returned timezone** (BP-2); per
+an entity; grouped by local day in the **API-returned timezone** (BP-2) —
+`Europe/Warsaw` is **never hard-coded** for viewing rendering (C-7); per
 day a `radiogroup` with radios "10:00–10:30"; arrow keys; selection never
-colour-only; mobile = day tabs + vertical list, ≥ 1024 = grid; "Pokaż kolejne
-dni" up to 31 days. A guest may inspect/select a slot before auth once BP-11
+colour-only; "Pokaż kolejne dni" up to 31 days.
+
+**Decided (U-4) containers:** ≥ 1024 the slot picker is a **modal dialog**
+(not an inline panel in the EngagementRail) holding the slot grid; the
+request confirmation is the **next step of the same dialog**, never a nested
+modal. Below 1024: the sheet with day tabs + vertical list, confirmation as
+its next step. A guest may inspect/select a slot before auth once BP-11
 lands; the request itself needs auth. Copy always shows date + time (S2 §7).
 
 ## 11. Viewing-state presentation
@@ -188,11 +204,21 @@ reveal, report need the user's own confirm). Registration never sends `role`.
 ## 14. Provider ContextSwitch / ProviderViewingRow
 
 S1 §6.9–6.10, S2 §2: the provider context exists only when authority data
-proves it (I-13). **Placement conflict (§30 C-2):** S2's IA puts supply in a
-"Panel" mode (`/panel/leady`, `/panel/ogladania`, switch "Przełącz na panel");
-S1 proposed an in-page switch on `/wiadomosci` and the viewings route. This
-handoff recommends the S2 IA and treats ContextSwitch as the Szukam ↔ Panel
-mode switch — **pending confirmation**. ProviderViewingRow: date/time,
+proves it (I-13).
+
+**Decided (C-2/U-8): the DESIGN-001 Panel IA (D-100).**
+
+| Mode | Routes |
+|---|---|
+| Seeker | `/wiadomosci` (+ `/wiadomosci/{id}`), `/ogladania` |
+| Supply / provider ("Panel") | `/panel/leady`, `/panel/ogladania` |
+
+`ContextSwitch` **is the mode switch "Szukam ↔ Panel"** ("Przełącz na
+panel" / back). Provider rows are **not** an in-page submode of the seeker
+inbox or viewings pages; the contract's proposed `?widok=wynajmujacy` and
+`/ogledziny` are superseded. Nested route anatomy inside `/panel/leady` is
+left to the FE-003f slice contract; P-0 defines no further routes.
+ProviderViewingRow: date/time,
 attendees, `requester_note` as plain text, requester shown as "Imię N." or
 "Użytkownik Homies" — never e-mail/phone, never "zweryfikowany" (D-104 OD-3);
 action matrix per S1 §6.10.
@@ -295,8 +321,12 @@ keyboard/screen-reader pass.
 ## 24. Focus rules
 
 * The **filter dialog** receives focus on open; focus returns to its opener on
-  close. Today filters are a native `<details>` element, not a dialog (§30
-  C-4): the rule applies when the filter surface becomes a dialog/sheet.
+  close. Today filters are a native `<details>` element; **FE-003 does not
+  convert them** — the dialog/sheet conversion belongs to FE-VIS-001, and
+  this rule binds once that dialog/sheet exists (C-4).
+* The **viewing slot dialog/sheet** follows the dialog rules: focus moves into
+  it on open and returns to its opener (the viewing CTA) on close; moving to
+  the confirmation step keeps focus inside the same dialog.
 * Every dialog/sheet returns focus to its opener on close.
 * The **auth dialog** focuses the **e-mail** field on open.
 * After auth resume or close, focus returns to the **initiating control**; if
@@ -310,10 +340,12 @@ keyboard/screen-reader pass.
 | EngagementRail | — | sticky aside | FE-003 |
 | MobileActionDock | bottom bar + sheet | — | FE-003 |
 | SaveButton | icon (cards), labelled (dock) | icon (cards), labelled (rail) | FE-003 |
-| ViewingSlot picker | sheet, day tabs + list | dialog/side panel, grid (exact container: §28 U-4) | FE-003 |
+| ViewingSlot picker | sheet, day tabs + list; confirm = next step | **modal dialog** with grid; confirm = next step of the same dialog | FE-003 |
+| Seeker bottom navigation | shown, **hidden on detail while the dock is present** | top bar | FE-003 (detail rule) |
+| CostBreakdown (full) | near the top of detail content | in the rail | FE-003 (placement) on FE-002 values |
 | Conversation | list → thread navigation | split | FE-003 |
 | AuthInterrupt | full-screen sheet | modal | FE-003 |
-| ContextSwitch / ProviderViewingRow | segmented control / cards | rows | FE-003 (placement §14) |
+| ContextSwitch (Szukam ↔ Panel) / ProviderViewingRow | mode switch / cards in `/panel/*` | mode switch / rows in `/panel/*` | FE-003f |
 | Filters dialog/sheet | full-screen sheet | side panel | **FE-VIS-001** (FE-002 surface; §30 C-4) |
 | Results, cards, map, home, header/footer | as §4–§5 | as §4–§5 | FE-002 (exists) / FE-VIS-001 (restyle) |
 
@@ -334,18 +366,26 @@ system-ui stack at launch (D1-2); light theme only (D1-7); promoted/free
 badges deprecated. **No 1C tokens exist in the repository**; none are approved
 in a readable form.
 
-## 28. Unresolved visual details (need the approved `.dc.html` or a founder/GPT answer)
+## 28. Visual details — resolved and remaining
+
+**Resolved by the founder/GPT P-0 review (2026-10-05):**
+
+| # | Item | Decision |
+|---|---|---|
+| U-2 | Dock vs seeker bottom navigation on detail < 1024 | dock replaces/hides the bottom nav there; header/back navigation kept; other routes keep the nav (§8) |
+| U-3 | Mobile position of the full CostBreakdown | near the top: after title/place, before description/location; dock shows only the compact total (§6) |
+| U-4 | Slot picker container ≥ 1024 | modal dialog with the grid; confirmation = next step of the same dialog; < 1024 sheet (§10) |
+| U-6 | Copy where older UI records differ | the FE-003 contract wording is the implementation source; cosmetic differences do not block; items already marked for legal review (LD-1…LD-6, L11) stay marked |
+| U-8 | Provider surface placement | DESIGN-001 Panel IA; ContextSwitch = Szukam ↔ Panel (§14) |
+
+**Remaining — NONBLOCKING for functional FE-003 slices** (FE-VIS-001 / later
+visual refinement):
 
 | # | Item |
 |---|---|
-| U-1 | All 1C visual values: district palette and its mapping, typography changes, radii, elevation, iconography, illustration, motion specifics; rail/dock/card styling |
-| U-2 | Detail page < 1024: stacking of MobileActionDock with the seeker bottom navigation (S2 §2) — dock replaces, sits above, or hides the nav |
-| U-3 | Mobile position of the full CostBreakdown summary (S2 near the top vs runtime after location, §30 C-3) |
-| U-4 | Slot picker container ≥ 1024 (modal vs inline panel in the rail) and the confirm-sheet anatomy |
-| U-5 | Inbox/thread visual hierarchy details (avatar/initial use, timestamps grouping, closed-state banner styling) |
-| U-6 | Final copy for states where S1 and S4 differ in wording (e.g. closed conversation: "Homies zamknął tę rozmowę" vs "Rozmowa została zamknięta przez Homies.") — LD-5/L11 legal review |
-| U-7 | Artboard-level assignment FE-003 vs FE-VIS-001 beyond §25 |
-| U-8 | Provider surface placement (§14, §30 C-2) |
+| U-1 | Concrete 1C visual values: district palette and mapping, typography changes, radii, elevation, iconography, illustration, motion specifics; rail/dock/card styling |
+| U-5 | Refined conversation visual hierarchy (avatar/initial use, timestamp grouping, closed-state banner styling) |
+| U-7 | Exact artboard-level split FE-003 vs FE-VIS-001 beyond §25 |
 
 ## 29. Explicit implementation prohibitions
 
@@ -368,25 +408,32 @@ in a readable form.
 12. No verification wall before "Zgłoś wiadomość".
 13. No dead buttons; no fake urgency or unsourced counts.
 
-## 30. Conflicts found between repository records
+## 30. Conflicts between repository records — founder/GPT resolutions (2026-10-05)
 
-| # | Conflict | Precedence applied |
+| # | Conflict | Resolution (final) |
 |---|---|---|
-| C-1 | UI-STATE-MAP shows "Odwołane przez Homies"; FE-003 contract §3.10 forbids any cancellation actor until BP-5 | FE-003 contract (later, approved): "Oglądanie odwołane" only. UI-STATE-MAP row is stale |
-| C-2 | DESIGN-001 IA: supply in Panel mode (`/panel/leady`, `/panel/ogladania`, "Przełącz na panel"), viewings at `/ogladania`; FE-003 contract proposed in-page ContextSwitch and `/ogledziny` (marked PROPOSED, "handoff decides") | Recommend DESIGN-001 IA (decided, D-100; nav string "Oglądania" already in `pl.ts`) — **needs founder/GPT confirmation** (U-8) |
-| C-3 | DESIGN-001 §5.5 puts the cost summary near the top on mobile; FE-002 runtime renders it after the location section | Approved spec = DESIGN-001; runtime deviation recorded; resolution U-3 |
-| C-4 | DESIGN-001C focus rule for a "filter dialog"; FE-002 filters are a native `<details>` (not a dialog); FE-003 contract §9.3 says "re-verified in FE-003" | Rule binds when the filter surface becomes a dialog/sheet; recommend FE-VIS-001 owns that conversion; FE-003 E2E asserts it only once it exists |
-| C-5 | DESIGN-001 §5.5 location caption includes a distance ("ok. 500 m") and "~550 m cell"; founder P-0 brief: no numeric radius; runtime copy has none | No figure in UI copy; the drawn cell comes from API geometry |
-| C-6 | DESIGN-SYSTEM-v1 says breakpoints are mirrored in `frontend/web/src/ui/breakpoints.ts`; the file does not exist (values live in CSS Modules) | Breakpoint values (S3/S5) are correct; the file reference is stale |
-| C-7 | DESIGN-001 §7: viewing times "(Europe/Warsaw)"; FE-003 contract BP-2: use the API-returned timezone, no hard-coded zone | Contract wins in code; Polish launch copy still shows local date + time |
+| C-1 | UI-STATE-MAP shows "Odwołane przez Homies"; FE-003 contract §3.10 forbids any cancellation actor until BP-5 | **FE-003 contract wins.** Until BP-5 provides an explicit immutable cancellation source the only copy is **"Oglądanie odwołane"** — no requester/provider/Homies attribution |
+| C-2 | DESIGN-001 IA (Panel mode) vs the contract's proposed in-page ContextSwitch / `/ogledziny` | **DESIGN-001 Panel IA (D-100) confirmed**: seeker `/wiadomosci`, `/ogladania`; provider `/panel/leady`, `/panel/ogladania`; ContextSwitch = Szukam ↔ Panel; no in-page provider submode; nested `/panel/leady` anatomy left to the FE-003f slice contract; no new routes in P-0 |
+| C-3 | DESIGN-001 puts the cost summary near the top on mobile; FE-002 renders it after location | **Near the top** (after title/place, before description/location); the dock does not replace it; no recomputation |
+| C-4 | Focus rule for a "filter dialog" vs FE-002's native `<details>` filters | **Unchanged FE-002 filters in FE-003**; the dialog/sheet conversion belongs to **FE-VIS-001**; focus-dialog rules bind once it exists |
+| C-5 | DESIGN-001 location caption with a distance vs no numeric radius | **No numeric radius/distance in public UI copy**; privacy-safe API geometry may render the approximate area/cell |
+| C-6 | DESIGN-SYSTEM-v1 references the nonexistent `frontend/web/src/ui/breakpoints.ts` | **Nonblocking documentation debt**; values in S3/S5 are correct; no code file is created for it |
+| C-7 | DESIGN-001 §7 "(Europe/Warsaw)" vs BP-2 API timezone | **API-returned timezone is authoritative**; `Europe/Warsaw` is never hard-coded for viewing rendering |
 
 ---
 
 ## IMPLEMENTATION BINDING CHECKLIST (run before every FE-003 frontend slice)
 
 - [ ] Slice entry criteria of FE-003 contract §10.3 met (BPs on `main`); founder authorisation for this slice exists.
-- [ ] This handoff's §28/§30 items touching the slice are answered or explicitly out of the slice.
+- [ ] Only the nonblocking visual items U-1, U-5, U-7 remain open; none is resolved ad hoc in the slice.
 - [ ] Semantic tokens only; no 1C values; no district colour on states, prices, trust or ranking.
+- [ ] Routes per the D-100 IA: seeker `/wiadomosci`, `/ogladania`; provider `/panel/leady`, `/panel/ogladania`; ContextSwitch = Szukam ↔ Panel; no provider submode in seeker pages; no routes beyond the slice contract.
+- [ ] Detail < 1024: full CostBreakdown near the top (after title/place, before description/location); dock shows only compact total + primary action + save; dock hides the bottom nav on detail; header/back kept.
+- [ ] Slot picker ≥ 1024 = modal dialog with the grid, confirmation as its next step (no nested modal); < 1024 = sheet with day tabs + list.
+- [ ] Cancelled viewings read only "Oglądanie odwołane" (no actor) until BP-5.
+- [ ] Viewing times in the API-returned timezone; no hard-coded `Europe/Warsaw`.
+- [ ] FE-002 `<details>` filters untouched (conversion = FE-VIS-001).
+- [ ] Copy from the FE-003 contract where older records differ; legal-review items stay marked.
 - [ ] Totals rendered exactly from `monthly_total_estimate` / `move_in_total`; parity test with a non-additive fixture.
 - [ ] Parking shown inside the total when stated; no optional-parking UI.
 - [ ] No address, coordinates, meeting point, `floors_total`, numeric radius.

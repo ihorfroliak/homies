@@ -1057,3 +1057,10 @@ UI-STATE-MAP і FE-002 (сирий `.dc.html` 1C недоступний — ні
 ContextSwitch; фільтри — `<details>`, не діалог.
 
 **Статус:** P-0 READY FOR FOUNDER/GPT REVIEW; `FE-003 IMPLEMENTATION AUTHORIZED: NO`.
+
+**P-0 рев'ю (2026-10-05):** *PASS WITH BOUNDED OWNER DECISIONS* → `P-0 APPROVED —
+IMPLEMENTATION BINDING READY`. Вирішено: C-1 (лише «Oglądanie odwołane»), C-2/U-8
+(IA Panel: `/panel/leady`, `/panel/ogladania`; ContextSwitch = Szukam ↔ Panel),
+C-3/U-3 (повний CostBreakdown угорі на мобільному), U-2 (dock ховає нижню
+навігацію на деталі), U-4 (слоти ≥ 1024 — модальний діалог, підтвердження —
+наступний крок), U-6, C-4…C-7. Невирішені й неблокуючі: U-1, U-5, U-7 (FE-VIS-001).
