@@ -90,7 +90,7 @@ PROGRAM-001 (`779b30fe`) was reviewed by GPT-5.6 Sol (accepted with
 conditions), approved by the founder and merged to `main` at `c32ac63a`
 (2026-10-04). Its adjudications are D-102 (canon 04a §24); F6 enforcement and
 the decision records follow on `main` as a bounded integration commit.
-Next: DESIGN-001C (in progress, D-103) → FE-003 contract (draft only; not
+Next: DESIGN-001C approved at design-contract level → FE-003 contract final candidate r2 (D-104; not
 authorised). Production NOT READY, NOT DEPLOYED.
 
 PR-002 is **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED** (D-88): integrated into

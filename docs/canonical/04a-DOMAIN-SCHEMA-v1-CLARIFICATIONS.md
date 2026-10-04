@@ -346,3 +346,33 @@ Recorded as D-102. Refines §16 (public location), §21 (honest money) and §23
   generation (`listing_public_generation_at_decision`); a later legitimate
   publication generation may engage again under the normal rules. Both
   refusals carry the stable code `RECONTACT_BLOCKED`.
+
+**FE-003 contract review (D-104, founder + GPT-5.6 Sol, 2026-10-04)** —
+decided; implementation pending as bounded backend tasks:
+
+* **G-14 and existing viewings.** The restriction **cancels** the
+  requester's Viewings of that Listing that are REQUESTED or CONFIRMED and
+  start after the decision's instant, in the decision's transaction, with
+  neutral notices to both sides and an explicit immutable cancellation source
+  (HOMIES). Past and terminal Viewings are untouched.
+* **G-14 and contact reveal.** The restricted requester cannot obtain a new
+  contact reveal for that Listing in the same publication generation
+  (`RECONTACT_BLOCKED`).
+* **Requester identity for providers.** A server-side projection of first
+  name and surname initial only; never e-mail or phone; never presented as
+  verified without a separate verified identity fact.
+* **Public derived viewing slots.** For a PUBLIC Listing (§18) the derived
+  offered slot instants may be read without an account; viewing settings,
+  windows, blackouts and capacity stay private; requesting a Viewing
+  requires an account; the read is rate-limited; no exact address (§16).
+  Subject to the security review of that backend change.
+* **Viewing cancellation after start** is refused by the backend for both
+  sides (stable code).
+* **CANONICAL DECISION REQUIRED (security gate, before provider-side
+  beta):** whether private engagement access (MANAGE_MESSAGES /
+  MANAGE_VIEWINGS reads and writes, requester notes and identity) requires a
+  VERIFIED PropertyAuthority. Recommended: yes. Current routes do not
+  require it; that is not a canonical permission.
+* **Open debt:** a REQUESTED Viewing whose start has passed stays REQUESTED;
+  explicit expiry semantics are a later product/backend decision. Clients may
+  show a derived "no answer — time passed" label without changing the state.
