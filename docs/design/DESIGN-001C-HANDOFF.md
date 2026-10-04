@@ -348,14 +348,16 @@ keyboard/screen-reader pass.
 | ContextSwitch (Szukam ↔ Panel) / ProviderViewingRow | mode switch / cards in `/panel/*` | mode switch / rows in `/panel/*` | FE-003f |
 | Filters dialog/sheet | full-screen sheet | side panel | **FE-VIS-001** (FE-002 surface; §30 C-4) |
 | Results, cards, map, home, header/footer | as §4–§5 | as §4–§5 | FE-002 (exists) / FE-VIS-001 (restyle) |
+| **Home map / district exploration** (§31) | full-width section below hero/search | right side of the hero, search/value proposition left | **FE-VIS-001** (never FE-003) |
 
 ## 26. FE-003 vs FE-VIS-001 boundary
 
 S1 §7 (D-104 OD-5): **FE-003** builds the engagement components on semantic
 tokens; **FE-VIS-001** introduces the 1C token layer (district colour
 identity, type, radii, elevation), restyles FE-002 surfaces and converts the
-filter surface to the approved dialog/sheet. FE-003 must not ship 1C values;
-FE-VIS-001 must not change engagement semantics.
+filter surface to the approved dialog/sheet, and owns the **Home map /
+right-side composition** (§31). FE-003 must not ship 1C values or touch the
+Home composition; FE-VIS-001 must not change engagement semantics.
 
 ## 27. Current approved typography / tokens status
 
@@ -368,7 +370,7 @@ in a readable form.
 
 ## 28. Visual details — resolved and remaining
 
-**Resolved by the founder/GPT P-0 review (2026-10-05):**
+**Resolved by the founder/GPT P-0 review and the founder amendment HM-1 (2026-10-05):**
 
 | # | Item | Decision |
 |---|---|---|
@@ -377,6 +379,7 @@ in a readable form.
 | U-4 | Slot picker container ≥ 1024 | modal dialog with the grid; confirmation = next step of the same dialog; < 1024 sheet (§10) |
 | U-6 | Copy where older UI records differ | the FE-003 contract wording is the implementation source; cosmetic differences do not block; items already marked for legal review (LD-1…LD-6, L11) stay marked |
 | U-8 | Provider surface placement | DESIGN-001 Panel IA; ContextSwitch = Szukam ↔ Panel (§14) |
+| U-9 | Home composition: no map; empty desktop right side (founder amendment, not from the `.dc.html`) | **HM-1** (§31): functional Kraków area-exploration map — right of the hero on desktop, full-width section below it on mobile; FE-VIS-001 owner; D-103 binding |
 
 **Remaining — NONBLOCKING for functional FE-003 slices** (FE-VIS-001 / later
 visual refinement):
@@ -420,6 +423,42 @@ visual refinement):
 | C-6 | DESIGN-SYSTEM-v1 references the nonexistent `frontend/web/src/ui/breakpoints.ts` | **Nonblocking documentation debt**; values in S3/S5 are correct; no code file is created for it |
 | C-7 | DESIGN-001 §7 "(Europe/Warsaw)" vs BP-2 API timezone | **API-returned timezone is authoritative**; `Europe/Warsaw` is never hard-coded for viewing rendering |
 
+## 31. Founder amendment HM-1 — Home map and desktop right-side composition (2026-10-05)
+
+**Origin:** a founder design/product direction given after the P-0 review.
+It is **not** taken from the inaccessible `.dc.html`; it is recorded here as
+an approved founder direction. **Owner: FE-VIS-001** (or a bounded Home
+visual slice under it). Not FE-003 scope; not a blocker for any FE-003 slice.
+
+**Problem recorded:** the selected DESIGN-001C Home composition has no map,
+and on desktop the right side of the hero / upper Home area is largely empty.
+
+| # | Rule |
+|---|---|
+| HM-1.1 | Home includes a **meaningful Kraków map / area-exploration surface** — functional geographical discovery that helps the user understand and enter the marketplace by place, **not decoration** |
+| HM-1.2 | **Desktop:** search / value proposition on the **left**, map / district exploration on the **right** of the hero / upper Home area |
+| HM-1.3 | **Mobile:** the map is **not** squeezed beside the search; it is a deliberate **full-width section below** the hero/search |
+| HM-1.4 | **Home map ≠ Results map.** A simpler orientation/discovery surface: Kraków districts/areas, area labels/chips, available-listing counts by area **only where backed by real data**, and a route into search results. It does **not** default to dozens of individual listing pins and does not duplicate the Results map (§5) |
+| HM-1.5 | **Interaction:** selecting an area leads into the corresponding marketplace results/search state where data and canonical routing support it. Conceptual flow: *Home map → an area → Kraków LONG_TERM results for that area*. The canonical results path form is `/wynajem/{locality-slug}/{area-slug}` (DESIGN-001 §8, FE-002 §1) with slugs taken from the geo API; this handoff **does not fabricate** concrete slugs or any other URL. An area without an API slug is not linked until routing supports it |
+| HM-1.6 | **Truthfulness:** the Home map never encodes or implies district quality, safety, prestige, trust, recommendation, ranking, "best district" or unsourced popularity; no fake urgency, fake activity, fabricated counts, non-existent testimonials or district ratings. D-103 binds fully: **district colour = place identity only** (§17) |
+| HM-1.7 | **Counts:** if shown, they come from real marketplace data — the same public-visibility rule (04a §18) and the same query as the results the area link opens, so the number matches what the user then sees. No count is shown when none can be sourced; counts never rank, highlight or label an area as popular |
+| HM-1.8 | **Privacy:** no listing pins by default; any listing-level point that is ever shown follows 04a §16 (public point only); no exact address; no numeric radius in copy (C-5) |
+| HM-1.9 | **Accessibility:** the map is never the only way in — the same areas are reachable as a list of links/chips (keyboard and screen reader), consistent with §23; colour never the only carrier of meaning |
+
+**Dependencies to resolve inside FE-VIS-001 (recorded, not decided here):**
+
+* **Area geometry:** the geo API returns areas with `id`, `name`, `slug` and
+  no geometry, centroid or bounds (`GeoAreaOut`, gap G7); a district map needs
+  a privacy-safe geometry source — a data/backend decision.
+* **Per-area counts:** no aggregate endpoint exists; real counts are
+  obtainable today only as one `limit=1` count per area (the `geo_area_id`
+  search filter → `total`), or through a future aggregate endpoint — a bounded
+  backend choice with its own cost/rate-limit review.
+* **Map provider:** production tiles/style remain a founder decision (G-11);
+  until then the development-only/no-tile rendering applies.
+
+---
+
 ---
 
 ## IMPLEMENTATION BINDING CHECKLIST (run before every FE-003 frontend slice)
@@ -433,6 +472,7 @@ visual refinement):
 - [ ] Cancelled viewings read only "Oglądanie odwołane" (no actor) until BP-5.
 - [ ] Viewing times in the API-returned timezone; no hard-coded `Europe/Warsaw`.
 - [ ] FE-002 `<details>` filters untouched (conversion = FE-VIS-001).
+- [ ] Home page untouched: the Home map / right-side composition (§31, HM-1) is FE-VIS-001 scope, never absorbed by an FE-003 slice.
 - [ ] Copy from the FE-003 contract where older records differ; legal-review items stay marked.
 - [ ] Totals rendered exactly from `monthly_total_estimate` / `move_in_total`; parity test with a non-additive fixture.
 - [ ] Parking shown inside the total when stated; no optional-parking UI.
