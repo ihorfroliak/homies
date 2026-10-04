@@ -7,7 +7,7 @@
 | Design input | DESIGN-001C *Homies 001C Dzielnica Product Convergence* (`.dc.html`) — approved by founder/GPT **at design-contract level**; implementation needs the repository handoff of §0.2 (P-0) |
 | Founder decisions | **D-104** (OD-1…OD-6, BP-9 security gate, BP-10, BP-7 required, DEBT-1) and **D-105** (OD-7, OD-8, BP-9 canonical rule, OD-1/F6 generation semantics) — canon 04a §24 |
 | Risk class (implementation) | **R2** (auth/session, private engagement, privacy, concurrency, moderation states); BP-6, BP-9, BP-10, BP-11 are R2 backend tasks with security review |
-| Canon | 00-AUTHORITY; 02 §2 (authority chain); 03 §2; 04 §73 (idempotency keys); 04a §6, §14, §16, §18, §21–§24; 07; DECISIONS D-98 (G-11…G-15), D-100…D-104; DESIGN-001; FE-001; FE-002; GROWTH-001 EVENTS-v1 |
+| Canon | 00-AUTHORITY; 02 §2 (authority chain); 03 §2; 04 §73 (idempotency keys); 04a §6, §14, §16, §18, §21–§24; 07; DECISIONS D-98 (G-11…G-15), D-100…D-105; DESIGN-001; FE-001; FE-002; GROWTH-001 EVENTS-v1 |
 | File name | kept as `…-DRAFT.md` so existing references stay valid |
 | Out of scope | final 1C token/visual layer (**FE-VIS-001**, OD-5); owner panel (listing create/edit, viewing settings/windows editors); notification-centre UI; moderator app; applications / Housing Passport; payments; OTP / magic link / Google sign-in; exact address delivery (G9) |
 
