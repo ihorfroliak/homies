@@ -347,17 +347,34 @@ Recorded as D-102. Refines §16 (public location), §21 (honest money) and §23
   publication generation may engage again under the normal rules. Both
   refusals carry the stable code `RECONTACT_BLOCKED`.
 
-**FE-003 contract review (D-104, founder + GPT-5.6 Sol, 2026-10-04)** —
-decided; implementation pending as bounded backend tasks:
+**FE-003 contract review (D-104 and final review D-105, founder + GPT-5.6
+Sol, 2026-10-04)** — decided; implementation pending as bounded backend tasks:
 
-* **G-14 and existing viewings.** The restriction **cancels** the
-  requester's Viewings of that Listing that are REQUESTED or CONFIRMED and
-  start after the decision's instant, in the decision's transaction, with
-  neutral notices to both sides and an explicit immutable cancellation source
-  (HOMIES). Past and terminal Viewings are untouched.
-* **G-14 and contact reveal.** The restricted requester cannot obtain a new
-  contact reveal for that Listing in the same publication generation
-  (`RECONTACT_BLOCKED`).
+* **Existing-engagement safety cleanup ≠ future-engagement generation
+  gate.** When G-14 is applied, the restriction **cancels every currently
+  existing** Viewing of the restricted requester on that Listing that is
+  REQUESTED or CONFIRMED and starts after the moderation decision's instant,
+  in the decision's transaction, with neutral notices to both sides and an
+  explicit immutable cancellation source (HOMIES). This cleanup does **not**
+  infer which publication generation created a Viewing (Viewings carry no
+  such field). Past and terminal Viewings are untouched. Separately, the F6 /
+  G-14 gate stays **generation-scoped** for **new** engagement: same
+  restricted generation → `RECONTACT_BLOCKED`; a later legitimate generation
+  → allowed under the normal rules. Generation-specific cancellation would
+  need a durable publication-generation identifier on Viewing (or another
+  provable episode binding) — not introduced.
+* **G-14 and contact reveal.** The restricted requester cannot obtain a
+  **new or repeat** contact reveal for that Listing in the restricted
+  publication generation (`RECONTACT_BLOCKED`, checked before any
+  repeat-reveal path): Homies does not reveal a number again, return an
+  updated one, or act as a continuing phone channel. A number disclosed
+  earlier cannot be made unknown.
+* **Message reports without verified contact.** An authenticated user who is
+  a current side of a conversation may report another participant's USER
+  message without a verified e-mail or phone. Narrow exception: in-context
+  MESSAGE reports only; LISTING reports keep the verified-contact
+  requirement (TASK-015). Participation, own/SYSTEM refusal, quotas and the
+  one-live-report rule remain.
 * **Requester identity for providers.** A server-side projection of first
   name and surname initial only; never e-mail or phone; never presented as
   verified without a separate verified identity fact.
@@ -368,11 +385,19 @@ decided; implementation pending as bounded backend tasks:
   Subject to the security review of that backend change.
 * **Viewing cancellation after start** is refused by the backend for both
   sides (stable code).
-* **CANONICAL DECISION REQUIRED (security gate, before provider-side
-  beta):** whether private engagement access (MANAGE_MESSAGES /
-  MANAGE_VIEWINGS reads and writes, requester notes and identity) requires a
-  VERIFIED PropertyAuthority. Recommended: yes. Current routes do not
-  require it; that is not a canonical permission.
+* **Private engagement requires a VERIFIED PropertyAuthority (security
+  rule).** For every MANAGE_MESSAGES / MANAGE_VIEWINGS private read and
+  write: the authority chain is in force (§2 of 02: person, active membership
+  or valid representation mandate, with their own rules); the
+  PropertyAuthority at its root has `verification_state = VERIFIED`; the
+  actor holds the required effective scope through ownership, membership role
+  or mandate. An unverified PropertyAuthority grants no access to requester
+  messages, requester notes, requester projected identity, provider
+  conversation actions or provider viewing reads/actions. Guards that refuse
+  self-dealing or conflicts of interest keep evaluating any in-force
+  authority. The legacy `host` role is never authority. Current routes do not
+  yet enforce this; it remains a beta/security prerequisite until implemented
+  and verified.
 * **Open debt:** a REQUESTED Viewing whose start has passed stays REQUESTED;
   explicit expiry semantics are a later product/backend decision. Clients may
   show a derived "no answer — time passed" label without changing the state.

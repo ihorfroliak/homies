@@ -51,13 +51,15 @@ Engineering status per area is in
     `main` at `c32ac63` (2026-10-04): GROWTH-001, DESIGN-001, FE-001, FE-002
     (search → results → map/list → listing detail). Adjudications D-102.
 14. **DESIGN-001C** — 1C Dzielnica product convergence (Claude Design):
-    approved at design-contract level (D-103/D-104); implementation needs a
+    approved at design-contract level (D-103…D-105); implementation needs a
     repository-readable handoff (`docs/design/DESIGN-001C-HANDOFF.md`). The
     1C visual/token rollout is a separate task **FE-VIS-001**.
-15. **FE-003** — save → conversation → viewing: contract final candidate r2
+15. **FE-003** — save → conversation → viewing: **contract APPROVED —
+    implementation not authorised**
     ([contract](../tasks/FE-003-save-conversation-viewing-DRAFT.md)), founder
-    decisions D-104; backend prerequisites BP-1…BP-11; **implementation not
-    authorised** until final contract approval.
+    decisions D-104/D-105; backend prerequisites BP-1…BP-12 as separate
+    bounded tasks; implementation needs a separate founder authorisation and
+    the P-0 handoff.
 
 **Beta prerequisites (before FE-003 matures or any external beta):**
 BG-1 backend logout/refresh revocation; BG-5 refresh reuse/grace semantics
@@ -67,11 +69,11 @@ PropertyAuthority must decide — agency supply, concierge/import, Property OS);
 G9 participant-only address/meeting delivery; G4 mandatory/optional parking
 input; an explicit immutable viewing cancellation source (REQUESTER /
 PROVIDER / HOMIES) before disputes or UI depend on it; first-party analytics
-ingestion, consent evidence and retention (legal-gated, G-12); the D-104
-G-14 extensions (viewing cancellation, contact reveal) implemented;
-**security:** private-engagement authority verification decided and enforced
-before provider-side beta (FE-003 BP-9); idempotent conversation/message
-writes (FE-003 BP-10).
+ingestion, consent evidence and retention (legal-gated, G-12); the D-104/D-105
+G-14 extensions (viewing cancellation, new and repeat contact reveal)
+implemented; **security:** private engagement requires a VERIFIED
+PropertyAuthority (D-105) — implemented and verified before provider-side
+beta (FE-003 BP-9); idempotent conversation/message writes (FE-003 BP-10).
 
 Carried-forward maintenance (not a task on its own, done when the files are
 next touched): E01/E02/E03 PostgreSQL regression tests and mutation-review

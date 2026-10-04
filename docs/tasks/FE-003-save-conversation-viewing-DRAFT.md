@@ -2,10 +2,10 @@
 
 | Field | Value |
 |---|---|
-| Status | **CONTRACT FINAL CANDIDATE r2** — founder/GPT review *PASS WITH REQUIRED CHANGES + FOUNDER DECISIONS* (2026-10-04) applied; awaiting **final contract approval**. **`FE-003 IMPLEMENTATION AUTHORIZED: NO`** |
+| Status | **FE-003 CONTRACT APPROVED — IMPLEMENTATION NOT AUTHORIZED** (founder/GPT final review 2026-10-04: conditionally approved; the bounded correction pass r3 — OD-7, OD-8, BP-9 rule, OD-1/F6 generation semantics — applied with no new contradiction). **`FE-003 IMPLEMENTATION AUTHORIZED: NO`** |
 | Baseline | `main` = `995b05fe72bc15a86141e214bf1c4fc63b8bc570`; schema head `a3c5e7f9b1d4` (no later revision) |
 | Design input | DESIGN-001C *Homies 001C Dzielnica Product Convergence* (`.dc.html`) — approved by founder/GPT **at design-contract level**; implementation needs the repository handoff of §0.2 (P-0) |
-| Founder decisions | **D-104** (OD-1…OD-6, BP-9 security gate, BP-10, BP-7 required, DEBT-1) — canon 04a §24 |
+| Founder decisions | **D-104** (OD-1…OD-6, BP-9 security gate, BP-10, BP-7 required, DEBT-1) and **D-105** (OD-7, OD-8, BP-9 canonical rule, OD-1/F6 generation semantics) — canon 04a §24 |
 | Risk class (implementation) | **R2** (auth/session, private engagement, privacy, concurrency, moderation states); BP-6, BP-9, BP-10, BP-11 are R2 backend tasks with security review |
 | Canon | 00-AUTHORITY; 02 §2 (authority chain); 03 §2; 04 §73 (idempotency keys); 04a §6, §14, §16, §18, §21–§24; 07; DECISIONS D-98 (G-11…G-15), D-100…D-104; DESIGN-001; FE-001; FE-002; GROWTH-001 EVENTS-v1 |
 | File name | kept as `…-DRAFT.md` so existing references stay valid |
@@ -73,7 +73,7 @@ between the handoff and §1–§9 is raised as a contract question before code.
 | No `can_send`/`closed_by`, unread, listing summary or counterpart name | `router.py:124–141` |
 | Buckets `CONVERSATION_START` (10, 0.05/s), `MESSAGE_WRITE` (30, 0.5/s), per IP; middleware 429 has `Retry-After` | `ratelimit.py:75–76`; `composition.py:220–236` |
 | **Not idempotent**: no client request id; a lost response can be followed by a duplicate. The canonical `platform.idempotency_keys` (04 §73) is not implemented for Phase-1 routes | `router.py:287–406`; `grep idempotency app/` |
-| Message report `POST /v1/reports {target_type: "MESSAGE", target_id, reason HARASSMENT\|SCAM\|DISCRIMINATION\|SAFETY\|SPAM\|OTHER, text ≤2000}`; 200 already reported; **403 without a verified e-mail or phone**; 404 not a current side; 409 SYSTEM or own message; 429 quota (10/24 h, 20 waiting) | `trust/router.py:83–150` |
+| Message report `POST /v1/reports {target_type: "MESSAGE", target_id, reason HARASSMENT\|SCAM\|DISCRIMINATION\|SAFETY\|SPAM\|OTHER, text ≤2000}`; 200 already reported; **403 without a verified e-mail or phone** (`reports.reporter_verified`, applied to LISTING and MESSAGE alike — superseded for MESSAGE by D-105, BP-12); 404 not a current side; 409 SYSTEM or own message; 429 quota (10/24 h, 20 waiting) | `trust/router.py:83–150`; `trust/reports.py:10–11, 163–164` |
 
 ### 1.3 Viewings (04 §57–§60; 04a §14; TASK-015 S4b; D-102 F6) — CURRENT BACKEND
 
@@ -164,12 +164,12 @@ PUBLISH_LISTING only (`router.py:791–800`).
 | CF-11 | Provider DTOs: opaque `requester_user_id` only | **OD-3 → BP-4** |
 | CF-12 | Register returns no session; role client-selectable | FE-003a: register → login; never send `role` |
 | CF-13 | BFF `phoneVerified` from `phone` | FE-003a uses `phone_verified_at` |
-| CF-14 | `verified=False` admits unverified PropertyAuthority to private engagement | **BP-9 security gate + BB-10** |
+| CF-14 | `verified=False` admits unverified PropertyAuthority to private engagement | **BP-9 — canonical rule decided (D-105): VERIFIED PropertyAuthority required; BB-10 until implemented and verified** |
 | CF-15 | Message writes not idempotent | **BP-10 + BB-11** |
 | CF-16 | Lists lack listing summary/counterpart/unread/paging | CLIENT COMPOSITION + FUTURE |
-| CF-17 **new** | Reporting a message needs a verified e-mail or phone; messaging needs neither → an unverified recipient of harassment can message but cannot report | **OD-7** (§5.2) |
-| CF-18 **new** | OD-2 says "new" reveal; the backend answers a **repeat** reveal before any check, so a restricted requester could still re-read a number disclosed before the restriction | **OD-8** (§5.2) |
-| CF-19 **new** | Viewings have no generation column: OD-1's "same publication generation" can only mean the requester's viewings of that listing that are future **at the decision instant** | recorded as BP-6 semantics (§4); no schema change needed |
+| CF-17 | Reporting a message needs a verified e-mail or phone; messaging needs neither | **OD-7 decided (D-105)**: in-context MESSAGE reports need no verified contact → BP-12; LISTING reports keep the gate |
+| CF-18 | The backend answers a **repeat** reveal before any check | **OD-8 decided (D-105)**: G-14 blocks new **and** repeat reveal; `RECONTACT_BLOCKED` checked before the repeat fast path → BP-8 |
+| CF-19 | Viewings have no publication-generation field, so "the restricted generation" cannot be proven for an existing Viewing | **Decided (D-105)**: OD-1 cancellation is scoped by requester + listing + decision instant, **not** by generation; F6 stays generation-scoped for **new** engagement (§4). No schema field added |
 | CF-20 **new** | `full_name` is optional free text, unverified: OD-3's projection can be empty or arbitrary | BP-4 fallback "Użytkownik Homies"; never labelled verified |
 | CF-21 **new** | Public derived slots expose occupancy patterns (absence of a slot after a booking) and cost one DB count per candidate | BP-11 security/performance review items |
 | CF-22 **new** | Canon has `platform.idempotency_keys` (04 §73; 04a §6 forbids storing sensitive bodies) | BP-10 uses it; stores the message id reference and a request hash, never the message body |
@@ -204,7 +204,7 @@ PUBLISH_LISTING only (`router.py:791–800`).
 | **Send outcome (BP-10)** | BACKEND/API GAP → FE-003 | every start/append carries a client-generated **`client_message_id`** (UUID v4) minted when the user presses send and kept for retries of that same draft. After 502/503/504/timeout the client **retries with the same id**; the server returns the original result (no duplicate). No matching of body/timestamp. Until BP-10 lands the client shows "Nie wiemy, czy wiadomość dotarła — sprawdź rozmowę" and offers a manual re-read; **that interim state is dev/test only and not acceptable for external beta (BB-11)** |
 | Hierarchy | FE-003 | inbox (newest first) → thread (listing header, messages oldest→newest, composer); tenant/provider via ContextSwitch |
 | Composer states | FE-003 | `idle → typing → sending → sent \| failed(final) \| retrying(same id) \| closed \| blocked`; draft in memory only |
-| **Report a message (OD-4)** | CURRENT BACKEND → FE-003c | "Zgłoś wiadomość" on every **other participant's USER** message (not SYSTEM, not own, not REMOVED): reason (6 codes, Polish labels) + optional text ≤ 2000 (≥ 20 for OTHER per backend); 201/200 → "Zgłoszenie przyjęte" (no decision shown, L13); 403 → verification step (OD-7); 404/409 → neutral "Nie można zgłosić tej wiadomości"; 429 quota |
+| **Report a message (OD-4)** | CURRENT BACKEND → FE-003c | "Zgłoś wiadomość" on every **other participant's USER** message (not SYSTEM, not own, not REMOVED): reason (6 codes, Polish labels) + optional text ≤ 2000 (≥ 20 for OTHER per backend); 201/200 → "Zgłoszenie przyjęte" (no decision shown, L13); **no e-mail/phone verification wall before this action (OD-7, BP-12)**; 404/409 → neutral "Nie można zgłosić tej wiadomości"; 429 quota |
 | Auth interruption | CLIENT COMPOSITION | §3.7; draft never persisted, never auto-sent |
 | Provider authority | CURRENT BACKEND + **BP-9** | provider side only where the user holds MANAGE_MESSAGES; external beta requires the BP-9 verification rule |
 | `can_send` / `closed_by` | BACKEND/API GAP (optional) | not assumed |
@@ -268,7 +268,7 @@ as DECLINED/CANCELLED. DECLINED/CANCELLED semantics are not invented.
 |---|---|---|
 | CTA presence | CURRENT BACKEND | only for `contact_mode == "phone"` |
 | Verified-phone gate | CURRENT BACKEND + BP-1 | unverified (`phone_verified_at`) → verification step, then a deliberate second press; endpoint 403 `PHONE_NOT_VERIFIED` → same step (never confused with a BFF CSRF 403) |
-| **G-14 (OD-2)** | **BP-8** | a restricted requester gets 409 `RECONTACT_BLOCKED` for a **new** reveal on that listing for the same publication generation; UI "Nie możesz zobaczyć numeru do tej oferty", no retry; repeat-reveal handling per OD-8 |
+| **G-14 (OD-2, OD-8)** | **BP-8** | a restricted requester gets 409 `RECONTACT_BLOCKED` for **new and repeat** reveals on that listing for the restricted publication generation — the check runs **before** the repeat fast path, so Homies neither re-reveals nor returns a current/updated number; UI "Nie możesz zobaczyć numeru do tej oferty", neutral, no retry. A number disclosed before the restriction cannot be made unknown; the UI does not pretend otherwise and shows no stored copy |
 | Messages-only | BP-1 `MESSAGES_ONLY` | "Ten właściciel przyjmuje tylko wiadomości" + message CTA |
 | Quota | CURRENT BACKEND | "Pozostało dziś: N z 20"; 429 → countdown from `Retry-After`; repeat reveal never blocked by the UI |
 | Display | FE-003 | text + `tel:` link; never in storage, analytics, URL, logs; cleared on navigation |
@@ -322,13 +322,29 @@ deliver an address. **BB-3.**
 
 Rules: provider context only from authority-backed data (`my_side=provider`
 rows or non-empty `GET /v1/me/classifieds`), **never** `user.role`; no role
-choice at registration; `host` is not the product model. **BP-9 (security
-gate):** before provider-side external beta, the canonical verification
-requirement for MANAGE_MESSAGES / MANAGE_VIEWINGS private reads and writes is
-decided and enforced; **recommended rule: private engagement access requires a
-VERIFIED PropertyAuthority** in the chain. FE-003 does not assume an
-unverified authority may see requester messages, notes or identity merely
-because current routes allow it.
+choice at registration; `host` is not the product model.
+
+**BP-9 — canonical security rule (D-105).** Private engagement access
+requires a **VERIFIED PropertyAuthority**. For every MANAGE_MESSAGES /
+MANAGE_VIEWINGS private read and write:
+
+* the authority chain is in force (02 §2: person, active membership, or valid
+  representation mandate — active mandate/representation rules still apply);
+* the PropertyAuthority at the root of the chain has
+  `verification_state = VERIFIED`;
+* the actor holds the required effective scope through ownership, membership
+  role or mandate.
+
+An unverified PropertyAuthority grants **no** access to requester messages,
+requester notes, requester projected identity, provider conversation actions
+(read, reply, assign, stage) or provider viewing reads/actions (list,
+confirm, decline, cancel, outcome) — nor to the provider inbox rows or the
+provider participant recorded on a new conversation. The rule **tightens
+access only**: guards that refuse self-dealing or conflicts of interest
+(own-listing refusal on start/request, moderator conflict-of-interest checks,
+"manages this listing" on reports) keep evaluating any in-force authority,
+verified or not, because broader is safer there. Legacy `host` is never
+authority. Retained as **BB-10** until implemented and verified.
 
 ### 3.10 Cancellation attribution
 
@@ -338,21 +354,32 @@ explicit immutable cancellation source is in the API (**BP-5 / BB-5**).
 (`MODERATION_VIEWING_CANCELLED`, and the new OD-1 notices) live in
 `/v1/me/inbox`; a notification-centre UI is FUTURE.
 
-## 4. G-14 existing-viewing decision — **DECIDED: C** (D-104)
+## 4. G-14 existing-viewing decision — **DECIDED: C** (D-104; semantics D-105)
+
+**Two different rules — `existing-engagement safety cleanup ≠
+future-engagement generation gate`:**
+
+| Rule | Scope | Generation |
+|---|---|---|
+| **Safety cleanup (OD-1, BP-6)** — applied once, when the restriction is decided | every **currently existing** Viewing with the restricted requester + the same listing that is REQUESTED or CONFIRMED and starts after the decision's database instant | **not** generation-scoped: it does not infer which publication generation created a Viewing (Viewings carry no such field) |
+| **Generation gate (F6 / G-14, BP-8)** — checked on every new engagement | new conversation, new Viewing request, new or repeat contact reveal by the restricted requester on that listing | **generation-scoped**: same restricted publication generation → `RECONTACT_BLOCKED`; a later legitimate generation → allowed under the normal rules |
+
+No schema field is added for FE-003. If a future product requirement needs
+**generation-specific** cancellation, it requires a durable
+publication-generation identifier on Viewing (or another provable episode
+binding) — recorded, not built.
 
 **Decision.** A later G-14 restriction (`FEATURE_RESTRICTED` on a
-conversation) **cancels** that requester's **future** REQUESTED and CONFIRMED
-viewings of the **same listing** for the restricted publication generation.
+conversation) **cancels** the restricted requester's currently existing
+**future** REQUESTED and CONFIRMED Viewings of the **same listing**.
 
 **Requirements (BP-6, together with BP-5):**
 
 * atomic with the restriction — same transaction as the decision, lock order
   listing → conversation → viewings (as close_engagement);
-* scope = viewings with `requester_user_id` = the conversation's requester,
+* scope = Viewings with `requester_user_id` = the conversation's requester,
   `listing_id` = the conversation's listing, status REQUESTED/CONFIRMED,
-  `starts_at` > the decision's database instant. Viewings have no generation
-  column; at the decision instant every such viewing belongs to the
-  restricted generation (CF-19);
+  `starts_at` > the decision's database instant — nothing about generation;
 * terminal and past viewings untouched;
 * `ViewingCancelled(cancelled_by = HOMIES, moderation_decision_id)` and the
   **explicit immutable cancellation source** written on the viewing (BP-5);
@@ -369,25 +396,26 @@ FE-003e/f depend on BP-6 + BP-5 being on `main`.
 
 ## 5. Decisions
 
-### 5.1 Founder decisions (D-104, final)
+### 5.1 Founder decisions (D-104, D-105 — final)
 
 | # | Decision | Contract effect |
 |---|---|---|
-| OD-1 | **C** — cancel future REQUESTED/CONFIRMED viewings of the restricted requester + listing, atomically, neutral notices, with immutable cancellation source | §4; BP-6, BP-5 |
-| OD-2 | **YES** — G-14 blocks new contact reveal for the same publication generation, stable `RECONTACT_BLOCKED` | §3.5; BP-8 |
+| OD-1 | **C** — cancel the restricted requester's currently existing future REQUESTED/CONFIRMED Viewings of the listing at the decision instant, atomically, neutral notices, with immutable cancellation source; not generation-scoped (D-105) | §4; BP-6, BP-5 |
+| OD-2 | **YES** — G-14 blocks contact reveal for the restricted publication generation, stable `RECONTACT_BLOCKED` | §3.5; BP-8 |
 | OD-3 | Provider receives a **server-projected first name + surname initial** only; no e-mail/phone; never described as verified without a separate verified identity fact | BP-4; §6.10 |
 | OD-4 | **YES** — "Zgłoś wiadomość" in FE-003c on the existing reporting backend | §3.2; §6.7 |
 | OD-5 | **YES** — 1C visual/token rollout = separate **FE-VIS-001**; FE-003 consumes semantic tokens only | §7 |
 | OD-6 | **CHANGE** — public PUBLIC listings may expose **only the derived offered slots**; settings/windows/blackouts stay private; viewing request stays auth-required; the public read is rate-limited; public-listing privacy boundary and no exact address retained. Canon does not forbid it (checked: 04 §57–§60, §113–§115; 04a §14, §16, §24; 02 §2) | BP-11 (security review) |
 
-### 5.2 Still open (raised by this pass)
+| OD-7 | **No verified e-mail/phone prerequisite** for an authenticated user who is a current side of the conversation reporting **another participant's USER message**. Narrow: in-context MESSAGE reports only; LISTING reports keep the verified-contact gate. Authentication, participation check, own/SYSTEM refusal, per-user/day and live-queue quotas and the one-live-report rule stay. FE-003c adds **no** verification wall before "Zgłoś wiadomość" | §3.2; BP-12 |
+| OD-8 | G-14 blocks **new and repeat** contact reveal; `RECONTACT_BLOCKED` checked **before** the repeat fast path; Homies does not re-reveal, return an updated number or act as a continuing phone channel; neutral UI | §3.5; BP-8 |
+| BP-9 rule | Private engagement access requires a **VERIFIED PropertyAuthority** (rule in §3.9) | BP-9; BB-10 |
 
-| # | Question | Recommendation | Blocks |
+### 5.2 Open debt
+
+| # | Item | Direction | Blocks |
 |---|---|---|---|
-| OD-7 | Message reporting needs a verified e-mail or phone (CF-17), messaging needs neither | Keep the gate (anti-abuse of the report queue) but make e-mail verification reachable inline in the report dialog; revisit if beta data shows harassment reports abandoned at the gate | FE-003c copy/flow |
-| OD-8 | OD-2 covers "new" reveals; the backend serves a **repeat** reveal before any check (CF-18) | Refuse **repeat** reveals too for the restricted requester (same code): the number may have changed since, and the restriction should stop Homies acting as the channel | BP-8 scope |
-| DEBT-1 | Passed REQUESTED viewings never expire (CF-7) | Future product/backend decision on explicit expiry semantics (e.g. an `EXPIRED` state or a derived metric rule) so analytics and provider-performance metrics do not keep stale REQUESTED; FE shows the derived label only | none for FE-003; metrics debt |
-| BP-9 rule | Verification requirement for private engagement (CF-14) | VERIFIED PropertyAuthority required | provider-side beta (BB-10) |
+| DEBT-1 | Passed REQUESTED Viewings never expire (CF-7) | later product/backend decision on explicit expiry semantics so analytics and provider-performance metrics do not keep stale REQUESTED; FE shows the derived label only; no DECLINED/CANCELLED semantics invented | none for FE-003; metrics debt |
 
 ## 6. Component inventory (FE-003 IMPLEMENTATION)
 
@@ -520,7 +548,7 @@ the consent gate; **semantic tokens only** (OD-5); rail ≥ 1024 px, dock
 | Loading | skeletons; lazy titles |
 | Empty | "Nie masz jeszcze wiadomości" + search link |
 | Error | list retry; per-row 404 tombstone; report errors per §3.2 |
-| Auth | signed-in; report 403 → verification step (OD-7) |
+| Auth | signed-in; no verification wall before reporting (OD-7, BP-12) |
 | A11y | list of links; `role="log"` without re-announcing history; report = menu button → dialog |
 | Responsive | list → thread on mobile; split ≥ 1024 |
 | Analytics | `message_report_submitted` (reason code, outcome) |
@@ -635,9 +663,14 @@ claims need an EXPERIMENTS-v1 randomised test.
 
 **Backend tests** accompany each BP (SQLite + PG where locks matter): BP-6
 races (restriction ↔ confirm/request/cancel); BP-7 refusal at/after start;
-BP-8 new and repeat reveal (per OD-8) refused, other users unaffected,
-republish lifts; BP-9 unverified authority refused on every private
-engagement read/write, verified allowed, mandate/membership chains covered;
+BP-8 new and repeat reveal refused with `RECONTACT_BLOCKED` before the repeat
+fast path (no phone in the response body), other users unaffected, republish
+lifts; BP-9 unverified authority refused on every private engagement
+read/write (inbox rows, thread, reply, assign, stage, viewing list/confirm/
+decline/cancel/outcome, requester display), verified allowed, membership and
+mandate chains covered, own-listing and conflict-of-interest guards unchanged;
+BP-12 an unverified participant files a MESSAGE report (201), a LISTING report
+by the same account still 403, quotas and one-live-report rule unchanged;
 BP-10 same id → one row, same response; same id + different body → 409
 (`IDEMPOTENCY_KEY_REUSED`); concurrent duplicates → one row; key expiry;
 no message body in the idempotency record (04a §6); BP-11 anonymous gets
@@ -681,10 +714,11 @@ authority holder (BP-9), all fictional, under the existing opt-ins.
 | BP-5 | Explicit immutable viewing cancellation source REQUESTER / PROVIDER / HOMIES (schema EXPAND) | R2 | e, f, BP-6 |
 | BP-6 | OD-1 C: atomic cancellation of future viewings on G-14 restriction (§4) | R2 | e, f |
 | BP-7 | **REQUIRED**: backend refuses cancel at/after `starts_at` (`VIEWING_STARTED`) for both sides | R1 | e |
-| BP-8 | OD-2: G-14 bars contact reveal (`RECONTACT_BLOCKED`), new + repeat per OD-8 | R1 | d |
-| BP-9 | **Security gate**: canonical verification rule for private engagement (MANAGE_MESSAGES / MANAGE_VIEWINGS reads and writes, inbox, notes, requester identity, viewing control) decided and enforced; recommended VERIFIED PropertyAuthority | R2 + security review | f; any provider-side beta (BB-10) |
+| BP-8 | OD-2/OD-8: G-14 bars **new and repeat** contact reveal (`RECONTACT_BLOCKED`), checked before the repeat fast path; the refusal carries no phone | R1 | d |
+| BP-9 | **Security rule (D-105)**: enforce VERIFIED PropertyAuthority for every MANAGE_MESSAGES / MANAGE_VIEWINGS private read and write (inbox rows, thread, reply, assign, stage, provider participant on start, viewing list/actions, requester display) per §3.9; self-dealing/conflict guards unchanged | R2 + security review | c (provider side), f; BB-10 |
 | BP-10 | Idempotent start-with-first-message and append: `client_message_id` (UUID) with server-side dedup on `platform.idempotency_keys` (04 §73) or an equivalent unique key; response reconstructed from the stored message id, no body stored (04a §6); reuse with a different body → 409 | R2 | c (external beta: BB-11) |
 | BP-11 | OD-6: anonymous read of **derived** slots for PUBLIC listings only; no settings/windows/blackouts/capacity in the response; request stays auth-required; dedicated public rate limit and anonymous `days` cap; same §18 visibility rule; security + performance review (CF-21) | R2 + security review | e (guest path) |
+| BP-12 | OD-7: `POST /v1/reports` for `target_type=MESSAGE` by a current side of the conversation on another participant's USER message no longer requires a verified e-mail/phone; LISTING keeps `reporter_verified`; OpenAPI 403 description updated | R1 | c |
 | optional | G8 saved flag; `can_send` / `closed_by` | — | — |
 
 ### 10.2 Beta blockers
@@ -700,7 +734,7 @@ authority holder (BP-9), all fictional, under the existing opt-ins.
 | BB-7 | production SMS provider |
 | BB-8 | first-party analytics ingestion legal gate |
 | BB-9 | OD-1 implemented (BP-6) before viewings reach external users |
-| BB-10 | **security**: private-engagement authority verification (BP-9) before provider-side external beta |
+| BB-10 | **security**: BP-9 (VERIFIED PropertyAuthority for private engagement, D-105) implemented and verified before provider-side external beta |
 | BB-11 | idempotent conversation/message writes (BP-10) before FE-003c reaches external users |
 
 ### 10.3 Slices and dependencies
@@ -709,13 +743,13 @@ authority holder (BP-9), all fictional, under the existing opt-ins.
 |---|---|---|---|
 | **FE-003a** | `/bff/auth/register`, AuthInterrupt, intent store, `phoneVerified` fix, fallback pages | final approval; P-0 | BB-1, BB-2 |
 | **FE-003b** | SaveButton, saved list, saved searches; rail/dock skeleton (Save only) | a | as a |
-| **FE-003c** | Composer, inbox, thread, ConversationItem, **Zgłoś wiadomość**, message CTA | a; BP-1; BP-10; OD-7 answered | BB-11, BB-10 for the provider side of threads |
-| **FE-003d** | reveal CTA, phone verification step, quota | a; BP-1; BP-8 (OD-8 answered) | BB-7 |
+| **FE-003c** | Composer, inbox, thread, ConversationItem, **Zgłoś wiadomość**, message CTA | a; BP-1; BP-10; BP-12 | BB-11; BB-10 for the provider side of threads |
+| **FE-003d** | reveal CTA, phone verification step, quota | a; BP-1; BP-8 | BB-7 |
 | **FE-003e** | ViewingSlot (guest path), request sheet, ViewingState, my viewings | a; BP-1; BP-2; BP-5; BP-6; **BP-7**; **BP-11** | BB-3 awareness (no address), BB-5, BB-9 |
 | **FE-003f** | ContextSwitch, provider inbox view, ProviderViewingRow | c, e; BP-3; BP-4; BP-5; **BP-9** | BB-6, BB-10 |
 
-Recommended backend order: BP-1, BP-2, BP-7 (small, R1) → BP-10, BP-5 + BP-6,
-BP-8 → BP-11, BP-9 (security review) → BP-3, BP-4. No slice reaches external
+Recommended backend order: BP-1, BP-2, BP-7, BP-12 (small, R1) → BP-10,
+BP-5 + BP-6, BP-8 → BP-11, BP-9 (security review) → BP-3, BP-4. No slice reaches external
 users while a blocker of its column is open.
 
 ## 11. Acceptance criteria
@@ -752,8 +786,8 @@ RECONTACT_BLOCKED state, no retry. AC-C7 a retried send with the same
 response). AC-C8 quota/rate states with `Retry-After`. AC-C9 rows survive
 listing 404. AC-C10 tenant never sees provider fields. AC-C11 SYSTEM code
 mapped; unknown neutral. AC-C12 "Zgłoś wiadomość" only on the other side's USER
-messages; 201/200 → "Zgłoszenie przyjęte"; no decision shown. AC-C13 report
-403 → verification step per OD-7.
+messages; 201/200 → "Zgłoszenie przyjęte"; no decision shown. AC-C13 no
+e-mail/phone verification step before a message report (OD-7).
 
 **Reveal (d):** AC-RV1 unverified → verification, then deliberate press.
 AC-RV2 quota visible. AC-RV3 repeat reveal free (unrestricted users). AC-RV4
@@ -786,19 +820,23 @@ BP-9 lands.
 | R-3 | Duplicate messages | BP-10; BB-11 |
 | R-4 | Saved-set cost at 500 saves | once per session; G8 if slow |
 | R-5 | Home visit survives a restriction | OD-1 C (BP-6), BB-9 |
-| R-6 | Phone bypass of G-14 | OD-2 (BP-8), OD-8 |
+| R-6 | Phone bypass of G-14 | OD-2 + OD-8 (BP-8, new and repeat) |
 | R-7 | Unverified authority reads private engagement | BP-9, BB-10 |
 | R-8 | Public slots leak schedule/occupancy or cost DB time | BP-11 review: derived instants only, rate limit, days cap |
 | R-9 | Wrong local times across DST | BP-2 timezone; DST fixtures |
 | R-10 | Session illusions (BG-1) and refresh races (BG-5) | BB-1, BB-2; not masked |
 | R-11 | Free text leaking into analytics/storage | parity test §9.2-5 |
 | R-12 | Stale REQUESTED pollutes provider metrics | DEBT-1 decision; derived label only |
-| R-13 | Unverified harassment recipient cannot report | OD-7 |
+| R-13 | Unverified harassment recipient cannot report | OD-7 (BP-12) |
+| R-14 | Report-queue abuse by unverified accounts after OD-7 | narrow scope (participant, other side's USER message), existing quotas 10/24 h + 20 live, one live report per target; moderators see reporter verification signals |
 
 ## 13. Status
 
+**FE-003 CONTRACT APPROVED — IMPLEMENTATION NOT AUTHORIZED**
+
 `FE-003 IMPLEMENTATION AUTHORIZED: NO`
 
-Next: founder + GPT-5.6 Sol **final** contract approval, answers to OD-7,
-OD-8 and the BP-9 rule, and the P-0 handoff in the repository. No FE-003
-production code, merge or deployment before that.
+Next: a separate founder authorisation for implementation; the P-0 handoff
+(`docs/design/DESIGN-001C-HANDOFF.md`, raw `.dc.html` optional) in the
+repository; the backend prerequisites of each slice (§10.3) as their own
+bounded tasks. No FE-003 production code, merge or deployment before that.

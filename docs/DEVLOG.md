@@ -1030,3 +1030,18 @@ REQUIRED CHANGES* → рішення **D-104** (канон 04a §24): G-14 ск�
 
 **Статус:** `FE-003 IMPLEMENTATION AUTHORIZED: NO`; гілка
 `claude/FE-003-contract`, не в `main`.
+
+## 2026-10-04 (фінал) — FE-003: контракт схвалено; D-105
+
+Фінальне рев'ю засновника/GPT: *CONDITIONALLY APPROVED* → обмежений прохід r3.
+**OD-7:** скарга на чуже USER-повідомлення учасником розмови — без вимоги
+верифікованого e-mail/телефону (лише MESSAGE; LISTING зберігає вимогу) → BP-12.
+**OD-8:** G-14 блокує і новий, і повторний показ телефону; перевірка перед
+fast path повтору (BP-8). **BP-9:** канонічне правило — приватна взаємодія
+(MANAGE_MESSAGES / MANAGE_VIEWINGS) лише через VERIFIED PropertyAuthority;
+захисти від конфлікту інтересів не звужуються. **OD-1/F6:** прибирання
+наявних майбутніх переглядів ≠ генераційний гейт нової взаємодії; поле
+покоління у Viewing не додається. Нових суперечностей не знайдено.
+
+**Статус:** `FE-003 CONTRACT APPROVED — IMPLEMENTATION NOT AUTHORIZED`;
+`FE-003 IMPLEMENTATION AUTHORIZED: NO`. Гілка `claude/FE-003-contract`, не в `main`.
