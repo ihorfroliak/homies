@@ -76,6 +76,6 @@ over the corresponding file, with this table updated.
 | 02 | Founder instruction 2026-09-24 | **No** — derived summary |
 | 03 | Founder instruction 2026-09-24 | **No** — derived summary |
 | 04 | Founder-supplied Domain Schema v1, byte-for-byte, SHA-256 `fd9c1fe707e84cd4c5e15f06127f4f4fbd64a1fad126e3c3153f8c744a0eb990` | Yes (spec text) |
-| 04a | Founder instruction 2026-09-24 §20–§21; later founder decisions recorded as §22 (TASK-014), §23 (TASK-015 D-1…D-9) and §24 (PROGRAM-001 adjudication D-102, with GPT-5.6 Sol) | Yes, for what it covers |
+| 04a | Founder instruction 2026-09-24 §20–§21; later founder decisions recorded as §22 (TASK-014), §23 (TASK-015 D-1…D-9) and §24 (PROGRAM-001 adjudication D-102 and FE-003 contract reviews D-104/D-105, with GPT-5.6 Sol) | Yes, for what it covers |
 | 05 | Founder instruction 2026-09-24 | Yes |
 | 07 | Founder instruction 2026-09-25 (TASK-010 Part A) | Yes, for what it covers |

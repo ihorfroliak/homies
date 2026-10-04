@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **FOUNDATION — on `main`** (PROGRAM-001, `c32ac63`). Visual direction: **1C Dzielnica** selected (D-103); **DESIGN-001C Product Convergence IN PROGRESS** — see §0 |
+| Status | **FOUNDATION — on `main`** (PROGRAM-001, `c32ac63`). Visual direction: **1C Dzielnica** selected (D-103); **DESIGN-001C Product Convergence founder/GPT APPROVED at design-contract level**; FE-003 implementation NOT authorised; 1C production rollout = separate FE-VIS-001 — see §0 |
 | Authority | subordinate to the canon ([07](../canonical/07-PRODUCT-GROWTH-DOCTRINE.md), [02](../canonical/02-BUSINESS-LOGIC.md), [03 §3](../canonical/03-SYSTEM-ARCHITECTURE-v1.1.md)); founder decisions D-98 (G-1, G-3, G-5, G-11, G-13) |
 | Family | this document · [DESIGN-SYSTEM-v1](DESIGN-SYSTEM-v1.md) · [UI-STATE-MAP](UI-STATE-MAP.md) |
 | Supersedes | `docs/design/PRODUCT_UX.md` (booking-era journeys) and the booking-specific parts of `docs/design/DESIGN_SYSTEM.md` |
@@ -17,8 +17,9 @@ the client.
 | | |
 |---|---|
 | Selected direction | DESIGN-001B → **1C Dzielnica** (founder) |
-| Current design task | **DESIGN-001C — Product Convergence: IN PROGRESS** (Claude Design, in parallel) |
-| Authoritative next input | the DESIGN-001C handoff, once reviewed by GPT-5.6 Sol and approved by the founder |
+| Design task | **DESIGN-001C — Product Convergence: founder/GPT APPROVED at design-contract level** (2026-10-04; produced in Claude Design) |
+| Implementation | FE-003 contract approved, **implementation NOT authorised** (D-104/D-105); 1C production visual/token rollout = separate **FE-VIS-001** |
+| Authoritative next input | **P-0**: the repository-readable approved handoff `docs/design/DESIGN-001C-HANDOFF.md` (the raw `.dc.html` stays the source visual artifact) |
 
 Known invariants: expressive district/area colour is the selected identity,
 and **area colour never means quality, trust or status**; Seeker v1

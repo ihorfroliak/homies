@@ -90,7 +90,7 @@ PROGRAM-001 (`779b30fe`) was reviewed by GPT-5.6 Sol (accepted with
 conditions), approved by the founder and merged to `main` at `c32ac63a`
 (2026-10-04). Its adjudications are D-102 (canon 04a §24); F6 enforcement and
 the decision records follow on `main` as a bounded integration commit.
-Next: DESIGN-001C (in progress, D-103) → FE-003 contract (draft only; not
+Next: DESIGN-001C approved at design-contract level → FE-003 contract APPROVED (D-104/D-105; implementation not
 authorised). Production NOT READY, NOT DEPLOYED.
 
 PR-002 is **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED** (D-88): integrated into
@@ -121,10 +121,11 @@ D-95) is on `main` (`1de34bf5`, merge of `3146fed3`). TASK-015 Slice 4a
 (`03268432`, merge of `ff433303`, externally reviewed): message reports,
 bounded audited moderator evidence, CONTENT_REMOVED redaction; rollback to S5
 is a security barrier; L9 legal validation required before launch. TASK-015
-Slice 4b ([task](tasks/TASK-015-S4B-engagement-safety.md), D-97) is on the
-PROGRAM-001 branch, **not on `main`**: close_engagement, conversation
-restriction (G-14), viewing protection under a hold, non-destructive photo
-restriction; rollback to S4a is a safety barrier.
+Slice 4b ([task](tasks/TASK-015-S4B-engagement-safety.md), D-97) is on
+`main` — merged with PROGRAM-001 (`c32ac63a`, merge of `779b30fe`), with the
+bounded F6/canon follow-up (D-102) at `995b05fe`: close_engagement,
+conversation restriction (G-14, F6 for viewings), viewing protection under a
+hold, non-destructive photo restriction; rollback to S4a is a safety barrier.
 MICRO-001: [scope and closure](tasks/MICRO-001-evidence-docs-test-cleanup.md).
 
 **DEFERRED:** Phase-2 transactional renting (payments, ledger), short stay,

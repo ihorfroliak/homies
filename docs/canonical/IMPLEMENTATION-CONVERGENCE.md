@@ -68,7 +68,7 @@ during TASK-009 — this is **not** production DR verification.
 
 ## DESIGN-001 — product / UX / UI foundation (2026-10-03, builder)
 
-On the PROGRAM-001 branch, **not on `main`**. [Foundation](../product/DESIGN-001-product-ui-foundation.md) · D-100.
+Built on the PROGRAM-001 branch; **on `main`** via the PROGRAM-001 merge (`c32ac63a`, merge of `779b30fe`). [Foundation](../product/DESIGN-001-product-ui-foundation.md) · D-100.
 
 | Area | Classification | State |
 |---|---|---|
@@ -78,7 +78,7 @@ On the PROGRAM-001 branch, **not on `main`**. [Foundation](../product/DESIGN-001
 
 ## GROWTH-001 — marketplace growth & measurement foundation (2026-10-03, builder)
 
-On the PROGRAM-001 branch, **not on `main`**. [Foundation](../growth/GROWTH-001-marketplace-growth-foundation.md) · D-98 · D-99.
+Built on the PROGRAM-001 branch; **on `main`** via the PROGRAM-001 merge (`c32ac63a`, merge of `779b30fe`). [Foundation](../growth/GROWTH-001-marketplace-growth-foundation.md) · D-98 · D-99.
 
 | Area | Classification | State |
 |---|---|---|
@@ -91,8 +91,10 @@ On the PROGRAM-001 branch, **not on `main`**. [Foundation](../growth/GROWTH-001-
 
 **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (R2, D-88).** Built on
 `claude/TASK-015-s4b-engagement-safety` from `main` `03268432` (S4a merged)
-plus PROGRAM-001 P0; integrated into the PROGRAM-001 branch, **not on
-`main`**. [Task](../tasks/TASK-015-S4B-engagement-safety.md) · D-97 · G-14.
+plus PROGRAM-001 P0; integrated into the PROGRAM-001 branch, and from there
+**into `main`** via the PROGRAM-001 merge (`c32ac63a`, merge of `779b30fe`);
+F6 enforcement and its canonical follow-up (D-102) are on the resulting
+`main` `995b05fe`. [Task](../tasks/TASK-015-S4B-engagement-safety.md) · D-97 · G-14.
 Production: **NOT READY · NOT DEPLOYED.** L11: wording open.
 
 | Area | Classification | State |
