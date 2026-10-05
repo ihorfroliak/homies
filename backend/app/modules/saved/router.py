@@ -37,6 +37,12 @@ from app.modules.saved.schemas import (
 
 router = APIRouter(tags=["saved"])
 
+# Stable refusal codes (FE-003 BP-1): the client reads the "CODE: " prefix of
+# `detail`, never the English text after it.
+SAVED_LIMIT = "SAVED_LIMIT"
+SAVED_SEARCH_DUPLICATE = "SAVED_SEARCH_DUPLICATE"
+SAVED_SEARCH_LIMIT = "SAVED_SEARCH_LIMIT"
+
 # Ids are UUIDs; anything else (a NUL, a 10 kB string) is refused before SQL.
 Id = Annotated[str, Path(min_length=1, max_length=36, pattern=r"^[A-Za-z0-9-]+$")]
 
@@ -85,7 +91,8 @@ def _saved_out(db: Session, saves: list[SavedListing]) -> list[SavedListingOut]:
     status_code=status.HTTP_201_CREATED,
     responses={200: {"description": "Already saved — the existing save (idempotent)."},
                404: {"description": "No public listing with this id."},
-               409: {"description": "The account holds the maximum number of saved listings."}},
+               409: {"description": "`SAVED_LIMIT`: the account holds the maximum number of "
+                                    "saved listings."}},
 )
 def save_listing(listing_id: Id, response: Response, user=Depends(get_current_user),
                  db: Session = Depends(get_db)):
@@ -107,8 +114,9 @@ def save_listing(listing_id: Id, response: Response, user=Depends(get_current_us
                       .where(SavedListing.user_id == user.id)) or 0
     if count >= settings.saved_listings_per_user:
         db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT,
-                            f"At most {settings.saved_listings_per_user} listings can be saved")
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"{SAVED_LIMIT}: at most {settings.saved_listings_per_user} listings can be saved")
     save = SavedListing(user_id=user.id, listing_id=listing_id, saved_at=now)
     db.add(save)
     try:
@@ -193,7 +201,8 @@ def _duplicate(db: Session, user_id: str, fingerprint: str, exclude: str | None 
     other = db.scalar(stmt)
     if other is not None:
         db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, "This search is already saved",
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            f"{SAVED_SEARCH_DUPLICATE}: this search is already saved",
                             headers={"Location": f"/v1/me/saved-searches/{other}"})
 
 
@@ -201,8 +210,10 @@ def _duplicate(db: Session, user_id: str, fingerprint: str, exclude: str | None 
     "/me/saved-searches",
     response_model=SavedSearchOut,
     status_code=status.HTTP_201_CREATED,
-    responses={409: {"description": "The same search is already saved (`Location` names it), "
-                                    "or the account holds the maximum number of searches."},
+    responses={409: {"description": "Stable codes: `SAVED_SEARCH_DUPLICATE` (the same search "
+                                    "is already saved; `Location` names it); "
+                                    "`SAVED_SEARCH_LIMIT` (the account holds the maximum "
+                                    "number of searches; checked first)."},
                422: {"description": "The query is not a valid TASK-013 search."}},
 )
 def create_saved_search(body: SavedSearchCreate, user=Depends(get_current_user),
@@ -220,8 +231,10 @@ def create_saved_search(body: SavedSearchCreate, user=Depends(get_current_user),
                       .where(SavedSearch.user_id == user.id)) or 0
     if count >= settings.saved_searches_per_user:
         db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT,
-                            f"At most {settings.saved_searches_per_user} searches can be saved")
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"{SAVED_SEARCH_LIMIT}: at most {settings.saved_searches_per_user} searches can be "
+            "saved")
     _duplicate(db, user.id, fingerprint)
     now = freshness.db_now(db)
     saved = SavedSearch(
@@ -290,8 +303,10 @@ def saved_search_matches(
 @router.patch(
     "/me/saved-searches/{search_id}",
     response_model=SavedSearchOut,
-    responses={409: {"description": "`expected_version` is not the current version, or the "
-                                    "new query duplicates another saved search."}},
+    responses={409: {"description": "`SAVED_SEARCH_DUPLICATE`: the new query duplicates "
+                                    "another saved search (`Location` names it when known); "
+                                    "or `expected_version` is not the current version (no "
+                                    "code yet)."}},
 )
 def update_saved_search(search_id: Id, body: SavedSearchUpdate,
                         user=Depends(get_current_user), db: Session = Depends(get_db)):
@@ -339,7 +354,8 @@ def update_saved_search(search_id: Id, body: SavedSearchUpdate,
         if "uq_saved_searches_user_fingerprint" not in str(exc.orig) and not (
                 q is not None and _fingerprint_taken(db, user.id, values, saved.id)):
             raise
-        raise HTTPException(status.HTTP_409_CONFLICT, "This search is already saved") from None
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            f"{SAVED_SEARCH_DUPLICATE}: this search is already saved") from None
     return _search_out(db, saved, with_count=True)
 
 

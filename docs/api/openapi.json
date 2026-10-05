@@ -8185,6 +8185,12 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "description": "No public listing with this id."
+          },
+          "409": {
+            "description": "Stable codes: `OWN_LISTING`; `RECONTACT_BLOCKED` (G-14); `VIEWINGS_NOT_OFFERED` (the listing takes no viewings: no or disabled viewing settings); `SLOT_NOT_OFFERED` (not one of the derived offered slots now — taken, too soon, blacked out or never offered); `VIEWING_ALREADY_BOOKED` (the caller already has a future viewing of this listing)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -8390,6 +8396,15 @@
             },
             "description": "Successful Response"
           },
+          "403": {
+            "description": "`PHONE_NOT_VERIFIED`: the caller has no verified phone."
+          },
+          "404": {
+            "description": "No public listing with this id."
+          },
+          "409": {
+            "description": "`MESSAGES_ONLY`: the owner accepts messages only."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -8399,6 +8414,17 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "description": "`REVEAL_QUOTA`: the daily limit of owner contacts is reached, or the rate limit (no code). Both send `Retry-After`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until a retry can succeed.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -8447,6 +8473,12 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "description": "No public listing with this id."
+          },
+          "409": {
+            "description": "Stable codes: `OWN_LISTING` (the caller manages this listing); `RECONTACT_BLOCKED` (G-14: Homies closed the caller's conversation for this publication)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -8456,6 +8488,17 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "description": "`CONVERSATION_QUOTA`: the daily limit of new conversations is reached (existing threads continue), or the rate limit (no code). Both send `Retry-After`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until a retry can succeed.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -8972,6 +9015,12 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "description": "No conversation this account is a side of."
+          },
+          "409": {
+            "description": "Stable code: `CONVERSATION_CLOSED` (Homies closed it)."
           },
           "422": {
             "content": {
@@ -10018,7 +10067,7 @@
             "description": "No public listing with this id."
           },
           "409": {
-            "description": "The account holds the maximum number of saved listings."
+            "description": "`SAVED_LIMIT`: the account holds the maximum number of saved listings."
           },
           "422": {
             "content": {
@@ -10116,7 +10165,7 @@
             "description": "Successful Response"
           },
           "409": {
-            "description": "The same search is already saved (`Location` names it), or the account holds the maximum number of searches."
+            "description": "Stable codes: `SAVED_SEARCH_DUPLICATE` (the same search is already saved; `Location` names it); `SAVED_SEARCH_LIMIT` (the account holds the maximum number of searches; checked first)."
           },
           "422": {
             "description": "The query is not a valid TASK-013 search."
@@ -10263,7 +10312,7 @@
             "description": "Successful Response"
           },
           "409": {
-            "description": "`expected_version` is not the current version, or the new query duplicates another saved search."
+            "description": "`SAVED_SEARCH_DUPLICATE`: the new query duplicates another saved search (`Location` names it when known); or `expected_version` is not the current version (no code yet)."
           },
           "422": {
             "content": {
@@ -11446,6 +11495,12 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "description": "No viewing this account is a side of."
+          },
+          "409": {
+            "description": "Stable codes: `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (defensive: the version compare-and-set found a concurrent change — re-read; normally prevented by the row lock)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -11493,6 +11548,12 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "description": "No viewing this account provides."
+          },
+          "409": {
+            "description": "Stable codes: `LISTING_HELD` (under moderation review); `VIEWING_TIME_PASSED`; `SLOT_FULL` (capacity taken); `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (defensive: the version compare-and-set found a concurrent change — re-read; normally prevented by the row lock)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -11539,6 +11600,12 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "description": "No viewing this account provides."
+          },
+          "409": {
+            "description": "Stable codes: `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (defensive: the version compare-and-set found a concurrent change — re-read; normally prevented by the row lock)."
           },
           "422": {
             "content": {
@@ -11597,6 +11664,12 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "description": "No viewing this account provides."
+          },
+          "409": {
+            "description": "Stable codes: `VIEWING_NOT_STARTED`; `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (defensive: the version compare-and-set found a concurrent change — re-read; normally prevented by the row lock)."
           },
           "422": {
             "content": {

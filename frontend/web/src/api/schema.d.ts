@@ -5142,6 +5142,20 @@ export interface operations {
                     "application/json": components["schemas"]["ViewingOut"];
                 };
             };
+            /** @description No public listing with this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stable codes: `OWN_LISTING`; `RECONTACT_BLOCKED` (G-14); `VIEWINGS_NOT_OFFERED` (the listing takes no viewings: no or disabled viewing settings); `SLOT_NOT_OFFERED` (not one of the derived offered slots now — taken, too soon, blacked out or never offered); `VIEWING_ALREADY_BOOKED` (the caller already has a future viewing of this listing). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -5291,6 +5305,27 @@ export interface operations {
                     "application/json": components["schemas"]["ContactRevealOut"];
                 };
             };
+            /** @description `PHONE_NOT_VERIFIED`: the caller has no verified phone. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No public listing with this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `MESSAGES_ONLY`: the owner accepts messages only. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -5299,6 +5334,15 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+            /** @description `REVEAL_QUOTA`: the daily limit of owner contacts is reached, or the rate limit (no code). Both send `Retry-After`. */
+            429: {
+                headers: {
+                    /** @description Seconds until a retry can succeed. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5326,6 +5370,20 @@ export interface operations {
                     "application/json": components["schemas"]["ConversationDetail"];
                 };
             };
+            /** @description No public listing with this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stable codes: `OWN_LISTING` (the caller manages this listing); `RECONTACT_BLOCKED` (G-14: Homies closed the caller's conversation for this publication). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -5334,6 +5392,15 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+            /** @description `CONVERSATION_QUOTA`: the daily limit of new conversations is reached (existing threads continue), or the rate limit (no code). Both send `Retry-After`. */
+            429: {
+                headers: {
+                    /** @description Seconds until a retry can succeed. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5662,6 +5729,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MessageOut"];
                 };
+            };
+            /** @description No conversation this account is a side of. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stable code: `CONVERSATION_CLOSED` (Homies closed it). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -6270,7 +6351,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The account holds the maximum number of saved listings. */
+            /** @description `SAVED_LIMIT`: the account holds the maximum number of saved listings. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -6370,7 +6451,7 @@ export interface operations {
                     "application/json": components["schemas"]["SavedSearchOut"];
                 };
             };
-            /** @description The same search is already saved (`Location` names it), or the account holds the maximum number of searches. */
+            /** @description Stable codes: `SAVED_SEARCH_DUPLICATE` (the same search is already saved; `Location` names it); `SAVED_SEARCH_LIMIT` (the account holds the maximum number of searches; checked first). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -6470,7 +6551,7 @@ export interface operations {
                     "application/json": components["schemas"]["SavedSearchOut"];
                 };
             };
-            /** @description `expected_version` is not the current version, or the new query duplicates another saved search. */
+            /** @description `SAVED_SEARCH_DUPLICATE`: the new query duplicates another saved search (`Location` names it when known); or `expected_version` is not the current version (no code yet). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -7249,6 +7330,20 @@ export interface operations {
                     "application/json": components["schemas"]["ViewingOut"];
                 };
             };
+            /** @description No viewing this account is a side of. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stable codes: `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (defensive: the version compare-and-set found a concurrent change — re-read; normally prevented by the row lock). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -7280,6 +7375,20 @@ export interface operations {
                     "application/json": components["schemas"]["ViewingOut"];
                 };
             };
+            /** @description No viewing this account provides. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stable codes: `LISTING_HELD` (under moderation review); `VIEWING_TIME_PASSED`; `SLOT_FULL` (capacity taken); `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (defensive: the version compare-and-set found a concurrent change — re-read; normally prevented by the row lock). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -7310,6 +7419,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ViewingOut"];
                 };
+            };
+            /** @description No viewing this account provides. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stable codes: `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (defensive: the version compare-and-set found a concurrent change — re-read; normally prevented by the row lock). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -7345,6 +7468,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ViewingOut"];
                 };
+            };
+            /** @description No viewing this account provides. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stable codes: `VIEWING_NOT_STARTED`; `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (defensive: the version compare-and-set found a concurrent change — re-read; normally prevented by the row lock). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

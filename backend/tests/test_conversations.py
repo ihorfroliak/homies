@@ -10,8 +10,10 @@ What must hold:
 * one tenant cannot blast every owner on the board.
 """
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.core.config import settings
 from app.modules.engagement.models import Conversation, ConversationParticipant, Message
@@ -108,7 +110,9 @@ def test_the_inbox_shows_each_side_its_conversations(client, owner, tenant, thre
 
 
 def test_you_cannot_message_your_own_listing(client, owner, thread):
-    assert _start(client, owner, thread["offer"]).status_code == 409
+    resp = _start(client, owner, thread["offer"])
+    assert resp.status_code == 409
+    assert resp.json()["detail"].startswith("OWN_LISTING: ")
 
 
 def test_an_unpublished_listing_takes_no_new_conversation(client, owner, tenant):
@@ -283,10 +287,50 @@ def test_new_conversations_are_capped_but_open_ones_continue(client, owner, tena
         assert _start(client, tenant, offers[1]).status_code == 201
         blocked = _start(client, tenant, offers[2])
         assert blocked.status_code == 429, blocked.text
+        assert blocked.json()["detail"].startswith("CONVERSATION_QUOTA: ")
+        # Both starts were just now: the first slot frees about 24 h from now.
+        assert 24 * 3600 - 120 <= int(blocked.headers["Retry-After"]) <= 24 * 3600
 
         # An open conversation is not a new stranger reached.
         assert _start(client, tenant, offers[0], "Dalej").status_code == 201
         assert _send(client, tenant, first.json()["conversation"]["id"]).status_code == 201
+    finally:
+        settings.conversation_daily_quota = original
+
+
+def test_the_conversation_quota_says_when_the_oldest_start_ages_out(client, owner, tenant):
+    """BP-1: Retry-After comes from the rolling window itself — the start that
+    must age out, not a constant. Nothing is created by the refusal."""
+    original = settings.conversation_daily_quota
+    settings.conversation_daily_quota = 2
+    try:
+        offers = [_listing(client, owner, f"ul. Okno {i}")[1] for i in range(3)]
+        first = _start(client, tenant, offers[0]).json()["conversation"]["id"]
+        assert _start(client, tenant, offers[1]).status_code == 201
+        with TestingSession() as db:
+            conv = db.get(Conversation, first)
+            conv.created_at = datetime.now(timezone.utc) - timedelta(hours=23)
+            db.commit()
+            before = db.scalar(select(func.count()).select_from(Conversation))
+
+        blocked = _start(client, tenant, offers[2])
+        assert blocked.status_code == 429
+        assert blocked.json()["detail"].startswith("CONVERSATION_QUOTA: ")
+        assert 3600 - 120 <= int(blocked.headers["Retry-After"]) <= 3600
+        with TestingSession() as db:
+            assert db.scalar(select(func.count()).select_from(Conversation)) == before
+
+        # A quota lowered below what is already used: the start that must age
+        # out is the second oldest, not the oldest.
+        with TestingSession() as db:
+            second = db.scalars(select(Conversation).where(
+                Conversation.id != first).order_by(Conversation.created_at)).first()
+            second.created_at = datetime.now(timezone.utc) - timedelta(hours=22)
+            db.commit()
+        settings.conversation_daily_quota = 1
+        lowered = _start(client, tenant, offers[2])
+        assert lowered.json()["detail"].startswith("CONVERSATION_QUOTA: ")
+        assert 7200 - 120 <= int(lowered.headers["Retry-After"]) <= 7200
     finally:
         settings.conversation_daily_quota = original
 

@@ -74,8 +74,33 @@ from app.modules.properties.models import ClassifiedOffer
 from app.modules.trust import effects, hold
 
 LISTING_HELD = "LISTING_HELD"
-# The same stable code as a refused conversation start (engagement/router.py).
+# The same stable codes as a refused conversation start (engagement/router.py).
 RECONTACT_BLOCKED = "RECONTACT_BLOCKED"
+OWN_LISTING = "OWN_LISTING"
+# Stable refusal codes (FE-003 BP-1): the client reads the "CODE: " prefix of
+# `detail`, never the English text after it.
+VIEWINGS_NOT_OFFERED = "VIEWINGS_NOT_OFFERED"
+SLOT_NOT_OFFERED = "SLOT_NOT_OFFERED"
+SLOT_FULL = "SLOT_FULL"
+VIEWING_ALREADY_BOOKED = "VIEWING_ALREADY_BOOKED"
+VIEWING_STATE_CONFLICT = "VIEWING_STATE_CONFLICT"
+VIEWING_CHANGED = "VIEWING_CHANGED"
+VIEWING_TIME_PASSED = "VIEWING_TIME_PASSED"
+VIEWING_NOT_STARTED = "VIEWING_NOT_STARTED"
+
+
+def _conflict(code: str, message: str) -> HTTPException:
+    return HTTPException(status.HTTP_409_CONFLICT, f"{code}: {message}")
+
+
+def _state_conflict(viewing_status: str) -> HTTPException:
+    return _conflict(VIEWING_STATE_CONFLICT, f"the viewing is {viewing_status}")
+
+
+# OpenAPI: the stable 409 codes of each viewing write.
+_TRANSITION_409 = ("`VIEWING_STATE_CONFLICT` (not in a state this action applies to); "
+                   "`VIEWING_CHANGED` (defensive: the version compare-and-set found a "
+                   "concurrent change — re-read; normally prevented by the row lock)")
 
 router = APIRouter(tags=["viewings"])
 
@@ -412,15 +437,25 @@ def list_slots(listing_id: str, start: date | None = None,
             "duration_minutes": settings.duration_minutes}
 
 
-@router.post("/classifieds/{listing_id}/viewings", response_model=ViewingOut,
-             status_code=201)
+@router.post(
+    "/classifieds/{listing_id}/viewings", response_model=ViewingOut, status_code=201,
+    responses={
+        404: {"description": "No public listing with this id."},
+        409: {"description": "Stable codes: `OWN_LISTING`; `RECONTACT_BLOCKED` (G-14); "
+                             "`VIEWINGS_NOT_OFFERED` (the listing takes no viewings: no or "
+                             "disabled viewing settings); `SLOT_NOT_OFFERED` (not one of the "
+                             "derived offered slots now — taken, too soon, blacked out or "
+                             "never offered); `VIEWING_ALREADY_BOOKED` (the caller already "
+                             "has a future viewing of this listing)."},
+    },
+)
 def request_viewing(listing_id: str, body: ViewingRequest,
                     user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     offer = _shared_listing(db, listing_id)
     if not freshness.is_public(offer, freshness.db_now(db)):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
     if _is_provider(db, user, offer):
-        raise HTTPException(status.HTTP_409_CONFLICT, "This is your own listing")
+        raise _conflict(OWN_LISTING, "this is your own listing")
     # F6 (founder/GPT, 2026-10-04; extends G-14): a requester whose
     # conversation Homies restricted cannot route around it by requesting a
     # viewing for the same publication generation; a republish lifts it, as for
@@ -434,20 +469,21 @@ def request_viewing(listing_id: str, body: ViewingRequest,
     # Locked: capacity is read and then relied on, and two requests for the
     # last place must not both read it free.
     settings = _settings(db, listing_id, lock=True)
-    if settings is None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "This listing takes no viewings yet")
+    # Disabled settings offer no slot at all (`slots`), so they are the same
+    # refusal as no settings: the listing takes no viewings.
+    if settings is None or not settings.enabled:
+        raise _conflict(VIEWINGS_NOT_OFFERED, "this listing takes no viewings yet")
 
     starts_at = _aware(body.starts_at).astimezone(timezone.utc)
     local_day = starts_at.astimezone(ZoneInfo(settings.timezone)).date()
     if starts_at not in slots(db, settings, local_day, 1):
-        raise HTTPException(status.HTTP_409_CONFLICT, "That time is not an offered slot")
+        raise _conflict(SLOT_NOT_OFFERED, "that time is not an offered slot")
 
     already = db.scalar(select(Viewing.id).where(
         Viewing.listing_id == listing_id, Viewing.requester_user_id == user.id,
         Viewing.status.in_(HELD), Viewing.ends_at > _now()))
     if already is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT,
-                            "You already have a viewing of this flat booked")
+        raise _conflict(VIEWING_ALREADY_BOOKED, "you already have a viewing of this flat booked")
 
     instant = settings.booking_mode == "INSTANT_BOOKING"
     viewing = Viewing(
@@ -482,7 +518,7 @@ def _transition(db: Session, viewing: Viewing, allowed_from: tuple[str, ...],
     """Move the viewing on only from a state it is in now, at the version
     read under the lock. Anything else is a conflict, never an overwrite."""
     if viewing.status not in allowed_from:
-        raise HTTPException(status.HTTP_409_CONFLICT, f"The viewing is {viewing.status}")
+        raise _state_conflict(viewing.status)
     result = cast(CursorResult, db.execute(
         update(Viewing)
         .where(Viewing.id == viewing.id, Viewing.status.in_(allowed_from),
@@ -492,7 +528,7 @@ def _transition(db: Session, viewing: Viewing, allowed_from: tuple[str, ...],
     ))
     if result.rowcount != 1:
         db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, "The viewing was changed meanwhile")
+        raise _conflict(VIEWING_CHANGED, "the viewing was changed meanwhile")
     db.refresh(viewing)
 
 
@@ -524,10 +560,10 @@ def _respond(db: Session, user: User, viewing_id: str, confirm: bool) -> Viewing
     # for the settings lock (TASK-001 F-06).
     viewing = _locked(db, viewing_id)
     if viewing.status != "REQUESTED":
-        raise HTTPException(status.HTTP_409_CONFLICT, f"The viewing is {viewing.status}")
+        raise _state_conflict(viewing.status)
     if confirm:
         if _aware(viewing.starts_at) <= _now():
-            raise HTTPException(status.HTTP_409_CONFLICT, "That viewing time has passed")
+            raise _conflict(VIEWING_TIME_PASSED, "that viewing time has passed")
         capacity = settings.max_concurrent_bookings if settings else 1
         clearance = timedelta(minutes=(
             settings.buffer_before_minutes + settings.buffer_after_minutes) if settings else 0)
@@ -535,7 +571,7 @@ def _respond(db: Session, user: User, viewing_id: str, confirm: bool) -> Viewing
                                   _aware(viewing.starts_at) - clearance,
                                   _aware(viewing.ends_at) + clearance, exclude_id=viewing.id)
         if taken >= capacity:
-            raise HTTPException(status.HTTP_409_CONFLICT, "That slot is already full")
+            raise _conflict(SLOT_FULL, "that slot is already full")
     _transition(db, viewing, ("REQUESTED",),
                 status="CONFIRMED" if confirm else "DECLINED", responded_at=_now(),
                 confirmed_by_user_id=user.id if confirm else None)
@@ -546,19 +582,35 @@ def _respond(db: Session, user: User, viewing_id: str, confirm: bool) -> Viewing
     return viewing
 
 
-@router.post("/viewings/{viewing_id}/confirm", response_model=ViewingOut)
+@router.post(
+    "/viewings/{viewing_id}/confirm", response_model=ViewingOut,
+    responses={
+        404: {"description": "No viewing this account provides."},
+        409: {"description": "Stable codes: `LISTING_HELD` (under moderation review); "
+                             "`VIEWING_TIME_PASSED`; `SLOT_FULL` (capacity taken); "
+                             + _TRANSITION_409 + "."},
+    },
+)
 def confirm(viewing_id: str, user: User = Depends(get_current_user),
             db: Session = Depends(get_db)):
     return _respond(db, user, viewing_id, confirm=True)
 
 
-@router.post("/viewings/{viewing_id}/decline", response_model=ViewingOut)
+@router.post(
+    "/viewings/{viewing_id}/decline", response_model=ViewingOut,
+    responses={404: {"description": "No viewing this account provides."},
+               409: {"description": "Stable codes: " + _TRANSITION_409 + "."}},
+)
 def decline(viewing_id: str, user: User = Depends(get_current_user),
             db: Session = Depends(get_db)):
     return _respond(db, user, viewing_id, confirm=False)
 
 
-@router.post("/viewings/{viewing_id}/cancel", response_model=ViewingOut)
+@router.post(
+    "/viewings/{viewing_id}/cancel", response_model=ViewingOut,
+    responses={404: {"description": "No viewing this account is a side of."},
+               409: {"description": "Stable codes: " + _TRANSITION_409 + "."}},
+)
 def cancel(viewing_id: str, user: User = Depends(get_current_user),
            db: Session = Depends(get_db)):
     """Either side may call it off before it happens."""
@@ -576,7 +628,12 @@ def cancel(viewing_id: str, user: User = Depends(get_current_user),
     return viewing
 
 
-@router.post("/viewings/{viewing_id}/outcome", response_model=ViewingOut)
+@router.post(
+    "/viewings/{viewing_id}/outcome", response_model=ViewingOut,
+    responses={404: {"description": "No viewing this account provides."},
+               409: {"description": "Stable codes: `VIEWING_NOT_STARTED`; "
+                                    + _TRANSITION_409 + "."}},
+)
 def record_outcome(viewing_id: str, body: OutcomeIn, user: User = Depends(get_current_user),
                    db: Session = Depends(get_db)):
     """What happened, recorded by the provider once the time has come."""
@@ -585,9 +642,9 @@ def record_outcome(viewing_id: str, body: OutcomeIn, user: User = Depends(get_cu
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Viewing not found")
     viewing = _locked(db, viewing_id)
     if viewing.status != "CONFIRMED":
-        raise HTTPException(status.HTTP_409_CONFLICT, f"The viewing is {viewing.status}")
+        raise _state_conflict(viewing.status)
     if _aware(viewing.starts_at) > _now():
-        raise HTTPException(status.HTTP_409_CONFLICT, "The viewing has not happened yet")
+        raise _conflict(VIEWING_NOT_STARTED, "the viewing has not happened yet")
     _transition(db, viewing, ("CONFIRMED",), status=body.outcome, completed_at=_now())
     facts.viewing_outcome_recorded(db, viewing)
     db.commit()

@@ -130,6 +130,7 @@ def test_a_patch_blocked_on_the_unique_fingerprint_answers_409(
     t.join(30)
     assert "unhandled" not in result, f"PATCH escaped as a server error: {result['unhandled']}"
     assert result["r"].status_code == 409, result["r"].text
+    assert result["r"].json()["detail"].startswith("SAVED_SEARCH_DUPLICATE: ")
     with sessions() as db:
         assert db.get(SavedSearch, s2).canonical_query == f"locality_id={geo['warszawa']}"
 
