@@ -1090,3 +1090,17 @@ CONVERSATION_QUOTA з ковзного вікна. Вимкнені налашт
 VIEWINGS_NOT_OFFERED (раніше «slot not offered»). Повний прогін 1874 passed;
 hostile review: 0 blocker / 0 material. Контракт: `docs/tasks/BP-1-stable-api-codes.md`.
 `FE-003 IMPLEMENTATION AUTHORIZED: NO`.
+
+## 2026-10-05 — BP-2 + BP-7: контракт API переглядів
+
+Від `main` `6be148b` на `claude/BP-2-BP-7-viewing-api-contract`. **BP-2:**
+`viewing-slots` → типізований `ViewingSlotsOut {slots, duration_minutes,
+timezone}`; `timezone` — IANA-зона з налаштувань переглядів (і для вимкнених),
+`null` без налаштувань; авторизація, видимість і похідні слоти без змін
+(`+00:00` → `Z`, той самий момент). **BP-7:** скасування з моменту початку
+(`now >= starts_at`) → 409 `VIEWING_STARTED` для обох сторін, REQUESTED і
+CONFIRMED; термінальні стани — як і раніше `VIEWING_STATE_CONFLICT`; лок і CAS
+без змін; без expiry, джерела скасування, G-14-прибирання, міграцій. Повний
+прогін 1895 passed; hostile review: 0 blocker. Борг: часові перевірки модуля
+переглядів на app-clock (04a §20). `docs/tasks/BP-2-BP-7-viewing-api-contract.md`.
+`FE-003 IMPLEMENTATION AUTHORIZED: NO`.
