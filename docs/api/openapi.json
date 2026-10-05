@@ -5545,9 +5545,11 @@
                 "type": "null"
               }
             ],
+            "description": "Length of each slot in minutes; null when the listing has no viewing settings.",
             "title": "Duration Minutes"
           },
           "slots": {
+            "description": "Offered slot start instants (UTC).",
             "items": {
               "format": "date-time",
               "type": "string"
@@ -5564,6 +5566,7 @@
                 "type": "null"
               }
             ],
+            "description": "IANA time zone of the listing's viewing settings (e.g. Europe/Warsaw) to show the slots in; null when the listing has no viewing settings.",
             "title": "Timezone"
           }
         },
@@ -11546,7 +11549,7 @@
             "description": "No viewing this account is a side of."
           },
           "409": {
-            "description": "Stable codes: `VIEWING_STARTED` (it is at or past its start: too late to call off, for either side); `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (defensive: the version compare-and-set found a concurrent change — re-read; normally prevented by the row lock)."
+            "description": "Stable codes: `VIEWING_STARTED` (the viewing has started — from its start time on, neither side can cancel); `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (defensive: the version compare-and-set found a concurrent change — re-read; normally prevented by the row lock)."
           },
           "422": {
             "content": {

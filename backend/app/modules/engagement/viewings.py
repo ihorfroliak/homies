@@ -198,9 +198,13 @@ class ViewingSlotsOut(BaseModel):
     in. Both `duration_minutes` and `timezone` are null when the listing has
     no viewing settings: there is no authoritative value to give."""
 
-    slots: list[datetime]
-    duration_minutes: int | None
-    timezone: str | None
+    slots: list[datetime] = Field(description="Offered slot start instants (UTC).")
+    duration_minutes: int | None = Field(
+        description="Length of each slot in minutes; null when the listing has no "
+                    "viewing settings.")
+    timezone: str | None = Field(
+        description="IANA time zone of the listing's viewing settings (e.g. Europe/Warsaw) "
+                    "to show the slots in; null when the listing has no viewing settings.")
 
 
 class ViewingRequest(BaseModel):
@@ -630,9 +634,9 @@ def decline(viewing_id: str, user: User = Depends(get_current_user),
 @router.post(
     "/viewings/{viewing_id}/cancel", response_model=ViewingOut,
     responses={404: {"description": "No viewing this account is a side of."},
-               409: {"description": "Stable codes: `VIEWING_STARTED` (it is at or past its "
-                                    "start: too late to call off, for either side); "
-                                    + _TRANSITION_409 + "."}},
+               409: {"description": "Stable codes: `VIEWING_STARTED` (the viewing has "
+                                    "started — from its start time on, neither side can "
+                                    "cancel); " + _TRANSITION_409 + "."}},
 )
 def cancel(viewing_id: str, user: User = Depends(get_current_user),
            db: Session = Depends(get_db)):
