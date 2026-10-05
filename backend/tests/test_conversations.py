@@ -319,6 +319,18 @@ def test_the_conversation_quota_says_when_the_oldest_start_ages_out(client, owne
         assert 3600 - 120 <= int(blocked.headers["Retry-After"]) <= 3600
         with TestingSession() as db:
             assert db.scalar(select(func.count()).select_from(Conversation)) == before
+
+        # A quota lowered below what is already used: the start that must age
+        # out is the second oldest, not the oldest.
+        with TestingSession() as db:
+            second = db.scalars(select(Conversation).where(
+                Conversation.id != first).order_by(Conversation.created_at)).first()
+            second.created_at = datetime.now(timezone.utc) - timedelta(hours=22)
+            db.commit()
+        settings.conversation_daily_quota = 1
+        lowered = _start(client, tenant, offers[2])
+        assert lowered.json()["detail"].startswith("CONVERSATION_QUOTA: ")
+        assert 7200 - 120 <= int(lowered.headers["Retry-After"]) <= 7200
     finally:
         settings.conversation_daily_quota = original
 

@@ -107,8 +107,9 @@ from app.modules.properties.schemas import (
 router = APIRouter(tags=["properties"])
 
 # TASK-015: publish and confirm refuse a listing held by moderation with this
-# exact detail. The project has no machine-readable error-code convention yet
-# (IMPLEMENTATION-CONVERGENCE debt), so the stable code leads the text.
+# exact detail. Stable codes lead the `detail` text ("CODE: …"), the convention
+# FE-003 BP-1 extended to the engagement refusals; a structured error envelope
+# remains IMPLEMENTATION-CONVERGENCE debt.
 HELD_BY_MODERATION = "HELD_BY_MODERATION: this listing is on hold by Homies moderation"
 # Contact-reveal refusals (FE-003 BP-1), same "CODE: " convention.
 PHONE_NOT_VERIFIED = "PHONE_NOT_VERIFIED"

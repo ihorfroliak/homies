@@ -7337,7 +7337,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Stable codes: `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (changed concurrently — re-read). */
+            /** @description Stable codes: `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (defensive: the version compare-and-set found a concurrent change — re-read; normally prevented by the row lock). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -7382,7 +7382,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Stable codes: `LISTING_HELD` (under moderation review); `VIEWING_TIME_PASSED`; `SLOT_FULL` (capacity taken); `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (changed concurrently — re-read). */
+            /** @description Stable codes: `LISTING_HELD` (under moderation review); `VIEWING_TIME_PASSED`; `SLOT_FULL` (capacity taken); `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (defensive: the version compare-and-set found a concurrent change — re-read; normally prevented by the row lock). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -7427,7 +7427,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Stable codes: `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (changed concurrently — re-read). */
+            /** @description Stable codes: `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (defensive: the version compare-and-set found a concurrent change — re-read; normally prevented by the row lock). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -7476,7 +7476,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Stable codes: `VIEWING_NOT_STARTED`; `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (changed concurrently — re-read). */
+            /** @description Stable codes: `VIEWING_NOT_STARTED`; `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (defensive: the version compare-and-set found a concurrent change — re-read; normally prevented by the row lock). */
             409: {
                 headers: {
                     [name: string]: unknown;

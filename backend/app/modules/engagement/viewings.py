@@ -99,7 +99,8 @@ def _state_conflict(viewing_status: str) -> HTTPException:
 
 # OpenAPI: the stable 409 codes of each viewing write.
 _TRANSITION_409 = ("`VIEWING_STATE_CONFLICT` (not in a state this action applies to); "
-                   "`VIEWING_CHANGED` (changed concurrently — re-read)")
+                   "`VIEWING_CHANGED` (defensive: the version compare-and-set found a "
+                   "concurrent change — re-read; normally prevented by the row lock)")
 
 router = APIRouter(tags=["viewings"])
 
