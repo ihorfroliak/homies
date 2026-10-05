@@ -642,22 +642,25 @@ def cancel(viewing_id: str, user: User = Depends(get_current_user),
            db: Session = Depends(get_db)):
     """Either side may call it off before it happens (BP-7, 04a §24): from the
     moment it starts, neither can. The state is checked first, so a finished
-    viewing still answers VIEWING_STATE_CONFLICT; the time is checked under
-    the row lock, on the module's clock like the confirm/outcome guards."""
+    viewing still answers VIEWING_STATE_CONFLICT. The time is decided under
+    the row lock on the database clock (04a §20): one decision instant, used
+    for the check, the row's `cancelled_at` and the fact alike."""
     _viewing_for(db, user, viewing_id)
     viewing = _locked(db, viewing_id)
     if viewing.status not in HELD:
         raise _state_conflict(viewing.status)
-    if _aware(viewing.starts_at) <= _now():
+    decision_now = freshness.db_now(db)
+    if _aware(viewing.starts_at) <= decision_now:
         raise _conflict(VIEWING_STARTED, "the viewing has already started")
     prior = viewing.status
-    _transition(db, viewing, HELD, status="CANCELLED", cancelled_at=_now())
+    _transition(db, viewing, HELD, status="CANCELLED", cancelled_at=decision_now)
     audit(db, actor=user.id, action="viewing.cancelled", entity_type="viewing",
           entity_id=viewing.id)
     # The requester is the requester even when they also manage the listing.
     facts.viewing_cancelled(
         db, viewing_id=viewing.id, listing_id=viewing.listing_id, prior_status=prior,
-        cancelled_by="REQUESTER" if viewing.requester_user_id == user.id else "PROVIDER")
+        cancelled_by="REQUESTER" if viewing.requester_user_id == user.id else "PROVIDER",
+        cancelled_at=freshness.canonical_instant(decision_now))
     db.commit()
     return viewing
 

@@ -1104,3 +1104,8 @@ CONFIRMED; термінальні стани — як і раніше `VIEWING_S
 прогін 1895 passed; hostile review: 0 blocker. Борг: часові перевірки модуля
 переглядів на app-clock (04a §20). `docs/tasks/BP-2-BP-7-viewing-api-contract.md`.
 `FE-003 IMPLEMENTATION AUTHORIZED: NO`.
+
+**BP-7 корекція (рев'ю засновника/GPT):** рішення про скасування тепер на
+годиннику БД (`freshness.db_now(db)`, 04a §20) — один момент для перевірки,
+`cancelled_at` рядка і fact. Інші app-clock перевірки модуля переглядів не
+змінено — окремий борг.

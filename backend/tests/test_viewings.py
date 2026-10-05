@@ -488,12 +488,21 @@ def _cancel_facts(viewing_id) -> int:
                                             DomainEvent.correlation_id == viewing_id).count()
 
 
+def _cancel_fact_payload(viewing_id) -> dict:
+    from app.modules.events.models import DomainEvent
+
+    with TestingSession() as db:
+        return db.query(DomainEvent).filter(DomainEvent.event_type == "ViewingCancelled",
+                                            DomainEvent.correlation_id == viewing_id
+                                            ).one().payload
+
+
 @pytest.mark.parametrize("state", ["REQUESTED", "CONFIRMED"])
 @pytest.mark.parametrize("actor", ["requester", "provider"])
 @pytest.mark.parametrize("moment", ["before", "exactly", "after"])
 def test_either_side_cancels_only_before_the_start(client, owner, tenant, summer_window,
                                                     monkeypatch, state, actor, moment):
-    from app.modules.engagement import viewings
+    from app.modules.properties import freshness
 
     starts = _utc(SUMMER, 10)
     viewing = _request(client, tenant, summer_window, starts).json()
@@ -502,16 +511,21 @@ def test_either_side_cancels_only_before_the_start(client, owner, tenant, summer
                            headers=auth(owner)).status_code == 200
     now = {"before": starts - timedelta(seconds=1), "exactly": starts,
            "after": starts + timedelta(hours=2)}[moment]
-    monkeypatch.setattr(viewings, "_now", lambda: now)
+    monkeypatch.setattr(freshness, "db_now", lambda db: now)
 
     resp = client.post(f"/v1/viewings/{viewing['id']}/cancel",
                        headers=auth(tenant if actor == "requester" else owner))
     with TestingSession() as db:
-        stored = db.get(Viewing, viewing["id"]).status
+        row = db.get(Viewing, viewing["id"])
+        stored, cancelled_at = row.status, row.cancelled_at
     if moment == "before":
         assert resp.status_code == 200, resp.text
         assert stored == "CANCELLED"
         assert (_audits(viewing["id"]), _cancel_facts(viewing["id"])) == (1, 1)
+        # One decision instant: the database clock's, on the row and the fact.
+        assert cancelled_at.replace(tzinfo=timezone.utc) == now
+        fact = _cancel_fact_payload(viewing["id"])
+        assert fact["cancelled_at"] == freshness.canonical_instant(now)
     else:
         assert resp.status_code == 409
         assert resp.json()["detail"].startswith("VIEWING_STARTED: ")
@@ -519,18 +533,40 @@ def test_either_side_cancels_only_before_the_start(client, owner, tenant, summer
         assert (_audits(viewing["id"]), _cancel_facts(viewing["id"])) == (0, 0)
 
 
+def test_the_cancel_decision_is_the_database_clock(client, tenant, summer_window,
+                                                   monkeypatch):
+    """04a §20: the database clock decides, not the process clock — a far-off
+    app clock neither blocks a timely cancel nor allows a late one."""
+    from app.modules.engagement import viewings
+    from app.modules.properties import freshness
+
+    starts = _utc(SUMMER, 10)
+    early = _request(client, tenant, summer_window, starts).json()
+    monkeypatch.setattr(viewings, "_now", lambda: starts + timedelta(days=30))
+    monkeypatch.setattr(freshness, "db_now", lambda db: starts - timedelta(minutes=5))
+    assert client.post(f"/v1/viewings/{early['id']}/cancel",
+                       headers=auth(tenant)).status_code == 200
+
+    monkeypatch.undo()
+    late = _request(client, tenant, summer_window, _utc(SUMMER, 11)).json()
+    monkeypatch.setattr(viewings, "_now", lambda: starts - timedelta(days=30))
+    monkeypatch.setattr(freshness, "db_now", lambda db: _utc(SUMMER, 11))
+    resp = client.post(f"/v1/viewings/{late['id']}/cancel", headers=auth(tenant))
+    assert (resp.status_code, resp.json()["detail"].split(":")[0]) == (409, "VIEWING_STARTED")
+
+
 def test_a_finished_viewing_stays_a_state_conflict_after_its_start(client, owner, tenant,
                                                                    summer_window,
                                                                    monkeypatch):
     """BP-7 does not turn every late error into VIEWING_STARTED."""
-    from app.modules.engagement import viewings
+    from app.modules.properties import freshness
 
     starts = _utc(SUMMER, 10)
     declined = _request(client, tenant, summer_window, starts).json()
     client.post(f"/v1/viewings/{declined['id']}/decline", headers=auth(owner))
     cancelled = _request(client, tenant, summer_window, _utc(SUMMER, 11)).json()
     client.post(f"/v1/viewings/{cancelled['id']}/cancel", headers=auth(tenant))
-    monkeypatch.setattr(viewings, "_now", lambda: starts + timedelta(days=1))
+    monkeypatch.setattr(freshness, "db_now", lambda db: starts + timedelta(days=1))
     for vid in (declined["id"], cancelled["id"]):
         resp = client.post(f"/v1/viewings/{vid}/cancel", headers=auth(tenant))
         assert resp.status_code == 409
@@ -539,23 +575,23 @@ def test_a_finished_viewing_stays_a_state_conflict_after_its_start(client, owner
 
 def test_a_stranger_still_sees_nothing_after_the_start(client, tenant, summer_window,
                                                        monkeypatch):
-    from app.modules.engagement import viewings
+    from app.modules.properties import freshness
 
     starts = _utc(SUMMER, 10)
     viewing = _request(client, tenant, summer_window, starts).json()
     stranger = register_and_login(client, "late-stranger@example.com", "guest")
-    monkeypatch.setattr(viewings, "_now", lambda: starts + timedelta(hours=1))
+    monkeypatch.setattr(freshness, "db_now", lambda db: starts + timedelta(hours=1))
     assert client.post(f"/v1/viewings/{viewing['id']}/cancel",
                        headers=auth(stranger)).status_code == 404
 
 
 def test_a_passed_request_is_left_as_it_is(client, tenant, summer_window, monkeypatch):
     """No expiry: BP-7 refuses a late cancel and nothing else (DEBT-1)."""
-    from app.modules.engagement import viewings
+    from app.modules.properties import freshness
 
     starts = _utc(SUMMER, 10)
     viewing = _request(client, tenant, summer_window, starts).json()
-    monkeypatch.setattr(viewings, "_now", lambda: starts + timedelta(days=3))
+    monkeypatch.setattr(freshness, "db_now", lambda db: starts + timedelta(days=3))
     client.post(f"/v1/viewings/{viewing['id']}/cancel", headers=auth(tenant))
     mine = client.get("/v1/me/viewings", headers=auth(tenant)).json()
     assert [(v["id"], v["status"]) for v in mine] == [(viewing["id"], "REQUESTED")]

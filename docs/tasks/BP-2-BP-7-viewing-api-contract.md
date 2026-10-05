@@ -60,16 +60,22 @@ Guard order (unchanged lock and CAS):
 2. `_locked` — the row FOR UPDATE, re-read;
 3. state ∉ {REQUESTED, CONFIRMED} → `VIEWING_STATE_CONFLICT` (terminal
    states keep their answer at any time);
-4. `starts_at <= now` → `VIEWING_STARTED`;
-5. `_transition` (status + version compare-and-set, `VIEWING_CHANGED`),
-   audit `viewing.cancelled`, fact `ViewingCancelled` — unchanged.
+4. `decision_now = freshness.db_now(db)`; `starts_at <= decision_now` →
+   `VIEWING_STARTED`;
+5. `_transition` (status + version compare-and-set, `VIEWING_CHANGED`) with
+   `cancelled_at = decision_now`, audit `viewing.cancelled`, fact
+   `ViewingCancelled` with `cancelled_at = canonical_instant(decision_now)`.
 
-**Clock:** the module's server clock `viewings._now()` (UTC), the same clock as
-the sibling guards (`VIEWING_TIME_PASSED` on confirm, `VIEWING_NOT_STARTED` on
-outcome) and the `cancelled_at` stamp. Canon 04a §20 names the database clock
-as the authority; the viewing module has used the app clock since TASK-002
-(pre-existing deviation, not introduced here) — recorded as nonblocking debt
-(move all viewing time guards to the DB clock together), not changed in BP-7.
+**Clock (04a §20, founder/GPT correction):** BP-7 decides on the **database
+clock** — `freshness.db_now(db)`, the authoritative decision instant
+(`statement_timestamp()` on PostgreSQL; the process clock in UTC on the
+SQLite test engine), taken once under the row lock and used for the check,
+the row's `cancelled_at` and the fact's `cancelled_at` (as close-engagement
+already does in `trust/effects.py`). The pre-existing app-clock usages of the
+viewing module — slot derivation, the default slot start date, confirm
+`VIEWING_TIME_PASSED`, outcome `VIEWING_NOT_STARTED`, the request's
+already-booked check — were **not** modified and remain separate
+clock-convergence debt against 04a §20.
 
 | Actor | State | before start | exactly at start | after start |
 |---|---|---|---|---|
@@ -92,7 +98,8 @@ expiry of a passed REQUESTED (DEBT-1 — it stays REQUESTED), cancellation sourc
 | `test_no_settings_means_no_authoritative_timezone` | `[]`, null, null |
 | `test_the_slot_response_stays_signed_in_only` | 401 without a token |
 | `test_the_slot_response_is_a_named_schema_in_openapi` | `$ref ViewingSlotsOut`; date-time items; nullable fields |
-| `test_either_side_cancels_only_before_the_start` | 2 actors × 2 states × before/exactly/after (12 cases), clock controlled via `viewings._now`; refusal leaves state, audit and facts untouched; success writes one audit and one fact |
+| `test_either_side_cancels_only_before_the_start` | 2 actors × 2 states × before/exactly/after (12 cases), the database clock controlled via `freshness.db_now`; refusal leaves state, audit and facts untouched; success writes one audit and one fact, with the row's and the fact's `cancelled_at` equal to the decision instant |
+| `test_the_cancel_decision_is_the_database_clock` | a far-off app clock (`viewings._now`) neither blocks a timely cancel nor allows a late one |
 | `test_a_finished_viewing_stays_a_state_conflict_after_its_start` | DECLINED / CANCELLED after start → `VIEWING_STATE_CONFLICT`, not `VIEWING_STARTED` |
 | `test_a_stranger_still_sees_nothing_after_the_start` | 404 for a non-side |
 | `test_a_passed_request_is_left_as_it_is` | no expiry; stays REQUESTED |
@@ -127,9 +134,22 @@ commit. NONBLOCKING, adopted (`69a6878`): field descriptions in
 `ViewingSlotsOut`; cancel description trimmed to the rule. NONBLOCKING,
 recorded only:
 
-* **Clock (04a §20):** viewing time guards use the app clock (pre-existing,
-  followed not introduced); a later task should move all viewing guards to
-  the database clock together.
+* **Clock (04a §20):** raised as nonblocking by the hostile review; the
+  founder/GPT review classified it **material for BP-7** (a new business
+  decision must follow §20) → corrected, see the DB-clock correction below.
+  The other viewing app-clock usages stay separate debt.
+
+**DB-clock correction (after founder/GPT review of `5efc8fd`):** only the
+BP-7 cancellation decision moved to `freshness.db_now(db)` (one decision
+instant for check, `cancelled_at` and fact). Re-run on the correction:
+ruff, mypy (126 files), OpenAPI regenerated (the cancel operation description
+is its docstring) and `--check` up to date, frontend `check:api` OK, Spectral
+0 errors / 49 warnings, focused SQLite (viewings, DST, facts, engagement
+safety, listing freshness, OpenAPI contract) **149 passed**, PostgreSQL
+(viewings PG, concurrency R4, engagement safety PG, freshness tz PG)
+**76 passed**. The full local suite was **not** re-run after the correction
+(last full run: `8efdd68`, 1895 passed); the branch CI backend job runs the
+full suite on the corrected HEAD. BP-2 code is unchanged by the correction.
 * **BP-11 note:** `timezone` is a viewing-settings value; when BP-11 opens the
   derived-slot read to anonymous callers it must state that the zone (like
   `duration_minutes`) is part of the public derived contract, while windows,

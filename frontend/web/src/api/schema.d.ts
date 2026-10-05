@@ -1748,8 +1748,9 @@ export interface paths {
          * Cancel
          * @description Either side may call it off before it happens (BP-7, 04a §24): from the
          *     moment it starts, neither can. The state is checked first, so a finished
-         *     viewing still answers VIEWING_STATE_CONFLICT; the time is checked under
-         *     the row lock, on the module's clock like the confirm/outcome guards.
+         *     viewing still answers VIEWING_STATE_CONFLICT. The time is decided under
+         *     the row lock on the database clock (04a §20): one decision instant, used
+         *     for the check, the row's `cancelled_at` and the fact alike.
          */
         post: operations["cancel_v1_viewings__viewing_id__cancel_post"];
         delete?: never;
