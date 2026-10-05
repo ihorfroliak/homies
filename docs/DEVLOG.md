@@ -1076,3 +1076,17 @@ C-3/U-3 (повний CostBreakdown угорі на мобільному), U-2 (
 FE-VIS-001, не FE-003. Залежності: геометрія районів (у geo API немає),
 лічильники по районах (агрегату немає), провайдер мапи (G-11).
 Гілка `claude/P-0-home-map-amendment` від `main` `673b61e` (P-0 уже злито).
+
+## 2026-10-05 — BP-1: стабільні коди відмов (FE-003 передумова)
+
+Від `main` `dc74da3` на `claude/BP-1-stable-api-codes`. 16 кодів у наявній
+конвенції `"CODE: текст"` у `detail` (OWN_LISTING, VIEWINGS_NOT_OFFERED,
+SLOT_NOT_OFFERED, SLOT_FULL, VIEWING_ALREADY_BOOKED, VIEWING_STATE_CONFLICT,
+VIEWING_CHANGED, VIEWING_TIME_PASSED, VIEWING_NOT_STARTED, MESSAGES_ONLY,
+PHONE_NOT_VERIFIED, REVEAL_QUOTA, CONVERSATION_QUOTA, SAVED_LIMIT,
+SAVED_SEARCH_DUPLICATE, SAVED_SEARCH_LIMIT); HTTP-статуси, квоти, ліміти,
+авторизація і стани переглядів без змін. Нове: `Retry-After` для
+CONVERSATION_QUOTA з ковзного вікна. Вимкнені налаштування переглядів тепер
+VIEWINGS_NOT_OFFERED (раніше «slot not offered»). Повний прогін 1874 passed;
+hostile review: 0 blocker / 0 material. Контракт: `docs/tasks/BP-1-stable-api-codes.md`.
+`FE-003 IMPLEMENTATION AUTHORIZED: NO`.
