@@ -5533,6 +5533,48 @@
         "title": "ViewingRequest",
         "type": "object"
       },
+      "ViewingSlotsOut": {
+        "description": "The derived offered viewing slots of a listing (FE-003 BP-2).\n\nOnly the derived contract: no windows, blackouts, capacity, buffers,\nnotice or booking mode. `slots` are UTC instants; a request names one of\nthem exactly. `timezone` is the listing's viewing-settings IANA zone, the\none the provider's windows are written in — the zone to show the slots\nin. Both `duration_minutes` and `timezone` are null when the listing has\nno viewing settings: there is no authoritative value to give.",
+        "properties": {
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          },
+          "slots": {
+            "items": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "title": "Slots",
+            "type": "array"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          }
+        },
+        "required": [
+          "slots",
+          "duration_minutes",
+          "timezone"
+        ],
+        "title": "ViewingSlotsOut",
+        "type": "object"
+      },
       "WindowIn": {
         "properties": {
           "local_date": {
@@ -8017,10 +8059,15 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ViewingSlotsOut"
+                }
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "description": "No public listing with this id."
           },
           "422": {
             "content": {
@@ -11471,7 +11518,7 @@
     },
     "/v1/viewings/{viewing_id}/cancel": {
       "post": {
-        "description": "Either side may call it off before it happens.",
+        "description": "Either side may call it off before it happens (BP-7, 04a §24): from the\nmoment it starts, neither can. The state is checked first, so a finished\nviewing still answers VIEWING_STATE_CONFLICT; the time is checked under\nthe row lock, on the module's clock like the confirm/outcome guards.",
         "operationId": "cancel_v1_viewings__viewing_id__cancel_post",
         "parameters": [
           {
@@ -11499,7 +11546,7 @@
             "description": "No viewing this account is a side of."
           },
           "409": {
-            "description": "Stable codes: `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (defensive: the version compare-and-set found a concurrent change — re-read; normally prevented by the row lock)."
+            "description": "Stable codes: `VIEWING_STARTED` (it is at or past its start: too late to call off, for either side); `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (defensive: the version compare-and-set found a concurrent change — re-read; normally prevented by the row lock)."
           },
           "422": {
             "content": {

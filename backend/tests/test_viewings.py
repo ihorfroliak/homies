@@ -404,3 +404,158 @@ def test_a_transition_on_a_changed_viewing_is_viewing_changed(client, tenant, su
         stale.close()
     with TestingSession() as db:
         assert db.get(Viewing, viewing_id).status == "REQUESTED"
+
+
+# --- BP-2: the typed slot response ---------------------------------------------
+
+
+def _slot_body(client, token, listing, day, days=1):
+    resp = client.get(f"/v1/classifieds/{listing}/viewing-slots",
+                      params={"start": day.isoformat(), "days": days}, headers=auth(token))
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
+def test_the_slot_response_carries_the_settings_timezone(client, owner, tenant, listing):
+    """The zone the provider's windows are written in — not a default. A
+    non-Warsaw zone makes a hard-coded `Europe/Warsaw` fail."""
+    _settings(client, owner, listing, timezone="Europe/Lisbon", duration_minutes=45)
+    _one_off(client, owner, listing, SUMMER, "10:00", "11:30")
+    body = _slot_body(client, tenant, listing, SUMMER)
+    assert set(body) == {"slots", "duration_minutes", "timezone"}
+    assert body["timezone"] == "Europe/Lisbon"
+    assert body["duration_minutes"] == 45
+    lisbon = ZoneInfo("Europe/Lisbon")
+    assert [datetime.fromisoformat(s.replace("Z", "+00:00")) for s in body["slots"]] == [
+        datetime.combine(SUMMER, time(10), lisbon).astimezone(timezone.utc),
+        datetime.combine(SUMMER, time(10, 45), lisbon).astimezone(timezone.utc)]
+
+
+def test_a_returned_slot_string_is_requestable_as_is(client, tenant, summer_window):
+    body = _slot_body(client, tenant, summer_window, SUMMER)
+    assert body["timezone"] == "Europe/Warsaw" and body["duration_minutes"] == 30
+    resp = client.post(f"/v1/classifieds/{summer_window}/viewings",
+                       json={"starts_at": body["slots"][0]}, headers=auth(tenant))
+    assert resp.status_code == 201, resp.text
+
+
+def test_disabled_settings_still_name_their_timezone(client, owner, tenant, listing):
+    _settings(client, owner, listing, enabled=False, timezone="Europe/Lisbon")
+    _one_off(client, owner, listing, SUMMER)
+    assert _slot_body(client, tenant, listing, SUMMER) == {
+        "slots": [], "duration_minutes": 30, "timezone": "Europe/Lisbon"}
+
+
+def test_no_settings_means_no_authoritative_timezone(client, tenant, listing):
+    assert _slot_body(client, tenant, listing, SUMMER) == {
+        "slots": [], "duration_minutes": None, "timezone": None}
+
+
+def test_the_slot_response_stays_signed_in_only(client, listing):
+    assert client.get(f"/v1/classifieds/{listing}/viewing-slots").status_code == 401
+
+
+def test_the_slot_response_is_a_named_schema_in_openapi(client):
+    from app.main import app
+
+    spec = app.openapi()
+    content = spec["paths"]["/v1/classifieds/{listing_id}/viewing-slots"]["get"][
+        "responses"]["200"]["content"]["application/json"]["schema"]
+    assert content == {"$ref": "#/components/schemas/ViewingSlotsOut"}
+    props = spec["components"]["schemas"]["ViewingSlotsOut"]["properties"]
+    assert set(props) == {"slots", "duration_minutes", "timezone"}
+    assert props["slots"]["items"] == {"type": "string", "format": "date-time"}
+    assert {"type": "null"} in props["timezone"]["anyOf"]
+    assert {"type": "null"} in props["duration_minutes"]["anyOf"]
+
+
+# --- BP-7: no cancellation from the start on ------------------------------------
+
+
+def _audits(viewing_id) -> int:
+    from app.core.audit import AuditLog
+
+    with TestingSession() as db:
+        return db.query(AuditLog).filter(AuditLog.entity_id == viewing_id,
+                                         AuditLog.action == "viewing.cancelled").count()
+
+
+def _cancel_facts(viewing_id) -> int:
+    from app.modules.events.models import DomainEvent
+
+    with TestingSession() as db:
+        return db.query(DomainEvent).filter(DomainEvent.event_type == "ViewingCancelled",
+                                            DomainEvent.correlation_id == viewing_id).count()
+
+
+@pytest.mark.parametrize("state", ["REQUESTED", "CONFIRMED"])
+@pytest.mark.parametrize("actor", ["requester", "provider"])
+@pytest.mark.parametrize("moment", ["before", "exactly", "after"])
+def test_either_side_cancels_only_before_the_start(client, owner, tenant, summer_window,
+                                                    monkeypatch, state, actor, moment):
+    from app.modules.engagement import viewings
+
+    starts = _utc(SUMMER, 10)
+    viewing = _request(client, tenant, summer_window, starts).json()
+    if state == "CONFIRMED":
+        assert client.post(f"/v1/viewings/{viewing['id']}/confirm",
+                           headers=auth(owner)).status_code == 200
+    now = {"before": starts - timedelta(seconds=1), "exactly": starts,
+           "after": starts + timedelta(hours=2)}[moment]
+    monkeypatch.setattr(viewings, "_now", lambda: now)
+
+    resp = client.post(f"/v1/viewings/{viewing['id']}/cancel",
+                       headers=auth(tenant if actor == "requester" else owner))
+    with TestingSession() as db:
+        stored = db.get(Viewing, viewing["id"]).status
+    if moment == "before":
+        assert resp.status_code == 200, resp.text
+        assert stored == "CANCELLED"
+        assert (_audits(viewing["id"]), _cancel_facts(viewing["id"])) == (1, 1)
+    else:
+        assert resp.status_code == 409
+        assert resp.json()["detail"].startswith("VIEWING_STARTED: ")
+        assert stored == state, "a refused cancel changes nothing"
+        assert (_audits(viewing["id"]), _cancel_facts(viewing["id"])) == (0, 0)
+
+
+def test_a_finished_viewing_stays_a_state_conflict_after_its_start(client, owner, tenant,
+                                                                   summer_window,
+                                                                   monkeypatch):
+    """BP-7 does not turn every late error into VIEWING_STARTED."""
+    from app.modules.engagement import viewings
+
+    starts = _utc(SUMMER, 10)
+    declined = _request(client, tenant, summer_window, starts).json()
+    client.post(f"/v1/viewings/{declined['id']}/decline", headers=auth(owner))
+    cancelled = _request(client, tenant, summer_window, _utc(SUMMER, 11)).json()
+    client.post(f"/v1/viewings/{cancelled['id']}/cancel", headers=auth(tenant))
+    monkeypatch.setattr(viewings, "_now", lambda: starts + timedelta(days=1))
+    for vid in (declined["id"], cancelled["id"]):
+        resp = client.post(f"/v1/viewings/{vid}/cancel", headers=auth(tenant))
+        assert resp.status_code == 409
+        assert resp.json()["detail"].startswith("VIEWING_STATE_CONFLICT: ")
+
+
+def test_a_stranger_still_sees_nothing_after_the_start(client, tenant, summer_window,
+                                                       monkeypatch):
+    from app.modules.engagement import viewings
+
+    starts = _utc(SUMMER, 10)
+    viewing = _request(client, tenant, summer_window, starts).json()
+    stranger = register_and_login(client, "late-stranger@example.com", "guest")
+    monkeypatch.setattr(viewings, "_now", lambda: starts + timedelta(hours=1))
+    assert client.post(f"/v1/viewings/{viewing['id']}/cancel",
+                       headers=auth(stranger)).status_code == 404
+
+
+def test_a_passed_request_is_left_as_it_is(client, tenant, summer_window, monkeypatch):
+    """No expiry: BP-7 refuses a late cancel and nothing else (DEBT-1)."""
+    from app.modules.engagement import viewings
+
+    starts = _utc(SUMMER, 10)
+    viewing = _request(client, tenant, summer_window, starts).json()
+    monkeypatch.setattr(viewings, "_now", lambda: starts + timedelta(days=3))
+    client.post(f"/v1/viewings/{viewing['id']}/cancel", headers=auth(tenant))
+    mine = client.get("/v1/me/viewings", headers=auth(tenant)).json()
+    assert [(v["id"], v["status"]) for v in mine] == [(viewing["id"], "REQUESTED")]

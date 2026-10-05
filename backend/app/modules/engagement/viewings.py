@@ -87,6 +87,8 @@ VIEWING_STATE_CONFLICT = "VIEWING_STATE_CONFLICT"
 VIEWING_CHANGED = "VIEWING_CHANGED"
 VIEWING_TIME_PASSED = "VIEWING_TIME_PASSED"
 VIEWING_NOT_STARTED = "VIEWING_NOT_STARTED"
+# BP-7: a viewing is called off only before it starts (04a §24).
+VIEWING_STARTED = "VIEWING_STARTED"
 
 
 def _conflict(code: str, message: str) -> HTTPException:
@@ -184,6 +186,21 @@ class BlackoutIn(BaseModel):
         if self.ends_at <= self.starts_at:
             raise ValueError("ends_at must be after starts_at")
         return self
+
+
+class ViewingSlotsOut(BaseModel):
+    """The derived offered viewing slots of a listing (FE-003 BP-2).
+
+    Only the derived contract: no windows, blackouts, capacity, buffers,
+    notice or booking mode. `slots` are UTC instants; a request names one of
+    them exactly. `timezone` is the listing's viewing-settings IANA zone, the
+    one the provider's windows are written in — the zone to show the slots
+    in. Both `duration_minutes` and `timezone` are null when the listing has
+    no viewing settings: there is no authoritative value to give."""
+
+    slots: list[datetime]
+    duration_minutes: int | None
+    timezone: str | None
 
 
 class ViewingRequest(BaseModel):
@@ -422,7 +439,10 @@ def add_blackout(listing_id: str, body: BlackoutIn, user: User = Depends(get_cur
 # --- slots and requests -------------------------------------------------------
 
 
-@router.get("/classifieds/{listing_id}/viewing-slots")
+@router.get(
+    "/classifieds/{listing_id}/viewing-slots", response_model=ViewingSlotsOut,
+    responses={404: {"description": "No public listing with this id."}},
+)
 def list_slots(listing_id: str, start: date | None = None,
                days: int = Query(default=14, ge=1, le=MAX_SLOT_DAYS),
                user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -431,10 +451,11 @@ def list_slots(listing_id: str, start: date | None = None,
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
     settings = _settings(db, listing_id)
     if settings is None:
-        return {"slots": [], "duration_minutes": None}
+        return ViewingSlotsOut(slots=[], duration_minutes=None, timezone=None)
     first = start or _now().astimezone(ZoneInfo(settings.timezone)).date()
-    return {"slots": slots(db, settings, first, days),
-            "duration_minutes": settings.duration_minutes}
+    return ViewingSlotsOut(slots=slots(db, settings, first, days),
+                           duration_minutes=settings.duration_minutes,
+                           timezone=settings.timezone)
 
 
 @router.post(
@@ -609,13 +630,22 @@ def decline(viewing_id: str, user: User = Depends(get_current_user),
 @router.post(
     "/viewings/{viewing_id}/cancel", response_model=ViewingOut,
     responses={404: {"description": "No viewing this account is a side of."},
-               409: {"description": "Stable codes: " + _TRANSITION_409 + "."}},
+               409: {"description": "Stable codes: `VIEWING_STARTED` (it is at or past its "
+                                    "start: too late to call off, for either side); "
+                                    + _TRANSITION_409 + "."}},
 )
 def cancel(viewing_id: str, user: User = Depends(get_current_user),
            db: Session = Depends(get_db)):
-    """Either side may call it off before it happens."""
+    """Either side may call it off before it happens (BP-7, 04a §24): from the
+    moment it starts, neither can. The state is checked first, so a finished
+    viewing still answers VIEWING_STATE_CONFLICT; the time is checked under
+    the row lock, on the module's clock like the confirm/outcome guards."""
     _viewing_for(db, user, viewing_id)
     viewing = _locked(db, viewing_id)
+    if viewing.status not in HELD:
+        raise _state_conflict(viewing.status)
+    if _aware(viewing.starts_at) <= _now():
+        raise _conflict(VIEWING_STARTED, "the viewing has already started")
     prior = viewing.status
     _transition(db, viewing, HELD, status="CANCELLED", cancelled_at=_now())
     audit(db, actor=user.id, action="viewing.cancelled", entity_type="viewing",
