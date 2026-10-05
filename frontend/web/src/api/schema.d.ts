@@ -1746,7 +1746,11 @@ export interface paths {
         put?: never;
         /**
          * Cancel
-         * @description Either side may call it off before it happens.
+         * @description Either side may call it off before it happens (BP-7, 04a §24): from the
+         *     moment it starts, neither can. The state is checked first, so a finished
+         *     viewing still answers VIEWING_STATE_CONFLICT. The time is decided under
+         *     the row lock on the database clock (04a §20): one decision instant, used
+         *     for the check, the row's `cancelled_at` and the fact alike.
          */
         post: operations["cancel_v1_viewings__viewing_id__cancel_post"];
         delete?: never;
@@ -3960,6 +3964,34 @@ export interface components {
              */
             starts_at: string;
         };
+        /**
+         * ViewingSlotsOut
+         * @description The derived offered viewing slots of a listing (FE-003 BP-2).
+         *
+         *     Only the derived contract: no windows, blackouts, capacity, buffers,
+         *     notice or booking mode. `slots` are UTC instants; a request names one of
+         *     them exactly. `timezone` is the listing's viewing-settings IANA zone, the
+         *     one the provider's windows are written in — the zone to show the slots
+         *     in. Both `duration_minutes` and `timezone` are null when the listing has
+         *     no viewing settings: there is no authoritative value to give.
+         */
+        ViewingSlotsOut: {
+            /**
+             * Duration Minutes
+             * @description Length of each slot in minutes; null when the listing has no viewing settings.
+             */
+            duration_minutes: number | null;
+            /**
+             * Slots
+             * @description Offered slot start instants (UTC).
+             */
+            slots: string[];
+            /**
+             * Timezone
+             * @description IANA time zone of the listing's viewing settings (e.g. Europe/Warsaw) to show the slots in; null when the listing has no viewing settings.
+             */
+            timezone: string | null;
+        };
         /** WindowIn */
         WindowIn: {
             /** Local Date */
@@ -5038,8 +5070,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ViewingSlotsOut"];
                 };
+            };
+            /** @description No public listing with this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -7337,7 +7376,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Stable codes: `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (defensive: the version compare-and-set found a concurrent change — re-read; normally prevented by the row lock). */
+            /** @description Stable codes: `VIEWING_STARTED` (the viewing has started — from its start time on, neither side can cancel); `VIEWING_STATE_CONFLICT` (not in a state this action applies to); `VIEWING_CHANGED` (defensive: the version compare-and-set found a concurrent change — re-read; normally prevented by the row lock). */
             409: {
                 headers: {
                     [name: string]: unknown;
