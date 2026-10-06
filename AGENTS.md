@@ -12,8 +12,9 @@
 
 The repository is the single durable system of record
 ([05 §14](docs/canonical/05-DEVELOPMENT-GOVERNANCE-v1.md), D-106): chat
-memory, agent memory, summaries and design-tool state are inputs, never
-authority; a missing source is a recorded gap, never reconstructed.
+memory, agent memory, summaries and design-tool state are inputs, not durable
+authority (a founder decision may still direct work at once, 00 #1); a
+missing source is a recorded gap, never reconstructed.
 Repository state and canonical documents outrank them. New backend work
 descends from IBB-001 (or a documented successor); `main` after IBB-001
 carries builder-verified increments that are not a new baseline (D-88).
@@ -62,7 +63,9 @@ development or production data. Report only what you actually ran.
 Findings classified **P0 CRITICAL · P1 HIGH · P2 MEDIUM · P3 LOW · NOTE**.
 Each finding: file and line (or migration); violated invariant or canonical
 rule; reproduction or evidence; expected behaviour; suggested repair; whether
-a CANONICAL DECISION is required. Separate canonical violations from optional
+a CANONICAL DECISION is required. Product, market and research material is also checked against the
+independent-synthesis rule of 07 §5 (no named commercial competitor, copied
+copy or proprietary taxonomy as product reasoning; D-106). Separate canonical violations from optional
 improvements. No score inflation, no "looks good" without evidence. State the
 exact SHA audited.
 

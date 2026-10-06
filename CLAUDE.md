@@ -20,8 +20,9 @@ release-plan documents are historical (banner-marked).
 
 The repository is the single durable system of record
 ([05 §14](docs/canonical/05-DEVELOPMENT-GOVERNANCE-v1.md), D-106): chat
-memory, agent memory, summaries and design-tool state are inputs, never
-authority; a missing source is a recorded gap, never reconstructed.
+memory, agent memory, summaries and design-tool state are inputs, not durable
+authority (a founder decision may still direct work at once, 00 #1); a
+missing source is a recorded gap, never reconstructed.
 Repository state and canonical documents outrank them. New backend work
 descends from IBB-001 (or a documented successor); `main` after IBB-001
 carries builder-verified increments that are not a new baseline (D-88).

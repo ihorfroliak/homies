@@ -44,7 +44,12 @@ remains a hypothesis until normal Homies governance adopts it.
    [METRICS-v1](../growth/METRICS-v1.md): exact, proxy or not yet measurable).
 
 Committed market research does not depend on a commercial competing platform
-as factual product authority.
+as factual product authority. A publication by a commercial competing
+platform cannot be cited without naming that platform, which
+[07 §5](../canonical/07-PRODUCT-GROWTH-DOCTRINE.md) forbids in committed
+material; such a source is therefore not used — the claim is sourced from an
+evidence class above, labelled **HYPOTHESIS**, or omitted. Any exception
+needs a founder decision.
 
 ## 3. Citations
 
@@ -70,8 +75,10 @@ Each statement in a research document is marked as one of:
 
 ## 4. Independent synthesis
 
-Committed product, market and research material is independently written.
-It does not contain:
+The binding rule is [07 §5 — independent synthesis](../canonical/07-PRODUCT-GROWTH-DOCTRINE.md)
+(canon, D-106); it applies to all committed product, market and research
+material, not only to this folder. Restated here for authors of research:
+committed material is independently written and does not contain:
 
 * names of commercial competing marketplaces or platforms;
 * their commercial URLs or domains, logos or screenshots;
@@ -91,7 +98,9 @@ claim of exclusivity or legal ownership is made for them. Wording used
 instead: *Homies-authored synthesis*, *Homies product hypothesis*,
 *project-derived product principle*, *independent product reasoning*.
 
-No scraping or automated collection from third-party services (D-42).
+Market-price data are not scraped from third-party platforms (D-42: own data
+or licensed sources only); public datasets and registries are used under
+their published access terms.
 
 **Scope of this rule.** It covers market, competitive and product-reasoning
 material. Technical dependencies, protocols, standards, public registries and

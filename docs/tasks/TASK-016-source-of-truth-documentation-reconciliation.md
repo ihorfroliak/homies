@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **PHASE B — BUILDER CANDIDATE** (documentation and governance only). Phase C: two independent read-only audits. `MERGE AUTHORIZED: NO` |
+| Status at candidate freeze | **PHASE B — BUILDER CANDIDATE** (documentation and governance only), Phase C audited (§11); `MERGE AUTHORIZED: NO` at freeze. Merge state afterwards: Git and [PROJECT-STATUS](../PROJECT-STATUS.md), not this row |
 | Authorisation | founder/GPT: Phase A read-only audit (2026-10-06) → adjudicated → "TASK-016 PHASE B AUTHORIZED — final founder/GPT contract v2" |
 | Risk | R0 (documentation, governance, agent instructions). Canon changes (00, 05, 06, 07, IMPLEMENTATION-CONVERGENCE, DECISIONS) explicitly approved for this task |
 | Baseline | `main` = `a7756e16c5ae2888776bf02a022b44b0221c0f7a` (BP-12 merge; parents `6adca78c9ae6342438f08b8b7c8cfd1b88be714a` + `0d45583a14abbf5d4ce5eced0a5c270382aa44b5`), tree `f6363155f86a65b603772c65303a2fe6b36e4a9a`, main CI `37417946174` completed / success — backend, web, image, contracts, monitoring, secrets all success |
@@ -28,7 +28,8 @@ candidates, historical files stay historical, research stays non-normative.
 Two independent read-only passes (status/chronology; knowledge-loss and
 research/IP) plus a builder identifier audit, adjudicated by the builder.
 Phase A ran on `6adca78`; the only later change on `main` is the BP-12 merge
-`a7756e1` (BP-12 code, its task record, OpenAPI description, DEVLOG).
+`a7756e1` (BP-12 code and tests, its task record, the OpenAPI description and
+the generated frontend API types, DEVLOG).
 
 **Inventory (160 Markdown documents classified):** CANONICAL 11 · CURRENT
 INDEX 5 · ACTIVE SPECIFICATION 29 · TASK CONTRACT 24 · BASELINE RECORD 1 ·
@@ -223,8 +224,45 @@ founder/GPT external review.
 | External review texts (GPT-5.6 Sol verdicts) not archived | audit-trail gap; semantics captured |
 | Historical strategy/business/charter/product-model documents naming commercial platforms (`docs/strategy/01, 02, 05, 07, 08`, `docs/business/00, 01, 02, 04, 06, 07`, `docs/PROJECT_CHARTER.md`, `docs/PRODUCT_MODEL.md`) | **SANITISATION REQUIRES FOUNDER/GPT REVIEW** (names are woven into superseded reasoning, distribution-channel plans and data-vendor evaluation; banner-marked, bodies unchanged) |
 | Pre-canon decision records D-42 (third-party terms cited as the legal basis for the no-scraping rule; data-vendor evaluation) and D-44 (a fraud pattern described by platform type) | kept as recorded decisions; **FOUNDER/GPT REVIEW** if their wording should be neutralised |
-| `frontend/design-system/index.html` shows a proprietary programme name as a demo badge; backend comments name an amenity-vocabulary vendor | outside the allowlist — separate task |
+| `frontend/design-system/index.html` (legacy UI-01 showcase) shows a proprietary host-programme name as a demo badge (line 170) and a proprietary booking-feature name as a demo chip (line 138) | outside the allowlist — separate task |
+| `docs/business/03-automation.md`, `docs/business/05-business-rules-and-lifecycles.md` use a proprietary booking-feature name | historical, banner-marked (with the D-106 note); same founder/GPT review as the other historical documents |
+| 2026-07 review reports `docs/reviews/2026-07-05-ea-review-part1-perspectives.md` and `…-part2-redteam-benchmark.md` name commercial platforms on several lines each | immutable evidence; unchanged by rule (§6) |
+| Wheelhouse (pricing / amenity-vocabulary data provider) named in backend comments and a migration (`external_code` provenance), in D-42 and in PRODUCT_MODEL | **permitted** technical-provider provenance under 07 §5 — not a cleanup target |
 | `backend/app/release.json` release label names a task (`TASK-015 Slice 4b`) | outside the allowlist — separate task (baseline ≠ release ≠ task) |
 | `reference/ts-drizzle-schema-v1` exists only in the founder's local clone | founder decision whether to publish |
 | `.claude/skills/micro-cycle` points at historical `PROJECT_STATE.md` / `BUILD_HISTORY.md` | outside the allowlist — separate task |
 | MARKET-001 | separate future research task |
+
+## 11. Phase C — independent audits and builder adjudication
+
+Round 1 audited candidate `0ec0b4242bd5742de44433901481345b50f8230c`
+(baseline `a7756e1`) with two independent read-only reviewers; neither saw
+the other's report before both were complete. Both returned FAIL (C1: 1
+MATERIAL, 7 NONBLOCKING; C2: 2 MATERIAL, 7 NONBLOCKING). Every area not listed
+below was reported NONE (chronology, all SHAs and CI ids, baseline
+separation, self-reference, D numbering, authority order, knowledge gaps,
+production truth, roadmap, immutable evidence, links, MARKET-001 leakage,
+research as authority, sanitisation scope). The fixes form one further
+commit; the repaired candidate is re-reviewed on the changed surface.
+
+| Finding | Reviewer | Class | Builder verdict | Action |
+|---|---|---|---|---|
+| `DATA-001` and `MARKET-001` used but neither defined nor flagged | C1 | MATERIAL | agreed | TRACEABILITY: `MARKET-NNN` family row; `DATA-001` IDENTIFIER DEFINITION REQUIRED |
+| The content ban (names, domains, copy, taxonomies, cloning, trade dress) lived only in the non-normative research README | C2 | MATERIAL | agreed | binding rule added to 07 §5 with the technical-provider carve-out; D-106 (6) points to it; README cites it; AGENTS.md audit line |
+| Evidence/citation rules: a competitor publication could be cited only by naming it, contradicting the ban | C2 | MATERIAL | agreed in part | README §2: such a source is not used (other evidence class, HYPOTHESIS, or omitted; exception = founder decision). Not adopted: closing the evidence-class list or making all citation fields mandatory — the founder policy says "preferred" and "where applicable" |
+| TASK-016 §10 exception list incomplete (proprietary feature name in business/03, 05 and a design-system chip; 2026-07 evidence not counted) | C2 | NONBLOCKING | raised to MATERIAL (accuracy of this task's own exception record) | §10 rows added; D-106 note added to the two banners |
+| Wheelhouse described as a cleanup target although it is technical-provider provenance | C2 | NONBLOCKING | raised to MATERIAL (would anonymise a permitted provider) | §10 row names it as permitted |
+| README "no scraping or automated collection from third-party services (D-42)" overstates D-42 | C2 | NONBLOCKING | raised to MATERIAL (misstates a decision) | reworded to D-42's scope (market-price data not scraped; own or licensed data); public datasets under their access terms |
+| AGENTS.md / CLAUDE.md "inputs, never authority" stronger than 05 §14 / 00 #1 | C1 | NONBLOCKING | raised to MATERIAL (could be read as overriding a founder decision given in conversation) | "not durable authority (a founder decision may still direct work at once)" |
+| 07 §3 principle 12 changed but not listed in D-106 | C1 | NONBLOCKING | raised to MATERIAL (canon change must trace to its decision) | D-106 implemented-by list completed |
+| TRACEABILITY: `F6` attributed to PR-001R (raised by PR-001A); a third `P0` sense (PROGRAM-001 workstream) missing; Phase A described as "audit"; `SEC-00n` missing | C1 | NONBLOCKING | raised to MATERIAL (incorrect identifier definitions, criterion 9) | all four corrected |
+| AUDIT-HISTORY §8 counted D-106 among external-review outcomes | C1 | NONBLOCKING | raised to MATERIAL (factual error) | "D-102…D-105 and D-107" |
+| This contract's status row would be stale after merge | C1 | NONBLOCKING | raised to MATERIAL (the defect class this task fixes) | "Status at candidate freeze … merge state: Git / PROJECT-STATUS" |
+| 05 §7 "→ main → index reconciled" reads like a post-merge edit of `main` | C1 | NONBLOCKING | raised to MATERIAL (ambiguous canon) | clarified: reconciliation is in the task's own diff, effective at merge |
+| §2 description of the BP-12 merge omitted tests and generated types | C1 | NONBLOCKING | accepted (wording) | corrected |
+| Decision-log status cells D-59…D-74, D-104/D-105 still "pending" | C1 | NONBLOCKING | accepted, not fixed | Phase A flagged only D-76…D-82; recorded here for a later cleanup |
+| PRODUCTION-READINESS row 20 still cites the historical runbook as evidence | C1 | NONBLOCKING | accepted, not fixed | the row already marks it historical; status PARTIAL unchanged |
+| Sanitised benchmark files listed as AUDIT-HISTORY evidence; originals not pinned | C1, C2 | NONBLOCKING | accepted, not fixed | originals are the blobs at `a7756e1`; banners say so generically |
+| FE-002 Figma sentence edited in place | C2 | NONBLOCKING | disagreed | current-facing active specification; the change is attributed to D-106 and FE-002 itself carries the binding semantics |
+| `c32ac63a` corrected in place without an inline marker | C2 | NONBLOCKING | accepted, not fixed | recorded in §2 |
+| Unsupported superlative in positioning copy (07 §4, 01) | C2 | NONBLOCKING | out of scope | pre-existing; marketing/legal review before external use |

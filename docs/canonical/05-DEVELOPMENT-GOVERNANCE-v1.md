@@ -79,7 +79,9 @@ Task Contract → Claude branch → tests green → SHA frozen
 The same sequence in general terms: Task Contract → builder branch →
 verification → candidate SHA frozen → independent audit where required →
 founder/GPT review → founder merge approval → `main` → current project index
-reconciled.
+reconciled. The reconciliation is part of the task's own diff, prepared
+before the merge and effective with it; nobody edits `main` afterwards to
+catch up.
 
 Agents do not mutate `main` independently. Claude pushes task branches;
 the founder merges.

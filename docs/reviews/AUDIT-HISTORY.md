@@ -234,7 +234,7 @@ tests). **Documentation-only:** TASK-015 Phase A `985db7ae`, FE-003 contract
 
 External reviews by GPT-5.6 Sol (S4a, PROGRAM-001 "accepted for merge with
 conditions", FE-003 r1/r2, P-0) are recorded through their outcomes in
-DECISIONS D-102…D-107, canon 04a §24, the FE-003 contract and the DESIGN-001C
+DECISIONS D-102…D-105 and D-107, canon 04a §24, the FE-003 contract and the DESIGN-001C
 handoff; their review texts are not archived in this folder, and the
 conditions attached to PROGRAM-001's acceptance are not listed as such
 (recorded audit-trail gap).

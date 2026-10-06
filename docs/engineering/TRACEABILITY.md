@@ -62,6 +62,7 @@ explicit identifier nearby.
 | Frontend | `FE-NNN` | `FE-001`, `FE-003` | a public-web frontend slice or contract (`docs/frontend/`, `docs/tasks/FE-003…`) |
 | Frontend visual | `FE-VIS-NNN` | `FE-VIS-001` | the visual/token rollout separated from functional frontend work (D-104 OD-5); not authorised |
 | Context infrastructure | `CTX-NNN` | `CTX-001` | agent context-survival tooling (`.claude/`, DEVLOG 2026-10-01); no product effect |
+| Market research | `MARKET-NNN` | `MARKET-001` | a non-normative research document under [`docs/research/`](../research/README.md) (D-106), written as its own task; MARKET-001 (residential rental market and workflow) is planned, not started |
 | Decision | `D-NN` / `D-NNN` | `D-56`, `D-106` | an entry in [DECISIONS](../DECISIONS.md); global, sequential, never reused |
 | Booking-era build record | e.g. `MC-01`, `FIN-01`, `BK-01`, `UI-01`, `D4`…`D9` | `UI-01` | historical (2026-07/08) build identifiers in [BUILD_HISTORY](../BUILD_HISTORY.md) and `docs/design/`; not reused |
 
@@ -86,7 +87,7 @@ it. Cite them with the owner ("FE-003 BP-10", "D-104 OD-5").
 | `LD-n`, `L9`, `L11` | DESIGN-001 / TASK-015 | legal-review copy items |
 | `S1`…`S5`, `S4a`, `S4b` | TASK-015 | slices of TASK-015 (there is no S6) |
 | `D-1`…`D-9` | TASK-015 Phase A | task-local founder decision points, recorded globally as **D-92** |
-| `F-01`…, `N-01`…, `GEO-0n`, `F13A-0n`, `RA-n`, `CV-Nn`, `E-Rn`, `M-nn` | the audit or task that raised them | findings, review probes and mutants; local to their report |
+| `F-01`…, `Fn`, `N-01`…, `GEO-0n`, `F13A-0n`, `RA-n`, `CV-Nn`, `E-Rn`, `M-nn`, `SEC-00n` | the audit or task that raised them | findings, review probes and mutants; local to their report |
 | `DQ-n`, `QAL`, `SHO` | `docs/growth/` | data-quality rule, qualified active listing, successful housing outcome |
 
 ### Identifiers without an authoritative definition
@@ -94,16 +95,18 @@ it. Cite them with the owner ("FE-003 BP-10", "D-104 OD-5").
 | Identifier | Where used | Status |
 |---|---|---|
 | `MICRO-002` | DEVLOG 2026-10-01 and several task notes ("recommendation, outside the repository": JWT leeway / clock-step flake) | **IDENTIFIER DEFINITION REQUIRED** — no task contract exists; do not treat as a task until one is written |
+| `DATA-001` | DEVLOG 2026-10-01 ("a proposal only, outside the repository, not accepted"), PR-003, TASK-015 S1/S2+3/S5, PRODUCTION-READINESS row 8 | **IDENTIFIER DEFINITION REQUIRED** — a data/analytics proposal kept outside the repository; no contract exists; not a task until one is written |
+
 
 ### Known collisions — read with the owner, avoid in new text
 
 | Pattern | Example | Rule for new documentation |
 |---|---|---|
 | hyphenated founder/product id vs unhyphenated gap label | `G-4` (0 PLN listing policy, D-98) vs `G4` (parking API gap, DESIGN-001; used so in D-102) | write "growth decision G-4" or "API gap G4"; prefer a distinct prefix for new gap lists |
-| `F6` reused | PR-001R finding F6 (notification backlog alert) vs `F6` re-contact viewing bar (D-102, 04a §24) | always qualify: "PR-001R F6", "D-102 F6" |
+| `F6` reused | PR-001A finding F6 (notification backlog alert; repaired in PR-001R, so cited as "PR-001R F6" in PRODUCTION-READINESS) vs `F6` re-contact viewing bar (D-102, 04a §24) | always qualify: "PR-001A F6", "D-102 F6" |
 | task-local `D-1`…`D-9` vs global `D-NN` | TASK-015 D-1…D-9 (= D-92) vs D-01…D-09 (2026-07) | global decisions only as `D-NN`/`D-NNN`; new task-local decision points use another prefix (e.g. `OD-n`) |
 | repair suffix `R` vs risk class `R0`–`R3` | `TASK-014R`, `PR-001R2` vs `R2` | a suffix is attached to an id; a risk class stands alone ("risk R2") |
-| severity `P0` vs `P-0` | `P0 CRITICAL` vs the P-0 handoff | see the distinctions below |
+| `P0` in three senses | severity `P0 CRITICAL` vs the scoped `P-0` handoff vs the PROGRAM-001 workstream "P0" (CI / evidence hygiene, branch `claude/PROGRAM-001-p0-ci-evidence-hygiene`) | qualify: "severity P0", "P-0 handoff", "PROGRAM-001 P0"; see the distinctions below |
 | historical `D1`…`D4`, `D4`…`D9` | `docs/strategy/00-DECISIONS.md`, booking-era build steps | historical only; never reused |
 
 Historical identifiers are not rewritten; new documentation avoids ambiguous
@@ -153,7 +156,8 @@ P0 severity != P-0         P0 is an audit-finding severity; P-0 is the scoped
                            DESIGN-001C handoff identifier
 Phase 1A product phase != Phase A/B/C task execution phases
                            06/02 phases (1A, 1B, 1.5, 2, 3) are product scope;
-                           a task's Phase A/B/C is audit → implementation → review
+                           a task's Phase A/B/C is read-only review or contract →
+                           implementation → independent review (Phase C where used)
 durability != authority    everything committed is durable; 00-AUTHORITY decides
                            which document wins
 ```

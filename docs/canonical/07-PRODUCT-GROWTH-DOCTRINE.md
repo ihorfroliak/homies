@@ -109,6 +109,20 @@ Principles:
   doctrine, the domain model, safety, business goals, successful housing
   outcomes or operational constraints.
 
+**Independent synthesis — binding rule for committed material.** Current
+committed product, market and research material — canon, Task Contracts,
+specifications, handoffs, product / growth / frontend documents and
+`docs/research/` — is independently written and does not contain: names of
+commercial competing marketplaces or platforms; their commercial URLs or
+domains; their logos or screenshots; copied marketing copy or UI copy;
+proprietary feature names or proprietary taxonomies; page-by-page cloning
+instructions or trade-dress recreation; or reasoning whose only basis is
+that another company does something. General market patterns are not
+claimed as legally unique to Homies. Technical dependencies, protocols,
+standards, public registries and providers actually selected or evaluated
+are named wherever engineering truth requires it. Immutable evidence and
+banner-marked historical documents are not rewritten under this rule.
+
 Market evidence lives in [`docs/research/`](../research/README.md)
 (non-normative); it reaches implementation only through a founder/product
 decision recorded as a D-entry, a canonical update or an approved Task
