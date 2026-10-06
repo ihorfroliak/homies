@@ -187,7 +187,9 @@ def test_an_unverified_side_still_follows_every_other_message_rule(client):
                                             "reason": "SCAM"}).status_code == 401
 
 
-def test_an_unverified_message_reporter_draws_on_the_shared_quota(client, monkeypatch):
+def test_the_account_quota_applies_to_an_unverified_message_reporter(client, monkeypatch):
+    """The same account quota as any reporter (cross-target sharing is covered
+    by the S4a tests); no special quota for unverified accounts."""
     owner, tenant, _offer, conv, owner_msg, _tenant_msg = _unverified_thread(client)
     second = client.post(f"/v1/conversations/{conv}/messages", json={"body": "Drugi raz"},
                          headers=auth(owner)).json()["id"]
