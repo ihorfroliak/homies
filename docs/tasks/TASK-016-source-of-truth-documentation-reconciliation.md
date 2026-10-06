@@ -108,14 +108,14 @@ Phase A/B/C).
 | Concept | Value | Owner |
 |---|---|---|
 | Last formal backend baseline | IBB-001, `5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98`, ACCEPTED (CONV-001A), tag `backend-baseline-001`. No IBB-002 | [IBB-001](../baselines/IBB-001.md) |
-| Latest code-bearing `main` state | `a7756e16c5ae2888776bf02a022b44b0221c0f7a` (BP-12 merge, main CI `37417946174` success) — IBB-001 plus builder-verified increments, none independently accepted; PR-002, PR-003 and TASK-015 S1–S4b are recorded as MILESTONE AUDIT DEFERRED (D-88) | PROJECT-STATUS |
+| Latest code-bearing `main` state | `a7756e16c5ae2888776bf02a022b44b0221c0f7a` (BP-12 merge, main CI `37417946174` success) — IBB-001 plus the merged increments; review status per increment is in PROJECT-STATUS (several R1 increments founder/GPT reviewed; PR-002, PR-003 and TASK-015 S1–S4b recorded as MILESTONE AUDIT DEFERRED, awaiting the D-88 review); none promoted to a successor baseline | PROJECT-STATUS |
 | Repository HEAD | resolved from Git (`origin/main`); never embedded in a file that the same commit changes | Git |
 | Next engineering task | BP-10 — NOT STARTED | PROJECT-STATUS |
 | Authorisation | FE-003 implementation NO · FE-VIS-001 implementation NO | PROJECT-STATUS, FE-003 contract, DESIGN-001C handoff |
 | Production | NOT READY · NOT DEPLOYED | PROJECT-STATUS, PRODUCTION-READINESS |
 
 Provenance model (BP-12 as the worked example): implementation commit
-`434c0956022d10f7bdaa4f1391674d490521561c`; independently reviewed candidate
+`434c0956022d10f7bdaa4f1391674d490521561c`; founder/GPT-reviewed candidate
 `0d45583a14abbf5d4ce5eced0a5c270382aa44b5`; CI `37413458869` bound to that
 candidate; merge `a7756e16c5ae2888776bf02a022b44b0221c0f7a` = final
 integration identity; formal baseline unchanged (IBB-001).
@@ -278,3 +278,13 @@ NONBLOCKING notes:
 | 07 §5 binding rule does not say where pre-canon decision records (D-42, D-44) sit | C1, C2 | NONBLOCKING | accepted, not fixed | disclosed in §10 (founder/GPT review); wording change of a recorded decision is a founder decision |
 | TRACEABILITY `DATA-001` "where used" omits TASK-015 Phase A | C1 | NONBLOCKING | accepted, not fixed | the flag itself is correct |
 | §10 counts the 2026-07 evidence lines as "several" rather than a number | C2 | NONBLOCKING | accepted, not fixed | category reported; files are immutable |
+
+### External founder/GPT review follow-up
+
+| Field | Record |
+|---|---|
+| Externally reviewed candidate | `77f10cd4b37b859f1e79354b93fcb201d778927f` (branch CI `37440181278` success 6/6) |
+| Verdict | **PASS WITH ONE MATERIAL WORDING REPAIR** — no runtime or code defect, no governance redesign requested |
+| Finding | PROJECT-STATUS ("none independently accepted") obscured the distinction between task-level founder/GPT review, the D-88 milestone independent audit and formal successor-baseline acceptance |
+| Repair | wording clarified in PROJECT-STATUS and in §5 / the provenance note of this contract: review status is recorded per increment; several R1 increments were founder/GPT reviewed; R2 increments marked MILESTONE AUDIT DEFERRED still await the D-88 review; no increment has been promoted to a successor baseline, so no IBB-002 exists. No task status, baseline, roadmap or flag changed |
+| Repaired candidate | in Git and the builder's final report (self-reference rule) |

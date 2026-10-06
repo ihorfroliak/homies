@@ -44,7 +44,7 @@ merge; documentation reconciled by TASK-016.
 | Concept | Value | How to read it |
 |---|---|---|
 | **Last formal backend baseline** | Integrated Backend Baseline 001 (`IBB-001`), `5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98`, tag `backend-baseline-001`, **ACCEPTED** (CONV-001A) | the last state accepted through the baseline process ([record](baselines/IBB-001.md)). There is no IBB-002 |
-| **Latest code-bearing `main` state** | `a7756e16c5ae2888776bf02a022b44b0221c0f7a` — BP-12 merge, main CI `37417946174` success (backend, web, image, contracts, monitoring, secrets) | IBB-001 plus every increment below — merged on builder evidence and green CI; none independently accepted; the items recorded as MILESTONE AUDIT DEFERRED await the D-88 review. Not a new baseline |
+| **Latest code-bearing `main` state** | `a7756e16c5ae2888776bf02a022b44b0221c0f7a` — BP-12 merge, main CI `37417946174` success (backend, web, image, contracts, monitoring, secrets) | IBB-001 plus the merged increments listed below. Verification and review status is recorded per increment in the table: several R1 increments received founder/GPT review, while the R2 increments marked MILESTONE AUDIT DEFERRED still await the D-88 milestone review. Founder/GPT review is not the D-88 milestone audit, and neither is formal baseline acceptance: no post-IBB increment has been promoted to a formal successor backend baseline, so no IBB-002 exists |
 | **Repository HEAD** | read it from Git: `git rev-parse origin/main` | this file does not embed the SHA of the commit that contains it ([TRACEABILITY](engineering/TRACEABILITY.md#self-reference-a-file-cannot-name-its-own-commit)). Documentation-only merges after `a7756e1` (such as TASK-016) do not change the code-bearing state |
 
 ## Flags
