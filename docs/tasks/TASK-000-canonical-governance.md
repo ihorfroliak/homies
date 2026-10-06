@@ -3,6 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | IN_AUDIT (handoff to founder; Codex audit is TASK-001) |
+| Disposition (TASK-016, 2026-10-06) | audited by TASK-001 (Codex) at `988b31b138436cb69ad20e5cb06e6e3be116fe64`; findings repaired in TASK-002 and TASK-004; the foundation was accepted as Foundation Baseline 001 (`dfa3254cb8f8d321c278f1d815bbb7e14a514561`) and Foundation Baseline 002 (`36231840ee52d6185e73fda07e54eab33ffe41f3`, D-56); on `main` via the BASELINE-001 merge `507a96773ee8476d6ba26bc7f547f64a831369e9`. See AUDIT-HISTORY §1; the status text is kept as written |
 | Owner (writer) | Claude Code |
 | Bounded contexts written | docs only, plus legacy markers and one boundary test |
 | Baseline SHA | `782c833f100f1bf2e86888b664c9b30b27cbc1dd` |

@@ -49,7 +49,7 @@ Nothing is READY without evidence named in the row.
 | 17 | Smoke test | **PARTIAL** | Local production-image smoke matrix (PR-001R, §6). Gap: no scripted post-deploy smoke test against an environment |
 | 18 | Load / capacity | **NOT ASSESSED** | Only diagnostic EXPLAIN on ~5 000 synthetic listings (TASK-013 branch) |
 | 19 | Security | **PARTIAL** | Independent audits of the foundation and each slice; rate limiting; privacy tests; pip-audit; gitleaks. Gap: no external penetration test, no TLS/ingress config, no WAF decision |
-| 20 | Incident runbook | **PARTIAL** | `INCIDENT-RUNBOOK.md` (PR-001) + `docs/runbooks/dr-database-recovery.md`. Gap: no on-call, no contacts, never rehearsed |
+| 20 | Incident runbook | **PARTIAL** | `INCIDENT-RUNBOOK.md` (PR-001) + `docs/runbooks/dr-database-recovery.md` (historical booking-era runbook; its downgrade step is superseded by RELEASE-AND-MIGRATION §9 — TASK-016). Gap: no on-call, no contacts, never rehearsed |
 
 ## 2. Configuration inventory
 

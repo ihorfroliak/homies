@@ -1,5 +1,7 @@
 # 05 — Бізнес-правила і життєві цикли сутностей
 
+> **HISTORICAL — superseded** by the canonical documents (02-BUSINESS-LOGIC) on 2026-09-24 (TASK-000); banner added 2026-10-06 (TASK-016). Retained for provenance; not current product scope, strategy or implementation authority. Precedence: [00-AUTHORITY](../canonical/00-AUTHORITY.md); current status: [PROJECT-STATUS](../PROJECT-STATUS.md).
+
 **Принцип:** статусна машина — джерело істини. Перехід можливий лише з
 таблиці переходів; кожен перехід — подія + запис аудиту (хто/що/підстава).
 «Хто» ∈ {guest, host, system, support, moderator, t&s, dispute_resolver,

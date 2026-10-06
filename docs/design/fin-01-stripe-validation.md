@@ -1,5 +1,7 @@
 # FIN-01 — Stripe financial integrity validation
 
+> **HISTORICAL BUILD RECORD** — written 2026-07-23 during the booking-era build, before the canonical documents of 2026-09-24; banner added 2026-10-06 (TASK-016). Retained for provenance: parts may still describe code that exists, but this is not current scope or implementation authority. Current state: [PROJECT-STATUS](../PROJECT-STATUS.md) · [IMPLEMENTATION-CONVERGENCE](../canonical/IMPLEMENTATION-CONVERGENCE.md); precedence: [00-AUTHORITY](../canonical/00-AUTHORITY.md).
+
 Micro-cycle 02. Goal: move the Stripe integration from "implemented and locally
 tested" to "validated against real Stripe". Design decision:
 [ADR-0007](../adr/0007-stripe-connect-destination-charges.md).

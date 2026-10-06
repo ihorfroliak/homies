@@ -1,5 +1,7 @@
 # 03 — Операційна модель, оргдизайн, AI-first трансформація
 
+> **HISTORICAL — superseded** by the canonical documents (01-CONSTITUTION-v2 and 02-BUSINESS-LOGIC) on 2026-09-24 (TASK-000); banner added 2026-10-06 (TASK-016). Retained for provenance; not current product scope, strategy or implementation authority. Precedence: [00-AUTHORITY](../canonical/00-AUTHORITY.md); current status: [PROJECT-STATUS](../PROJECT-STATUS.md).
+
 ## 1. Принцип оргдизайну
 
 **Компанія проєктується як AI-first з дня 0**: штат росте з винятками,

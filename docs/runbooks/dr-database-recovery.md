@@ -1,5 +1,7 @@
 # Runbook — Database Disaster Recovery
 
+> **HISTORICAL / SUPERSEDED** — booking-era runbook (2026-07-05), retained for provenance; banner added 2026-10-06 (TASK-016). **Do not follow R4 step 1 (`alembic downgrade -1`):** the accepted policy never downgrades the database automatically — `alembic downgrade` is a development tool (D-84; [RELEASE-AND-MIGRATION §9](../production/RELEASE-AND-MIGRATION.md)). Current procedures: [INCIDENT-RUNBOOK](../production/INCIDENT-RUNBOOK.md), [BACKUP-RESTORE](../production/BACKUP-RESTORE.md), [RELEASE-AND-MIGRATION](../production/RELEASE-AND-MIGRATION.md).
+
 Executable procedures. Every step is a real command in
 `backend/scripts/backup/`. Rehearsed in the D9 drill
 (`docs/design/d9-disaster-recovery.md`).

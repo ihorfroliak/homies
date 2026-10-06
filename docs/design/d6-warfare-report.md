@@ -1,5 +1,7 @@
 # D6 — Production Warfare Report (реальні атаки на живий стек)
 
+> **HISTORICAL BUILD RECORD** — written 2026-07-05 during the booking-era build, before the canonical documents of 2026-09-24; banner added 2026-10-06 (TASK-016). Retained for provenance: parts may still describe code that exists, but this is not current scope or implementation authority. Current state: [PROJECT-STATUS](../PROJECT-STATUS.md) · [IMPLEMENTATION-CONVERGENCE](../canonical/IMPLEMENTATION-CONVERGENCE.md); precedence: [00-AUTHORITY](../canonical/00-AUTHORITY.md).
+
 > **Це не аналіз — це виконані атаки.** Харнеси (`scripts/` scratchpad)
 > били по запущеному `homies-api-1` + `homies-db-1` (Postgres 16, docker),
 > паралельними потоками (httpx + ThreadPoolExecutor). Усі числа нижче —

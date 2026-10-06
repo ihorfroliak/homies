@@ -1,5 +1,7 @@
 # D4 — Перший вертикальний зріз (auth → booking → payment → ledger → payout)
 
+> **HISTORICAL BUILD RECORD** — written 2026-07-05 during the booking-era build, before the canonical documents of 2026-09-24; banner added 2026-10-06 (TASK-016). Retained for provenance: parts may still describe code that exists, but this is not current scope or implementation authority. Current state: [PROJECT-STATUS](../PROJECT-STATUS.md) · [IMPLEMENTATION-CONVERGENCE](../canonical/IMPLEMENTATION-CONVERGENCE.md); precedence: [00-AUTHORITY](../canonical/00-AUTHORITY.md).
+
 Статус: реалізовано в `backend/`. Це документ-дзеркало коду, не план.
 
 ## 1. Архітектура (тільки D4-scope)
