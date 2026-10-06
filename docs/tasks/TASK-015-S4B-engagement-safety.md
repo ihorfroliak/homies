@@ -3,6 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED** (D-88) — candidate on its branch, integrated into the PROGRAM-001 branch, **not merged to `main`**; **production NOT READY · NOT DEPLOYED** |
+| Disposition (TASK-016, 2026-10-06) | merged into `main` with PROGRAM-001 at `c32ac63f9a4c08366369a2088709b658754373e6` (merge of `779b30fe2ecc5d4542a50efc8494eb6220409327`; S4b head `5dec30d3f29356dd0f9582f8983723a0eaf9934f`); F6 follow-up at `995b05fe72bc15a86141e214bf1c4fc63b8bc570`; still BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (D-88). The status text is kept as written |
 | Risk class | **R2** (authorization, concurrency, private engagement, rollback barrier) |
 | S4a integration | exact candidate `ff433303948bdf5b5097de757fc5615b3edc56e6` (externally reviewed, CI 37080274514) merged `--no-ff` into `main` `1de34bf5` → **`03268432f664ec6283f427b2f528a8bb6f814065`** (tree equal to the candidate) |
 | Baseline | `main` `03268432`, then PROGRAM-001 P0 (`claude/PROGRAM-001-p0-ci-evidence-hygiene`) |

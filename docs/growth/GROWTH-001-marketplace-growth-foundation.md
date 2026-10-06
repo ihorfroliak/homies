@@ -3,6 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | **FOUNDATION (builder) — PROGRAM-001**, on the program branch, not on `main` |
+| Disposition (TASK-016, 2026-10-06) | on `main` via the PROGRAM-001 merge `c32ac63f9a4c08366369a2088709b658754373e6` (merge of `779b30fe2ecc5d4542a50efc8494eb6220409327`); measurement facts builder verified; the family is current under 00-AUTHORITY. The status text is kept as written |
 | Authority | subordinate to [07 Product & Growth Doctrine](../canonical/07-PRODUCT-GROWTH-DOCTRINE.md) and the canon; founder decisions **D-98** (G-1…G-15) |
 | Family | this document · [METRICS-v1](METRICS-v1.md) · [EVENTS-v1](EVENTS-v1.md) · [ATTRIBUTION-v1](ATTRIBUTION-v1.md) · [EXPERIMENTS-v1](EXPERIMENTS-v1.md) · [DATA-QUALITY-v1](DATA-QUALITY-v1.md) · [UNIT-ECONOMICS-v1](UNIT-ECONOMICS-v1.md) · [PRIVACY-CONSENT-v1](PRIVACY-CONSENT-v1.md) |
 | Supersedes | `docs/design/ANALYTICS_EVENTS.md` (booking-era) |

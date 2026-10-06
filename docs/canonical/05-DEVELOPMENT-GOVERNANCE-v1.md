@@ -73,7 +73,13 @@ implements; Codex audits when required.
 Task Contract → Claude branch → tests green → SHA frozen
   → Codex audit (if required) → ChatGPT/founder review
   → Claude fixes → re-audit if material → founder approves merge → main
+  → current project index reconciled (§14)
 ```
+
+The same sequence in general terms: Task Contract → builder branch →
+verification → candidate SHA frozen → independent audit where required →
+founder/GPT review → founder merge approval → `main` → current project index
+reconciled.
 
 Agents do not mutate `main` independently. Claude pushes task branches;
 the founder merges.
@@ -136,3 +142,56 @@ with ChatGPT if needed.
 No production deployment, no production infrastructure changes, no paid
 provider activation, no production data mutation without explicit founder
 approval for that action.
+
+## 14. Repository system of record
+
+*Added 2026-10-06 by founder decision D-106 (TASK-016).*
+
+The Homies GitHub repository is the single durable system of record for
+project knowledge that materially affects development. The durable record is
+committed repository history, with accepted project state represented on
+`main`, interpreted through [00-AUTHORITY](00-AUTHORITY.md) and immutable Git
+identities. Durability is not authority: which document wins is still decided
+by 00-AUTHORITY. Branches are candidates.
+
+An external conversation (human or AI), AI or coding-agent memory and state,
+design-tool state, a meeting, a research session, a private note or an
+external artifact is **not durable project authority**. Such sources may be
+used for learning, research, ideation, exploration, drafting, review and
+implementation assistance.
+
+Any accepted decision, specification or evidence that materially affects
+product, business rules, domain semantics, architecture, security, privacy,
+UX, APIs, data models, compliance or legal gates, roadmap, testing,
+operations, production readiness, release or deployment must have a
+**repository-readable representation before dependent implementation is
+accepted**. A representation is one of: a D-xxx entry in
+[DECISIONS](../DECISIONS.md); a canonical update; an approved Task Contract;
+a repository handoff; an immutable audit or baseline record where
+applicable.
+
+If an external artifact cannot be committed, a repository handoff must carry
+every binding semantic required to implement and audit the work; the
+external artifact is then non-binding reference.
+
+A missing authoritative source is a **knowledge gap**. It is recorded as one
+and never reconstructed from model memory, likely intent, adjacent documents
+or the current implementation.
+
+Founder decisions may direct work immediately (00 precedence 1). They are
+committed into repository form before dependent implementation is finally
+accepted or merged.
+
+**Current project index.** [PROJECT-STATUS](../PROJECT-STATUS.md) is the
+single semantic owner of volatile project status. A task whose merge
+materially changes implemented product state, current or next work, accepted
+task state, implementation authorisation, production readiness or deployment
+reconciles PROJECT-STATUS — and, where behaviour or canon changed,
+[IMPLEMENTATION-CONVERGENCE](IMPLEMENTATION-CONVERGENCE.md) and
+[DEVLOG](../DEVLOG.md) — in the same task. Other documents link to
+PROJECT-STATUS instead of repeating volatile state. Task contracts keep
+their immutable lifecycle facts (baseline, candidate, disposition, merge
+SHA); that does not make them owners of current status. The exact current
+repository HEAD is read from Git; no document is required to embed the SHA of
+the commit that contains it
+([TRACEABILITY](../engineering/TRACEABILITY.md#self-reference-a-file-cannot-name-its-own-commit)).

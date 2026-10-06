@@ -3,6 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | **BUILDER VERIFIED** on its branch — part of the PROGRAM-001 candidate, **not merged to `main`**; **NOT DEPLOYED** |
+| Disposition (TASK-016, 2026-10-06) | on `main` via the PROGRAM-001 merge `c32ac63f9a4c08366369a2088709b658754373e6` (merge of `779b30fe2ecc5d4542a50efc8494eb6220409327`, externally reviewed, founder-approved); BUILDER VERIFIED; NOT DEPLOYED. The status text is kept as written |
 | Risk class | **R2** (session handling, CSRF, CSP, request forwarding to the rate limiter) |
 | Branch | `claude/FE-001-frontend-foundation` (from DESIGN-001) |
 | Canon | 03 §3 (Next.js + TypeScript public web), 07 (product growth), DESIGN-001, GROWTH-001 (EVENTS/ATTRIBUTION/EXPERIMENTS/PRIVACY-CONSENT) |

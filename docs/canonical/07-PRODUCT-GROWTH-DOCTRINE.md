@@ -54,7 +54,9 @@ padded.
 9. Marketplace liquidity is existential.
 10. Property persists; Listing is temporary.
 11. Country-specific legal concepts must not contaminate universal core concepts.
-12. Homies learns from competitors without becoming a clone.
+12. Homies derives product decisions from user needs, evidence, domain
+    constraints and measurable outcomes rather than feature imitation
+    (D-106; §5).
 
 ## 4. Positioning (directional, not final copy)
 
@@ -66,21 +68,51 @@ padded.
 
 These guide product decisions; marketing copy may change.
 
-## 5. Competitive benchmark doctrine
+## 5. Independent market evidence doctrine
 
-Standing benchmark set, where relevant: **Otodom, OLX, idealista,
-ImmoScout24, HousingAnywhere, Spotahome, Airbnb, Booking**, and new entrants.
+*Founder decision D-106 (2026-10-06) supersedes the earlier "competitive
+benchmark doctrine" of this section, which named a standing set of commercial
+platforms; the earlier text remains in Git history.*
 
-For every material workflow:
+For every material workflow, the reasoning chain is:
 
 ```text
-industry standard → competitor strength → user friction → Homies improvement → measurable evidence
+OBSERVED USER / WORKFLOW PROBLEM
+              ↓
+TRACEABLE EVIDENCE
+              ↓
+HOMIES INFERENCE OR HYPOTHESIS
+              ↓
+HOMIES-SPECIFIC PRODUCT RESPONSE
+              ↓
+MEASURABLE OUTCOME
 ```
 
-Competitor facts are time-sensitive. A competitor claim kept in the repository
-carries **source, date and context**, or is labelled **strategic
-observation** — never presented as a verified fact without a source.
-Benchmarks live in the Task Contract or a dated review under `docs/reviews/`.
+Principles:
+
+* Homies product decisions originate from user needs, evidence, domain
+  constraints, safety and business outcomes.
+* External commercial products may inform human learning outside the
+  repository; they are not repository product authority.
+* A feature is never justified solely because another commercial product has
+  it.
+* Generic market capability categories (property discovery, search and
+  filtering, map discovery, inventory aggregation, alerts, communication,
+  viewing coordination, renter applications, trust and identity, authority
+  verification, landlord workflow, agency operations, tenancy lifecycle) are
+  acceptable language; named commercial platforms are not used as product
+  authority.
+* A factual external claim requires traceable evidence (source rules in
+  [`docs/research/`](../research/README.md)); an unsupported claim is labelled
+  **HYPOTHESIS** or omitted.
+* A product recommendation stands on Homies reasoning alone — users, this
+  doctrine, the domain model, safety, business goals, successful housing
+  outcomes or operational constraints.
+
+Market evidence lives in [`docs/research/`](../research/README.md)
+(non-normative); it reaches implementation only through a founder/product
+decision recorded as a D-entry, a canonical update or an approved Task
+Contract.
 
 ## 6. Two parallel tracks
 

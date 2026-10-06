@@ -5,7 +5,9 @@ instruction (TASK-000).
 
 ## Precedence
 
-1. Founder explicit current decision
+1. Founder explicit current decision — binding for direction immediately;
+   it becomes durable project knowledge once represented in the repository
+   under [05 §14](05-DEVELOPMENT-GOVERNANCE-v1.md) (D-106)
 2. Homies Product & Engineering Constitution v2 — [01](01-CONSTITUTION-v2.md)
 3. Canonical Business Logic — [02](02-BUSINESS-LOGIC.md), with the Product &
    Growth Doctrine — [07](07-PRODUCT-GROWTH-DOCTRINE.md) (added 2026-09-25,
@@ -32,7 +34,20 @@ decided silently in code.
 * Implementation (9) is evidence of what exists, not of what is right. A
   committed commit is a candidate until accepted under 05.
 * Historical documentation (10) is kept for context and must not be used to
-  override anything above it. Files at this level carry a banner saying so.
+  override anything above it. Files at this level carry a banner saying so
+  (banners completed for the files known on 2026-10-06 by TASK-016; a
+  historical file found without one is still level 10).
+
+## Outside the ladder
+
+| Material | Status | May | May not |
+|---|---|---|---|
+| [`docs/research/**`](../research/README.md) | **NON-NORMATIVE EVIDENCE** (D-106) | inform a hypothesis or a founder/product decision | override, refine or stand in for canon, a D-decision or an approved Task Contract; authorise implementation |
+| Conversations, agent memory, design-tool state, external artifacts | inputs, not durable authority ([05 §14](05-DEVELOPMENT-GOVERNANCE-v1.md)) | direct work through a founder decision | bind implementation until represented in the repository |
+
+Research reaches implementation only as: research / evidence → Homies
+hypothesis → founder/product decision → D-xxx / canonical update / approved
+Task Contract → implementation.
 
 ## Known supersessions
 
@@ -69,6 +84,12 @@ authored outside this repository. Files 01–03 record **only** what the founder
 stated in the TASK-000 instruction of 2026-09-24; they do not invent missing
 text. Where a full founder/ChatGPT-authored text exists, it should be committed
 over the corresponding file, with this table updated.
+
+Under [05 §14](05-DEVELOPMENT-GOVERNANCE-v1.md) the "No" rows below are
+recorded **knowledge gaps**: they stay open until the founder either supplies
+the authoritative original or explicitly declares the repository version
+complete. They are never filled from model memory, likely intent, adjacent
+documents or the implementation. (TASK-016 did neither; status unchanged.)
 
 | File | Content source | Complete? |
 |---|---|---|

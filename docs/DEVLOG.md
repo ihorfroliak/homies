@@ -1122,3 +1122,29 @@ CONFIRMED; термінальні стани — як і раніше `VIEWING_S
 403 — лише LISTING. Повний прогін 1900 passed; hostile review 0 blocker /
 0 material. `docs/tasks/BP-12-message-report-verification-exception.md`.
 `FE-003 IMPLEMENTATION AUTHORIZED: NO`.
+
+## 2026-10-06 — TASK-016: репозиторій як єдине джерело правди (документація)
+
+Від `main` `a7756e1` (злиття BP-12, CI `37417946174` зелений) на
+`claude/TASK-016-source-of-truth-docs-reconciliation`; лише документація.
+Phase A (read-only аудит `6adca78`) знайшла: застарілий README («next work» з
+уже злитими задачами), `PROJECT-STATUS` з `next_task: PROGRAM-001`, відсутні
+P-0/HM-1/BP-1/BP-2+7 у roadmap і convergence, «not merged» у злитих задачах,
+суперечливий DR-ранбук (`alembic downgrade`), іменований комерційний
+benchmark у каноні 07 §5, невизначені родини ідентифікаторів. Зроблено:
+рішення засновника **D-106** (репозиторій — єдиний довговічний system of
+record; чати, пам'ять агентів і стан дизайн-інструментів — лише вхідні дані;
+відсутнє першоджерело — прогалина, а не реконструкція; дослідження
+ненормативні; `PROJECT-STATUS` — єдиний власник волатильного статусу; HEAD
+визначає Git) і **D-107** (індекс походження P-0 і HM-1, без нової
+семантики); 05 §14 і крок узгодження індексу в 05 §7; 00 — кваліфікатор
+рішення засновника і `docs/research/**` поза драбиною; 07 §5 — незалежна
+доктрина ринкових доказів; новий `docs/research/README.md` (MARKET-001 —
+окрема майбутня задача); `HANDOFF-INDEX`; TRACEABILITY — нові родини,
+колізії, п'ять ідентичностей походження, правило самопосилання;
+`PROJECT-STATUS` розділяє останню формальну базу (IBB-001), останній
+code-bearing стан `main` (`a7756e1`) і HEAD з Git; disposition-рядки у
+злитих задачах. 01/02/03 не реконструйовано — прогалини лишаються; D-88
+milestone — CANONICAL DECISION REQUIRED. Наступна інженерна задача: BP-10
+(не розпочата). `FE-003 / FE-VIS-001 IMPLEMENTATION AUTHORIZED: NO`;
+`PRODUCTION READY: NO`; `DEPLOYMENT: NO`.

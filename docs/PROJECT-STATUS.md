@@ -1,145 +1,135 @@
 ---
 id: PROJECT-STATUS
 type: status_index
-as_of: 2026-10-01
-current_baseline:
+role: single semantic owner of volatile project status (D-106, 05 §14)
+as_of: 2026-10-06
+reconciled_through:
+  code_and_product: BP-12 merge a7756e16c5ae2888776bf02a022b44b0221c0f7a
+  documentation: TASK-016 source-of-truth reconciliation
+last_formal_baseline:
   id: IBB-001
   name: Integrated Backend Baseline 001
   sha: 5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98
-  status: accepted
+  tag: backend-baseline-001
+  status: ACCEPTED
+latest_code_bearing_main_state:
+  sha: a7756e16c5ae2888776bf02a022b44b0221c0f7a
+  what: BP-12 merge (IBB-001 plus builder-verified increments)
+  main_ci: 37417946174 success
+repository_head: resolved from Git (origin/main); intentionally not embedded here
+next_task:
+  id: BP-10
+  status: NOT_STARTED
+fe003_implementation_authorized: false
+fe_vis_001_implementation_authorized: false
 production_ready: false
 deployed: false
-next_task: PROGRAM-001 (program branch claude/PROGRAM-001-product-growth-frontend) — external review, then founder merge decision
 ---
 
 # Project status — orientation index
 
-> **Derived, not canonical.** A fast orientation page for humans and agents.
-> It holds no decisions of its own: authority is [00-AUTHORITY](canonical/00-AUTHORITY.md),
+> **Single owner of volatile status, not of decisions.** This page owns the
+> answer to "where is Homies now?" (05 §14, D-106): baseline, `main` state,
+> candidates, next work, authorisation flags and production state. It holds no
+> decisions of its own: authority is [00-AUTHORITY](canonical/00-AUTHORITY.md),
 > the canon, [IMPLEMENTATION-CONVERGENCE](canonical/IMPLEMENTATION-CONVERGENCE.md)
 > and [DECISIONS](DECISIONS.md). If this page disagrees with them, they win —
 > fix this page. Nothing is accepted because it is listed here.
 
-**As of:** 2026-10-04 (BASELINE-001; updated by PR-002 and PR-003 integration, TASK-015 and the PROGRAM-001 merge)
+**As of:** 2026-10-06. Code and product state reconciled through the BP-12
+merge; documentation reconciled by TASK-016.
 
-## Current accepted backend baseline
+## Three different "current" states
 
-| | |
-|---|---|
-| Human name | **Integrated Backend Baseline 001** |
-| ID | `IBB-001` |
-| Accepted SHA | `5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98` |
-| Git tag | `backend-baseline-001` |
-| Status | **ACCEPTED FOR CONTINUED DEVELOPMENT** |
-| Production | **NOT_READY** |
-| Deployment | **NOT_DEPLOYED** |
-| Record | [docs/baselines/IBB-001.md](baselines/IBB-001.md) |
+| Concept | Value | How to read it |
+|---|---|---|
+| **Last formal backend baseline** | Integrated Backend Baseline 001 (`IBB-001`), `5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98`, tag `backend-baseline-001`, **ACCEPTED** (CONV-001A) | the last state accepted through the baseline process ([record](baselines/IBB-001.md)). There is no IBB-002 |
+| **Latest code-bearing `main` state** | `a7756e16c5ae2888776bf02a022b44b0221c0f7a` — BP-12 merge, main CI `37417946174` success (backend, web, image, contracts, monitoring, secrets) | IBB-001 plus every increment below — merged on builder evidence and green CI; none independently accepted; the items recorded as MILESTONE AUDIT DEFERRED await the D-88 review. Not a new baseline |
+| **Repository HEAD** | read it from Git: `git rev-parse origin/main` | this file does not embed the SHA of the commit that contains it ([TRACEABILITY](engineering/TRACEABILITY.md#self-reference-a-file-cannot-name-its-own-commit)). Documentation-only merges after `a7756e1` (such as TASK-016) do not change the code-bearing state |
 
-There is one backend development line. All new backend work descends from
-IBB-001 (or a documented successor baseline). The documentation commits that
-recorded IBB-001 (BASELINE-001) sit on top of it and change no code; the
-accepted code state is the SHA above, not a later documentation HEAD.
-
-### Provenance
-
-| Role | ID | Exact SHA | Verdict |
-|---|---|---|---|
-| PRODUCT parent | TASK-014 — Saved Listings, Saved Search & Alerts | `7ffb4f51dd315363362df1a5f8fc5c19a57767dc` | ACCEPTED (TASK-014RA) |
-| INFRA parent | PR-001 — Runtime / CI / Readiness Baseline | `5cad442f07264ab25b3024c96fc691ad9c7a75fa` | ACCEPTED (PR-001RA2) |
-| Integration | CONV-001 | `5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98` | merge of the two parents |
-| Independent integration audit | CONV-001A | — | ACCEPTED WITH NONBLOCKING NOTES (`CONV_001_ACCEPTED_WITH_NONBLOCKING_NOTES`) |
-
-Full history of every audit cycle: [docs/reviews/AUDIT-HISTORY.md](reviews/AUDIT-HISTORY.md).
-Naming convention: [docs/engineering/TRACEABILITY.md](engineering/TRACEABILITY.md).
-
-## Next serialized development
+## Flags
 
 ```text
-IBB-001                     ACCEPTED
-  ↓
-MICRO-001                   DONE      evidence / docs / test cleanup (R0/R1) — on main at dacbe9e3
-  ↓
-PR-002                      BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — release and migration compatibility (R2, D-88) — on main at 13a92ef7 (merge of be26fcb8)
-  ↓
-PR-003                      BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — database client deadlines / failure containment (R2, D-88) — on main at 451b7e56 (merge of e54b3eec)
-  ↓
-TASK-015 Phase A            DONE (contract; founder D-1…D-9 approved, D-92) — on main at 985db7ae
-  ↓
-TASK-015 Slice 1            BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — moderation core + publication hold (R2) — on main at 1a65d381 (merge of 1ccf1a18)
-  ↓
-TASK-015 Slices 2+3         BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — listing reports, moderator API, owner notices (R2) — on main at 4bf66108 (merge of 7a51236d)
-  ↓
-TASK-015 Slice 5            BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — review requests / owner reconsideration (R2) — on main at 1de34bf5 (merge of 3146fed3)
-  ↓
-TASK-015 Slice 4a           BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — message reports, evidence, redaction (R2) — on main at 03268432 (merge of ff433303)
-  ↓
-TASK-015 Slice 4b           BUILDER VERIFIED · MILESTONE AUDIT DEFERRED — conversation closure, close_engagement, viewing protection, photo restriction (R2) — on main at c32ac63a (merge of 779b30fe, PROGRAM-001)
-  ↓
-TASK-015 closure            COMPLETE FOR PHASE 1A — restore drill covers conversations, redacted messages, viewings, photos (S6 absorbed; no S6) — on main at c32ac63a (merge of 779b30fe, PROGRAM-001)
-  ↓
-GROWTH-001                  BUILDER VERIFIED — measurement facts in the outbox + metric/event/attribution/experiment/consent definitions (R1/R2) — on main at c32ac63a (merge of 779b30fe, PROGRAM-001)
-  ↓
-DESIGN-001                  BUILDER VERIFIED — product/UI foundation, Design System v1 tokens, Figma desktop seeker frames (mobile not drawn: Starter limit) — on main at c32ac63a (merge of 779b30fe, PROGRAM-001)
-  ↓
-FE-001                      BUILDER VERIFIED — Next.js public web foundation: BFF/session, CSRF, CSP, typed client, i18n, consent-gated measurement (R2) — on main at c32ac63a (merge of 779b30fe, PROGRAM-001)
-  ↓
-FE-002                      BUILDER VERIFIED — seeker slice search → results → map/list → detail; ClassifiedOut.facts, localities by slug, E2E seed (R2) — on main at c32ac63a (merge of 779b30fe, PROGRAM-001)
+FE-003 IMPLEMENTATION AUTHORIZED:     NO   (contract approved, D-104/D-105)
+FE-VIS-001 IMPLEMENTATION AUTHORIZED: NO   (D-104 OD-5; DESIGN-001C handoff §26, §31)
+PRODUCTION READY:                     NO   (NOT_READY)
+DEPLOYMENT:                           NO   (NOT_DEPLOYED; no production environment exists)
 ```
 
-PROGRAM-001 (`779b30fe`) was reviewed by GPT-5.6 Sol (accepted with
-conditions), approved by the founder and merged to `main` at `c32ac63a`
-(2026-10-04). Its adjudications are D-102 (canon 04a §24); F6 enforcement and
-the decision records follow on `main` as a bounded integration commit.
-Next: DESIGN-001C approved at design-contract level → FE-003 contract APPROVED (D-104/D-105; implementation not
-authorised). Production NOT READY, NOT DEPLOYED.
+## Next work
 
-PR-002 is **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED** (D-88): integrated into
-`main` for continued development after green CI — merge commit
-`13a92ef77b66096021d3927fdb255b546a4ecc63` (parents `dacbe9e3` + candidate
-`be26fcb8`, CI 5/5) — not independently verified, not production-ready:
-[task](tasks/PR-002-release-migration-compatibility.md),
-[policy](production/RELEASE-AND-MIGRATION.md). Its independent review is part of
-the milestone / production-readiness audit.
+| Order | Item | Status |
+|---|---|---|
+| next | **BP-10** — idempotent conversation start / message append (FE-003 §10.1; beta blocker BB-11) | **NOT STARTED** — a separate bounded task |
+| then | BP-5 + BP-6, BP-8 → BP-11, BP-9 (security review) → BP-3, BP-4 | NOT STARTED — order from [FE-003 §10.3](tasks/FE-003-save-conversation-viewing-DRAFT.md) |
+| later | MARKET-001 residential rental market research ([research family](research/README.md)) | NOT STARTED — separate task, non-normative |
 
-PR-003 is **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED** (D-88), integrated into
-`main` by founder authorization — merge commit
-`451b7e566a1958097b2df2266e2bb7cc41314621` (parents `13a92ef7` + candidate
-`e54b3eec`, CI 5/5): [task](tasks/PR-003-db-failure-containment.md), D-89 …
-D-91. It closes PR-001RA RA-3.
+FE-003 slices start only with a separate founder authorisation per slice
+(FE-003 §13); beta blockers BB-1…BB-11 stay open until their own tasks close
+them.
 
-TASK-015 Phase A (reports & moderation basics): [contract](tasks/TASK-015-reports-moderation-phase-a.md)
-on `main` (`985db7ae`); founder decisions D-1 … D-9 approved (D-92). TASK-015
-Slice 1 ([task](tasks/TASK-015-S1-moderation-core.md), D-93, 04a §23) is on
-`main` (`1a65d381`, merge of `1ccf1a18`): immutable moderation decision chain,
-publication hold enforced in `make_public`. TASK-015 Slices 2+3
-([task](tasks/TASK-015-S23-listing-report-moderation-loop.md), D-94) are on
-`main` (`4bf66108`, merge of `7a51236d`): listing reports, moderator
-queue/review/decisions, owner moderation state and TRANSACTIONAL inbox notices.
-TASK-015 Slice 5 ([task](tasks/TASK-015-S5-moderation-review-requests.md),
-D-95) is on `main` (`1de34bf5`, merge of `3146fed3`). TASK-015 Slice 4a
-([task](tasks/TASK-015-S4A-message-moderation.md), D-96) is on `main`
-(`03268432`, merge of `ff433303`, externally reviewed): message reports,
-bounded audited moderator evidence, CONTENT_REMOVED redaction; rollback to S5
-is a security barrier; L9 legal validation required before launch. TASK-015
-Slice 4b ([task](tasks/TASK-015-S4B-engagement-safety.md), D-97) is on
-`main` — merged with PROGRAM-001 (`c32ac63a`, merge of `779b30fe`), with the
-bounded F6/canon follow-up (D-102) at `995b05fe`: close_engagement,
-conversation restriction (G-14, F6 for viewings), viewing protection under a
-hold, non-destructive photo restriction; rollback to S4a is a safety barrier.
-MICRO-001: [scope and closure](tasks/MICRO-001-evidence-docs-test-cleanup.md).
+## Integrated on `main` since IBB-001
 
-**DEFERRED:** Phase-2 transactional renting (payments, ledger), short stay,
-dedicated search/message infrastructure — by canonical decision only
-([06 — Roadmap](canonical/06-ROADMAP.md)).
+Status words: [TRACEABILITY](engineering/TRACEABILITY.md#status-vocabulary).
+Risk classes: R0–R3 ([AUDIT-HISTORY](reviews/AUDIT-HISTORY.md#governance-change-after-ibb-001--risk-based-verification)).
+
+| # | Item | Risk class | Status | `main` merge (candidate) |
+|---|---|---|---|---|
+| 1 | [MICRO-001](tasks/MICRO-001-evidence-docs-test-cleanup.md) — evidence, docs, test cleanup | R0/R1 | DONE | `dacbe9e3` (direct commit) |
+| 2 | [PR-002](tasks/PR-002-release-migration-compatibility.md) — release and migration compatibility | R2 | BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (D-88) | `13a92ef7` (`be26fcb8`) |
+| 3 | [PR-003](tasks/PR-003-db-failure-containment.md) — database deadlines, failure containment | R2 | BUILDER VERIFIED · MILESTONE AUDIT DEFERRED | `451b7e56` (`e54b3eec`) |
+| 4 | [TASK-015 Phase A](tasks/TASK-015-reports-moderation-phase-a.md) — moderation contract | docs-only | DONE (contract; founder D-1…D-9 approved, D-92) | `985db7ae` (`2d4064b0`) |
+| 5 | [TASK-015 S1](tasks/TASK-015-S1-moderation-core.md) — decision chain, publication hold (D-93) | R2 | BUILDER VERIFIED · MILESTONE AUDIT DEFERRED | `1a65d381` (`1ccf1a18`) |
+| 6 | [TASK-015 S2+S3](tasks/TASK-015-S23-listing-report-moderation-loop.md) — listing reports, moderator loop (D-94) | R2 | BUILDER VERIFIED · MILESTONE AUDIT DEFERRED | `4bf66108` (`7a51236d`) |
+| 7 | [TASK-015 S5](tasks/TASK-015-S5-moderation-review-requests.md) — review requests (D-95) | R2 | BUILDER VERIFIED · MILESTONE AUDIT DEFERRED | `1de34bf5` (`3146fed3`) |
+| 8 | [TASK-015 S4a](tasks/TASK-015-S4A-message-moderation.md) — message reports, redaction (D-96) | R2 | BUILDER VERIFIED · MILESTONE AUDIT DEFERRED; externally reviewed (GPT-5.6 Sol) | `03268432` (`ff433303`) |
+| 9 | PROGRAM-001 — [TASK-015 S4b](tasks/TASK-015-S4B-engagement-safety.md) (D-97) + TASK-015 closure, [GROWTH-001](growth/GROWTH-001-marketplace-growth-foundation.md), [DESIGN-001](product/DESIGN-001-product-ui-foundation.md), [FE-001](frontend/FE-001-foundation.md), [FE-002](frontend/FE-002-seeker-search-detail.md), canon changes, security repairs | R1/R2 | externally reviewed (GPT-5.6 Sol: accepted for merge with conditions), founder-approved; S4b BUILDER VERIFIED · MILESTONE AUDIT DEFERRED; the other parts BUILDER VERIFIED (no deferral recorded). TASK-015 complete for Phase 1A | `c32ac63f` (`779b30fe`) |
+| 10 | PROGRAM-001 integration decisions — F6 enforcement, D-102, D-103 | not recorded | merged after branch CI `37163365720` | `995b05fe` (`cde91fa9`) |
+| 11 | [FE-003 contract](tasks/FE-003-save-conversation-viewing-DRAFT.md) (D-104, D-105) | docs-only | APPROVED — implementation NOT authorised | `c87616ad` (`2162676e`) |
+| 12 | [P-0 DESIGN-001C handoff](design/DESIGN-001C-HANDOFF.md) (D-107) | docs-only | APPROVED — implementation binding ready for FE-003 | `673b61e0` (`2ed544bb`) |
+| 13 | HM-1 Home-map amendment (handoff §31, D-107) | docs-only | recorded; owner FE-VIS-001 (not authorised) | `dc74da3f` (`50d1074f`) |
+| 14 | [BP-1](tasks/BP-1-stable-api-codes.md) — stable API refusal codes | R1 | merged; founder/GPT reviewed | `6be148b6` (`fa5612e6`) |
+| 15 | [BP-2 + BP-7](tasks/BP-2-BP-7-viewing-api-contract.md) — typed viewing slots + timezone; no cancel after start (DB clock) | R1 | merged; founder/GPT reviewed | `6adca78c` (`caf38383`) |
+| 16 | [BP-12](tasks/BP-12-message-report-verification-exception.md) — MESSAGE reports without verified contact (D-105 OD-7) | R1 | merged; founder/GPT reviewed (BP-12: PASS) | `a7756e16` (`0d45583a`; implementation `434c0956`; CI `37413458869`) |
+
+Before IBB-001 the accepted line was Foundation Baselines 001/002 → TASK-010,
+TASK-012, TASK-013, TASK-014 + PR-001 → CONV-001 → IBB-001
+([AUDIT-HISTORY](reviews/AUDIT-HISTORY.md)).
+
+## Deferred milestone audit (D-88)
+
+Items recorded above as MILESTONE AUDIT DEFERRED wait for one comprehensive
+milestone / production-readiness review (D-88; list in
+[AUDIT-HISTORY §8](reviews/AUDIT-HISTORY.md#8-after-ibb-001--integrated-without-independent-acceptance-d-88)).
+**CANONICAL DECISION REQUIRED:** the milestone's trigger, scope, acceptance
+threshold and whether it yields a successor baseline are not defined in the
+repository. Nothing here defines them.
+
+## Open knowledge gaps (05 §14)
+
+01 Constitution v2, 02 Business Logic and 03 System Architecture v1.1 are
+incomplete derived representations of founder texts authored outside the
+repository ([00 — source status](canonical/00-AUTHORITY.md#source-status-of-levels-24));
+the concrete 1C visual values live only in the inaccessible DESIGN-001C
+artifact (handoff §27, U-1) and are needed before an FE-VIS-001 contract.
+Full list: [TASK-016 §10](tasks/TASK-016-source-of-truth-documentation-reconciliation.md#10-recorded-not-resolved-here).
+
+## Not now
+
+**DEFERRED** by canonical decision: Phase-2 transactional renting (payments,
+ledger), short stay, dedicated search/message infrastructure
+([06 — Roadmap](canonical/06-ROADMAP.md)). Legacy modules are
+`LEGACY_DORMANT`.
 
 ## Verification policy after IBB-001
 
-Risk-based (R0 docs → builder + light checks; R1 ordinary → tests + CI;
-R2 migrations/authorisation/concurrency/privacy → independent review where
-material — from PR-002 on deferred into the milestone audit (D-88); R3 payments/production/deployment → independent audit + operational
-evidence + founder approval). Details: [AUDIT-HISTORY](reviews/AUDIT-HISTORY.md#governance-change-after-ibb-001--risk-based-verification).
+Risk-based: R0 docs → builder + light checks; R1 ordinary → tests + CI; R2
+migrations/authorisation/concurrency/privacy → independent review where
+material, from PR-002 on deferred into the milestone audit (D-88); R3
+payments/production/deployment → independent audit + operational evidence +
+founder approval.
 
 ## Production
 
 **NOT_READY · NOT_DEPLOYED.** Readiness matrix and open gaps:
-[docs/production/PRODUCTION-READINESS.md](production/PRODUCTION-READINESS.md).
+[PRODUCTION-READINESS](production/PRODUCTION-READINESS.md).

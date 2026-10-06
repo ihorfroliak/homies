@@ -721,6 +721,12 @@ authority holder (BP-9), all fictional, under the existing opt-ins.
 | BP-12 | OD-7: `POST /v1/reports` for `target_type=MESSAGE` by a current side of the conversation on another participant's USER message no longer requires a verified e-mail/phone; LISTING keeps `reporter_verified`; OpenAPI 403 description updated | R1 | c |
 | optional | G8 saved flag; `can_send` / `closed_by` | — | — |
 
+**Disposition of the prerequisites (TASK-016, 2026-10-06):** BP-1 merged at
+`6be148b6`, BP-2 + BP-7 at `6adca78c`, BP-12 at `a7756e16` (task records in
+`docs/tasks/BP-…`); BP-3, BP-4, BP-5, BP-6, BP-8, BP-9, BP-10, BP-11 not
+started. The table above is kept as approved; current state:
+[PROJECT-STATUS](../PROJECT-STATUS.md).
+
 ### 10.2 Beta blockers
 
 | # | Blocker |
@@ -840,3 +846,9 @@ Next: a separate founder authorisation for implementation; the P-0 handoff
 (`docs/design/DESIGN-001C-HANDOFF.md`, raw `.dc.html` optional) in the
 repository; the backend prerequisites of each slice (§10.3) as their own
 bounded tasks. No FE-003 production code, merge or deployment before that.
+
+*Disposition (TASK-016, 2026-10-06):* the P-0 handoff is on `main` (APPROVED
+— implementation binding ready, `673b61e0`; HM-1 amendment `dc74da3f`;
+D-107); BP-1, BP-2, BP-7 and BP-12 are on `main` (§10.1). A separate founder
+authorisation per slice is still required —
+`FE-003 IMPLEMENTATION AUTHORIZED: NO`.
