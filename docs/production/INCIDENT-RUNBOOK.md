@@ -2,7 +2,7 @@
 
 Not rehearsed. No production, no on-call, no alert destination exists yet;
 this is the outline staging must exercise. Database recovery details:
-`docs/runbooks/dr-database-recovery.md` and `BACKUP-RESTORE.md`.
+`BACKUP-RESTORE.md` and, for rollback, `RELEASE-AND-MIGRATION.md` §9. (`docs/runbooks/dr-database-recovery.md` is a historical booking-era runbook; its `alembic downgrade` step is superseded — TASK-016.)
 
 ## First five minutes (any incident)
 

@@ -1,5 +1,7 @@
 # 04 — Архітектура модулів і даних
 
+> **HISTORICAL — superseded** by the canonical documents (02-BUSINESS-LOGIC) on 2026-09-24 (TASK-000); banner added 2026-10-06 (TASK-016). Retained for provenance; not current product scope, strategy or implementation authority. Precedence: [00-AUTHORITY](../canonical/00-AUTHORITY.md); current status: [PROJECT-STATUS](../PROJECT-STATUS.md). Commercial platforms named below belong to superseded reasoning and are not product authority (D-106).
+
 ## 1. Архітектура модулів
 
 Базуємось на карті контекстів Chat 01

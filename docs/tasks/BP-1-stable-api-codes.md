@@ -8,6 +8,7 @@
 | Baseline | `main` = `dc74da3fbc57eff89437dbe5d7a65d4a0a47ceb0` (HM-1 merge), CI `37242309945` success 6/6 |
 | Branch | `claude/BP-1-stable-api-codes` |
 | Candidate | see §7 |
+| Disposition (TASK-016, 2026-10-06) | merged into `main` at `6be148b6fefea22e42764e2f6178d1a03433043c` (parents `dc74da3f` + candidate `fa5612e63df46c4e623efda4f6a8d5a6f2e1e343`); founder/GPT reviewed; main CI `37258817313` success. The status text below is kept as written at handoff |
 
 ## 1. Convention (unchanged)
 

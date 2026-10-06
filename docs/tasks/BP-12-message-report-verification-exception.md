@@ -9,6 +9,7 @@
 | Baseline | `main` = `6adca78c9ae6342438f08b8b7c8cfd1b88be714a` (BP-2 + BP-7 merge), CI `37370779484` attempt 4 success 6/6 |
 | Branch | `claude/BP-12-message-report-verification-exception` |
 | Candidate | see §7 |
+| Disposition (TASK-016, 2026-10-06) | implementation `434c0956022d10f7bdaa4f1391674d490521561c`; reviewed candidate `0d45583a14abbf5d4ce5eced0a5c270382aa44b5` (founder/GPT: BP-12 PASS), candidate CI `37413458869` success; merged into `main` at `a7756e16c5ae2888776bf02a022b44b0221c0f7a` (parents `6adca78c` + `0d45583a`), main CI `37417946174` success. The status text below is kept as written at handoff |
 
 ## 1. Policy matrix (`POST /v1/reports`)
 

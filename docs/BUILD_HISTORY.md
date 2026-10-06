@@ -1,5 +1,7 @@
 # BUILD HISTORY
 
+> **HISTORICAL** — the booking-era build log (entries 2026-07 … 2026-08), not maintained since the canonical documents of 2026-09-24; banner added 2026-10-06 (TASK-016). Retained for provenance; not current scope or implementation authority. Current chronology: [DEVLOG](DEVLOG.md) and `git log --first-parent origin/main`; current status: [PROJECT-STATUS](PROJECT-STATUS.md).
+
 One entry per completed micro-cycle. Newest last. Status legend: ✅ shipped ·
 ⚠️ shipped with known gap · ⛔ blocked.
 

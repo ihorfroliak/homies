@@ -3,14 +3,15 @@
 | Field | Value |
 |---|---|
 | Status | **BUILDER VERIFIED** on its branch — part of the PROGRAM-001 candidate, **not merged to `main`**; **NOT DEPLOYED** |
+| Disposition (TASK-016, 2026-10-06) | on `main` via the PROGRAM-001 merge `c32ac63f9a4c08366369a2088709b658754373e6` (merge of `779b30fe2ecc5d4542a50efc8494eb6220409327`, externally reviewed, founder-approved); BUILDER VERIFIED; NOT DEPLOYED. The status text is kept as written |
 | Risk class | **R2** (public data projection change, new public endpoint, search correctness, privacy of location) |
 | Branch | `claude/FE-002-seeker-search-detail` (from FE-001) |
 | Canon / design | DESIGN-001 §2–§9, UI-STATE-MAP, DESIGN-SYSTEM-v1; GROWTH-001 EVENTS-v1; founder G-11, G-12, G-13 |
 | Not in scope | FE-003 (save, conversation, viewing — **not authorised**); owner panel; moderator app |
 
 The founder's rule stands: this is **developer-built UI on Design System v1
-tokens**, not completed high-fidelity design. The Figma desktop frames are the
-reference; mobile frames are not drawn yet (Starter-plan limit).
+tokens**, not completed high-fidelity design. The Figma desktop frames are a
+non-binding visual reference (D-106: design-tool state is not authority); mobile frames are not drawn yet (Starter-plan limit).
 
 ## 1. Routes
 

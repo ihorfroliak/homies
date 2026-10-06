@@ -3,6 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | **TASK-015 COMPLETE FOR PHASE 1A** (PROGRAM-001, 2026-10-03): S1, S2+S3, S5, S4a merged to `main`; S4b and the closure (restore-drill coverage) are PROGRAM-001 candidates, **not merged to `main`**. The S6 hardening slice was absorbed into S4b and the closure — **there is no S6**. Production NOT READY, NOT DEPLOYED. *(Phase A contract text below is kept as written.)* |
+| Disposition (TASK-016, 2026-10-06) | contract on `main` at `985db7ae116aca5e37984b8e46556e0859792313` (merge of `2d4064b01c2a68d5e0f62e30fffc303a41ca9ad2`); S4b and the closure (`50f2f521abe3a245442d93f4da8088a0cf44ed7e`) reached `main` with PROGRAM-001 at `c32ac63f9a4c08366369a2088709b658754373e6`, so every TASK-015 slice is on `main`. The status text is kept as written |
 | Risk class (implementation) | **R2** (authorization, publication gating, privacy, migration) |
 | Roadmap | 06 Phase 1A item 6 — "Reports and moderation basics; incidents" (incidents: see §3, non-goal for this slice) |
 | Baseline | `main` `451b7e566a1958097b2df2266e2bb7cc41314621` = IBB-001 + MICRO-001 + PR-002 + PR-003 (PR-003 merged by this task's entry gate: parents `13a92ef7` + `e54b3eec`) |

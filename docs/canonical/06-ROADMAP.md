@@ -51,15 +51,22 @@ Engineering status per area is in
     `main` at `c32ac63` (2026-10-04): GROWTH-001, DESIGN-001, FE-001, FE-002
     (search → results → map/list → listing detail). Adjudications D-102.
 14. **DESIGN-001C** — 1C Dzielnica product convergence (Claude Design):
-    approved at design-contract level (D-103…D-105); implementation needs a
-    repository-readable handoff (`docs/design/DESIGN-001C-HANDOFF.md`). The
-    1C visual/token rollout is a separate task **FE-VIS-001**.
+    approved at design-contract level (D-103…D-105); its repository-readable
+    handoff **P-0** ([`docs/design/DESIGN-001C-HANDOFF.md`](../design/DESIGN-001C-HANDOFF.md))
+    is APPROVED — implementation binding ready (D-107), with the founder's
+    Home-map amendment **HM-1** (§31, D-107). The 1C visual/token rollout and
+    HM-1 belong to the separate task **FE-VIS-001** — not authorised.
 15. **FE-003** — save → conversation → viewing: **contract APPROVED —
     implementation not authorised**
     ([contract](../tasks/FE-003-save-conversation-viewing-DRAFT.md)), founder
     decisions D-104/D-105; backend prerequisites BP-1…BP-12 as separate
-    bounded tasks; implementation needs a separate founder authorisation and
-    the P-0 handoff.
+    bounded tasks; each slice needs a separate founder authorisation.
+16. **FE-003 backend prerequisites:** BP-1 (stable refusal codes), BP-2 +
+    BP-7 (typed viewing slots with timezone; no cancel after start) and BP-12
+    (message reports without verified contact) are on `main`. Order of the
+    rest: **BP-10** → BP-5 + BP-6, BP-8 → BP-11, BP-9 → BP-3, BP-4 (FE-003
+    §10.3). Current state and merge identities:
+    [PROJECT-STATUS](../PROJECT-STATUS.md).
 
 **Beta prerequisites (before FE-003 matures or any external beta):**
 BG-1 backend logout/refresh revocation; BG-5 refresh reuse/grace semantics
@@ -102,14 +109,14 @@ awaits founder approval; each item becomes a Task Contract:
    service.
 5. ~~Saved property, saved search.~~ Saved **listing** (04a §22 supersedes Saved Property
    for Phase 1A) and saved search with alerts — TASK-014 (accepted, in IBB-001).
-6. ~~Reports and moderation basics~~ — TASK-015 (complete for Phase 1A as a
-   candidate; see Now 12); **incidents** not built.
+6. ~~Reports and moderation basics~~ — TASK-015 (complete for Phase 1A, on
+   `main`, milestone audit deferred; see Now 12); **incidents** not built.
 7. Safety foundation: safety profile, typed requirements, hazards, versioned
    attestations.
 8. Media derivatives and a vetted processing path (after the C8 audit).
 9. Server-side outcome events for analytics via the outbox — measurement
    facts for listing status, viewings and lead stages in GROWTH-001
-   (candidate); the housing-outcome capture (G-15) is designed and belongs
+   (on `main`, builder verified); the housing-outcome capture (G-15) is designed and belongs
    to the owner-flow slice.
 10. Organization ↔ LegalParty multi-relationship with one active primary.
 

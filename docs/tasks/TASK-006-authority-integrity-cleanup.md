@@ -3,6 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | IN_AUDIT — N-01…N-04 CLOSED BY BUILDER, PENDING REVIEW |
+| Disposition (TASK-016, 2026-10-06) | TASK-007 re-audit: N-02…N-04 accepted, N-01 partially closed (N-05, then TASK-008); superseded by Foundation Baseline 002 = `36231840ee52d6185e73fda07e54eab33ffe41f3` (TASK-009, D-56); on `main` via `507a96773ee8476d6ba26bc7f547f64a831369e9`. See AUDIT-HISTORY §1; the status text is kept as written |
 | Owner (writer) | Claude Code — sole writer for TASK-006 |
 | Bounded contexts written | `properties/authority`, `identity/organizations` (accept), tests, mutation harness, docs |
 | Baseline SHA | `dfa3254cb8f8d321c278f1d815bbb7e14a514561` — HOMIES FOUNDATION BASELINE 001 (C1–C8 accepted for continued Phase 1A development) |

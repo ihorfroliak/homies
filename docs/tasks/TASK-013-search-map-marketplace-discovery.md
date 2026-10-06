@@ -3,6 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | IN_REVIEW — builder complete; ChatGPT/founder adjudication and independent audit requested |
+| Disposition (TASK-016, 2026-10-06) | ACCEPTED at `3f324b6ddff6c7557894eb5f65736729d956f7eb` (TASK-013RA, `TASK_013_PHASE_1A_SLICE_ACCEPTED`, D-77); part of IBB-001; on `main` via `507a96773ee8476d6ba26bc7f547f64a831369e9`. See AUDIT-HISTORY §4; the status text is kept as written |
 | Owner (writer) | Claude Code |
 | Accepted starting SHA | `879bf56cd7bb497fd77d8140fc1443fe9d61c1fe` (TASK-012 accepted by TASK-012RA) |
 | Branch | `claude/TASK-013-search-map-discovery` |

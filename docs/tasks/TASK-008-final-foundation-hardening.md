@@ -3,6 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | IN_AUDIT — N-05…N-10 CLOSED BY BUILDER — PENDING INDEPENDENT REVIEW |
+| Disposition (TASK-016, 2026-10-06) | TASK-009 (Codex + Claude): `TASK_008_ACCEPTED_WITH_NONBLOCKING_NOTES`; Foundation Baseline 002 = `36231840ee52d6185e73fda07e54eab33ffe41f3` ACCEPTED (D-56); on `main` via `507a96773ee8476d6ba26bc7f547f64a831369e9`. See AUDIT-HISTORY §1; the status text is kept as written |
 | Owner (writer) | Claude Code — sole writer for TASK-008 |
 | Bounded contexts written | `properties/authority`, `properties/router` (publish contract), `identity/organizations` (accept, invite), tests, mutation harness, docs |
 | Baseline SHA | `1b2458c0aa2e73d97475733f68e424e62c7ba0e6` (TASK-006; HOMIES FOUNDATION BASELINE 002 **candidate — not yet accepted**) |

@@ -3,6 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | IN_AUDIT — CLOSED BY BUILDER, PENDING CODEX RE-AUDIT (TASK-005) |
+| Disposition (TASK-016, 2026-10-06) | TASK-005 re-audit: F-04 CLOSED, `TASK_004_ACCEPTED_WITH_NONBLOCKING_NOTES`; Foundation Baseline 001 = `dfa3254cb8f8d321c278f1d815bbb7e14a514561`; on `main` via `507a96773ee8476d6ba26bc7f547f64a831369e9`. See AUDIT-HISTORY §1; the status text is kept as written |
 | Owner (writer) | Claude Code — sole writer of properties/authority, publication, identity revoke paths |
 | Baseline SHA | `0d6c55451a6e7e9b0e616957e2384449aa374921` (TASK-002 handoff) |
 | Branch | `claude/TASK-004-atomic-publication-auth` |

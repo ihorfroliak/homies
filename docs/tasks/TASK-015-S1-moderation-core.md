@@ -3,6 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED** (D-88) — candidate on its branch, **not merged**; **production NOT READY · NOT DEPLOYED** |
+| Disposition (TASK-016, 2026-10-06) | merged into `main` at `1a65d3812f5f175e3b27222401685ebf8260b67a` (merge of candidate `1ccf1a18314cf9020bfd3667ae16b0ba759f862d`); still BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (D-88). The status text is kept as written |
 | Risk class | **R2** (publication gating, migration, authorization seam, immutable history) |
 | Baseline | `main` `985db7ae116aca5e37984b8e46556e0859792313` = `451b7e56` (PR-003) + TASK-015 Phase A `2d4064b0` (merged `--no-ff` by this task's entry gate; documentation-only delta, tree equal to the candidate) |
 | Branch | `claude/TASK-015-s1-moderation-core` |

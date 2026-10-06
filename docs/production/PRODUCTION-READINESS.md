@@ -1,11 +1,25 @@
 # Production readiness — baseline (PR-001, repaired in PR-001R and PR-001R2, 2026-09-29)
 
 Status of Homies against production readiness, **measured, not assumed**.
-Baseline: accepted Phase-1A SHA `879bf56cd7bb497fd77d8140fc1443fe9d61c1fe`
-(TASK-012). TASK-013 is under audit and is not part of this baseline.
-**Nothing is deployed. No production environment exists. PRODUCTION READINESS = NOT READY.**
-PR-001 → PR-001A → PR-001R → PR-001RA (targeted fix required) → PR-001R2
-(candidate, pending PR-001RA2). **PR-001 is not accepted.**
+
+**PRODUCTION READY: NO · DEPLOYMENT: NO.** Nothing is deployed; no
+production environment exists.
+
+> **Provenance reconciliation (TASK-016, 2026-10-06) — statuses only, nothing
+> re-measured.** PR-001 was **accepted** after this matrix was first written:
+> PR-001RA2 → `PR_001_BASELINE_ACCEPTED` at
+> `5cad442f07264ab25b3024c96fc691ad9c7a75fa`, the infra parent of IBB-001
+> (`5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98`). PR-002 (`13a92ef7`) and
+> PR-003 (`451b7e56`) are on `main`, builder verified, milestone audit
+> deferred (D-88). The matrix below was not re-assessed against later `main`;
+> no row became READY through this reconciliation. Current state:
+> [PROJECT-STATUS](../PROJECT-STATUS.md).
+
+*As first written (2026-09-29):* Baseline: accepted Phase-1A SHA
+`879bf56cd7bb497fd77d8140fc1443fe9d61c1fe` (TASK-012). TASK-013 is under
+audit and is not part of this baseline. PR-001 → PR-001A → PR-001R →
+PR-001RA (targeted fix required) → PR-001R2 (candidate, pending PR-001RA2).
+PR-001 is not accepted. *(Superseded by the reconciliation above.)*
 
 **PR-003 (2026-10-01, on `main` at `451b7e56`):** database client deadlines, 503 failure semantics, health isolation (RA-3), worker loop — rows 6, 8, 10 and the database section below. Builder verified, milestone audit deferred (D-88).
 
@@ -19,7 +33,7 @@ Nothing is READY without evidence named in the row.
 | 1 | Reproducible build | **PARTIAL** | Production image `backend/Dockerfile` (python:3.12-slim) now installs the verified dependency set (`backend/constraints.txt`, PR-001); built locally and checked to carry 24 migrations. Gap: base image by tag, not digest; no image registry / immutable tags; no SBOM |
 | 2 | CI green | **PARTIAL** | `.github/workflows/ci.yml`: backend (pinned install proven equal to `constraints.txt`, lint, types, migrate, tests incl. PostGIS and mandatory restore drills, coverage, pip-audit of the pinned set + canary), image (Python 3.12 and `ENV=production` asserted), gitleaks, monitoring, contracts. Runs on `main`, `claude/**`, PRs, manual; `main` keeps every commit's run (PR-001R F10). Gap: no run observed by the builder (no `gh` access); branch protection not verified |
 | 3 | Supported runtime | **READY (local evidence)** | Python 3.12.14 (test image `ops/test/Dockerfile.py312`): full SQLite 780 passed / 291 skipped, full PostgreSQL 16.4 / PostGIS 3.4.3 1070 passed / 1 skipped (Stripe live, not requested), ruff, mypy, OpenAPI drift — at `879bf56` with the pinned set. `requires-python >=3.12`; not raised |
-| 4 | Migrations | **PARTIAL** | Single Alembic head; every migration declares `schema_transition` / `rollback_to_previous`; the database records its lineage (`schema_lineage`); the migration job `app.scripts.migrate` (migration role, advisory lock, `lock_timeout` 10 s, privilege convergence, post-verify) runs in CI; startup evaluates compatibility instead of requiring the exact head (PR-002 candidate, RELEASE-AND-MIGRATION.md). Gap: no staging/production pipeline runs the job yet |
+| 4 | Migrations | **PARTIAL** | Single Alembic head; every migration declares `schema_transition` / `rollback_to_previous`; the database records its lineage (`schema_lineage`); the migration job `app.scripts.migrate` (migration role, advisory lock, `lock_timeout` 10 s, privilege convergence, post-verify) runs in CI; startup evaluates compatibility instead of requiring the exact head (PR-002, on `main` at `13a92ef7`, milestone audit deferred; RELEASE-AND-MIGRATION.md). Gap: no staging/production pipeline runs the job yet |
 | 5 | Secrets | **PARTIAL** | Fail-fast validation outside dev (SEC-02): weak/default JWT/webhook secrets, Stripe key/environment mismatch, and (PR-001R F4) a `DATABASE_URL` that is not PostgreSQL, uses the published `homies`/`homies` credentials, or is the loopback dev endpoint `…:5433/homies` — compared on the parsed URL. The image defaults to `ENV=production` (F3). Errors name rules, never values; a percent-encoded password no longer leaks through Alembic. gitleaks in CI. Gap: no secret store chosen; SMTP password not validated; no rotation procedure |
 | 6 | Health | **PARTIAL** | `/healthz` liveness (no external checks). `/readyz`: on PostgreSQL a fresh dedicated connection per probe, never the application pool; 503 without DSN; **dependency decision budget 3 s**. PR-003: `/healthz`, `/readyz`, `/metrics` are `async def` and never wait for a thread-pool token; readiness probes on the event loop with one in-flight probe per database and answers at the decision (driver clean-up detached) — under a frozen database saturating 60 requests: `/healthz` 0.02 s, `/metrics` 0.02 s, `/readyz` 503 in 2.0 s (was: `/healthz` up to 75.9 s, `/readyz` client timeouts at 90 s, Phase A S11b). **RA-3 closed by PR-003.** No SQL on the event loop (test guard). Timings are local evidence, not an SLO. Gap: probe settings of a real orchestrator not configured (no environment) |
 | 7 | Logs | **PARTIAL** | Process logging at the entry point (text or `LOG_FORMAT=json`, `LOG_LEVEL`). **Request correlation READY (local evidence):** one id on normal, handled-error, 429 and **unhandled-500** responses and on their log records (PR-001R F1: the exception is logged once, under the id, and the client gets a generic 500 with `X-Request-ID`); concurrency-tested. Alembic self-migration no longer wipes logging (F5). Gap: no log shipping/retention; uvicorn access log still plain text |
@@ -35,7 +49,7 @@ Nothing is READY without evidence named in the row.
 | 17 | Smoke test | **PARTIAL** | Local production-image smoke matrix (PR-001R, §6). Gap: no scripted post-deploy smoke test against an environment |
 | 18 | Load / capacity | **NOT ASSESSED** | Only diagnostic EXPLAIN on ~5 000 synthetic listings (TASK-013 branch) |
 | 19 | Security | **PARTIAL** | Independent audits of the foundation and each slice; rate limiting; privacy tests; pip-audit; gitleaks. Gap: no external penetration test, no TLS/ingress config, no WAF decision |
-| 20 | Incident runbook | **PARTIAL** | `INCIDENT-RUNBOOK.md` (PR-001) + `docs/runbooks/dr-database-recovery.md`. Gap: no on-call, no contacts, never rehearsed |
+| 20 | Incident runbook | **PARTIAL** | `INCIDENT-RUNBOOK.md` (PR-001) + `docs/runbooks/dr-database-recovery.md` (historical booking-era runbook; its downgrade step is superseded by RELEASE-AND-MIGRATION §9 — TASK-016). Gap: no on-call, no contacts, never rehearsed |
 
 ## 2. Configuration inventory
 
@@ -73,7 +87,7 @@ refused outside dev).
 
 ## 3. Startup and migrations
 
-Release and migration compatibility (PR-002, candidate):
+Release and migration compatibility (PR-002, on `main` at `13a92ef7`, builder verified, milestone audit deferred):
 [RELEASE-AND-MIGRATION.md](RELEASE-AND-MIGRATION.md).
 
 * `ENV=local`: the app runs the migration job on boot (same locked runner as a
@@ -182,7 +196,7 @@ Rollback outline (to rehearse on staging, never yet executed):
 * RA-3 (health endpoints starved by hung business requests): **PR-003 debt, not
   fixed here.**
 
-## 6c. PR-003 — database failure containment (candidate, local, disposable)
+## 6c. PR-003 — database failure containment (builder evidence, local, disposable; on `main` at `451b7e56`)
 
 Phase A probe kit (production image, `ENV=production`, `homies_app`, a
 controllable proxy and direct runs) before and after; fault suite
@@ -201,9 +215,11 @@ controllable proxy and direct runs) before and after; fault suite
 
 ## 7. Next production tasks (proposed)
 
-PR-002 release and migration compatibility (candidate: manifest, lineage,
-migration job, roles); PR-003 database client deadlines / failure containment;
-then staging environment + deploy pipeline + smoke test; alerting destination
+~~PR-002 release and migration compatibility (manifest, lineage, migration
+job, roles)~~ — on `main` (`13a92ef7`); ~~PR-003 database client deadlines /
+failure containment~~ — on `main` (`451b7e56`); both builder verified,
+milestone audit deferred (D-88). Still proposed, none authorised:
+staging environment + deploy pipeline + smoke test; alerting destination
 + backup scheduling/offsite + restore rehearsal against staging;
 PR-005 ingress (TLS, `/metrics` restriction, proxy hops), error tracking;
 PR-006 load/capacity baseline.

@@ -1,5 +1,7 @@
 # OAT-02 — Operational Notification Layer (architecture)
 
+> **HISTORICAL BUILD RECORD** — written 2026-07-06 during the booking-era build, before the canonical documents of 2026-09-24; banner added 2026-10-06 (TASK-016). Retained for provenance: parts may still describe code that exists, but this is not current scope or implementation authority. Current state: [PROJECT-STATUS](../PROJECT-STATUS.md) · [IMPLEMENTATION-CONVERGENCE](../canonical/IMPLEMENTATION-CONVERGENCE.md); precedence: [00-AUTHORITY](../canonical/00-AUTHORITY.md).
+
 Pilot-grade, brutally minimal. No event bus, no external MQ. Optimized for
 correctness, observability, failure visibility. Modules:
 `backend/app/modules/events/`.

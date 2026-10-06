@@ -3,6 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | **CANDIDATE** — implemented on `claude/MICRO-001-evidence-docs-tests` (builder, R0/R1); final SHA in the MICRO-001 report |
+| Disposition (TASK-016, 2026-10-06) | on `main` as commit `dacbe9e3bb2b6a05a87946c860b8c9b942d36cf8` (2026-09-30, on top of the BASELINE-001 merge `507a96773ee8476d6ba26bc7f547f64a831369e9`); DONE. The status text is kept as written |
 | Risk class | **R0/R1** (docs, wording, tests, evidence tooling) |
 | Owner (writer) | Claude Code |
 | Bounded contexts written | tests, evidence harness, docs; no runtime code expected |

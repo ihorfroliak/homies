@@ -12,15 +12,21 @@ release-plan documents are historical (banner-marked).
 
 | | |
 |---|---|
-| Current backend baseline | Integrated Backend Baseline 001 (`IBB-001`) |
-| Accepted code SHA | `5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98` (tag `backend-baseline-001`) |
-| Current status / next task | [docs/PROJECT-STATUS.md](docs/PROJECT-STATUS.md) |
+| Last formal backend baseline | Integrated Backend Baseline 001 (`IBB-001`), `5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98` (tag `backend-baseline-001`) |
+| Latest `main` state, next task, authorisation flags | [docs/PROJECT-STATUS.md](docs/PROJECT-STATUS.md) — the single owner of volatile status |
+| Reading path | [docs/engineering/HANDOFF-INDEX.md](docs/engineering/HANDOFF-INDEX.md) |
 | Audit history | [docs/reviews/AUDIT-HISTORY.md](docs/reviews/AUDIT-HISTORY.md) |
 | Traceability convention | [docs/engineering/TRACEABILITY.md](docs/engineering/TRACEABILITY.md) |
 
-Repository state and canonical documents outrank chat memory and summaries.
-New backend work descends from IBB-001 (or a documented successor);
-verification is risk-based (R0–R3, see the audit history).
+The repository is the single durable system of record
+([05 §14](docs/canonical/05-DEVELOPMENT-GOVERNANCE-v1.md), D-106): chat
+memory, agent memory, summaries and design-tool state are inputs, not durable
+authority (a founder decision may still direct work at once, 00 #1); a
+missing source is a recorded gap, never reconstructed.
+Repository state and canonical documents outrank them. New backend work
+descends from IBB-001 (or a documented successor); `main` after IBB-001
+carries builder-verified increments that are not a new baseline (D-88).
+Verification is risk-based (R0–R3, see the audit history).
 
 ## Your role
 
@@ -62,7 +68,9 @@ read-only-by-default auditor.
 Python 3.12 · FastAPI · SQLAlchemy 2 · Alembic · PostgreSQL 16 + PostGIS 3.4
 (controlled debt) · transactional outbox. One production database. The
 TypeScript/Drizzle Schema v1 package is a reference oracle on branch
-`reference/ts-drizzle-schema-v1`, never a runtime. Money in integer minor
+`reference/ts-drizzle-schema-v1`, never a runtime (as of 2026-10-06 that
+branch is not published on `origin` — it exists in a local clone only;
+publishing it is a founder decision). Money in integer minor
 units. Exact location private; public point only.
 
 ## Working agreements
@@ -74,3 +82,9 @@ units. Exact location private; public point only.
   `TEST_DATABASE_URL` — disposable databases only.
 * Contracts: `docs/api/openapi.json` generated from FastAPI, drift-tested.
 * After meaningful work update `docs/DEVLOG.md` and the relevant task contract.
+  When a merge changes current or next work, accepted task state,
+  implementation authorisation, production readiness or deployment, the
+  same task reconciles `docs/PROJECT-STATUS.md` (05 §14) — without embedding
+  the SHA of its own commit (TRACEABILITY, self-reference rule).
+* Market or product research goes to `docs/research/` (non-normative,
+  independent synthesis, no named commercial competitor as authority; D-106).

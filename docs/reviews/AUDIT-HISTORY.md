@@ -3,8 +3,8 @@ id: AUDIT-HISTORY
 name: Homies audit history
 type: audit_index
 status: accepted
-as_of: 2026-09-30
-current_baseline: IBB-001
+as_of: 2026-10-06
+current_baseline: IBB-001 (last formal baseline; volatile status in docs/PROJECT-STATUS.md)
 current_baseline_sha: 5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98
 ---
 
@@ -196,6 +196,53 @@ convention; see the Foundation Baseline 002 section of the convergence map.
 | Accepted SHA | **`5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98`** |
 | Baseline | **Integrated Backend Baseline 001 (IBB-001)** — [record](../baselines/IBB-001.md); tag `backend-baseline-001` |
 | Remaining debt | CV-N1 harness drill count, CV-N2 restore drill omits TASK-014 tables, CV-N3 `assert_unhandled_500` request-id assertion → MICRO-001 |
+
+## 8. After IBB-001 — integrated without independent acceptance (D-88)
+
+*Added 2026-10-06 (TASK-016). A map only; no new verdict.*
+
+No independent acceptance has been recorded after IBB-001, and no successor
+baseline exists. Work since then reached `main` under the risk-based policy
+on builder evidence and green CI.
+
+**Recorded by their own task records as BUILDER VERIFIED · MILESTONE AUDIT
+DEFERRED (D-88)** (merge on `main`, candidate in brackets):
+
+| Item | Class | `main` merge (candidate) |
+|---|---|---|
+| PR-002 release and migration compatibility | R2 | `13a92ef77b66096021d3927fdb255b546a4ecc63` (`be26fcb8`) |
+| PR-003 database deadlines and failure containment | R2 | `451b7e566a1958097b2df2266e2bb7cc41314621` (`e54b3eec`) |
+| TASK-015 S1 moderation core, publication hold | R2 | `1a65d3812f5f175e3b27222401685ebf8260b67a` (`1ccf1a18`) |
+| TASK-015 S2+S3 listing reports, moderator loop | R2 | `4bf6610849ce42b17480e498d474c9355b0e1887` (`7a51236d`) |
+| TASK-015 S5 review requests | R2 | `1de34bf550e55c0e4e28d78090f0720d6812287e` (`3146fed3`) |
+| TASK-015 S4a message moderation | R2 | `03268432f664ec6283f427b2f528a8bb6f814065` (`ff433303`) |
+| TASK-015 S4b engagement safety (via PROGRAM-001) | R2 | `c32ac63f9a4c08366369a2088709b658754373e6` (`779b30fe`) |
+
+**Merged builder verified, without an independent audit and without a
+recorded D-88 deferral** — whether any of them joins the milestone review is
+part of the open decision below: FE-001 and FE-002 (R2 by their own records),
+GROWTH-001 measurement facts (R1/R2), the TASK-015 closure and the
+PROGRAM-001 security repairs — all via PROGRAM-001 `c32ac63f…`, externally
+reviewed by GPT-5.6 Sol; F6 enforcement via `995b05fe72bc15a86141e214bf1c4fc63b8bc570`
+(`cde91fa9`, class not recorded).
+
+**R1, founder/GPT reviewed (not independent audits):** BP-1 `6be148b6…`
+(`fa5612e6`), BP-2 + BP-7 `6adca78c…` (`caf38383`), BP-12 `a7756e16…`
+(`0d45583a`). **R0/R1 cleanup:** MICRO-001 `dacbe9e3` (evidence, docs,
+tests). **Documentation-only:** TASK-015 Phase A `985db7ae`, FE-003 contract
+`c87616ad`, P-0 `673b61e0`, HM-1 `dc74da3f`.
+
+External reviews by GPT-5.6 Sol (S4a, PROGRAM-001 "accepted for merge with
+conditions", FE-003 r1/r2, P-0) are recorded through their outcomes in
+DECISIONS D-102…D-105 and D-107, canon 04a §24, the FE-003 contract and the DESIGN-001C
+handoff; their review texts are not archived in this folder, and the
+conditions attached to PROGRAM-001's acceptance are not listed as such
+(recorded audit-trail gap).
+
+**CANONICAL DECISION REQUIRED:** D-88 defers the independent review "until
+the next milestone" but no repository record defines that milestone's
+trigger, scope, acceptance threshold or whether it produces a successor
+baseline. This section lists scope only; it defines none of those.
 
 ---
 

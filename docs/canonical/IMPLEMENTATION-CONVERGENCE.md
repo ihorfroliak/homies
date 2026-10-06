@@ -1,10 +1,17 @@
 # Implementation convergence map
 
-Where the existing implementation stands against the canonical documents, as
-of TASK-000 (2026-09-24). Baseline: `main` at
-`782c833f100f1bf2e86888b664c9b30b27cbc1dd`. Nothing here is accepted merely
-because it is committed: the C1–C8 port is a **candidate** pending independent
-audit ([05 §9](05-DEVELOPMENT-GOVERNANCE-v1.md)).
+Where the implementation stands against the canonical documents: a status
+**history**, newest sections first (the Foundation Baseline 002 block below
+is pinned near the top). Current state — last formal baseline, latest
+code-bearing `main` state, next work, flags — is owned by
+[PROJECT-STATUS](../PROJECT-STATUS.md) (05 §14), not by this map. Nothing here
+is accepted merely because it is committed.
+
+*Origin:* this map was started at TASK-000 (2026-09-24) against `main`
+`782c833f100f1bf2e86888b664c9b30b27cbc1dd`, when the C1–C8 port was a
+**candidate** pending independent audit ([05 §9](05-DEVELOPMENT-GOVERNANCE-v1.md));
+it was accepted as Foundation Baseline 001/002 (below) and later integrated
+into IBB-001.
 
 Classifications: **CANONICAL_ACTIVE** · **ADAPT** · **LEGACY_DORMANT** ·
 **REFERENCE_ONLY** · **REMOVE_LATER** · **UNKNOWN**.
@@ -66,9 +73,73 @@ DR drill; production-readiness work. Codex verified Python 3.12 targeted
 behaviour and a local synthetic PostgreSQL/PostGIS `pg_dump`/`pg_restore`
 during TASK-009 — this is **not** production DR verification.
 
+## BP-12 — message reports without verified contact (2026-10-06)
+
+**R1 · founder/GPT reviewed (BP-12: PASS) · on `main`.** Candidate `0d45583a`
+(implementation `434c0956`, CI `37413458869`) merged as `a7756e16`.
+[Task](../tasks/BP-12-message-report-verification-exception.md) · D-105 OD-7.
+Production: **NOT READY · NOT DEPLOYED.**
+
+| Area | Classification | State |
+|---|---|---|
+| `POST /v1/reports`, `target_type=MESSAGE` | **CANONICAL_ACTIVE (builder verified)** | an authenticated current side reports another participant's USER message without a verified e-mail/phone; stranger/missing 404, own/SYSTEM 409, quotas, duplicates and locks unchanged |
+| `POST /v1/reports`, `target_type=LISTING` | **CANONICAL_ACTIVE** | verified-contact gate unchanged, still before the target lookup |
+
+## BP-2 + BP-7 — viewing API contract (2026-10-05)
+
+**R1 · founder/GPT reviewed · on `main`.** Candidate `caf38383` merged as
+`6adca78c`. [Task](../tasks/BP-2-BP-7-viewing-api-contract.md) · D-104.
+
+| Area | Classification | State |
+|---|---|---|
+| `viewing-slots` response | **CANONICAL_ACTIVE (builder verified)** | typed `ViewingSlotsOut {slots, duration_minutes, timezone}`; `timezone` is authoritative for rendering |
+| viewing cancellation at/after start | **CANONICAL_ACTIVE (builder verified)** | 409 `VIEWING_STARTED` for both sides, decided on the database clock (04a §20) |
+| other viewing time checks on the application clock | **DEBT** | recorded in the task (04a §20) |
+
+## BP-1 — stable API refusal codes (2026-10-05)
+
+**R1 · founder/GPT reviewed · on `main`.** Candidate `fa5612e6` merged as
+`6be148b6`. [Task](../tasks/BP-1-stable-api-codes.md).
+
+| Area | Classification | State |
+|---|---|---|
+| refusal codes for FE-003 paths | **CANONICAL_ACTIVE (builder verified)** | `detail` = `"CODE: human text"` for OWN_LISTING, VIEWINGS_NOT_OFFERED, SLOT_NOT_OFFERED, SLOT_FULL, VIEWING_ALREADY_BOOKED, VIEWING_STATE_CONFLICT, VIEWING_CHANGED, VIEWING_TIME_PASSED, VIEWING_NOT_STARTED, MESSAGES_ONLY, PHONE_NOT_VERIFIED, REVEAL_QUOTA, CONVERSATION_QUOTA (with `Retry-After`), SAVED_LIMIT, SAVED_SEARCH_DUPLICATE, SAVED_SEARCH_LIMIT; HTTP statuses unchanged |
+| refusals outside BP-1 | **DEBT** (nonblocking) | still prose-only (listed in the task) |
+
+## P-0 and HM-1 — DESIGN-001C implementation handoff (2026-10-05, documentation)
+
+**APPROVED — IMPLEMENTATION BINDING READY** (founder/GPT, *PASS WITH BOUNDED
+OWNER DECISIONS*), merged as `673b61e0`; founder amendment **HM-1** (Home
+map) merged as `dc74da3f`. [Handoff](../design/DESIGN-001C-HANDOFF.md) ·
+D-107 (index). No code. Binds FE-003 slices; HM-1 and the 1C visual values
+belong to FE-VIS-001 (**not authorised**). The source `.dc.html` is not in the
+repository; the handoff carries the binding semantics; the concrete 1C visual
+values (U-1) remain a recorded knowledge gap for FE-VIS-001.
+
+## FE-003 — save → conversation → viewing contract (2026-10-05, documentation)
+
+**CONTRACT APPROVED — IMPLEMENTATION NOT AUTHORISED** (D-104, D-105), merged
+as `c87616ad`. [Contract](../tasks/FE-003-save-conversation-viewing-DRAFT.md).
+Backend prerequisites BP-1…BP-12 and beta blockers BB-1…BB-11 are its §10;
+their state is in [PROJECT-STATUS](../PROJECT-STATUS.md).
+
+## FE-001 / FE-002 — public web foundation and seeker slice (2026-10-03, builder)
+
+Built on the PROGRAM-001 branch; **on `main`** via the PROGRAM-001 merge
+(`c32ac63f`, merge of `779b30fe`). [FE-001](../frontend/FE-001-foundation.md) ·
+[FE-002](../frontend/FE-002-seeker-search-detail.md) · D-101.
+Production: **NOT READY · NOT DEPLOYED.**
+
+| Area | Classification | State |
+|---|---|---|
+| `frontend/web` (Next.js BFF, session cookies, CSRF, CSP, typed client from OpenAPI, i18n, consent-gated measurement seams) | **CANDIDATE (builder verified)** | R2; CI `web` job |
+| seeker slice `/szukaj`, `/wynajem[/{miasto}[/{obszar}]]`, `/oferta/{id}` | **CANDIDATE (builder verified)** | list/map, detail, honest 404; E2E in CI |
+| additive API (`ClassifiedOut.facts`, `GET /v1/geo/localities/by-slug`, dev/CI fictional seed) | **CANDIDATE (builder verified)** | D-101 |
+| backend gaps BG-1 (logout/refresh revocation), BG-5 (refresh grace) | **OPEN** | FE-003 beta blockers BB-1, BB-2 |
+
 ## DESIGN-001 — product / UX / UI foundation (2026-10-03, builder)
 
-Built on the PROGRAM-001 branch; **on `main`** via the PROGRAM-001 merge (`c32ac63a`, merge of `779b30fe`). [Foundation](../product/DESIGN-001-product-ui-foundation.md) · D-100.
+Built on the PROGRAM-001 branch; **on `main`** via the PROGRAM-001 merge (`c32ac63f`, merge of `779b30fe`). [Foundation](../product/DESIGN-001-product-ui-foundation.md) · D-100.
 
 | Area | Classification | State |
 |---|---|---|
@@ -78,7 +149,7 @@ Built on the PROGRAM-001 branch; **on `main`** via the PROGRAM-001 merge (`c32ac
 
 ## GROWTH-001 — marketplace growth & measurement foundation (2026-10-03, builder)
 
-Built on the PROGRAM-001 branch; **on `main`** via the PROGRAM-001 merge (`c32ac63a`, merge of `779b30fe`). [Foundation](../growth/GROWTH-001-marketplace-growth-foundation.md) · D-98 · D-99.
+Built on the PROGRAM-001 branch; **on `main`** via the PROGRAM-001 merge (`c32ac63f`, merge of `779b30fe`). [Foundation](../growth/GROWTH-001-marketplace-growth-foundation.md) · D-98 · D-99.
 
 | Area | Classification | State |
 |---|---|---|
@@ -92,7 +163,7 @@ Built on the PROGRAM-001 branch; **on `main`** via the PROGRAM-001 merge (`c32ac
 **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (R2, D-88).** Built on
 `claude/TASK-015-s4b-engagement-safety` from `main` `03268432` (S4a merged)
 plus PROGRAM-001 P0; integrated into the PROGRAM-001 branch, and from there
-**into `main`** via the PROGRAM-001 merge (`c32ac63a`, merge of `779b30fe`);
+**into `main`** via the PROGRAM-001 merge (`c32ac63f`, merge of `779b30fe`);
 F6 enforcement and its canonical follow-up (D-102) are on the resulting
 `main` `995b05fe`. [Task](../tasks/TASK-015-S4B-engagement-safety.md) · D-97 · G-14.
 Production: **NOT READY · NOT DEPLOYED.** L11: wording open.

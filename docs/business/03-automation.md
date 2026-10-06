@@ -1,5 +1,7 @@
 # 03 — Автоматизація
 
+> **HISTORICAL — superseded** by the canonical documents (02-BUSINESS-LOGIC) on 2026-09-24 (TASK-000); banner added 2026-10-06 (TASK-016). Retained for provenance; not current product scope, strategy or implementation authority. Precedence: [00-AUTHORITY](../canonical/00-AUTHORITY.md); current status: [PROJECT-STATUS](../PROJECT-STATUS.md). Proprietary feature names of commercial platforms used below belong to superseded reasoning and are not product authority (D-106).
+
 **Принцип: automation-first.** Кожен процес проєктується як автоматичний;
 людина підключається лише як обробник винятків. Причина: маркетплейс
 масштабується транзакціями, а не головами — операційні витрати мають

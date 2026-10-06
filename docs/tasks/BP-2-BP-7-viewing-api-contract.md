@@ -8,6 +8,7 @@
 | Baseline | `main` = `6be148b6fefea22e42764e2f6178d1a03433043c` (BP-1 merge), CI `37258817313` success 6/6 |
 | Branch | `claude/BP-2-BP-7-viewing-api-contract` |
 | Candidate | see §7 |
+| Disposition (TASK-016, 2026-10-06) | merged into `main` at `6adca78c9ae6342438f08b8b7c8cfd1b88be714a` (parents `6be148b6` + candidate `caf383833bf3eacc846a6345bc603db041d09bda`); founder/GPT reviewed; main CI `37370779484` (attempt 4) success. The status text below is kept as written at handoff |
 
 ## 1. BP-2 — typed `viewing-slots`
 

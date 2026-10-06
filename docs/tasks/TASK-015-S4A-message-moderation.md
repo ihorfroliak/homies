@@ -3,6 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | **BUILDER VERIFIED · MILESTONE AUDIT DEFERRED** (D-88) — candidate on its branch, **not merged**; **production NOT READY · NOT DEPLOYED** |
+| Disposition (TASK-016, 2026-10-06) | merged into `main` at `03268432f664ec6283f427b2f528a8bb6f814065` (merge of candidate `ff433303948bdf5b5097de757fc5615b3edc56e6`, externally reviewed); still BUILDER VERIFIED · MILESTONE AUDIT DEFERRED (D-88). The status text is kept as written |
 | Risk class | **R2** (private messages, authorization, privacy, rollback barrier) |
 | S5 integration | exact candidate `3146fed392d66421cdaad45e72002c2a536c4b63` merged `--no-ff` into `main` `4bf66108` → **`1de34bf550e55c0e4e28d78090f0720d6812287e`** (tree equal to the candidate; head `a3c5e7f9b1d4`) |
 | Baseline | `main` `1de34bf550e55c0e4e28d78090f0720d6812287e` |

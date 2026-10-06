@@ -1,5 +1,7 @@
 # D5 — Race Condition & Fraud Hardening (аудит реального D4-коду)
 
+> **HISTORICAL BUILD RECORD** — written 2026-07-05 during the booking-era build, before the canonical documents of 2026-09-24; banner added 2026-10-06 (TASK-016). Retained for provenance: parts may still describe code that exists, but this is not current scope or implementation authority. Current state: [PROJECT-STATUS](../PROJECT-STATUS.md) · [IMPLEMENTATION-CONVERGENCE](../canonical/IMPLEMENTATION-CONVERGENCE.md); precedence: [00-AUTHORITY](../canonical/00-AUTHORITY.md).
+
 Статус: аудит проведено по коду `backend/app/`; P0-фікси **реалізовані**
 в цьому ж коміті (позначені ✅), решта — беклог із пріоритетами.
 Формат кожного кейсу: сценарій → наслідок → вразливість → фікс → інваріант.
