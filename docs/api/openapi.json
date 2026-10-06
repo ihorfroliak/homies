@@ -11443,7 +11443,7 @@
             "description": "Successful Response"
           },
           "403": {
-            "description": "The account has no verified email or phone"
+            "description": "LISTING only: the account has no verified email or phone. A MESSAGE report needs no verified contact (D-105)."
           },
           "404": {
             "description": "No such listing or message, or not one this account may report (MESSAGE: not a current side of its conversation) — indistinguishable"

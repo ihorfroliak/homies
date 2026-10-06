@@ -136,7 +136,8 @@ def _public_dict(offer, now):
         200: {"model": ReportOut,
               "description": "Already reported: the reporter's live report on this target "
                              "(`created: false`) — also the answer to a retry"},
-        403: {"description": "The account has no verified email or phone"},
+        403: {"description": "LISTING only: the account has no verified email or phone. "
+                             "A MESSAGE report needs no verified contact (D-105)."},
         404: {"description": "No such listing or message, or not one this account may "
                              "report (MESSAGE: not a current side of its conversation) — "
                              "indistinguishable"},

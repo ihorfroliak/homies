@@ -203,7 +203,8 @@ def file_listing_report(db: Session, *, reporter: User, listing_id: str, categor
     """File (or find) the reporter's live report on a listing. The caller
     commits. `public_projection(offer, now)` returns the listing's public
     shape as a dict (the properties module owns it)."""
-    clean = _validated(reporter, category, LISTING_REASONS, "a listing", text)
+    clean = _validated(reporter, category, LISTING_REASONS, "a listing", text,
+                       require_verified_contact=True)
 
     offer = db.get(ClassifiedOffer, listing_id)
     if offer is None:
@@ -244,8 +245,14 @@ def file_message_report(db: Session, *, reporter: User, message_id: str, categor
     right revoked before that point no longer counts.
 
     No body is copied: messages are not editable, so the message row itself is
-    the evidence, read by moderators through the audited evidence path."""
-    clean = _validated(reporter, category, MESSAGE_REASONS, "a message", text)
+    the evidence, read by moderators through the audited evidence path.
+
+    No verified email or phone is required (D-105 / OD-7, FE-003 BP-12): the
+    reporter is signed in and a current side of the conversation, and the
+    target is another participant's message — the shared quotas and the
+    one-live-report rule still apply. LISTING reports keep the gate."""
+    clean = _validated(reporter, category, MESSAGE_REASONS, "a message", text,
+                       require_verified_contact=False)
 
     message = db.get(Message, message_id)
     conv = db.get(Conversation, message.conversation_id) if message is not None else None
@@ -280,8 +287,10 @@ def file_message_report(db: Session, *, reporter: User, message_id: str, categor
 
 
 def _validated(reporter: User, category: str, allowed: tuple[str, ...], what: str,
-               text: str | None) -> str | None:
-    if not reporter_verified(reporter):
+               text: str | None, *, require_verified_contact: bool) -> str | None:
+    """The reason and text checks every report shares, plus the verified-contact
+    gate where the target type requires it (LISTING yes, MESSAGE no: D-105)."""
+    if require_verified_contact and not reporter_verified(reporter):
         raise NotVerified("Verify your email or phone before reporting")
     if category not in allowed:
         raise InvalidReport(f"This reason is not available for {what}")
