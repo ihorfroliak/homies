@@ -1109,3 +1109,16 @@ CONFIRMED; термінальні стани — як і раніше `VIEWING_S
 годиннику БД (`freshness.db_now(db)`, 04a §20) — один момент для перевірки,
 `cancelled_at` рядка і fact. Інші app-clock перевірки модуля переглядів не
 змінено — окремий борг.
+
+## 2026-10-06 — BP-12: скарга на повідомлення без верифікованого контакту
+
+Від `main` `6adca78` на `claude/BP-12-message-report-verification-exception`
+(D-105 / OD-7). У спільному `_validated` — явний прапорець
+`require_verified_contact`: LISTING `True` (ворота без змін, і далі перед
+пошуком цілі), MESSAGE `False`. Решта без змін: автентифікація, `side()` до і
+після локу, 409 для SYSTEM/власних, однаковий 404 для сторонніх і відсутніх,
+причини/текст/OTHER, дублікати, спільні квоти, локи, поля верифікації у
+модератора. Неверифікований сторонній тепер отримує 404 замість 403. OpenAPI:
+403 — лише LISTING. Повний прогін 1900 passed; hostile review 0 blocker /
+0 material. `docs/tasks/BP-12-message-report-verification-exception.md`.
+`FE-003 IMPLEMENTATION AUTHORIZED: NO`.

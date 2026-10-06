@@ -7274,7 +7274,7 @@ export interface operations {
                     "application/json": components["schemas"]["ReportOut"];
                 };
             };
-            /** @description The account has no verified email or phone */
+            /** @description LISTING only: the account has no verified email or phone. A MESSAGE report needs no verified contact (D-105). */
             403: {
                 headers: {
                     [name: string]: unknown;

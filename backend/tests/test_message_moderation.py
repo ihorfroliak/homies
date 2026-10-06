@@ -100,9 +100,118 @@ def test_strangers_and_missing_messages_get_the_same_404(client):
     missing = _report(client, stranger, "00000000-0000-0000-0000-000000000000")
     assert hidden.status_code == missing.status_code == 404
     assert hidden.json() == missing.json()
+    # BP-12: no verified contact is needed for a MESSAGE report, so an
+    # unverified stranger meets the same 404 as any stranger — the exception
+    # is not an access bypass, and it reveals nothing about the message.
     plain = register_and_login(client, "plain-s4a@example.com", "guest")
-    assert _report(client, plain, owner_msg).status_code == 403  # unverified, before lookup
+    unverified_stranger = _report(client, plain, owner_msg)
+    assert unverified_stranger.status_code == 404
+    assert unverified_stranger.json() == missing.json()
     assert _report(client, tenant, owner_msg).status_code == 201
+    with TestingSession() as db:
+        assert db.scalar(select(func.count()).select_from(Report)) == 1
+
+
+# --- BP-12: no verified contact for a MESSAGE report (D-105 / OD-7) ----------------
+
+
+def _unverified_thread(client):
+    """A conversation whose two sides have no verified email or phone: a
+    tenant who only signed in (messaging needs nothing more) and the owner,
+    whose property authority is verified but whose contact is not."""
+    owner, offer = _listing(client)
+    tenant = register_and_login(client, f"plain-tenant-{_me_count()}@example.com", "guest")
+    started = client.post(f"/v1/classifieds/{offer}/conversations",
+                          json={"body": "Dzień dobry"}, headers=auth(tenant))
+    assert started.status_code == 201, started.text
+    conv = started.json()["conversation"]["id"]
+    reply = client.post(f"/v1/conversations/{conv}/messages", json={"body": "Proszę o zaliczkę"},
+                        headers=auth(owner))
+    assert reply.status_code == 201
+    tenant_msg = _messages(client, tenant, conv)[0]["id"]
+    with TestingSession() as db:
+        for uid in (_me(client, owner), _me(client, tenant)):
+            user = db.get(User, uid)
+            assert user.email_verified_at is None and user.phone_verified_at is None
+    return owner, tenant, offer, conv, reply.json()["id"], tenant_msg
+
+
+_seq = {"n": 0}
+
+
+def _me_count() -> int:
+    _seq["n"] += 1
+    return _seq["n"]
+
+
+def _reports_count() -> int:
+    with TestingSession() as db:
+        return db.scalar(select(func.count()).select_from(Report)) or 0
+
+
+def test_an_unverified_side_reports_the_other_sides_message(client):
+    owner, tenant, _offer, conv, owner_msg, tenant_msg = _unverified_thread(client)
+    by_tenant = _report(client, tenant, owner_msg, "SCAM")
+    assert by_tenant.status_code == 201, by_tenant.text
+    assert (by_tenant.json()["target_type"], by_tenant.json()["created"]) == ("MESSAGE", True)
+    by_provider = _report(client, owner, tenant_msg, "HARASSMENT")
+    assert by_provider.status_code == 201, by_provider.text
+    with TestingSession() as db:
+        row = db.scalar(select(Report).where(Report.target_id == owner_msg))
+        assert (row.target_type, row.conversation_id, row.reporter_user_id) == (
+            "MESSAGE", conv, _me(client, tenant))
+        assert row.snapshot is None  # the message row stays the evidence
+
+
+def test_an_unverified_side_still_follows_every_other_message_rule(client):
+    owner, tenant, _offer, conv, owner_msg, tenant_msg = _unverified_thread(client)
+    own = _report(client, tenant, tenant_msg)
+    assert own.status_code == 409
+    with TestingSession() as db:
+        system = Message(conversation_id=conv, message_type="SYSTEM", body="Viewing booked")
+        db.add(system)
+        db.commit()
+        system_id = system.id
+    assert _report(client, tenant, system_id).status_code == 409
+    assert _report(client, tenant, owner_msg, "OTHER", "za krótko").status_code == 422
+    assert _report(client, tenant, owner_msg, "OTHER").status_code == 422
+    assert _report(client, tenant, owner_msg, "FAKE").status_code == 422  # a listing reason
+    assert _reports_count() == 0
+
+    first = _report(client, tenant, owner_msg, "SPAM")
+    again = _report(client, tenant, owner_msg, "SCAM")
+    assert (first.status_code, again.status_code) == (201, 200)
+    assert again.json()["id"] == first.json()["id"] and again.json()["created"] is False
+    assert _reports_count() == 1
+    assert client.post("/v1/reports", json={"target_type": "MESSAGE", "target_id": owner_msg,
+                                            "reason": "SCAM"}).status_code == 401
+
+
+def test_the_account_quota_applies_to_an_unverified_message_reporter(client, monkeypatch):
+    """The same account quota as any reporter (cross-target sharing is covered
+    by the S4a tests); no special quota for unverified accounts."""
+    owner, tenant, _offer, conv, owner_msg, _tenant_msg = _unverified_thread(client)
+    second = client.post(f"/v1/conversations/{conv}/messages", json={"body": "Drugi raz"},
+                         headers=auth(owner)).json()["id"]
+    monkeypatch.setattr(reports, "DAILY_LIMIT", 1)
+    assert _report(client, tenant, owner_msg).status_code == 201
+    capped = _report(client, tenant, second)
+    assert capped.status_code == 429
+    assert int(capped.headers["Retry-After"]) > 0
+    assert _reports_count() == 1
+
+
+def test_the_listing_gate_stays_for_the_same_unverified_account(client):
+    """BP-12 is MESSAGE only: the account that may report a message without a
+    verified contact is still refused a LISTING report."""
+    _owner, tenant, offer, _conv, owner_msg, _tenant_msg = _unverified_thread(client)
+    assert _report(client, tenant, owner_msg).status_code == 201
+    listing = client.post("/v1/reports", json={"target_type": "LISTING", "target_id": offer,
+                                               "reason": "SCAM"}, headers=auth(tenant))
+    assert listing.status_code == 403
+    with TestingSession() as db:
+        assert db.scalar(select(func.count()).select_from(Report).where(
+            Report.target_type == "LISTING")) == 0
 
 
 def test_own_and_system_messages_are_not_reportable(client):
