@@ -227,7 +227,7 @@ founder/GPT external review.
 | `frontend/design-system/index.html` (legacy UI-01 showcase) shows a proprietary host-programme name as a demo badge (line 170) and a proprietary booking-feature name as a demo chip (line 138) | outside the allowlist — separate task |
 | `docs/business/03-automation.md`, `docs/business/05-business-rules-and-lifecycles.md` use a proprietary booking-feature name | historical, banner-marked (with the D-106 note); same founder/GPT review as the other historical documents |
 | 2026-07 review reports `docs/reviews/2026-07-05-ea-review-part1-perspectives.md` and `…-part2-redteam-benchmark.md` name commercial platforms on several lines each | immutable evidence; unchanged by rule (§6) |
-| Wheelhouse (pricing / amenity-vocabulary data provider) named in backend comments and a migration (`external_code` provenance), in D-42 and in PRODUCT_MODEL | **permitted** technical-provider provenance under 07 §5 — not a cleanup target |
+| Wheelhouse (pricing / amenity-vocabulary data provider) named in backend comments and a migration (`external_code` provenance) and in PRODUCT_MODEL (Q5, the market-price research recorded under D-42; D-42 itself names other data vendors) | **permitted** technical-provider provenance under 07 §5 — not a cleanup target |
 | `backend/app/release.json` release label names a task (`TASK-015 Slice 4b`) | outside the allowlist — separate task (baseline ≠ release ≠ task) |
 | `reference/ts-drizzle-schema-v1` exists only in the founder's local clone | founder decision whether to publish |
 | `.claude/skills/micro-cycle` points at historical `PROJECT_STATE.md` / `BUILD_HISTORY.md` | outside the allowlist — separate task |
@@ -266,3 +266,15 @@ commit; the repaired candidate is re-reviewed on the changed surface.
 | FE-002 Figma sentence edited in place | C2 | NONBLOCKING | disagreed | current-facing active specification; the change is attributed to D-106 and FE-002 itself carries the binding semantics |
 | `c32ac63a` corrected in place without an inline marker | C2 | NONBLOCKING | accepted, not fixed | recorded in §2 |
 | Unsupported superlative in positioning copy (07 §4, 01) | C2 | NONBLOCKING | out of scope | pre-existing; marketing/legal review before external use |
+
+**Round 2** re-reviewed the repair commit (`0ec0b42` → the next commit; the
+repaired candidate SHA is in Git and the final report): **C1 PASS, C2 PASS**
+— every round-1 MATERIAL finding fixed, no new BLOCKER or MATERIAL. New
+NONBLOCKING notes:
+
+| Finding | Reviewer | Class | Builder verdict | Action |
+|---|---|---|---|---|
+| §10 said Wheelhouse is named "in D-42"; D-42 names other data vendors | C2 | NONBLOCKING | raised to MATERIAL (factual error in this record, same standard as round 1) | §10 corrected (PRODUCT_MODEL Q5, research recorded under D-42) |
+| 07 §5 binding rule does not say where pre-canon decision records (D-42, D-44) sit | C1, C2 | NONBLOCKING | accepted, not fixed | disclosed in §10 (founder/GPT review); wording change of a recorded decision is a founder decision |
+| TRACEABILITY `DATA-001` "where used" omits TASK-015 Phase A | C1 | NONBLOCKING | accepted, not fixed | the flag itself is correct |
+| §10 counts the 2026-07 evidence lines as "several" rather than a number | C2 | NONBLOCKING | accepted, not fixed | category reported; files are immutable |
