@@ -26,6 +26,7 @@ from app.modules.trust.models import ModerationDecision, Report
 from tests.conftest import TestingSession, auth, engine, last_code, register_and_login
 from tests.test_organizations import _org, _org_property
 from tests.test_reports_moderation import OFFER, _keys, _listing, _me, _moderator, _verified
+from tests.test_conversations import send_json
 
 CANARY = "zx-canary-7Q-private-message-body"
 TEXT_CANARY = "zx-canary-report-text-91"
@@ -44,15 +45,15 @@ def _thread(client, extra_messages=0):
     _verify_email(client, owner)
     tenant = _verified(client, "tenant")
     started = client.post(f"/v1/classifieds/{offer}/conversations",
-                          json={"body": "Dzień dobry, czy aktualne?"}, headers=auth(tenant))
+                          json=send_json("Dzień dobry, czy aktualne?"), headers=auth(tenant))
     assert started.status_code == 201, started.text
     conv = started.json()["conversation"]["id"]
     reply = client.post(f"/v1/conversations/{conv}/messages",
-                        json={"body": f"Proszę o przelew zaliczki {CANARY}"}, headers=auth(owner))
+                        json=send_json(f"Proszę o przelew zaliczki {CANARY}"), headers=auth(owner))
     assert reply.status_code == 201
     for i in range(extra_messages):
         who = tenant if i % 2 == 0 else owner
-        assert client.post(f"/v1/conversations/{conv}/messages", json={"body": f"m{i}"},
+        assert client.post(f"/v1/conversations/{conv}/messages", json=send_json(f"m{i}"),
                            headers=auth(who)).status_code == 201
     return owner, tenant, offer, conv, reply.json()["id"]
 
@@ -122,10 +123,10 @@ def _unverified_thread(client):
     owner, offer = _listing(client)
     tenant = register_and_login(client, f"plain-tenant-{_me_count()}@example.com", "guest")
     started = client.post(f"/v1/classifieds/{offer}/conversations",
-                          json={"body": "Dzień dobry"}, headers=auth(tenant))
+                          json=send_json("Dzień dobry"), headers=auth(tenant))
     assert started.status_code == 201, started.text
     conv = started.json()["conversation"]["id"]
-    reply = client.post(f"/v1/conversations/{conv}/messages", json={"body": "Proszę o zaliczkę"},
+    reply = client.post(f"/v1/conversations/{conv}/messages", json=send_json("Proszę o zaliczkę"),
                         headers=auth(owner))
     assert reply.status_code == 201
     tenant_msg = _messages(client, tenant, conv)[0]["id"]
@@ -191,7 +192,7 @@ def test_the_account_quota_applies_to_an_unverified_message_reporter(client, mon
     """The same account quota as any reporter (cross-target sharing is covered
     by the S4a tests); no special quota for unverified accounts."""
     owner, tenant, _offer, conv, owner_msg, _tenant_msg = _unverified_thread(client)
-    second = client.post(f"/v1/conversations/{conv}/messages", json={"body": "Drugi raz"},
+    second = client.post(f"/v1/conversations/{conv}/messages", json=send_json("Drugi raz"),
                          headers=auth(owner)).json()["id"]
     monkeypatch.setattr(reports, "DAILY_LIMIT", 1)
     assert _report(client, tenant, owner_msg).status_code == 201
@@ -256,7 +257,7 @@ def test_listing_and_message_reports_share_one_quota(client, monkeypatch):
                                             "reason": "SCAM"},
                        headers=auth(tenant)).status_code == 201
     assert _report(client, tenant, owner_msg).status_code == 201
-    second = client.post(f"/v1/conversations/{conv}/messages", json={"body": "again"},
+    second = client.post(f"/v1/conversations/{conv}/messages", json=send_json("again"),
                          headers=auth(owner)).json()["id"]
     assert _report(client, tenant, second).status_code == 429
 
@@ -362,7 +363,7 @@ def test_content_removed_redacts_for_participants_and_keeps_the_evidence(client)
     [target] = [m for m in evidence["evidence"] if m["is_target"]]
     assert CANARY in target["body"] and target["redacted_at"] and evidence["removed"]
     # nothing else changed: the conversation stays open, both can still write
-    assert client.post(f"/v1/conversations/{conv}/messages", json={"body": "still here"},
+    assert client.post(f"/v1/conversations/{conv}/messages", json=send_json("still here"),
                        headers=auth(tenant)).status_code == 201
     assert client.get("/v1/me/inbox", headers=auth(owner)).json()["total"] == 0
 
@@ -421,10 +422,10 @@ def test_a_former_provider_is_not_conflicted_by_history_alone(client):
                         headers=auth(boss)).json()["id"]
     assert client.post(f"/v1/classifieds/{offer}/publish", headers=auth(boss)).status_code == 200
     tenant = _verified(client, "tenant-org")
-    conv = client.post(f"/v1/classifieds/{offer}/conversations", json={"body": "Hej"},
+    conv = client.post(f"/v1/classifieds/{offer}/conversations", json=send_json("Hej"),
                        headers=auth(tenant)).json()["conversation"]["id"]
     tenant_msg = _messages(client, tenant, conv)[0]["id"]
-    agent_msg = client.post(f"/v1/conversations/{conv}/messages", json={"body": "Agent here"},
+    agent_msg = client.post(f"/v1/conversations/{conv}/messages", json=send_json("Agent here"),
                             headers=auth(agent)).json()["id"]
     agent_id = _me(client, agent)
     with TestingSession() as db:

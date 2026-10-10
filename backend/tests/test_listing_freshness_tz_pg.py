@@ -28,6 +28,7 @@ from sqlalchemy.types import DateTime
 from app.modules.properties import freshness
 from tests.conftest import TEST_DATABASE_URL, auth, register_and_login, verify_ownership, verify_phone
 from tests.test_media import _approved, _attach
+from tests.test_conversations import send_json
 
 pytestmark = pytest.mark.skipif(
     not TEST_DATABASE_URL, reason="TEST_DATABASE_URL not set — Postgres tests skipped"
@@ -162,7 +163,7 @@ def test_all_seven_public_paths_agree_in_every_session_zone(
     detail = pg_client.get(f"/v1/classifieds/{offer}").status_code
     contact = pg_client.post(f"/v1/classifieds/{offer}/contact", headers=auth(tenant)).status_code
     conversation = pg_client.post(f"/v1/classifieds/{offer}/conversations",
-                                  json={"body": "Czy aktualne?"}, headers=auth(tenant)).status_code
+                                  json=send_json("Czy aktualne?"), headers=auth(tenant)).status_code
     slots = pg_client.get(f"/v1/classifieds/{offer}/viewing-slots",
                           headers=auth(tenant)).status_code
     request_ = pg_client.post(f"/v1/classifieds/{offer}/viewings",

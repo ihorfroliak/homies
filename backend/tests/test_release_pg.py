@@ -106,17 +106,22 @@ def test_the_plan_changes_nothing_and_a_barrier_needs_permission(scratch_url):  
 
 def test_bootstrap_from_ibb001_and_back(scratch_url, monkeypatch):  # noqa: F811
     """An IBB-001 database has no lineage. Since TASK-015 S1 this build needs
-    its own head (it reads moderation_decisions on every publication), so it
-    refuses such a database until the migration job has run: the job adds the
-    lineage and the moderation tables in one run, and a dev downgrade removes
-    the lineage again."""
+    its own head (it reads moderation_decisions on every publication; since
+    BP-10 also messages.client_message_id), so it refuses such a database
+    until the migration job has run: the job adds the lineage, the moderation
+    tables (a3c5e7f9b1d4) and the BP-10 message key in one run, and a dev
+    downgrade removes the lineage again."""
     _migrate(scratch_url, IBB001_HEAD)
     monkeypatch.setattr(settings, "database_url", scratch_url)
     decision, _ = schema.check_compatibility()
     assert decision.code == release.TOO_OLD
     result = migrate.upgrade(scratch_url)
     assert (result["from"], result["to"]) == (IBB001_HEAD, _graph().head)
-    assert [s["revision"] for s in result["steps"]] == [LINEAGE_REVISION, _graph().head]
+    assert [s["revision"] for s in result["steps"]] == [
+        LINEAGE_REVISION,
+        "a3c5e7f9b1d4",
+        _graph().head,
+    ]
     assert len(_lineage(scratch_url)) == len(_graph().steps)
     assert schema.check_compatibility()[0].code == release.EXACT
     _migrate(scratch_url, IBB001_HEAD, down=True)

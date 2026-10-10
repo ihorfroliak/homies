@@ -17,6 +17,7 @@ from app.modules.properties import freshness, quality
 from app.modules.properties.models import ClassifiedOffer
 from tests.conftest import TestingSession, auth, register_and_login, verify_ownership, verify_phone
 from tests.test_media import _approved, _attach
+from tests.test_conversations import send_json
 
 PROPERTY = {"category": "APARTMENT", "city": "Poznań", "address": "ul. Świeża 4/2",
             "area_m2": 44, "rooms": 2, "capacity": 2}
@@ -183,7 +184,7 @@ def test_a_stale_listing_disappears_from_every_public_path_before_any_sweep(clie
     assert offer not in _board(client)
     assert client.get(f"/v1/classifieds/{offer}").status_code == 404
     assert client.post(f"/v1/classifieds/{offer}/contact", headers=auth(tenant)).status_code == 404
-    assert client.post(f"/v1/classifieds/{offer}/conversations", json={"body": "Czy aktualne?"},
+    assert client.post(f"/v1/classifieds/{offer}/conversations", json=send_json("Czy aktualne?"),
                        headers=auth(tenant)).status_code == 404
     assert client.get(f"/v1/classifieds/{offer}/viewing-slots",
                       headers=auth(tenant)).status_code == 404

@@ -63,6 +63,7 @@ from tests.test_engagement_safety import WARSAW, _slot
 from tests.test_geography import PL_AREAS, PL_LOCALITIES, SOURCE
 from tests.test_media import _approved
 from tests.test_saved_search_alerts import Mailbox
+from tests.test_conversations import send_json
 
 pytestmark = pytest.mark.skipif(not DRILL_AVAILABLE, reason=DRILL_SKIP_REASON)
 
@@ -166,18 +167,18 @@ def _seed_engagement(pg_client, sessions, owner, renter, offers):
     assert pg_client.post("/v1/me/verify/email/confirm", json={"code": last_code()},
                           headers=auth(owner)).status_code == 200
     live = pg_client.post(f"/v1/classifieds/{offers[0]}/conversations",
-                          json={"body": "Dzień dobry, czy aktualne?"}, headers=auth(renter))
+                          json=send_json("Dzień dobry, czy aktualne?"), headers=auth(renter))
     assert live.status_code == 201, live.text
     live_id = live.json()["conversation"]["id"]
     sent = pg_client.post(f"/v1/conversations/{live_id}/messages",
-                          json={"body": REDACTED_TEXT}, headers=auth(renter))
+                          json=send_json(REDACTED_TEXT), headers=auth(renter))
     assert sent.status_code == 201, sent.text
     other = register_and_login(pg_client, "dr-phase1-tenant2@example.com", "guest")
     assert pg_client.post("/v1/me/verify/email/start", headers=auth(other)).status_code == 200
     assert pg_client.post("/v1/me/verify/email/confirm", json={"code": last_code()},
                           headers=auth(other)).status_code == 200
     closed = pg_client.post(f"/v1/classifieds/{offers[1]}/conversations",
-                            json={"body": "Pytanie o mieszkanie"}, headers=auth(other))
+                            json=send_json("Pytanie o mieszkanie"), headers=auth(other))
     assert closed.status_code == 201, closed.text
     closed_id = closed.json()["conversation"]["id"]
 
@@ -328,6 +329,16 @@ def test_phase1_data_survives_backup_destroy_restore(pg_client, pg_session,
             assert conn.scalar(text(
                 "SELECT count(*) FROM pg_indexes WHERE indexname = "
                 "'ix_classified_offers_public_geog'")) == 1
+            # BP-10: the keyed sends came back with their keys, and the
+            # unique backstop of the send identity came back with them.
+            assert conn.scalar(text(
+                "SELECT count(*) FROM messages WHERE client_message_id IS NOT NULL")) >= 3
+            assert conn.scalar(text(
+                "SELECT indexdef FROM pg_indexes WHERE indexname = "
+                "'uq_messages_sender_client_message'")) == (
+                "CREATE UNIQUE INDEX uq_messages_sender_client_message ON public.messages "
+                "USING btree (sender_user_id, client_message_id) "
+                "WHERE (client_message_id IS NOT NULL)")
         assert _public_ids(target) == public_before  # same public answer, stale stays hidden
 
         # TASK-014 on the copy: the saved search is still a VALID stored query

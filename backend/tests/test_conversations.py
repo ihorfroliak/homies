@@ -11,6 +11,7 @@ What must hold:
 """
 
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import func, select
@@ -51,8 +52,13 @@ def _listing(client, token, address="ul. Rozmowna 1", organization_id=None):
     return prop, offer
 
 
+def send_json(body: str) -> dict:
+    """One logical send (BP-10): the body and a fresh client_message_id."""
+    return {"body": body, "client_message_id": str(uuid4())}
+
+
 def _start(client, token, offer, body="Dzień dobry, czy mieszkanie jest dostępne?"):
-    return client.post(f"/v1/classifieds/{offer}/conversations", json={"body": body},
+    return client.post(f"/v1/classifieds/{offer}/conversations", json=send_json(body),
                        headers=auth(token))
 
 
@@ -61,7 +67,7 @@ def _read(client, token, conv_id):
 
 
 def _send(client, token, conv_id, body="Tak, zapraszam."):
-    return client.post(f"/v1/conversations/{conv_id}/messages", json={"body": body},
+    return client.post(f"/v1/conversations/{conv_id}/messages", json=send_json(body),
                        headers=auth(token))
 
 

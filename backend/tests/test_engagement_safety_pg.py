@@ -16,6 +16,7 @@ the other side demonstrably waits on X's own locks.
 import threading
 import time
 from datetime import datetime, timedelta
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import event, text
@@ -38,6 +39,7 @@ from tests.test_reports_moderation_pg import (
     _session,
     _user,
 )
+from tests.test_conversations import send_json
 
 pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="TEST_DATABASE_URL not set")
 
@@ -64,7 +66,7 @@ def _setup(pg_client, *, viewing=None):
     owner_email, owner, offer = _listing(pg_client)
     _verify(pg_client, owner)
     tenant_email, tenant = _tenant(pg_client)
-    started = pg_client.post(f"/v1/classifieds/{offer}/conversations", json={"body": "Hej"},
+    started = pg_client.post(f"/v1/classifieds/{offer}/conversations", json=send_json("Hej"),
                              headers=auth(tenant))
     assert started.status_code == 201, started.text
     out = {"owner": owner_email, "owner_token": owner, "tenant": tenant_email,
@@ -117,8 +119,9 @@ def _restrict(db, conv, mod, expected=None):
 
 def _send(engine_or_session, conv, email, body="late message"):
     def go(db):
-        return conversations.send_message(conv, conversations.MessageIn(body=body),
-                                          user=_user(db, email), db=db)
+        return conversations.send_message(
+            conv, conversations.MessageIn(client_message_id=uuid4(), body=body),
+            user=_user(db, email), db=db)
     if hasattr(engine_or_session, "execute"):
         return go(engine_or_session)
     with _session(engine_or_session) as db:
@@ -223,7 +226,7 @@ def test_e_r1c_continuing_a_thread_waits_for_its_closure_and_is_barred(pg_client
         def again():
             with _session(eng) as r:
                 return conversations.start_conversation(
-                    s["offer"], conversations.MessageIn(body="me again"),
+                    s["offer"], conversations.MessageIn(client_message_id=uuid4(), body="me again"),
                     user=_user(r, s["tenant"]), db=r)
         t = _run(result, "start", again)
         assert _blocked_on(eng, "conversations", _pid(a))
@@ -394,7 +397,7 @@ def test_e_r5_nothing_new_is_opened_behind_close_engagement(pg_client, pg_migrat
         def start():
             with _session(eng) as r:
                 return conversations.start_conversation(
-                    s["offer"], conversations.MessageIn(body="hi"),
+                    s["offer"], conversations.MessageIn(client_message_id=uuid4(), body="hi"),
                     user=_user(r, newcomer_email), db=r)
         threads = [_run(result, "request", request), _run(result, "start", start)]
         # Both must be waiting on the decision before it commits — otherwise a
@@ -425,7 +428,8 @@ def test_e_r5b_a_start_first_is_closed_by_the_decision_that_waited(pg_client,
     result: dict = {}
     try:
         t_start = _run(result, "start", lambda: conversations.start_conversation(
-            s["offer"], conversations.MessageIn(body="hi"), user=_user(p, newcomer_email),
+            s["offer"], conversations.MessageIn(client_message_id=uuid4(), body="hi"),
+            user=_user(p, newcomer_email),
             db=p))
         _wait_for(reached)
 
@@ -766,7 +770,7 @@ def test_e_r12_a_message_decision_and_close_engagement_do_not_deadlock(
     s = _setup(pg_client)
     m1 = _account(eng, role="admin")
     owner_msg = pg_client.post(f"/v1/conversations/{s['conv']}/messages",
-                               json={"body": "transfer first"},
+                               json=send_json("transfer first"),
                                headers=auth(s["owner_token"])).json()["id"]
 
     def remove():

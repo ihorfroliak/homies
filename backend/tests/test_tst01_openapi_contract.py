@@ -75,3 +75,36 @@ def test_core_endpoints_are_present():
     for path in ("/v1/bookings", "/v1/listings", "/v1/payments/webhook/stripe",
                  "/v1/hosts/{host_id}/payouts/run", "/v1/admin/ledger/reconciliation"):
         assert path not in spec["paths"], f"legacy path in the Phase-1 contract: {path}"
+
+
+BP10_SEND_ROUTES = ("/v1/classifieds/{offer_id}/conversations",
+                    "/v1/conversations/{conversation_id}/messages")
+
+
+def test_bp10_send_routes_document_the_idempotent_send_contract():
+    """BP-10 (D-108), read from the committed spec — Spectral checks the
+    shape of a response, not that a route documents the ones it can return."""
+    spec = json.loads(SPEC_PATH.read_text(encoding="utf-8"))
+    message_in = spec["components"]["schemas"]["MessageIn"]
+    assert set(message_in["required"]) == {"body", "client_message_id"}
+    key = message_in["properties"]["client_message_id"]
+    assert (key["type"], key["format"]) == ("string", "uuid")
+    assert "UUID v4" in key["description"] and "retry" in key["description"]
+    for schema in ("MessageOut", "ConversationOut", "ProviderConversationOut",
+                   "ConversationDetail"):
+        assert "client_message_id" not in spec["components"]["schemas"][schema]["properties"]
+    for path in BP10_SEND_ROUTES:
+        post = spec["paths"][path]["post"]
+        ref = post["requestBody"]["content"]["application/json"]["schema"]["$ref"]
+        assert ref.endswith("/MessageIn"), path
+        responses = post["responses"]
+        assert {"201", "404", "409", "422", "429", "503"} <= set(responses), path
+        assert "earlier one" in responses["201"]["description"], path  # replay is a 201 too
+        assert "200" not in responses, path
+        assert "IDEMPOTENCY_KEY_REUSED" in responses["409"]["description"], path
+        assert "client_message_id" in responses["422"]["description"], path
+        assert responses["422"]["content"]["application/json"]["schema"]["$ref"].endswith(
+            "/HTTPValidationError"), path  # naming the 422 keeps its body type
+        assert "Retry-After" in responses["429"]["headers"], path
+        assert "same `client_message_id` is safe" in responses["503"]["description"], path
+        assert "Retry-After" in responses["503"]["headers"], path
