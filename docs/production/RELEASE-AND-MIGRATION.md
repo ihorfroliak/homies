@@ -295,10 +295,11 @@ No universal N−1 promise is made; there is no promise beyond N−1.
 7. Record image, SHA, database revision before/after.
 
 
-## Rollback barriers recorded per release (TASK-015)
+## Rollback barriers recorded per release
 
 | Release | Schema | Rollback to previous | Why |
 |---|---|---|---|
+| **BP-10** (candidate, D-108; not merged) | `11d778ab87a3` (EXPAND) | **BLOCKED** | rolling back to the previous backend restores the unkeyed message-write path (its `MessageIn` silently drops `client_message_id`) and reopens the BP-10 / BB-11 duplicate-send invariant. The build needs its own head (`minimum_schema` = head: migrate first); keyed frontend sends stay off until every serving instance runs BP-10 |
 | TASK-015 S1 | `a3c5e7f9b1d4` (EXPAND) | BLOCKED | the previous publication ignores moderation holds |
 | TASK-015 S2+S3 | no change | BLOCKED (operational) | removes report intake and moderator operations |
 | TASK-015 S5 | no change | BLOCKED (operational) | strands open review requests |

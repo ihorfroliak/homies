@@ -1148,3 +1148,36 @@ code-bearing стан `main` (`a7756e1`) і HEAD з Git; disposition-рядки 
 milestone — CANONICAL DECISION REQUIRED. Наступна інженерна задача: BP-10
 (не розпочата). `FE-003 / FE-VIS-001 IMPLEMENTATION AUTHORIZED: NO`;
 `PRODUCTION READY: NO`; `DEPLOYMENT: NO`.
+
+## 2026-10-10 — BP-10 Phase B: ідемпотентні відправки повідомлень (кандидат, не змерджено)
+
+**Зроблено** (гілка `claude/BP-10-idempotent-message-send` від `be150da`;
+D-108; [контракт](tasks/BP-10-idempotent-message-send.md)):
+- `messages.client_message_id` + частковий UNIQUE `uq_messages_sender_client_message`
+  (sender, key); міграція `11d778ab87a3` (EXPAND, rollback BLOCKED, migrate first);
+  port deviation #23.
+- Обидва маршрути відправки вимагають `client_message_id` (UUID v4); той самий ключ →
+  201 з тим самим повідомленням (replay нічого не пише); інше тіло чи ціль → 409
+  `IDEMPOTENCY_KEY_REUSED`; доступ на append перевіряється першим (ключ — не capability).
+- Транзакційний advisory-лок (sender, key) до будь-якого row-lock і до будь-якої
+  відмови; lookup окремою інструкцією (READ COMMITTED). `hide_parameters=True` для PG;
+  IntegrityError → повний rollback → свіжий lookup → replay/409, інакше санітизована
+  помилка без DETAIL. Лічильник `homies_message_idempotency_total{route,outcome}`.
+- FE-003 доповнено (CF-22, §1.2, §3.2, §6.6, §9.1, §10.1); код зареєстровано в BP-1;
+  IMPLEMENTATION-CONVERGENCE і RELEASE-AND-MIGRATION оновлено.
+
+**Вивчено:**
+- Allowlist Phase A пропустив тести, що закріплюють голову схеми й форму ланцюжка
+  (`test_moderation_core`, `test_schema_compat`, `test_release_pg`) і записи
+  release-policy: grep літерала голови не знаходить тестів, які беруть голову з графа,
+  але жорстко задають кількість кроків. Майбутній Phase A із міграцією має їх
+  інвентаризувати.
+- SQLite повертає `DateTime(timezone=True)` без зони (UTC) — у SQLite-тестах
+  порівнюємо моменти, на PostgreSQL рядки збігаються точно.
+- Advisory-лок несе навантаження лише в тристоронній інтерлівінгу (T22): у двосторонній
+  гонці unique-індекс тримає сам, тож мутанти «без лока» вбиває тільки PG-харнес T22.
+- Скіл `micro-cycle` містить застарілі інструкції (push у `main`) — не застосовано;
+  діють поточні правила гілки й злиття.
+
+**Далі:** Phase C (C1, C2, обов'язковий Codex-аудит) по точному SHA кандидата;
+`MERGE AUTHORIZED: NO`; FE-003 keyed-відправки — лише коли BP-10 на всіх інстансах.

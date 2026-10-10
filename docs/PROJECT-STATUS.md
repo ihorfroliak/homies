@@ -2,7 +2,7 @@
 id: PROJECT-STATUS
 type: status_index
 role: single semantic owner of volatile project status (D-106, 05 §14)
-as_of: 2026-10-06
+as_of: 2026-10-10
 reconciled_through:
   code_and_product: BP-12 merge a7756e16c5ae2888776bf02a022b44b0221c0f7a
   documentation: TASK-016 source-of-truth reconciliation
@@ -19,7 +19,7 @@ latest_code_bearing_main_state:
 repository_head: resolved from Git (origin/main); intentionally not embedded here
 next_task:
   id: BP-10
-  status: NOT_STARTED
+  status: CANDIDATE  # builder-verified on its branch, not on main (D-108); Phase C required
 fe003_implementation_authorized: false
 fe_vis_001_implementation_authorized: false
 production_ready: false
@@ -60,7 +60,7 @@ DEPLOYMENT:                           NO   (NOT_DEPLOYED; no production environm
 
 | Order | Item | Status |
 |---|---|---|
-| next | **BP-10** — idempotent conversation start / message append (FE-003 §10.1; beta blocker BB-11) | **NOT STARTED** — a separate bounded task |
+| next | **BP-10** — idempotent conversation start / message append (FE-003 §10.1; beta blocker BB-11; D-108) | **CANDIDATE** — builder-verified on branch `claude/BP-10-idempotent-message-send` (exact SHA in its builder handoff); **not merged**, not integrated; Phase C (C1, C2, mandatory Codex audit) required; `MERGE AUTHORIZED: NO` |
 | then | BP-5 + BP-6, BP-8 → BP-11, BP-9 (security review) → BP-3, BP-4 | NOT STARTED — order from [FE-003 §10.3](tasks/FE-003-save-conversation-viewing-DRAFT.md) |
 | later | MARKET-001 residential rental market research ([research family](research/README.md)) | NOT STARTED — separate task, non-normative |
 

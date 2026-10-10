@@ -10,7 +10,7 @@ reason, the impact, and whether domain semantics changed (spec §131).
 > **Current disposition (2026-09-24, TASK-000).** This file is the historical
 > record of the port and is kept as written. Each deviation's current
 > disposition (ACCEPTED / CONTROLLED_DEBT / MUST_CLOSE / FROZEN_UNTIL_PHASE)
-> lives in [IMPLEMENTATION-CONVERGENCE §4](../canonical/IMPLEMENTATION-CONVERGENCE.md#4-the-22-port-deviations--disposition).
+> lives in [IMPLEMENTATION-CONVERGENCE §4](../canonical/IMPLEMENTATION-CONVERGENCE.md#4-the-23-port-deviations--disposition).
 > C8 landed as `782c833`. The C1–C8 port is a candidate pending independent
 > audit ([05 §9](../canonical/05-DEVELOPMENT-GOVERNANCE-v1.md)).
 
@@ -54,6 +54,7 @@ reason, the impact, and whether domain semantics changed (spec §131).
 | 20 | `message_attachments` (§56) | Not yet | Needs the file store (C8) | Text only | No |
 | 21 | File variants and thumbnails (§37), video and 360 tours (§38) | Not yet; originals only, PHOTO and FLOOR_PLAN only | Resizing needs an image library and a processing worker; neither exists yet | Clients show the original, sized by the width/height recorded at upload | No |
 | 22 | QUARANTINED → PROCESSING → READY across a worker (§121) | Processed synchronously in the upload request; a file failing checks is never stored | No worker exists; an image walk is milliseconds | Same end states; nothing unverified is ever written | No |
+| 23 | `platform.idempotency_keys` (§73) for message sends | `messages.client_message_id` (varchar(36), NULL) + partial UNIQUE `uq_messages_sender_client_message` (sender_user_id, client_message_id) WHERE NOT NULL — BP-10, D-108 | FE-003 §10.1 allows "an equivalent unique key"; the key lives with the message, so no stored body copy, hash, response or expiry is needed | One message per sender per logical send across both send routes; §73 stays the seam for other idempotent operations | No |
 
 ## What C2 changed in behaviour
 
