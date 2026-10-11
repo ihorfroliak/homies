@@ -2,9 +2,10 @@
 
 Synthetic graphs whose revision ids sort *against* their ancestry prove the
 decision follows lineage, never string order, id length or the order steps are
-listed in. The real migration chain is checked too: its new head
-`0c4e6a8b2d91` sorts before every older revision. `minimum_schema` /
-`maximum_schema` are lineage boundaries, not an interval of strings.
+listed in. The real migration chain is checked too, by ancestry alone —
+Alembic revision ids are graph identities, not ordered versions.
+`minimum_schema` / `maximum_schema` are lineage boundaries, not an interval
+of strings.
 """
 
 import json
@@ -144,17 +145,27 @@ def real():
     return graph, release.parse_manifest(data, graph)
 
 
+BP10_HEAD, PRE_BP10_HEAD = "11d778ab87a3", "a3c5e7f9b1d4"
+
+
 def test_the_real_chain_is_decided_by_ancestry(real):
     graph, m = real
-    # TASK-015 S1: this build reads moderation_decisions, so it runs only on
-    # its own head (minimum = head; migration first).
-    assert m.schema_head == "a3c5e7f9b1d4" and m.minimum_schema == m.schema_head
+    # BP-10 (D-108): this build reads and writes messages.client_message_id,
+    # so it runs only on its own head (minimum = maximum = head; migration first).
+    assert graph.head == m.schema_head == BP10_HEAD
+    assert m.minimum_schema == m.maximum_schema == m.schema_head
     full = {r: graph.steps[r] for r in graph.ancestors(graph.head)}
     assert release.evaluate(m, graph, [m.schema_head], full).code == EXACT
-    # The previous release's head (lineage present) is too old for this build,
-    # although it sorts BEFORE it as a string — ancestry decides, not order.
+    # The direct pre-BP-10 head (TASK-015 S1) is the BP-10 step's parent, and a
+    # database still on it is too old for this build (EXPAND says the OLD
+    # build can run on the NEW schema, not the reverse).
+    assert graph.steps[BP10_HEAD].down_revision == PRE_BP10_HEAD
+    assert graph.is_ancestor_or_equal(PRE_BP10_HEAD, BP10_HEAD)
+    assert not graph.is_ancestor_or_equal(BP10_HEAD, PRE_BP10_HEAD)
+    pre = {r: graph.steps[r] for r in graph.ancestors(PRE_BP10_HEAD)}
+    assert release.evaluate(m, graph, [PRE_BP10_HEAD], pre).code == TOO_OLD
+    # Earlier heads (PR-002's lineage step, with its lineage present) too.
     prior = {r: graph.steps[r] for r in graph.ancestors("0c4e6a8b2d91")}
-    assert "0c4e6a8b2d91" < m.schema_head
     assert release.evaluate(m, graph, ["0c4e6a8b2d91"], prior).code == TOO_OLD
     for older in graph.ancestors("d0f2b4c6e8a1"):
         assert release.evaluate(m, graph, [older], None).code == TOO_OLD, older

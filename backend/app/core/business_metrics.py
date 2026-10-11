@@ -105,3 +105,34 @@ def record_payment(db: Session, outcome: str) -> None:
 
 def record_payout(db: Session, outcome: str) -> None:
     _queue(db, PAYOUTS, outcome)
+
+
+# --- idempotent message sends (BP-10, D-108) ----------------------------------
+#
+# How often a message send resolved to an earlier one instead of writing. Both
+# label sets are closed; never a key, message, user, conversation or listing.
+# A first execution is not counted here — the HTTP metrics already count it.
+
+MESSAGE_IDEMPOTENCY_ROUTES = ("start", "append")
+# replay: the same request again; conflict: same key, different body or
+# target (409 IDEMPOTENCY_KEY_REUSED); race_recovered: a unique-key race lost
+# to a send that had committed, answered by replaying it.
+MESSAGE_IDEMPOTENCY_OUTCOMES = ("replay", "conflict", "race_recovered")
+
+MESSAGE_IDEMPOTENCY = Counter(
+    "homies_message_idempotency_total",
+    "Message sends resolved to an earlier send of the same client_message_id",
+    ["route", "outcome"],
+)
+
+
+def record_message_idempotency(route: str, outcome: str) -> None:
+    """Count one resolution. Not queued on the session like the counters
+    above: every outcome is decided from a message another transaction has
+    already committed, and the request records it while answering without
+    writing — there is nothing of its own to commit or roll back. A send that
+    lost a race counts only after its rollback, once the winner's row is
+    found."""
+    if route not in MESSAGE_IDEMPOTENCY_ROUTES or outcome not in MESSAGE_IDEMPOTENCY_OUTCOMES:
+        raise ValueError(f"unknown message idempotency label {route!r}/{outcome!r}")
+    MESSAGE_IDEMPOTENCY.labels(route, outcome).inc()

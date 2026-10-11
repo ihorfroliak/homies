@@ -132,23 +132,28 @@ def test_the_image_has_no_placeholder_build_identity():
 
 
 def test_this_release_declares_its_rollback_honestly(graph):
-    """TASK-015 Slice 4b changes no schema (CONVERSATION/MEDIA decisions,
-    close_engagement and RESTRICTED exist since the Slice 1 head
-    a3c5e7f9b1d4), yet rollback to Slice 4a is BLOCKED — a safety barrier:
-    that build confirms viewings under a hold, lets a closed-out requester
-    reopen (G-14) and does not lock a conversation before sending. The build
-    still reads moderation_decisions on every publication, so its minimum
-    schema stays its own head."""
+    """BP-10 (D-108) adds messages.client_message_id and its unique index on
+    top of the TASK-015 head a3c5e7f9b1d4: EXPAND, because the previous
+    release still runs on the new schema — yet rollback is BLOCKED, because
+    that release drops client_message_id from requests and so writes a
+    second message on every retry of a lost send (BB-11). This build reads
+    and writes the column, so its minimum schema is its own head."""
     manifest = _parse(graph)
-    assert manifest.schema_transition == release.NO_SCHEMA_CHANGE
+    assert manifest.schema_transition == release.EXPAND
     assert manifest.rollback_to_previous == release.BLOCKED
     assert manifest.rollback_allowed() is False
-    assert manifest.previous_schema_head == manifest.schema_head == "a3c5e7f9b1d4"
-    assert manifest.minimum_schema == manifest.schema_head
-    # The barrier names the build it protects against, and keeps the S4a one.
-    assert MANIFEST["previous_release"]["id"] == "TASK-015-S4a"
-    assert "SAFETY BARRIER" in MANIFEST["rollback_note"]
-    assert "privacy barrier still stands" in MANIFEST["rollback_note"]
+    assert manifest.schema_head == manifest.minimum_schema == manifest.maximum_schema \
+        == "11d778ab87a3"
+    assert manifest.previous_schema_head == "a3c5e7f9b1d4"
+    # The one step since the previous release is BP-10's own, declared EXPAND/BLOCKED.
+    step = graph.steps["11d778ab87a3"]
+    assert step.down_revision == "a3c5e7f9b1d4"
+    assert (step.schema_transition, step.rollback_to_previous) == ("EXPAND", "BLOCKED")
+    # The barrier names the build it protects against, and keeps the TASK-015 ones.
+    assert MANIFEST["previous_release"]["id"] == "TASK-015-S4b"
+    assert "ROLLBACK BLOCKED" in MANIFEST["rollback_note"]
+    assert "duplicate-send" in MANIFEST["rollback_note"]
+    assert "TASK-015 safety barriers" in MANIFEST["rollback_note"]
 
 
 # --- malformed manifests are errors, never compatible -----------------------------------------
@@ -168,8 +173,10 @@ def test_this_release_declares_its_rollback_honestly(graph):
     (_with(release=""), "release"),
     (_with(previous_release={"id": "IBB-001"}), "previous_release"),
     # the declared transition must match the migrations since the previous release
-    (_with(schema_transition="EXPAND"), "contradicts"),
+    (_with(schema_transition="NO_SCHEMA_CHANGE"), "contradicts"),
     (_with(schema_transition="BARRIER"), "contradicts"),
+    # BP-10's own step declares rollback BLOCKED: the release cannot promise SAFE
+    (_with(rollback_to_previous="SAFE"), "contradicts a migration"),
     (_with(schema_transition="NO_SCHEMA_CHANGE", previous_release=PR_003), "contradicts"),
     # a release cannot promise SAFE across a step that declares BLOCKED
     (_with(schema_transition="EXPAND", rollback_to_previous="SAFE",
@@ -258,8 +265,9 @@ def test_rollback_metadata_fails_closed(case, data, allowed):
 
 def test_every_migration_has_valid_declarations(graph):
     # REGISTRY classifies the 26 steps before PR-002; every later step
-    # (PR-002's lineage, TASK-015 S1's moderation core, …) declares itself.
-    assert len(graph.steps) == len(REGISTRY) + 2
+    # (PR-002's lineage, TASK-015 S1's moderation core, BP-10's message key)
+    # declares itself.
+    assert len(graph.steps) == len(REGISTRY) + 3
     for step in graph.steps.values():
         assert step.schema_transition in release.STEP_TRANSITIONS
         assert step.rollback_to_previous in release.ROLLBACK_VALUES

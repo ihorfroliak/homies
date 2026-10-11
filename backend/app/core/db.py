@@ -109,10 +109,16 @@ def create_bounded_engine(url: str, deadlines: DatabaseDeadlines = DEADLINES,
 
     Postgres engines get the connect/server/client deadlines and a bounded pool
     wait; anything else (SQLite in tests) is created as before.
+
+    Postgres engines never render bound parameters into an exception
+    (BP-10, D-108): a statement that fails on its way out of a request is
+    logged with its traceback, and its parameters are message bodies, client
+    message ids and other private input.
     """
     if url.startswith("postgresql"):
         if kwargs.get("poolclass") is None:
             kwargs.setdefault("pool_timeout", deadlines.pool_timeout_s)
+        kwargs["hide_parameters"] = True
         engine = create_engine(url, pool_pre_ping=True,
                                connect_args=_connect_args(url, deadlines), **kwargs)
         _guard_connections(engine, deadlines)

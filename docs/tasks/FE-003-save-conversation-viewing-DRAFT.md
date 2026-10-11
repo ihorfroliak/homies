@@ -65,7 +65,7 @@ between the handoff and §1–§9 is raised as a contract question before code.
 |---|---|
 | Start `POST /v1/classifieds/{id}/conversations {body}` → 201 `ConversationDetail`; **first non-empty message required**; body 1…**4000**, stripped, blank → 422 | `engagement/router.py:76–84, 287–357` |
 | One ACTIVE thread per requester × listing: a second start **continues** it (appends) | `router.py:313–344`, `models.py:76` |
-| Start refusals: 404 not public; 409 own listing (no code); 409 `RECONTACT_BLOCKED:`; 429 daily quota 30 / 24 h (no code, no `Retry-After`) | `router.py:298–327` |
+| Start refusals: 404 not public; 409 own listing (no code); 409 `RECONTACT_BLOCKED:`; 429 daily quota 30 / 24 h (no code, no `Retry-After`). *Amended (D-108): superseded by the registered BP-1 codes — `OWN_LISTING`, `RECONTACT_BLOCKED`, `CONVERSATION_QUOTA` with `Retry-After` ([BP-1](BP-1-stable-api-codes.md)) — and by BP-10's `IDEMPOTENCY_KEY_REUSED` on both send routes* | `router.py:298–327` |
 | Continue `POST /v1/conversations/{id}/messages`; non-ACTIVE → 409 `CONVERSATION_CLOSED:` | `router.py:389–406` |
 | Statuses `ACTIVE \| ARCHIVED \| CLOSED`; only Homies closes in 1A, with a SYSTEM message body code `system.conversation_closed_by_homies` | `models.py:48, 54`; `trust/effects.py:35–61` |
 | Redacted: `body: null`, `moderation_state: "REMOVED"` | `router.py:87–121` |
@@ -172,7 +172,7 @@ PUBLISH_LISTING only (`router.py:791–800`).
 | CF-19 | Viewings have no publication-generation field, so "the restricted generation" cannot be proven for an existing Viewing | **Decided (D-105)**: OD-1 cancellation is scoped by requester + listing + decision instant, **not** by generation; F6 stays generation-scoped for **new** engagement (§4). No schema field added |
 | CF-20 **new** | `full_name` is optional free text, unverified: OD-3's projection can be empty or arbitrary | BP-4 fallback "Użytkownik Homies"; never labelled verified |
 | CF-21 **new** | Public derived slots expose occupancy patterns (absence of a slot after a booking) and cost one DB count per candidate | BP-11 security/performance review items |
-| CF-22 **new** | Canon has `platform.idempotency_keys` (04 §73; 04a §6 forbids storing sensitive bodies) | BP-10 uses it; stores the message id reference and a request hash, never the message body |
+| CF-22 **new** | Canon has `platform.idempotency_keys` (04 §73; 04a §6 forbids storing sensitive bodies) | *Amended (D-108):* BP-10 uses the §10.1 equivalent unique key — `messages.client_message_id` + UNIQUE (sender, key); no idempotency record, no request hash, no body copy |
 
 ## 3. Scope contract by area
 
@@ -201,7 +201,7 @@ PUBLISH_LISTING only (`router.py:791–800`).
 | Redacted | CURRENT BACKEND | "Wiadomość usunięta przez Homies"; no body, no reason |
 | RECONTACT_BLOCKED | CURRENT BACKEND | "Nie możesz rozpocząć nowej rozmowy o tej ofercie"; no reason, no retry; viewing and phone CTAs also unavailable (F6, OD-2) |
 | Own listing / quotas | BP-1 | `OWN_LISTING` "To Twoja oferta"; `CONVERSATION_QUOTA` daily copy; middleware 429 → `Retry-After` |
-| **Send outcome (BP-10)** | BACKEND/API GAP → FE-003 | every start/append carries a client-generated **`client_message_id`** (UUID v4) minted when the user presses send and kept for retries of that same draft. After 502/503/504/timeout the client **retries with the same id**; the server returns the original result (no duplicate). No matching of body/timestamp. Until BP-10 lands the client shows "Nie wiemy, czy wiadomość dotarła — sprawdź rozmowę" and offers a manual re-read; **that interim state is dev/test only and not acceptable for external beta (BB-11)** |
+| **Send outcome (BP-10)** | BACKEND/API GAP → FE-003 | every start/append carries a client-generated **`client_message_id`** (UUID v4) minted when the user presses send and kept for retries of that same draft. After 502/503/504/timeout the client **retries with the same id**; the server returns the original result (no duplicate). *Amended (D-108): FE-003c will use an operation-specific keyed-send retry policy — the same id after every transport error, transient 401 (after the session refresh), 5xx (any 503 reason) and middleware rate-limit 429; only final coded refusals end the draft; a replay is a 201 like the first send. Not implemented by BP-10.* No matching of body/timestamp. Until BP-10 lands the client shows "Nie wiemy, czy wiadomość dotarła — sprawdź rozmowę" and offers a manual re-read; **that interim state is dev/test only and not acceptable for external beta (BB-11)** |
 | Hierarchy | FE-003 | inbox (newest first) → thread (listing header, messages oldest→newest, composer); tenant/provider via ContextSwitch |
 | Composer states | FE-003 | `idle → typing → sending → sent \| failed(final) \| retrying(same id) \| closed \| blocked`; draft in memory only |
 | **Report a message (OD-4)** | CURRENT BACKEND → FE-003c | "Zgłoś wiadomość" on every **other participant's USER** message (not SYSTEM, not own, not REMOVED): reason (6 codes, Polish labels) + optional text ≤ 2000 (≥ 20 for OTHER per backend); 201/200 → "Zgłoszenie przyjęte" (no decision shown, L13); **no e-mail/phone verification wall before this action (OD-7, BP-12)**; 404/409 → neutral "Nie można zgłosić tej wiadomości"; 429 quota |
@@ -525,7 +525,7 @@ the consent gate; **semantic tokens only** (OD-5); rail ≥ 1024 px, dock
 | Route | detail sheet, `/wiadomosci/[id]` (PROPOSED) |
 | Data | thread status, `my_side` |
 | API/BFF | start / append routes with `client_message_id` (BP-10) |
-| I/O | text ≤ 4000 + `client_message_id` → `MessageOut` |
+| I/O | text ≤ 4000 + `client_message_id` → start: `ConversationDetail`; append: `MessageOut` (*amended, D-108*) |
 | Loading | `sending`: read-only, `aria-busy` |
 | Empty | send disabled when blank |
 | Error | §3.2; outcome unknown → retry with the same id |
@@ -671,9 +671,11 @@ decline/cancel/outcome, requester display), verified allowed, membership and
 mandate chains covered, own-listing and conflict-of-interest guards unchanged;
 BP-12 an unverified participant files a MESSAGE report (201), a LISTING report
 by the same account still 403, quotas and one-live-report rule unchanged;
-BP-10 same id → one row, same response; same id + different body → 409
-(`IDEMPOTENCY_KEY_REUSED`); concurrent duplicates → one row; key expiry;
-no message body in the idempotency record (04a §6); BP-11 anonymous gets
+BP-10 same id → one row, same response (a 201 replay); same id + different
+body or target → 409 (`IDEMPOTENCY_KEY_REUSED`); concurrent duplicates → one
+row; no independent expiry — the key lives with the Message row and follows
+its permitted retention/anonymisation lifecycle; no body copy outside
+`messages.body` (04a §6) (*amended, D-108*); BP-11 anonymous gets
 derived instants only (response schema has no settings/window/blackout or
 capacity fields), rate limit enforced, not-public → 404, days cap for
 anonymous.
@@ -716,7 +718,7 @@ authority holder (BP-9), all fictional, under the existing opt-ins.
 | BP-7 | **REQUIRED**: backend refuses cancel at/after `starts_at` (`VIEWING_STARTED`) for both sides | R1 | e |
 | BP-8 | OD-2/OD-8: G-14 bars **new and repeat** contact reveal (`RECONTACT_BLOCKED`), checked before the repeat fast path; the refusal carries no phone | R1 | d |
 | BP-9 | **Security rule (D-105)**: enforce VERIFIED PropertyAuthority for every MANAGE_MESSAGES / MANAGE_VIEWINGS private read and write (inbox rows, thread, reply, assign, stage, provider participant on start, viewing list/actions, requester display) per §3.9; self-dealing/conflict guards unchanged | R2 + security review | c (provider side), f; BB-10 |
-| BP-10 | Idempotent start-with-first-message and append: `client_message_id` (UUID) with server-side dedup on `platform.idempotency_keys` (04 §73) or an equivalent unique key; response reconstructed from the stored message id, no body stored (04a §6); reuse with a different body → 409 | R2 | c (external beta: BB-11) |
+| BP-10 | Idempotent start-with-first-message and append: `client_message_id` (UUID) with server-side dedup on `platform.idempotency_keys` (04 §73) or an equivalent unique key; response reconstructed from the stored message id, no body stored (04a §6); reuse with a different body → 409. *D-108: the equivalent unique key — [BP-10 contract](BP-10-idempotent-message-send.md)* | R2 | c (external beta: BB-11) |
 | BP-11 | OD-6: anonymous read of **derived** slots for PUBLIC listings only; no settings/windows/blackouts/capacity in the response; request stays auth-required; dedicated public rate limit and anonymous `days` cap; same §18 visibility rule; security + performance review (CF-21) | R2 + security review | e (guest path) |
 | BP-12 | OD-7: `POST /v1/reports` for `target_type=MESSAGE` by a current side of the conversation on another participant's USER message no longer requires a verified e-mail/phone; LISTING keeps `reporter_verified`; OpenAPI 403 description updated | R1 | c |
 | optional | G8 saved flag; `can_send` / `closed_by` | — | — |

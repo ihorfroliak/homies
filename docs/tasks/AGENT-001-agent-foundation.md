@@ -2,15 +2,28 @@
 
 | Field | Value |
 |---|---|
-| Status | Founder-authorized implementation; candidate pending founder PR decision |
+| Status | ACCEPTED FOR CONTINUED DEVELOPMENT (D-110); INTEGRATED effective upon reconciled PR #5 merge. Before merge this branch is a candidate |
 | Owner | Codex, bounded Session B exception to read-only auditor role |
 | Baseline | `be150da11b9838409fcf8ee2d8ca4bd8b0311307` (fetched and remote-verified origin/main) |
 | Branch | `codex/AGENT-001-agent-foundation` |
-| Authority | Founder Session B instruction, 2026-10-11; 00-AUTHORITY; 05 sections 3–7 and 14; D-106 |
+| Authority | Original founder Session B instruction, then final founder integration authorization D-110 (2026-10-11); 00-AUTHORITY; 05 sections 3–7 and 14; D-106 |
 | Review | Bounded configuration/runtime validation and Claude same-SHA parity; no new independent audit program |
-| Merge / deployment | NOT AUTHORIZED |
+| Merge / deployment | PR #5 normal merge AUTHORIZED (D-110) after reconciliation and required exact-head CI; deployment NOT AUTHORIZED |
 
-## Goal and authorization
+## Final integration disposition (D-110)
+
+Reconciled with BP-10 main merge `064be3e1827d279890a9e026e9b1a48e476d7dbd`.
+Both historical DEVLOG entries and every specialist configuration/permission
+are retained. Native dispatch NOT VERIFIED where runtime was unavailable is
+an accepted nonblocking operational limitation; STATIC VERIFIED and actually
+observed RUNTIME VERIFIED evidence retain their original scope. No audit or
+hook test is repeated on unchanged configuration. Actual PR #5 merge identity
+is recorded by Git/GitHub; [PROJECT-STATUS](../PROJECT-STATUS.md) owns current state.
+The scope and prohibitions below describe the original Session B implementation;
+D-110 adds only the named reconciliation and normal PR #5 merge authorization.
+It does not grant standing product-writing permission or deployment authority.
+
+## Original Session B goal and authorization (historical)
 
 Install six permanent project-scoped Claude specialists and corresponding Codex roles,
 best-effort routing with mandatory-review escalation, Copilot instructions, compatible
@@ -82,5 +95,7 @@ privileged parent. Native enforcement and provider savings require measured evid
 See [AGENT-001-AUDIT](../engineering/AGENT-001-AUDIT.md) for STATIC VERIFIED,
 RUNTIME VERIFIED and NOT VERIFIED results. Exact final identity is in the external
 handoff/PR, not a self-referential SHA in this file. No canonical product decision
-is requested or changed. Next owner action: Claude read-only parity on that exact
-commit, then founder/GPT PR disposition; merge remains unauthorized.
+is changed by AGENT-001 configuration. Original Session B next action was Claude
+parity and founder disposition; D-110 supplies the final acceptance and specific
+PR #5 merge authorization. New BP-5/BP-6 implementation is a separate bounded
+authorization with its own independent exact-SHA review and later merge decision.

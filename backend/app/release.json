@@ -1,14 +1,14 @@
 {
   "manifest_version": 1,
-  "release": "TASK-015 Slice 4b — engagement safety: conversation closure, close_engagement, viewing protection, non-destructive photo restriction",
-  "schema_head": "a3c5e7f9b1d4",
-  "minimum_schema": "a3c5e7f9b1d4",
-  "maximum_schema": "a3c5e7f9b1d4",
-  "schema_transition": "NO_SCHEMA_CHANGE",
+  "release": "BP-10 — idempotent conversation start and message append (client_message_id, D-108)",
+  "schema_head": "11d778ab87a3",
+  "minimum_schema": "11d778ab87a3",
+  "maximum_schema": "11d778ab87a3",
+  "schema_transition": "EXPAND",
   "rollback_to_previous": "BLOCKED",
-  "rollback_note": "SAFETY BARRIER. No schema change (CONVERSATION and MEDIA decisions, close_engagement and RESTRICTED exist since Slice 1), but rollback to Slice 4a is BLOCKED: that build confirms viewings on a listing under a moderation hold, lets a requester whose conversation Homies closed open a new one on the same publication (G-14), and checks a conversation's status without locking it, so a message can land after a closure. The Slice 4a privacy barrier still stands behind it. Recovery is forward repair only.",
+  "rollback_note": "ROLLBACK BLOCKED. Migration 11d778ab87a3 only adds messages.client_message_id and its partial unique index, so the previous release still runs on this schema (EXPAND), but returning to it restores the unkeyed message-write path: that build silently drops client_message_id from requests, so every retry of a send whose response was lost writes a second message (the BP-10 / BB-11 duplicate-send defect). This build reads and writes the column, so its minimum schema is its own head (migrate first). Keyed frontend sends stay off until every serving instance runs this build. The TASK-015 safety barriers of the previous release still stand behind it. Recovery is forward repair only.",
   "previous_release": {
-    "id": "TASK-015-S4a",
+    "id": "TASK-015-S4b",
     "schema_head": "a3c5e7f9b1d4"
   }
 }

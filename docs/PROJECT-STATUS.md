@@ -2,10 +2,10 @@
 id: PROJECT-STATUS
 type: status_index
 role: single semantic owner of volatile project status (D-106, 05 §14)
-as_of: 2026-10-06
+as_of: 2026-10-11
 reconciled_through:
-  code_and_product: BP-12 merge a7756e16c5ae2888776bf02a022b44b0221c0f7a
-  documentation: TASK-016 source-of-truth reconciliation
+  code_and_product: BP-10 merge 064be3e1827d279890a9e026e9b1a48e476d7dbd (D-110)
+  documentation: BP-10 integrated; AGENT-001 configuration integrated when PR 5 reaches main (D-110)
 last_formal_baseline:
   id: IBB-001
   name: Integrated Backend Baseline 001
@@ -13,13 +13,15 @@ last_formal_baseline:
   tag: backend-baseline-001
   status: ACCEPTED
 latest_code_bearing_main_state:
-  sha: a7756e16c5ae2888776bf02a022b44b0221c0f7a
-  what: BP-12 merge (IBB-001 plus builder-verified increments)
-  main_ci: 37417946174 success
+  implementation_sha: c385136c93826879b41509f1e30533ef46eee64c
+  what: BP-10 INTEGRATED / ACCEPTED FOR CONTINUED DEVELOPMENT
+  merge_sha: 064be3e1827d279890a9e026e9b1a48e476d7dbd
+  candidate_ci: 38129196394 success 6/6
+  main_ci: resolve actual post-merge run from GitHub
 repository_head: resolved from Git (origin/main); intentionally not embedded here
 next_task:
-  id: BP-10
-  status: NOT_STARTED
+  id: BP-5 + BP-6
+  status: AUTHORIZED — begins immediately after PR 5 integration
 fe003_implementation_authorized: false
 fe_vis_001_implementation_authorized: false
 production_ready: false
@@ -36,20 +38,28 @@ deployed: false
 > and [DECISIONS](DECISIONS.md). If this page disagrees with them, they win —
 > fix this page. Nothing is accepted because it is listed here.
 
-**As of:** 2026-10-06. Code and product state reconciled through the BP-12
-merge; documentation reconciled by TASK-016.
+**As of:** 2026-10-11. **BP-10 is INTEGRATED / ACCEPTED FOR CONTINUED
+DEVELOPMENT** via PR #6, merge `064be3e1827d279890a9e026e9b1a48e476d7dbd`;
+exact-head CI `38129196394` SUCCESS 6/6. AGENT-001 is accepted under D-110:
+this branch is the reconciled PR #5 candidate until merge; **when this record
+lands on main through PR #5, AGENT-001 is INTEGRATED / ACCEPTED FOR CONTINUED
+DEVELOPMENT** and BP-5/BP-6 implementation begins. Actual PR #5 merge SHA and
+post-merge CI come from Git/GitHub, never a predicted self-reference.
 
 ## Three different "current" states
 
 | Concept | Value | How to read it |
 |---|---|---|
 | **Last formal backend baseline** | Integrated Backend Baseline 001 (`IBB-001`), `5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98`, tag `backend-baseline-001`, **ACCEPTED** (CONV-001A) | the last state accepted through the baseline process ([record](baselines/IBB-001.md)). There is no IBB-002 |
-| **Latest code-bearing `main` state** | `a7756e16c5ae2888776bf02a022b44b0221c0f7a` — BP-12 merge, main CI `37417946174` success (backend, web, image, contracts, monitoring, secrets) | IBB-001 plus the merged increments listed below. Verification and review status is recorded per increment in the table: several R1 increments received founder/GPT review, while the R2 increments marked MILESTONE AUDIT DEFERRED still await the D-88 milestone review. Founder/GPT review is not the D-88 milestone audit, and neither is formal baseline acceptance: no post-IBB increment has been promoted to a formal successor backend baseline, so no IBB-002 exists |
-| **Repository HEAD** | read it from Git: `git rev-parse origin/main` | this file does not embed the SHA of the commit that contains it ([TRACEABILITY](engineering/TRACEABILITY.md#self-reference-a-file-cannot-name-its-own-commit)). Documentation-only merges after `a7756e1` (such as TASK-016) do not change the code-bearing state |
+| **Latest code-bearing `main` state** | BP-10 merge `064be3e1827d279890a9e026e9b1a48e476d7dbd`; audited implementation `c385136c93826879b41509f1e30533ef46eee64c` preserved | ACCEPTED FOR CONTINUED DEVELOPMENT (D-110), D-109 dispositions retained; candidate CI `38129196394` SUCCESS 6/6; post-merge CI from GitHub. No successor formal baseline |
+| **Repository HEAD** | read it from Git: `git rev-parse origin/main` | this file does not embed the SHA of the commit that contains it ([TRACEABILITY](engineering/TRACEABILITY.md#self-reference-a-file-cannot-name-its-own-commit)). Documentation-only children do not replace the frozen audited implementation identity |
 
 ## Flags
 
 ```text
+BP-10 MERGE AUTHORIZED:              YES  (PR #6 only, D-110)
+AGENT-001 MERGE AUTHORIZED:          YES  (PR #5 only, after reconciliation/checks, D-110)
+BP-5 / BP-6 IMPLEMENTATION AUTHORIZED: YES  (after both integrations; new PR merge NOT authorized)
 FE-003 IMPLEMENTATION AUTHORIZED:     NO   (contract approved, D-104/D-105)
 FE-VIS-001 IMPLEMENTATION AUTHORIZED: NO   (D-104 OD-5; DESIGN-001C handoff §26, §31)
 PRODUCTION READY:                     NO   (NOT_READY)
@@ -60,13 +70,17 @@ DEPLOYMENT:                           NO   (NOT_DEPLOYED; no production environm
 
 | Order | Item | Status |
 |---|---|---|
-| next | **BP-10** — idempotent conversation start / message append (FE-003 §10.1; beta blocker BB-11) | **NOT STARTED** — a separate bounded task |
-| then | BP-5 + BP-6, BP-8 → BP-11, BP-9 (security review) → BP-3, BP-4 | NOT STARTED — order from [FE-003 §10.3](tasks/FE-003-save-conversation-viewing-DRAFT.md) |
-| later | MARKET-001 residential rental market research ([research family](research/README.md)) | NOT STARTED — separate task, non-normative |
+| integration 1 | **BP-10** — [PR #6](https://github.com/ihorfroliak/homies/pull/6) | INTEGRATED / ACCEPTED FOR CONTINUED DEVELOPMENT (D-110), merge `064be3e1827d279890a9e026e9b1a48e476d7dbd`, candidate CI `38129196394` SUCCESS 6/6. Audited code `c385136c93826879b41509f1e30533ef46eee64c`, PASS_WITH_NONBLOCKING_NOTES; all four P3 and five NOTEs/debt retained under D-109. [Historical staging receipt](reviews/2026-10-11-bp10-acceptance-staging-receipt.md) |
+| integration 2 | **AGENT-001** — [PR #5](https://github.com/ihorfroliak/homies/pull/5) | ACCEPTED FOR CONTINUED DEVELOPMENT; INTEGRATED when reconciled PR #5 lands on main after green checks. Six Claude/six Codex specialists preserved. Native dispatch NOT VERIFIED where unavailable is an accepted nonblocking limitation; no shared vendor memory/cache or guaranteed routing |
+| immediately after both merges | **BP-5 + BP-6** | IMPLEMENTATION AUTHORIZED (D-110), Codex temporary sole bounded writer in a dedicated worktree/feature branch. BP-5 first, BP-6 second; real PostgreSQL, migrations/API/types/release checks, CI and separate exact-SHA R2 review; Draft PR, subsequent founder merge authorization required |
+| later, separately authorized | BP-8 → BP-11, BP-9 → BP-3, BP-4; MARKET-001 | Existing [FE-003 sequencing](tasks/FE-003-save-conversation-viewing-DRAFT.md); no authorization added here |
 
-FE-003 slices start only with a separate founder authorisation per slice
-(FE-003 §13); beta blockers BB-1…BB-11 stay open until their own tasks close
-them.
+FE-003 frontend and FE-VIS-001 remain unauthorized. Beta blockers BB-1…BB-11
+stay open until their own criteria close them. IBB-001 remains the last formal
+baseline; no IBB-002. BP-10 release restrictions remain **EXPAND /
+rollback_to_previous = BLOCKED / migrate-first / BB-11 all-serving-instances**.
+Integration does not certify deployment or external beta. No completed audit
+is reopened by this integration; new BP-5/BP-6 work has its own review gate.
 
 ## Integrated on `main` since IBB-001
 

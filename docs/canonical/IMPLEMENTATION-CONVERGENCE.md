@@ -106,6 +106,44 @@ Production: **NOT READY · NOT DEPLOYED.**
 | refusal codes for FE-003 paths | **CANONICAL_ACTIVE (builder verified)** | `detail` = `"CODE: human text"` for OWN_LISTING, VIEWINGS_NOT_OFFERED, SLOT_NOT_OFFERED, SLOT_FULL, VIEWING_ALREADY_BOOKED, VIEWING_STATE_CONFLICT, VIEWING_CHANGED, VIEWING_TIME_PASSED, VIEWING_NOT_STARTED, MESSAGES_ONLY, PHONE_NOT_VERIFIED, REVEAL_QUOTA, CONVERSATION_QUOTA (with `Retry-After`), SAVED_LIMIT, SAVED_SEARCH_DUPLICATE, SAVED_SEARCH_LIMIT; HTTP statuses unchanged |
 | refusals outside BP-1 | **DEBT** (nonblocking) | still prose-only (listed in the task) |
 
+## AGENT-001 — accepted configuration foundation (2026-10-11)
+
+D-110 accepts the six Claude / six Codex specialist configuration and shared
+repository operating model for continued development. Original candidate
+`bde0e0ef8b8b72f353aad95737cc9385ec7fa1fa` is reconciled with BP-10 main;
+configuration and permission bytes remain unchanged. **INTEGRATED effective
+upon PR #5 merge**, candidate before that merge. Existing
+[bounded evidence](../engineering/AGENT-001-AUDIT.md) is preserved: native
+dispatch NOT VERIFIED where unavailable is accepted nonblocking operational
+debt, never proof of automatic routing or synchronized vendor memory/cache.
+Current state and next authorized work: [PROJECT-STATUS](../PROJECT-STATUS.md).
+
+## BP-10 — idempotent message sends (2026-10-10)
+
+**R2 · INTEGRATED / ACCEPTED FOR CONTINUED DEVELOPMENT (D-110).** PR #6
+normal merge `064be3e1827d279890a9e026e9b1a48e476d7dbd`; candidate CI
+`38129196394` SUCCESS 6/6. The merge tree equals the verified candidate.
+Frozen implementation `c385136c93826879b41509f1e30533ef46eee64c`; completed
+C1/C2/Codex reviews PASS_WITH_NONBLOCKING_NOTES. D-109's four bounded P3
+dispositions and all five NOTEs remain unchanged. Documentation children do
+not replace the audited implementation. [Historical receipt](../reviews/2026-10-11-bp10-acceptance-staging-receipt.md);
+[task contract](../tasks/BP-10-idempotent-message-send.md).
+
+| Area | Classification | State |
+|---|---|---|
+| message-send idempotency (`client_message_id`, unique (sender, key), advisory send lock) | **ACCEPTED · INTEGRATED** | both send routes; same key → 201 with the same message; replay writes nothing; FE-003 §10.1 "equivalent unique key" (port deviation #23); narrow caller-owned rejected-key422 exception and scoped temporal/input/test debt in BP-10 §8 |
+| stable code `IDEMPOTENCY_KEY_REUSED` | **ACCEPTED · INTEGRATED** | 409, same key with another body or target; added to the BP-1 code inventory |
+| canonical `platform.idempotency_keys` (04 §73) | **CANON PRESENT · PHYSICAL IMPLEMENTATION MISSING** | unchanged; not used by BP-10 (D-108) |
+| idempotency of property / classified creates | **DEBT** | separate future work (D-108) |
+
+D-110 authorized the completed normal PR #6 merge. Post-merge CI is read from
+GitHub; no unfinished run is represented as successful here.
+EXPAND / rollback BLOCKED and BB-11 all-instances gate remain; raw PG DETAIL
+is outside application parameter hiding, and all 28 semantic mutation kills
+are not certified. IBB-001 remains the last formal baseline. D-109 does not
+change canonical domain rules, authorize FE-003/FE-VIS-001 or deployment,
+or accept unrelated D-88 milestone work.
+
 ## P-0 and HM-1 — DESIGN-001C implementation handoff (2026-10-05, documentation)
 
 **APPROVED — IMPLEMENTATION BINDING READY** (founder/GPT, *PASS WITH BOUNDED
@@ -250,7 +288,8 @@ D-89 … D-91.
 | health isolation | **CANDIDATE (builder verified)** | ops endpoints async; single-flight async readiness; no SQL on the event loop — closes PR-001RA RA-3 |
 | workers (`app/core/worker_loop.py`) | **CANDIDATE (builder verified)** | shared loop, failure backoff, liveness metric and alerts |
 | migration job connect/statement bounds | **DEBT** | `migrate.py` (PR-002) unchanged; relies on the job runner's timeout |
-| idempotency of creates (property, classified, message) | **DEBT** | a retry after an unknown COMMIT can duplicate; follow-up |
+| idempotency of creates (property, classified) | **DEBT** | a retry after an unknown COMMIT can duplicate; follow-up |
+| idempotency of message sends | **CANDIDATE (builder verified)** — BP-10, not on `main` | resolved by the BP-10 candidate only (D-108, see the BP-10 section); stays DEBT on `main` until BP-10 is merged |
 
 ## PR-002 — release and migration compatibility (2026-10-01, builder)
 
@@ -798,7 +837,7 @@ the static scan was widened to main, composition, admin, events and core and
 now also sees `from .. import x` and literal importlib calls. It still cannot
 see computed dynamic imports — the runtime test covers that.
 
-## 4. The 22 port deviations — disposition
+## 4. The 23 port deviations — disposition
 
 Source: [SCHEMA-v1-PORT.md](../database/SCHEMA-v1-PORT.md) (history kept as
 written). Dispositions per founder instruction 2026-09-24 §20.
@@ -827,6 +866,7 @@ written). Dispositions per founder instruction 2026-09-24 §20.
 | 20 | No message attachments | **MUST_CLOSE** | 04 §56 is Phase-1 schema; low priority, needs private file access |
 | 21 | No media variants; PHOTO/FLOOR_PLAN only | **MUST_CLOSE** | 04a §11 — derivatives before public scale |
 | 22 | Synchronous in-request image processing | **MUST_CLOSE → repaired, pending re-audit** | TASK-002 R3: maintained library (Pillow) with explicit budget, worker thread under a concurrency slot budget. Isolated processing deferred to the derivatives task |
+| 23 | Message-send idempotency as a key on `messages` (`client_message_id` + partial UNIQUE (sender, key)), not `platform.idempotency_keys` (§73) | **ACCEPTED** (D-108) — BP-10 integrated under D-110 via PR #6 | FE-003 §10.1 "equivalent unique key"; the key lives with the message row and its retention/anonymisation lifecycle; §73 stays the seam for other idempotent operations |
 
 ## 5. C8 security flag
 
