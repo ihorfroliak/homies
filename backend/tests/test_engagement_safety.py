@@ -29,6 +29,7 @@ from tests.conftest import TestingSession, auth
 from tests.test_media import _approved, _attach
 from tests.test_message_moderation import _thread
 from tests.test_reports_moderation import _me, _moderator, _verified
+from tests.test_conversations import send_json
 
 WARSAW = ZoneInfo("Europe/Warsaw")
 CANARY = "zx-canary-moderator-explanation-4b"
@@ -154,11 +155,11 @@ def test_close_engagement_closes_threads_and_cancels_only_future_viewings(client
     last = _messages(client, tenant, conv)[-1]
     assert (last["message_type"], last["body"]) == ("SYSTEM", effects.CLOSED_BY_HOMIES)
     assert last["sender_user_id"] is None
-    refused = client.post(f"/v1/conversations/{conv}/messages", json={"body": "hello?"},
+    refused = client.post(f"/v1/conversations/{conv}/messages", json=send_json("hello?"),
                           headers=auth(tenant))
     assert refused.status_code == 409 and refused.json()["detail"].startswith(
         "CONVERSATION_CLOSED")
-    assert client.post(f"/v1/conversations/{conv}/messages", json={"body": "x"},
+    assert client.post(f"/v1/conversations/{conv}/messages", json=send_json("x"),
                        headers=auth(owner)).status_code == 409
 
     assert _status(Viewing, requested.json()["id"]) == "CANCELLED"
@@ -191,13 +192,13 @@ def test_a_new_thread_after_close_engagement_needs_a_republish(client):
     held = _decide(client, moderator, "LISTING", offer, "VISIBILITY_LIMITED", "FAKE",
                    close_engagement=True)
     assert held.status_code == 201
-    assert client.post(f"/v1/classifieds/{offer}/conversations", json={"body": "again"},
+    assert client.post(f"/v1/classifieds/{offer}/conversations", json=send_json("again"),
                        headers=auth(tenant)).status_code == 404  # held → not public
     released = _decide(client, moderator, "LISTING", offer, "NO_ACTION",
                        "REINSTATED_DECISION_ERROR", head=held.json()["decision_id"])
     assert released.status_code == 201
     assert client.post(f"/v1/classifieds/{offer}/publish", headers=auth(owner)).status_code == 200
-    again = client.post(f"/v1/classifieds/{offer}/conversations", json={"body": "again"},
+    again = client.post(f"/v1/classifieds/{offer}/conversations", json=send_json("again"),
                         headers=auth(tenant))
     assert again.status_code == 201 and again.json()["conversation"]["id"] != conv
     assert _status(Conversation, conv) == "CLOSED"  # never reopened
@@ -216,7 +217,7 @@ def test_a_hold_keeps_engagement_but_refuses_viewing_confirmation(client):
     assert held.status_code == 201
 
     assert _status(Conversation, conv) == "ACTIVE"
-    assert client.post(f"/v1/conversations/{conv}/messages", json={"body": "still here"},
+    assert client.post(f"/v1/conversations/{conv}/messages", json=send_json("still here"),
                        headers=auth(tenant)).status_code == 201
     refused = client.post(f"/v1/viewings/{viewing}/confirm", headers=auth(owner))
     assert refused.status_code == 409 and refused.json()["detail"].startswith("LISTING_HELD")
@@ -242,7 +243,7 @@ def test_a_hold_keeps_engagement_but_refuses_viewing_confirmation(client):
 def test_feature_restricted_closes_one_thread_and_bars_recontact_for_the_generation(client):
     owner, tenant, offer, conv, _m = _thread(client)
     bystander = _verified(client, "bystander")
-    other = client.post(f"/v1/classifieds/{offer}/conversations", json={"body": "Hi"},
+    other = client.post(f"/v1/classifieds/{offer}/conversations", json=send_json("Hi"),
                         headers=auth(bystander)).json()["conversation"]["id"]
     moderator = _moderator(client)
     resp = _decide(client, moderator, "CONVERSATION", conv, "FEATURE_RESTRICTED", "HARASSMENT",
@@ -254,20 +255,20 @@ def test_feature_restricted_closes_one_thread_and_bars_recontact_for_the_generat
     for token in (tenant, owner):
         last = _messages(client, token, conv)[-1]
         assert (last["message_type"], last["body"]) == ("SYSTEM", effects.CLOSED_BY_HOMIES)
-        assert client.post(f"/v1/conversations/{conv}/messages", json={"body": "?"},
+        assert client.post(f"/v1/conversations/{conv}/messages", json=send_json("?"),
                            headers=auth(token)).status_code == 409
 
-    blocked = client.post(f"/v1/classifieds/{offer}/conversations", json={"body": "new"},
+    blocked = client.post(f"/v1/classifieds/{offer}/conversations", json=send_json("new"),
                           headers=auth(tenant))
     assert blocked.status_code == 409 and blocked.json()["detail"].startswith(
         "RECONTACT_BLOCKED")
-    assert client.post(f"/v1/classifieds/{offer}/conversations", json={"body": "more"},
+    assert client.post(f"/v1/classifieds/{offer}/conversations", json=send_json("more"),
                        headers=auth(bystander)).status_code == 201  # continues their thread
 
     # A new public generation lifts it (G-14): pause, republish.
     assert client.post(f"/v1/classifieds/{offer}/pause", headers=auth(owner)).status_code == 200
     assert client.post(f"/v1/classifieds/{offer}/publish", headers=auth(owner)).status_code == 200
-    fresh = client.post(f"/v1/classifieds/{offer}/conversations", json={"body": "new"},
+    fresh = client.post(f"/v1/classifieds/{offer}/conversations", json=send_json("new"),
                         headers=auth(tenant))
     assert fresh.status_code == 201 and fresh.json()["conversation"]["id"] != conv
 

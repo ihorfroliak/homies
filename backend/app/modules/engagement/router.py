@@ -25,19 +25,44 @@ Messaging is the channel for people who have not verified a phone, so it is
 also the cheapest way to blast every owner on the board with the same scam;
 the cap makes that expensive without getting in the way of someone looking
 for a flat.
+
+Idempotent sends (BP-10, D-108). Both send routes take a `client_message_id`
+— a UUID v4 the client mints for one logical send and repeats on every retry
+of it. (sender, client_message_id) is the identity of that send, shared by
+the two routes, and the database holds at most one message for it
+(`uq_messages_sender_client_message`). A retry that finds the send already
+committed is answered from the current rows with the same 201 and writes
+nothing; the same key with another body or target is 409
+IDEMPOTENCY_KEY_REUSED. Each send first takes a transaction-scoped advisory
+lock on its (sender, key) — before any row lock and before any refusal — and
+then looks the key up in a separate statement: while a send of that key is in
+flight, a retry waits for its outcome instead of being refused (the thread
+closed meanwhile, the quota filled) for a message that was in fact delivered.
+Access comes first on append: a key never opens a conversation the caller no
+longer sees.
 """
 
+import hashlib
+import logging
 import math
 from datetime import datetime, timedelta, timezone
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field, field_validator, model_validator
-from sqlalchemy import func, or_, select
+from pydantic import (
+    UUID4,
+    BaseModel,
+    Field,
+    WithJsonSchema,
+    field_validator,
+    model_validator,
+)
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.audit import audit
+from app.core.business_metrics import record_message_idempotency
 from app.core.config import settings
 from app.core.db import get_db, lock_row
 from app.core.security import get_current_user
@@ -65,6 +90,16 @@ RECONTACT_BLOCKED = "RECONTACT_BLOCKED"
 # `detail`, never the English text after it.
 OWN_LISTING = "OWN_LISTING"
 CONVERSATION_QUOTA = "CONVERSATION_QUOTA"
+IDEMPOTENCY_KEY_REUSED = "IDEMPOTENCY_KEY_REUSED"
+
+# The advisory-lock class of message sends (BP-10): "BP10" as a signed int4.
+# Two-int advisory keys are a key space of their own; the repository's only
+# other advisory lock is the migration job's single bigint key
+# (app/scripts/migrate.py), which can never collide with it.
+SEND_LOCK_CLASS = 0x42503130
+_SEND_LOCK_DOMAIN = b"bp10.message-send\0"
+
+log = logging.getLogger("homies.engagement")
 
 router = APIRouter(tags=["conversations"])
 
@@ -78,8 +113,17 @@ def _now() -> datetime:
 # --- schemas ------------------------------------------------------------------
 
 
+ClientMessageId = Annotated[UUID4, WithJsonSchema({
+    "type": "string", "format": "uuid",
+    "description": "UUID v4 the client mints when the user sends one message, and repeats "
+                   "unchanged on every retry of that same send; a new message gets a new id. "
+                   "Never shown to the other side of the conversation.",
+})]
+
+
 class MessageIn(BaseModel):
     body: str = Field(min_length=1, max_length=4000)
+    client_message_id: ClientMessageId
 
     @field_validator("body")
     @classmethod
@@ -242,9 +286,12 @@ def _sender_organization(db: Session, user: User, conv: Conversation) -> str | N
     return None
 
 
-def _post(db: Session, user: User, conv: Conversation, side: str, body: str) -> Message:
+def _post(db: Session, user: User, conv: Conversation, side: str, body: str,
+          client_message_id: str) -> Message:
+    """The one writer of USER messages, and so of the send key (BP-10)."""
     message = Message(
         conversation_id=conv.id, sender_user_id=user.id, message_type="USER", body=body,
+        client_message_id=client_message_id,
         sender_organization_id=_sender_organization(db, user, conv) if side == "provider"
         else None,
     )
@@ -253,6 +300,98 @@ def _post(db: Session, user: User, conv: Conversation, side: str, body: str) -> 
     if side == "provider" and conv.provider_stage == "NEW":
         conv.provider_stage = "REPLIED"
     db.flush()
+    return message
+
+
+# --- idempotent sends (BP-10, D-108) ------------------------------------------
+
+
+def send_lock_key(user_id: str, client_message_id: str) -> int:
+    """The int4 half of the advisory key for (sender, client_message_id):
+    signed, so it always fits PostgreSQL `integer`. Only the sender and the
+    key go in — never the route or target, which would split the one
+    namespace both send routes share."""
+    digest = hashlib.sha256(_SEND_LOCK_DOMAIN + user_id.encode() + b"\0"
+                            + client_message_id.encode()).digest()
+    return int.from_bytes(digest[:4], "big", signed=True)
+
+
+def _serialise_send(db: Session, user_id: str, client_message_id: str) -> None:
+    """Wait for any other send of this key to finish, then hold it until this
+    transaction ends.
+
+    Taken before any row lock — so a request waiting here holds none, and the
+    lock adds no edge to the listing → users → conversation → message order —
+    and before any refusal, so a retry never refuses a send that commits while
+    it waits. Transaction-scoped and never inside a savepoint: rolling a
+    savepoint back would release it. The lookup that follows is a separate
+    statement, so under READ COMMITTED it sees whatever the other send
+    committed. SQLite (the unit suite) has no advisory locks and one
+    connection; the PostgreSQL suite proves this."""
+    if db.in_nested_transaction():
+        raise RuntimeError("the message-send lock belongs to the top-level transaction")
+    if db.get_bind().dialect.name != "postgresql":
+        return
+    db.execute(text("SELECT pg_advisory_xact_lock(CAST(:cls AS integer), CAST(:obj AS integer))"),
+               {"cls": SEND_LOCK_CLASS, "obj": send_lock_key(user_id, client_message_id)})
+
+
+def _keyed(db: Session, user_id: str, client_message_id: str) -> Message | None:
+    """The committed message of this sender's send, read fresh, unlocked."""
+    return db.scalar(
+        select(Message).where(Message.sender_user_id == user_id,
+                              Message.client_message_id == client_message_id)
+        .execution_options(populate_existing=True))
+
+
+def _reused() -> HTTPException:
+    return HTTPException(status.HTTP_409_CONFLICT,
+                         f"{IDEMPOTENCY_KEY_REUSED}: this client_message_id already sent "
+                         "a different message")
+
+
+def _replay_start(db: Session, user_id: str, offer_id: str, body: str, message: Message,
+                  outcome: str) -> "ConversationDetail":
+    """The same start again: the thread as it is now, and that message. Only
+    the requester can replay a start, so its view is always the tenant's."""
+    conv = db.get(Conversation, message.conversation_id, populate_existing=True)
+    if (conv is None or conv.listing_id != offer_id or conv.requester_user_id != user_id
+            or message.body != body):
+        record_message_idempotency("start", "conflict")
+        raise _reused()
+    record_message_idempotency("start", outcome)
+    return ConversationDetail(conversation=_out(conv, "tenant"),
+                              messages=[MessageOut.model_validate(message)])
+
+
+def _replay_append(conversation_id: str, body: str, message: Message, outcome: str) -> Message:
+    if message.conversation_id != conversation_id or message.body != body:
+        record_message_idempotency("append", "conflict")
+        raise _reused()
+    record_message_idempotency("append", outcome)
+    return message
+
+
+def _integrity_failure(exc: IntegrityError) -> tuple[str, str]:
+    """SQLSTATE and constraint name — all that may leave an integrity error.
+    Its message and DETAIL carry the failing row: the body, the key."""
+    orig = exc.orig
+    diag = getattr(orig, "diag", None)
+    return (str(getattr(orig, "sqlstate", None) or "unknown"),
+            str(getattr(diag, "constraint_name", None) or "unknown"))
+
+
+def _winner_of_lost_race(db: Session, route: str, user_id: str, client_message_id: str,
+                         failure: tuple[str, str]) -> Message:
+    """After a send's write failed and its transaction was rolled back: the
+    committed message of the same key, if that is what it collided with. If
+    there is none, the failure was not about the key — a sanitized error, so
+    neither the original exception nor its DETAIL reaches a log."""
+    message = _keyed(db, user_id, client_message_id)
+    if message is None:
+        log.warning("message send integrity failure: route=%s sqlstate=%s constraint=%s",
+                    route, *failure)
+        raise RuntimeError(f"integrity: {failure[1]}")
     return message
 
 
@@ -307,19 +446,43 @@ def _quota_retry_after(db: Session, requester_id: str, started: int, now: dateti
     return max(1, math.ceil((oldest + CONVERSATION_WINDOW - now).total_seconds()))
 
 
+_RETRY_AFTER = {"Retry-After": {"description": "Seconds until a retry can succeed.",
+                                "schema": {"type": "integer"}}}
+_SEND_SAFE_TO_RETRY = (
+    "Database unavailable (PR-003); the outcome of the send may be unknown. Retrying the "
+    "same logical send with the same `client_message_id` is safe: it is answered with the "
+    "message if it was written, and writes it once if it was not.")
+_REUSED = ("`IDEMPOTENCY_KEY_REUSED`: this `client_message_id` already sent a message with "
+           "another body or to another conversation or listing (the earlier message is "
+           "unchanged and its own retry still succeeds)")
+_INVALID_SEND = ("Invalid body (1–4000 characters, not blank) or `client_message_id` "
+                 "(missing, or not a UUID v4).")
+# The validation error body is the standard one; naming the 422 here must not
+# drop it from the contract (FastAPI replaces the default entry).
+_INVALID_SEND_RESPONSE = {
+    "description": _INVALID_SEND,
+    "content": {"application/json": {
+        "schema": {"$ref": "#/components/schemas/HTTPValidationError"}}},
+}
+
+
 @router.post(
     "/classifieds/{offer_id}/conversations", response_model=ConversationDetail,
     status_code=201,
     responses={
+        201: {"description": "The message was sent — by this request, or by an earlier one "
+                             "with the same `client_message_id` (then nothing new is written "
+                             "and the thread is shown as it is now)."},
         404: {"description": "No public listing with this id."},
         409: {"description": "Stable codes: `OWN_LISTING` (the caller manages this listing); "
                              "`RECONTACT_BLOCKED` (G-14: Homies closed the caller's conversation "
-                             "for this publication)."},
+                             f"for this publication); {_REUSED}."},
+        422: _INVALID_SEND_RESPONSE,
         429: {"description": "`CONVERSATION_QUOTA`: the daily limit of new conversations is "
                              "reached (existing threads continue), or the rate limit (no code). "
                              "Both send `Retry-After`.",
-              "headers": {"Retry-After": {"description": "Seconds until a retry can succeed.",
-                                          "schema": {"type": "integer"}}}},
+              "headers": _RETRY_AFTER},
+        503: {"description": _SEND_SAFE_TO_RETRY, "headers": _RETRY_AFTER},
     },
 )
 def start_conversation(
@@ -328,6 +491,26 @@ def start_conversation(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # BP-10: an earlier send of this key is answered before anything that
+    # would refuse a new one — the listing withdrawn, a G-14 block or the
+    # quota since then do not undo a message that was sent.
+    user_id, key = user.id, str(body.client_message_id)
+    _serialise_send(db, user_id, key)
+    earlier = _keyed(db, user_id, key)
+    if earlier is not None:
+        return _replay_start(db, user_id, offer_id, body.body, earlier, "replay")
+    try:
+        return _start(db, offer_id, body.body, key, user)
+    except IntegrityError as exc:
+        failure = _integrity_failure(exc)
+    # The whole transaction, never a savepoint: a new thread, its participants
+    # and its audit row go with the message that lost.
+    db.rollback()
+    winner = _winner_of_lost_race(db, "start", user_id, key, failure)
+    return _replay_start(db, user_id, offer_id, body.body, winner, "race_recovered")
+
+
+def _start(db: Session, offer_id: str, body: str, key: str, user: User) -> "ConversationDetail":
     # The listing row FOR SHARE first (S4b): a listing decision holds it FOR
     # UPDATE while it closes engagement, so a start waits for that decision
     # and then sees its outcome — never a thread opened behind a closure.
@@ -377,7 +560,7 @@ def start_conversation(
                 _refuse_recontact(db, offer, user)
                 raise
             conv = existing
-            message = _post(db, user, conv, "tenant", body.body)
+            message = _post(db, user, conv, "tenant", body, key)
             db.commit()
             return ConversationDetail(conversation=_out(conv, "tenant"),
                                       messages=[MessageOut.model_validate(message)])
@@ -390,7 +573,7 @@ def start_conversation(
         audit(db, actor=user.id, action="conversation.started", entity_type="conversation",
               entity_id=conv.id)
 
-    message = _post(db, user, conv, "tenant", body.body)
+    message = _post(db, user, conv, "tenant", body, key)
     db.commit()
     return ConversationDetail(conversation=_out(conv, "tenant"),
                               messages=[MessageOut.model_validate(message)])
@@ -428,8 +611,17 @@ def read_conversation(
 @router.post(
     "/conversations/{conversation_id}/messages", response_model=MessageOut, status_code=201,
     responses={
-        404: {"description": "No conversation this account is a side of."},
-        409: {"description": "Stable code: `CONVERSATION_CLOSED` (Homies closed it)."},
+        201: {"description": "The message was sent — by this request, or by an earlier one "
+                             "with the same `client_message_id` (then nothing new is written "
+                             "and the message is shown as it is now)."},
+        404: {"description": "No conversation this account is a side of (also for a retry "
+                             "of a send, once the account is no longer a side)."},
+        409: {"description": "Stable codes: `CONVERSATION_CLOSED` (Homies closed it); "
+                             f"{_REUSED}."},
+        422: _INVALID_SEND_RESPONSE,
+        429: {"description": "Rate limit (no code); see `Retry-After`.",
+              "headers": _RETRY_AFTER},
+        503: {"description": _SEND_SAFE_TO_RETRY, "headers": _RETRY_AFTER},
     },
 )
 def send_message(
@@ -438,16 +630,29 @@ def send_message(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Access first (D-108): a key replays only inside a conversation the
+    # caller is a side of now — it is never a capability.
     conv, side = _load(db, user, conversation_id)
-    # The conversation row first, then its status under the lock: a closure
-    # that committed before this point is seen; one that comes later waits
-    # for this message (S4b, invariant I-1).
-    locked = _lock(db, conv.id)
-    if locked is None or locked.status != "ACTIVE":
-        raise _closed()
-    message = _post(db, user, locked, side, body.body)
-    db.commit()
-    return message
+    user_id, conv_id, key = user.id, conv.id, str(body.client_message_id)
+    _serialise_send(db, user_id, key)
+    earlier = _keyed(db, user_id, key)
+    if earlier is not None:
+        return _replay_append(conv_id, body.body, earlier, "replay")
+    try:
+        # The conversation row first, then its status under the lock: a
+        # closure that committed before this point is seen; one that comes
+        # later waits for this message (S4b, invariant I-1).
+        locked = _lock(db, conv_id)
+        if locked is None or locked.status != "ACTIVE":
+            raise _closed()
+        message = _post(db, user, locked, side, body.body, key)
+        db.commit()
+        return message
+    except IntegrityError as exc:
+        failure = _integrity_failure(exc)
+    db.rollback()
+    winner = _winner_of_lost_race(db, "append", user_id, key, failure)
+    return _replay_append(conv_id, body.body, winner, "race_recovered")
 
 
 @router.post("/conversations/{conversation_id}/assign",

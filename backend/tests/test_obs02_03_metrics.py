@@ -183,3 +183,54 @@ def test_money_amounts_are_not_exposed_as_counters():
             assert "amount" not in metric.documentation.lower() or "never amounts" in (
                 metric.documentation.lower()
             ), metric.documentation
+
+
+# --- BP-10: idempotent message sends ------------------------------------------
+
+
+def _idempotency(route: str, outcome: str) -> float:
+    return _sample("homies_message_idempotency_total", route=route, outcome=outcome)
+
+
+def test_message_idempotency_labels_are_closed_sets():
+    assert bm.MESSAGE_IDEMPOTENCY_ROUTES == ("start", "append")
+    assert bm.MESSAGE_IDEMPOTENCY_OUTCOMES == ("replay", "conflict", "race_recovered")
+    before = _idempotency("append", "replay")
+    bm.record_message_idempotency("append", "replay")
+    assert _idempotency("append", "replay") == before + 1
+    for route, outcome in (("start", "first"), ("send", "replay"), ("start", "x" * 36)):
+        with pytest.raises(ValueError):
+            bm.record_message_idempotency(route, outcome)
+    for metric in REGISTRY.collect():
+        if metric.name == "homies_message_idempotency":
+            for s in metric.samples:
+                if s.name.endswith("_total"):
+                    assert set(s.labels) == {"route", "outcome"}
+                    assert s.labels["route"] in bm.MESSAGE_IDEMPOTENCY_ROUTES
+                    assert s.labels["outcome"] in bm.MESSAGE_IDEMPOTENCY_OUTCOMES
+
+
+def test_message_idempotency_counts_replays_and_conflicts_not_first_sends(client):
+    from uuid import uuid4
+
+    from tests.conftest import auth
+    from tests.test_reports_moderation import _listing, _verified
+
+    _owner, offer = _listing(client)
+    tenant = _verified(client, "bp10-metrics")
+    key = str(uuid4())
+    payload = {"body": "Dzień dobry", "client_message_id": key}
+    counts = {o: _idempotency("start", o) for o in bm.MESSAGE_IDEMPOTENCY_OUTCOMES}
+    url = f"/v1/classifieds/{offer}/conversations"
+    assert client.post(url, json=payload, headers=auth(tenant)).status_code == 201
+    assert {o: _idempotency("start", o) for o in counts} == counts  # a first send is not counted
+    assert client.post(url, json=payload, headers=auth(tenant)).status_code == 201
+    assert client.post(url, json={**payload, "body": "inne"}, headers=auth(tenant)).status_code \
+        == 409
+    assert _idempotency("start", "replay") == counts["replay"] + 1
+    assert _idempotency("start", "conflict") == counts["conflict"] + 1
+    assert _idempotency("start", "race_recovered") == counts["race_recovered"]
+    # The key never becomes a label value.
+    for metric in REGISTRY.collect():
+        for s in metric.samples:
+            assert key not in s.labels.values()

@@ -157,6 +157,13 @@ class Message(Base):
             name="ck_messages_user_message_has_sender",
         ),
         Index("ix_messages_conversation_created", "conversation_id", "created_at"),
+        # BP-10 (D-108): one message per sender per logical send, across both
+        # send routes. The pair is the idempotency identity; NULL (SYSTEM
+        # lines, rows from before BP-10) is outside it.
+        Index("uq_messages_sender_client_message", "sender_user_id", "client_message_id",
+              unique=True,
+              postgresql_where=text("client_message_id IS NOT NULL"),
+              sqlite_where=text("client_message_id IS NOT NULL")),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
@@ -175,6 +182,10 @@ class Message(Base):
     edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     redacted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     redaction_reason_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # The client's UUID v4 for the logical send that wrote this message
+    # (BP-10), canonical lowercase. Never projected to anyone: the other side
+    # must not learn the sender's draft identifiers.
+    client_message_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
 
 # --- Viewings (Domain Schema v1 §57–§60) --------------------------------------

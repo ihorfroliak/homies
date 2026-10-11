@@ -12,6 +12,7 @@ call the services and route functions on their own sessions.
 """
 
 import time
+from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
@@ -35,6 +36,7 @@ from tests.test_reports_moderation_pg import (
     _session,
     _user,
 )
+from tests.test_conversations import send_json
 
 pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="TEST_DATABASE_URL not set")
 
@@ -56,13 +58,13 @@ def _thread(pg_client):
     tenant_email = f"s4a-pg-tenant-{_n['i']}@example.com"
     tenant = register_and_login(pg_client, tenant_email, "guest")
     _verify(pg_client, tenant)
-    started = pg_client.post(f"/v1/classifieds/{offer}/conversations", json={"body": "Hej"},
+    started = pg_client.post(f"/v1/classifieds/{offer}/conversations", json=send_json("Hej"),
                              headers=auth(tenant))
     assert started.status_code == 201, started.text
     conv = started.json()["conversation"]["id"]
     tenant_msg = started.json()["messages"][0]["id"]
     owner_msg = pg_client.post(f"/v1/conversations/{conv}/messages",
-                               json={"body": f"Wire the deposit {CANARY}"},
+                               json=send_json(f"Wire the deposit {CANARY}"),
                                headers=auth(owner)).json()["id"]
     return owner_email, tenant_email, offer, conv, owner_msg, tenant_msg
 
@@ -325,8 +327,9 @@ def test_m_r8_the_window_is_fixed_by_id_and_never_crosses_conversations(pg_clien
 
         def write_more():  # new messages committed while the review is open
             with _session(eng) as w:
-                conversations.send_message(conv, conversations.MessageIn(body="later"),
-                                           user=_user(w, tenant), db=w)
+                conversations.send_message(
+                    conv, conversations.MessageIn(client_message_id=uuid4(), body="later"),
+                    user=_user(w, tenant), db=w)
         t = _run(result, "w", write_more)
         t.join(15)
         r.commit()

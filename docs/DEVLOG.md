@@ -1148,3 +1148,85 @@ code-bearing стан `main` (`a7756e1`) і HEAD з Git; disposition-рядки 
 milestone — CANONICAL DECISION REQUIRED. Наступна інженерна задача: BP-10
 (не розпочата). `FE-003 / FE-VIS-001 IMPLEMENTATION AUTHORIZED: NO`;
 `PRODUCTION READY: NO`; `DEPLOYMENT: NO`.
+
+## 2026-10-10 — BP-10 Phase B: ідемпотентні відправки повідомлень (кандидат, не змерджено)
+
+**Зроблено** (гілка `claude/BP-10-idempotent-message-send` від `be150da`;
+D-108; [контракт](tasks/BP-10-idempotent-message-send.md)):
+- `messages.client_message_id` + частковий UNIQUE `uq_messages_sender_client_message`
+  (sender, key); міграція `11d778ab87a3` (EXPAND, rollback BLOCKED, migrate first);
+  port deviation #23.
+- Обидва маршрути відправки вимагають `client_message_id` (UUID v4); той самий ключ →
+  201 з тим самим повідомленням (replay нічого не пише); інше тіло чи ціль → 409
+  `IDEMPOTENCY_KEY_REUSED`; доступ на append перевіряється першим (ключ — не capability).
+- Транзакційний advisory-лок (sender, key) до будь-якого row-lock і до будь-якої
+  відмови; lookup окремою інструкцією (READ COMMITTED). `hide_parameters=True` для PG;
+  IntegrityError → повний rollback → свіжий lookup → replay/409, інакше санітизована
+  помилка без DETAIL. Лічильник `homies_message_idempotency_total{route,outcome}`.
+- FE-003 доповнено (CF-22, §1.2, §3.2, §6.6, §9.1, §10.1); код зареєстровано в BP-1;
+  IMPLEMENTATION-CONVERGENCE і RELEASE-AND-MIGRATION оновлено.
+
+**Вивчено:**
+- Allowlist Phase A пропустив тести, що закріплюють голову схеми й форму ланцюжка
+  (`test_moderation_core`, `test_schema_compat`, `test_release_pg`) і записи
+  release-policy: grep літерала голови не знаходить тестів, які беруть голову з графа,
+  але жорстко задають кількість кроків. Майбутній Phase A із міграцією має їх
+  інвентаризувати.
+- SQLite повертає `DateTime(timezone=True)` без зони (UTC) — у SQLite-тестах
+  порівнюємо моменти, на PostgreSQL рядки збігаються точно.
+- Advisory-лок несе навантаження лише в тристоронній інтерлівінгу (T22): у двосторонній
+  гонці unique-індекс тримає сам, тож мутанти «без лока» вбиває тільки PG-харнес T22.
+- Скіл `micro-cycle` містить застарілі інструкції (push у `main`) — не застосовано;
+  діють поточні правила гілки й злиття.
+
+**Далі:** Phase C (C1, C2, обов'язковий Codex-аудит) по точному SHA кандидата;
+`MERGE AUTHORIZED: NO`; FE-003 keyed-відправки — лише коли BP-10 на всіх інстансах.
+
+## 2026-10-11 — BP-10: незалежний аудит і staging доказів прийняття
+
+На окремій `codex/BP-10-acceptance-integration` від frozen implementation
+`c385136c93826879b41509f1e30533ef46eee64c` — лише документація/докази,
+за явним дозволом засновника. Код, міграції, тести, generated API і гілки
+BP-10/AGENT-001 не змінено. Оригінальний Codex-аудит скопійовано байт-у-байт
+у `docs/reviews/2026-10-11-bp10-codex-final-audit.md`; SHA256
+`5b289d02391b7f049df65c71c2e4e6cb4a2fa6d48241100e4520d36678a9461a`.
+Вердикт PASS_WITH_NONBLOCKING_NOTES: P0/P1/P2=0, P3=4, NOTE=5.
+
+**D-109:** затверджено лише вузький CX-01 exception (власний rejected key
+відправника в `detail[].input` HTTP 422), CX-02 temporal authority debt без
+твердження про незмінну частоту/відсутність amplification, CX-03 malformed
+Unicode500 debt, CX-04 permanent T22 coverage/cleanup/oracle debt. У BP-10 §8
+є локальні DEBT-1…3, власники й критерії закриття; repairs не зроблено й не
+авторизовано. Усі п'ять NOTEs збережено, зокрема raw PG DETAIL і EXPAND /
+rollback BLOCKED; all 28 semantic kills не сертифіковано. Receipt зберігає
+хеші C1/C2/builder і шість підтверджених scope extensions.
+
+Окремо засновник схвалив AGENT-001 як постійну configuration foundation
+(шість Claude specialists + шість Codex roles); native dispatch лишається
+неперевіреним, vendor caches/memories не названо синхронізованими. PR #5
+не змінено; це не prerequisite FE-003. Рекомендований порядок рішень:
+BP-10, потім reconciliation AGENT-001; обидва DEVLOG entries треба зберегти.
+
+Це staging, не вже виконаний merge. Після окремо дозволеного merge BP-10
+наступні BP-5 + BP-6 потребують власного контракту/дозволу. IBB-001 — остання
+формальна база, IBB-002 немає. BB-11 лишається all-serving-instances gate.
+BP-10 / AGENT-001 MERGE AUTHORIZED: NO;
+FE-003 / FE-VIS-001 IMPLEMENTATION AUTHORIZED: NO;
+PRODUCTION READY: NO; DEPLOYMENT: NO.
+
+## 2026-10-11 — Фінальна авторизація інтеграції та BP-5/BP-6 (D-110)
+
+Засновник прийняв BP-10 та конфігурацію AGENT-001 для подальшої розробки
+і дозволив послідовні history-preserving merges PR #6, потім PR #5 після
+reconciliation та required CI. Попередній staging entry і D-109 залишено
+без переписування; чотири P3, п'ять NOTEs та технічний борг збережено.
+Це запис дозволу, не вигаданий merge SHA: інтегрований статус набуває сили
+після відповідного merge; фактичні SHA/CI визначають Git і PR.
+
+Після обох інтеграцій Codex — тимчасовий єдиний writer для BP-5, потім BP-6;
+контракт, код, тести, feature-branch commits/push і Draft PR дозволено.
+Нова R2 реалізація потребує окремого незалежного exact-SHA review та нового
+дозволу на її merge. Native routing AGENT-001 лишається NOT VERIFIED там,
+де його не спостерігали; це прийняте неблокуюче обмеження.
+IBB-001 без змін; EXPAND / rollback BLOCKED / migrate-first / BB-11 gate
+збережено; FE-003/FE-VIS-001 не авторизовані; production/deployment — NO.

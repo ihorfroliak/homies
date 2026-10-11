@@ -7,6 +7,7 @@ timing. Against the pre-TASK-002 code, each of these tests fails.
 
 import threading
 import time
+from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
@@ -19,6 +20,7 @@ from app.modules.properties import router as properties
 from app.modules.properties.models import ContactReveal
 from tests.conftest import auth, register_and_login
 from tests.test_reveal_quota_pg import _publish, _verified_seeker
+from tests.test_conversations import send_json
 
 WAIT = 15
 
@@ -217,7 +219,8 @@ def test_f09_two_simultaneous_starts_make_one_conversation(pg_client, pg_migrate
         with Session() as db:
             user = db.scalar(select(User).where(User.email == "chat-race@example.com"))
             return engagement.start_conversation(
-                listing, engagement.MessageIn(body=f"message {n}"), user, db
+                listing, engagement.MessageIn(client_message_id=uuid4(), body=f"message {n}"),
+                user, db
             ).conversation.id
 
     results: dict = {}
@@ -255,7 +258,7 @@ def test_f09_the_database_holds_one_active_thread(pg_client, pg_migrated_engine)
     pg_client.post(f"/v1/classifieds/{listing}/publish", headers=auth(owner))
     tenant = register_and_login(pg_client, "db-chat@example.com", "guest")
     made = pg_client.post(f"/v1/classifieds/{listing}/conversations",
-                          json={"body": "Dzień dobry"}, headers=auth(tenant))
+                          json=send_json("Dzień dobry"), headers=auth(tenant))
     assert made.status_code in (200, 201), made.text
     with pytest.raises(IntegrityError) as caught, pg_migrated_engine.begin() as conn:
         conn.execute(text(
@@ -316,7 +319,8 @@ def test_f09_two_new_threads_at_quota_one_admit_exactly_one(
         with Session() as db:
             user = db.scalar(select(User).where(User.email == "quota-chat@example.com"))
             return engagement.start_conversation(
-                listing, engagement.MessageIn(body="Dzień dobry"), user, db
+                listing, engagement.MessageIn(client_message_id=uuid4(), body="Dzień dobry"),
+                user, db
             ).conversation.id
 
     results: dict = {}

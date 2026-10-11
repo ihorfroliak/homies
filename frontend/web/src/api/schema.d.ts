@@ -2706,6 +2706,12 @@ export interface components {
         MessageIn: {
             /** Body */
             body: string;
+            /**
+             * Client Message Id
+             * Format: uuid
+             * @description UUID v4 the client mints when the user sends one message, and repeats unchanged on every retry of that same send; a new message gets a new id. Never shown to the other side of the conversation.
+             */
+            client_message_id: string;
         };
         /**
          * MessageOut
@@ -5400,7 +5406,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Successful Response */
+            /** @description The message was sent — by this request, or by an earlier one with the same `client_message_id` (then nothing new is written and the thread is shown as it is now). */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -5416,14 +5422,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Stable codes: `OWN_LISTING` (the caller manages this listing); `RECONTACT_BLOCKED` (G-14: Homies closed the caller's conversation for this publication). */
+            /** @description Stable codes: `OWN_LISTING` (the caller manages this listing); `RECONTACT_BLOCKED` (G-14: Homies closed the caller's conversation for this publication); `IDEMPOTENCY_KEY_REUSED`: this `client_message_id` already sent a message with another body or to another conversation or listing (the earlier message is unchanged and its own retry still succeeds). */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Validation Error */
+            /** @description Invalid body (1–4000 characters, not blank) or `client_message_id` (missing, or not a UUID v4). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5434,6 +5440,15 @@ export interface operations {
             };
             /** @description `CONVERSATION_QUOTA`: the daily limit of new conversations is reached (existing threads continue), or the rate limit (no code). Both send `Retry-After`. */
             429: {
+                headers: {
+                    /** @description Seconds until a retry can succeed. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Database unavailable (PR-003); the outcome of the send may be unknown. Retrying the same logical send with the same `client_message_id` is safe: it is answered with the message if it was written, and writes it once if it was not. */
+            503: {
                 headers: {
                     /** @description Seconds until a retry can succeed. */
                     "Retry-After"?: number;
@@ -5760,7 +5775,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Successful Response */
+            /** @description The message was sent — by this request, or by an earlier one with the same `client_message_id` (then nothing new is written and the message is shown as it is now). */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -5769,21 +5784,21 @@ export interface operations {
                     "application/json": components["schemas"]["MessageOut"];
                 };
             };
-            /** @description No conversation this account is a side of. */
+            /** @description No conversation this account is a side of (also for a retry of a send, once the account is no longer a side). */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Stable code: `CONVERSATION_CLOSED` (Homies closed it). */
+            /** @description Stable codes: `CONVERSATION_CLOSED` (Homies closed it); `IDEMPOTENCY_KEY_REUSED`: this `client_message_id` already sent a message with another body or to another conversation or listing (the earlier message is unchanged and its own retry still succeeds). */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Validation Error */
+            /** @description Invalid body (1–4000 characters, not blank) or `client_message_id` (missing, or not a UUID v4). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5791,6 +5806,24 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+            /** @description Rate limit (no code); see `Retry-After`. */
+            429: {
+                headers: {
+                    /** @description Seconds until a retry can succeed. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Database unavailable (PR-003); the outcome of the send may be unknown. Retrying the same logical send with the same `client_message_id` is safe: it is answered with the message if it was written, and writes it once if it was not. */
+            503: {
+                headers: {
+                    /** @description Seconds until a retry can succeed. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
