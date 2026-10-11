@@ -4,12 +4,12 @@
 |---|---|
 | Purpose | FE-003 backend prerequisite BP-10 ([FE-003 §10.1](FE-003-save-conversation-viewing-DRAFT.md)); beta blocker BB-11 |
 | Authority | **D-108** ([`docs/DECISIONS.md`](../DECISIONS.md)) — founder decision approving FD-1…FD-9 and this contract (2026-10-10); FE-003 §3.2, §10.1, AC-C7 (D-104, D-105); canon 04 §73 and 04a §6 (respected through FE-003's "equivalent unique key" clause); PR-003 (D-89, D-90); BP-1 code convention |
-| Authorisation | founder: BP-10 Phase B implementation authorised; allowlist expanded twice (head-pinning tests, release-policy record). `MERGE AUTHORIZED: NO`; `FE-003 IMPLEMENTATION AUTHORIZED: NO`; `FE-VIS-001 IMPLEMENTATION AUTHORIZED: NO` |
+| Authorisation | Founder D-110: ACCEPTED FOR CONTINUED DEVELOPMENT; PR #6 MERGE AUTHORIZED: YES after required checks. Earlier D-108/D-109 pending permissions are historical. FE-003/FE-VIS-001 implementation and deployment remain unauthorized |
 | Risk | **R2** — concurrency, private engagement, privacy, authorization/replay, plus a migration: a 05 §9 high-risk change, so the mandatory Codex audit applies |
 | Baseline | `main` = `be150da11b9838409fcf8ee2d8ca4bd8b0311307` (tree `7a21621725f6250fd0f84e67db09fbda0964be7b`), CI `37518003115` success 6/6; Alembic head `a3c5e7f9b1d4` |
 | Branch | `claude/BP-10-idempotent-message-send` |
 | Phase A | read-only audit + proposed contract, PASS (2026-10-07); transport report outside the repository (not authority) |
-| Status | **CANDIDATE — PHASE C REPORTS COMPLETE; ACCEPTANCE EVIDENCE STAGED**. C1/C2 and mandatory Codex verdicts: `PASS_WITH_NONBLOCKING_NOTES`; founder-approved bounded dispositions D-109 (§8). Final acceptance/merge pending; no separate C1/C2 final acceptance is inferred. `MERGE AUTHORIZED: NO` |
+| Status | **ACCEPTED FOR CONTINUED DEVELOPMENT (D-110); INTEGRATED effective upon PR #6 merge to main**. Before merge this branch is a candidate. Phase C C1/C2/Codex PASS_WITH_NONBLOCKING_NOTES; D-109 dispositions and all open debt unchanged. Actual merge identity is recorded by Git/PR #6, not predicted |
 | Frozen audited implementation | `c385136c93826879b41509f1e30533ef46eee64c`, tree `15c26d7aedd525e2b5ea4beef8383e313a1473fd`; CI `38047352161` success 6/6. Documentation children are not substituted as this audited implementation SHA. [Receipt](../reviews/2026-10-11-bp10-acceptance-staging-receipt.md) |
 
 ## 1. Problem

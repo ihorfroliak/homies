@@ -1213,3 +1213,20 @@ BP-10, потім reconciliation AGENT-001; обидва DEVLOG entries треб
 BP-10 / AGENT-001 MERGE AUTHORIZED: NO;
 FE-003 / FE-VIS-001 IMPLEMENTATION AUTHORIZED: NO;
 PRODUCTION READY: NO; DEPLOYMENT: NO.
+
+## 2026-10-11 — Фінальна авторизація інтеграції та BP-5/BP-6 (D-110)
+
+Засновник прийняв BP-10 та конфігурацію AGENT-001 для подальшої розробки
+і дозволив послідовні history-preserving merges PR #6, потім PR #5 після
+reconciliation та required CI. Попередній staging entry і D-109 залишено
+без переписування; чотири P3, п'ять NOTEs та технічний борг збережено.
+Це запис дозволу, не вигаданий merge SHA: інтегрований статус набуває сили
+після відповідного merge; фактичні SHA/CI визначають Git і PR.
+
+Після обох інтеграцій Codex — тимчасовий єдиний writer для BP-5, потім BP-6;
+контракт, код, тести, feature-branch commits/push і Draft PR дозволено.
+Нова R2 реалізація потребує окремого незалежного exact-SHA review та нового
+дозволу на її merge. Native routing AGENT-001 лишається NOT VERIFIED там,
+де його не спостерігали; це прийняте неблокуюче обмеження.
+IBB-001 без змін; EXPAND / rollback BLOCKED / migrate-first / BB-11 gate
+збережено; FE-003/FE-VIS-001 не авторизовані; production/deployment — NO.

@@ -246,7 +246,7 @@ baseline. This section lists scope only; it defines none of those.
 
 ---
 
-## 9. BP-10 — reviewed candidate; acceptance staging (2026-10-11)
+## 9. BP-10 — independent review and founder acceptance (2026-10-11)
 
 Frozen implementation `c385136c93826879b41509f1e30533ef46eee64c`, tree
 `15c26d7aedd525e2b5ea4beef8383e313a1473fd`, from
@@ -262,9 +262,11 @@ Founder D-109 approves only the narrow 422 exception and bounded temporal
 authority, malformed-input and mutation-test debt; all NOTEs remain visible.
 This is a completed independent audit and staged finding dispositions,
 **not a merge record or formal successor baseline**. Documentation children
-do not replace the independently audited implementation. Final acceptance
-and both BP-10/AGENT-001 merge permissions remain pending; current status
-belongs to [PROJECT-STATUS](../PROJECT-STATUS.md). No broad re-audit is started.
+do not replace the independently audited implementation. D-110 subsequently accepts BP-10 and AGENT-001 for continued development and
+authorizes PR #6/#5 with normal checks; integration is effective upon their
+respective merges. Current status belongs to [PROJECT-STATUS](../PROJECT-STATUS.md).
+No broad re-audit is started; the new BP-5/BP-6 implementation requires its own
+separate exact-SHA independent review.
 
 ## Before the canon (historical)
 

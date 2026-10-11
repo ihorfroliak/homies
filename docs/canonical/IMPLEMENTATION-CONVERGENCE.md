@@ -108,23 +108,23 @@ Production: **NOT READY · NOT DEPLOYED.**
 
 ## BP-10 — idempotent message sends (2026-10-10)
 
-**R2 · frozen implementation candidate; Phase C (C1, C2 and mandatory Codex)
-complete, PASS_WITH_NONBLOCKING_NOTES; final acceptance/merge pending.**
-Implementation `c385136c93826879b41509f1e30533ef46eee64c`; D-109 approves
-four bounded P3 dispositions, preserves all five NOTEs and authorizes only
-documentation/evidence staging. [Receipt](../reviews/2026-10-11-bp10-acceptance-staging-receipt.md).
-The original branch/behavior remains frozen; documentation children are not a
-new audited implementation. Decisions D-108 / D-109;
+**R2 · ACCEPTED FOR CONTINUED DEVELOPMENT (D-110); INTEGRATED effective
+upon PR #6 merge to main.** Before merge this branch is a candidate.
+Frozen implementation `c385136c93826879b41509f1e30533ef46eee64c`; completed
+C1/C2/Codex reviews PASS_WITH_NONBLOCKING_NOTES. D-109's four bounded P3
+dispositions and all five NOTEs remain unchanged. Documentation children do
+not replace the audited implementation. [Historical receipt](../reviews/2026-10-11-bp10-acceptance-staging-receipt.md);
 [task contract](../tasks/BP-10-idempotent-message-send.md).
 
 | Area | Classification | State |
 |---|---|---|
-| message-send idempotency (`client_message_id`, unique (sender, key), advisory send lock) | **CANDIDATE (independently audited; merge pending)** | both send routes; same key → 201 with the same message; replay writes nothing; FE-003 §10.1 "equivalent unique key" (port deviation #23); narrow caller-owned rejected-key422 exception and scoped temporal/input/test debt in BP-10 §8 |
-| stable code `IDEMPOTENCY_KEY_REUSED` | **CANDIDATE (independently audited; merge pending)** | 409, same key with another body or target; added to the BP-1 code inventory |
+| message-send idempotency (`client_message_id`, unique (sender, key), advisory send lock) | **ACCEPTED; integrated on PR #6 merge** | both send routes; same key → 201 with the same message; replay writes nothing; FE-003 §10.1 "equivalent unique key" (port deviation #23); narrow caller-owned rejected-key422 exception and scoped temporal/input/test debt in BP-10 §8 |
+| stable code `IDEMPOTENCY_KEY_REUSED` | **ACCEPTED; integrated on PR #6 merge** | 409, same key with another body or target; added to the BP-1 code inventory |
 | canonical `platform.idempotency_keys` (04 §73) | **CANON PRESENT · PHYSICAL IMPLEMENTATION MISSING** | unchanged; not used by BP-10 (D-108) |
 | idempotency of property / classified creates | **DEBT** | separate future work (D-108) |
 
-Only an explicit founder-approved merge makes these candidate rows integrated.
+D-110 authorizes that normal protected-branch merge; the rows become integrated
+when PR #6 reaches main. Actual merge SHA/CI comes from Git and the PR.
 EXPAND / rollback BLOCKED and BB-11 all-instances gate remain; raw PG DETAIL
 is outside application parameter hiding, and all 28 semantic mutation kills
 are not certified. IBB-001 remains the last formal baseline. D-109 does not
@@ -853,7 +853,7 @@ written). Dispositions per founder instruction 2026-09-24 §20.
 | 20 | No message attachments | **MUST_CLOSE** | 04 §56 is Phase-1 schema; low priority, needs private file access |
 | 21 | No media variants; PHOTO/FLOOR_PLAN only | **MUST_CLOSE** | 04a §11 — derivatives before public scale |
 | 22 | Synchronous in-request image processing | **MUST_CLOSE → repaired, pending re-audit** | TASK-002 R3: maintained library (Pillow) with explicit budget, worker thread under a concurrency slot budget. Isolated processing deferred to the derivatives task |
-| 23 | Message-send idempotency as a key on `messages` (`client_message_id` + partial UNIQUE (sender, key)), not `platform.idempotency_keys` (§73) | **ACCEPTED** (D-108) — BP-10 candidate, not yet on `main` | FE-003 §10.1 "equivalent unique key"; the key lives with the message row and its retention/anonymisation lifecycle; §73 stays the seam for other idempotent operations |
+| 23 | Message-send idempotency as a key on `messages` (`client_message_id` + partial UNIQUE (sender, key)), not `platform.idempotency_keys` (§73) | **ACCEPTED** (D-108) — BP-10 accepted under D-110; integrated when PR #6 reaches `main` | FE-003 §10.1 "equivalent unique key"; the key lives with the message row and its retention/anonymisation lifecycle; §73 stays the seam for other idempotent operations |
 
 ## 5. C8 security flag
 
