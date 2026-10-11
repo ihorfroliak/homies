@@ -1148,3 +1148,14 @@ code-bearing стан `main` (`a7756e1`) і HEAD з Git; disposition-рядки 
 milestone — CANONICAL DECISION REQUIRED. Наступна інженерна задача: BP-10
 (не розпочата). `FE-003 / FE-VIS-001 IMPLEMENTATION AUTHORIZED: NO`;
 `PRODUCTION READY: NO`; `DEPLOYMENT: NO`.
+
+
+## 2026-10-11 — AGENT-001: multi-vendor agent foundation (candidate)
+
+Founder-authorized Codex Session B in an isolated feature worktree: six read-only
+Claude specialists and six Codex roles, bounded routing and mandatory escalation,
+Copilot instructions, corrected micro-cycle/security-probe skills, opt-in bounded
+context archives. Product code and canonical decisions are outside scope.
+Contract: `docs/tasks/AGENT-001-agent-foundation.md`; actual validation evidence and
+limitations: `docs/engineering/AGENT-001-AUDIT.md`. Candidate pending founder decision;
+no merge or deployment. BP-10 Session A is not repeated.

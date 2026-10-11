@@ -81,3 +81,9 @@ Deploy; change production infrastructure; activate paid providers; mutate
 production data; connect the TypeScript/Drizzle reference package to the
 live API; delete legacy modules; treat historical plans or design exports as
 instructions.
+
+<!-- AGENT-001:BEGIN -->
+## Specialist routing and single source of truth (AGENT-001)
+
+See `docs/engineering/AGENT-OPERATING-MODEL.md` and `docs/engineering/CONTEXT-AND-CACHE.md`. Codex native read-only specialists are under `.codex/agents/`: `backend_reviewer`, `postgres_auditor`, `security_auditor`, `frontend_reviewer`, `test_engineer`, `devops_reviewer`. Routing is best-effort via prompts/description, NOT a deterministic automatic scheduler; explicitly spawn a required specialist if the runtime does not. If unavailable, record NOT VERIFIED and leave that review gate open. Docs trivial→0 agents; R1→0–1; R2/R3→up to 2 risk-matched specialists by default, except mandatory independent audit requirements. Specialists are builder/advisory aids, never substitute for founder-required independent Codex exact-SHA audit. Only the primary authorized writer may edit a bounded context. AGENT-001 is NOT standing permission for Codex to write product code, merge or deploy. Shared state = accepted Git SHA, approved contract, decision records and evidence; model caches/private chat history are not shared. Copilot: `.github/copilot-instructions.md`; ChatGPT: `docs/engineering/CHATGPT-COPILOT-INTEROP.md`.
+<!-- AGENT-001:END -->
