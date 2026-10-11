@@ -1181,3 +1181,35 @@ D-108; [контракт](tasks/BP-10-idempotent-message-send.md)):
 
 **Далі:** Phase C (C1, C2, обов'язковий Codex-аудит) по точному SHA кандидата;
 `MERGE AUTHORIZED: NO`; FE-003 keyed-відправки — лише коли BP-10 на всіх інстансах.
+
+## 2026-10-11 — BP-10: незалежний аудит і staging доказів прийняття
+
+На окремій `codex/BP-10-acceptance-integration` від frozen implementation
+`c385136c93826879b41509f1e30533ef46eee64c` — лише документація/докази,
+за явним дозволом засновника. Код, міграції, тести, generated API і гілки
+BP-10/AGENT-001 не змінено. Оригінальний Codex-аудит скопійовано байт-у-байт
+у `docs/reviews/2026-10-11-bp10-codex-final-audit.md`; SHA256
+`5b289d02391b7f049df65c71c2e4e6cb4a2fa6d48241100e4520d36678a9461a`.
+Вердикт PASS_WITH_NONBLOCKING_NOTES: P0/P1/P2=0, P3=4, NOTE=5.
+
+**D-109:** затверджено лише вузький CX-01 exception (власний rejected key
+відправника в `detail[].input` HTTP 422), CX-02 temporal authority debt без
+твердження про незмінну частоту/відсутність amplification, CX-03 malformed
+Unicode500 debt, CX-04 permanent T22 coverage/cleanup/oracle debt. У BP-10 §8
+є локальні DEBT-1…3, власники й критерії закриття; repairs не зроблено й не
+авторизовано. Усі п'ять NOTEs збережено, зокрема raw PG DETAIL і EXPAND /
+rollback BLOCKED; all 28 semantic kills не сертифіковано. Receipt зберігає
+хеші C1/C2/builder і шість підтверджених scope extensions.
+
+Окремо засновник схвалив AGENT-001 як постійну configuration foundation
+(шість Claude specialists + шість Codex roles); native dispatch лишається
+неперевіреним, vendor caches/memories не названо синхронізованими. PR #5
+не змінено; це не prerequisite FE-003. Рекомендований порядок рішень:
+BP-10, потім reconciliation AGENT-001; обидва DEVLOG entries треба зберегти.
+
+Це staging, не вже виконаний merge. Після окремо дозволеного merge BP-10
+наступні BP-5 + BP-6 потребують власного контракту/дозволу. IBB-001 — остання
+формальна база, IBB-002 немає. BB-11 лишається all-serving-instances gate.
+BP-10 / AGENT-001 MERGE AUTHORIZED: NO;
+FE-003 / FE-VIS-001 IMPLEMENTATION AUTHORIZED: NO;
+PRODUCTION READY: NO; DEPLOYMENT: NO.

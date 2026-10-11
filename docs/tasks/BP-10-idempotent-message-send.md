@@ -9,7 +9,8 @@
 | Baseline | `main` = `be150da11b9838409fcf8ee2d8ca4bd8b0311307` (tree `7a21621725f6250fd0f84e67db09fbda0964be7b`), CI `37518003115` success 6/6; Alembic head `a3c5e7f9b1d4` |
 | Branch | `claude/BP-10-idempotent-message-send` |
 | Phase A | read-only audit + proposed contract, PASS (2026-10-07); transport report outside the repository (not authority) |
-| Status | **BUILDER VERIFIED CANDIDATE — PHASE C REQUIRED** (the exact candidate SHA is in the builder handoff; a file cannot name the commit that contains it). `PHASE C C1: NOT YET ACCEPTED` · `PHASE C C2: NOT YET ACCEPTED` · `MANDATORY CODEX AUDIT: NOT YET ACCEPTED` · `MERGE AUTHORIZED: NO` |
+| Status | **CANDIDATE — PHASE C REPORTS COMPLETE; ACCEPTANCE EVIDENCE STAGED**. C1/C2 and mandatory Codex verdicts: `PASS_WITH_NONBLOCKING_NOTES`; founder-approved bounded dispositions D-109 (§8). Final acceptance/merge pending; no separate C1/C2 final acceptance is inferred. `MERGE AUTHORIZED: NO` |
+| Frozen audited implementation | `c385136c93826879b41509f1e30533ef46eee64c`, tree `15c26d7aedd525e2b5ea4beef8383e313a1473fd`; CI `38047352161` success 6/6. Documentation children are not substituted as this audited implementation SHA. [Receipt](../reviews/2026-10-11-bp10-acceptance-staging-receipt.md) |
 
 ## 1. Problem
 
@@ -59,8 +60,15 @@ required)}`; any UUID v4 spelling pydantic accepts is stored canonically
 `CONVERSATION_CLOSED` / `IDEMPOTENCY_KEY_REUSED`; 422; 429 (start
 `CONVERSATION_QUOTA`; both: the rate limit, no code); 503 + `Retry-After`
 ("retrying the same logical send with the same `client_message_id` is safe").
-The key is never echoed — not in `MessageOut`, `ConversationDetail`, GET
-conversation, moderation evidence or reports.
+The key is never echoed in `MessageOut`, `ConversationDetail`, GET
+conversation, moderation evidence or reports. **Narrow founder-approved CX-01
+exception (D-109):** only the submitting caller's own **rejected**
+`client_message_id` may appear in `detail[].input` of an HTTP 422 validation
+error for a send request. This exception permits no stored keys, another
+user's keys, message bodies or private fields in success/GET/moderation,
+metrics or logging outputs. INV-12 and FD-8 otherwise remain in force;
+runtime behavior is unchanged. Existing malformed-input debt is recorded
+separately in §8; it is not a broader privacy waiver.
 
 **Schema / migration.** `messages.client_message_id varchar(36) NULL` (no
 default, no backfill) and `uq_messages_sender_client_message
@@ -136,7 +144,7 @@ behaviour only), `P` = `backend/tests/test_bp10_message_idempotency_pg.py`
 | INV-9 | start atomicity | full rollback on a lost race | U lost-race test | P t4 | B14 |
 | INV-10 | bounded waits, no new deadlock cycle | lock_timeout; send lock first, holding no row lock | — | P inv10/p6a, p8, t22 (no deadlock), t6, t7 | B06, B06b |
 | INV-11 | refusals write nothing, key unused | refusals raise before COMMIT | U t11 | P t11 | B17 |
-| INV-12 | key/body never logged or exposed | route-wide handler, sanitized error, `hide_parameters`, no echo | U t24 (×3) | P fd8 | B18, B19, B20 |
+| INV-12 | key/body never logged or exposed; only caller-owned rejected key input in send HTTP 422 is excepted (D-109 / CX-01, §3) | route-wide handler, sanitized error, `hide_parameters`, no echo outside that narrow exception; server DETAIL boundary remains CX-N2 | U t24 (×3), with audit limitations in §8 | P fd8 | B18, B19, B20 |
 | INV-13 | canonical UUID v4 | pydantic `UUID4` → `str()` | U t23 (×2) | — | B16 |
 | INV-14 | release safety | EXPAND + BLOCKED + migrate-first + BB-11 gate | `test_release_manifest.py`, `test_schema_compat.py`, `test_moderation_core.py` | `test_release_pg.py` bootstrap | (PR-002 harness) |
 
@@ -185,4 +193,46 @@ test image (Python 3.12; SQLAlchemy 2.1.1, pydantic 2.13.5, psycopg 3.3.6).
 | existing mutants M09, M10 (`task002_mutants.py`) | killed (anchor unchanged) |
 | internal builder review B1 / B2 / B3 (not Phase C) | 1 MATERIAL (OpenAPI 422 body dropped) fixed in correction cycle 1; NONBLOCKING test-precision items fixed; 0 open BLOCKER / MATERIAL |
 
-Branch CI and the exact candidate identity: builder handoff.
+Branch CI and the exact candidate identity: builder handoff. The counts above
+remain **builder evidence**. Independent Codex audit qualifications in §8
+do not certify all 28 mutants as semantic kills.
+
+## 8. Founder dispositions and bounded debt (2026-10-11)
+
+Founder decision [D-109](../DECISIONS.md) approves the following limited
+nonblocking exceptions/debt for the frozen implementation, after the
+[independent Codex audit](../reviews/2026-10-11-bp10-codex-final-audit.md)
+(`PASS_WITH_NONBLOCKING_NOTES`: P0/P1/P2 = 0, P3 = 4, NOTE = 5).
+[Receipt](../reviews/2026-10-11-bp10-acceptance-staging-receipt.md) carries
+report/secondary hashes, scope provenance and release/acceptance boundaries.
+This records approved dispositions, not permission to merge or repair code.
+FD-1…FD-9 and the data/transaction invariants remain unchanged apart from the
+explicit CX-01 wording exception in §3 / INV-12.
+
+The following `DEBT-n` identifiers are **scoped to BP-10 §8**, not the FE-003
+DEBT-1 identifier. Owner: engagement builder for later repairs under a separate
+bounded founder authorization; founder chooses any stricter authority semantics.
+All are OPEN; no repair has been implemented in this staging task.
+
+| BP-10 scoped debt | Source / accepted boundary | Precise closure criterion |
+|---|---|---|
+| DEBT-1 | CX-02: stale provider authority during row/advisory waits; no claim of equal frequency or no amplification | A separately authorized post-wait current-side recheck denies a revoked provider with 404, no replay/private projection or domain write, and both raw row-wait/advisory-wait controls pass. Any proposed strict commit-time locked-proof semantics first receive a separate founder/canonical decision. This narrower recheck alone must not be called transaction-atomic authorization. |
+| DEBT-2 | CX-03: inherited NUL/surrogate500; robust Unicode not certified | Reject NUL as 422 before PG; safely encode rejected unpaired-surrogate validation errors as 422 without private input leakage; negative HTTP tests prove no stored key/message and no sensitive log/error output, ordinary Unicode/normalized-body matching unchanged. |
+| DEBT-3 | CX-04 / CX-N4: original-start/append permanent T22 coverage and unsafe cleanup/oracle | Permanent PG controls parameterize original and retry routes, prove relevant blocking PIDs, release/join every worker before Session close even on failed assertions, and assert delivered/retry final results plus one-key/no-orphan state. Advisory removed while UNIQUE retained fails semantically; structural/unit kills are labeled rather than claimed as all 28 semantic kills. |
+
+CX-01 is an APPROVED NARROW CONTRACT EXCEPTION, not a repaired runtime defect.
+The submitting caller's rejected key is the only authorized echo exception;
+no broader abandonment of INV-12/FD-8 is made. Independent causal PG/HTTP
+evidence establishes the current candidate, not permanent test quality.
+
+All five NOTEs remain visible: CX-N1 actual generic `commit_unknown`503 wording;
+CX-N2 raw PG/driver DETAIL and unverified production-log policy;
+CX-N3 physical old SQL compatibility versus actual TOO_NEW lineage admission,
+EXPAND and rollback BLOCKED; CX-N4 mutation-proof labels; CX-N5 repository
+durability under 05 §14. The receipt preserves their limits. No live rollout
+is certified. BB-11 still requires every serving backend to run BP-10 before
+keyed frontend sends. IBB-001 remains the last formal baseline; no IBB-002.
+
+BP-10 MERGE AUTHORIZED: NO. AGENT-001 remains separate, merge not authorized.
+FE-003 / FE-VIS-001 IMPLEMENTATION AUTHORIZED: NO.
+PRODUCTION READY: NO. DEPLOYMENT: NO.

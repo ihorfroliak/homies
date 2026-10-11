@@ -108,17 +108,28 @@ Production: **NOT READY · NOT DEPLOYED.**
 
 ## BP-10 — idempotent message sends (2026-10-10)
 
-**R2 · founder-authorised Phase B · candidate on branch
-`claude/BP-10-idempotent-message-send`, not merged; Phase C (C1, C2,
-mandatory Codex audit) required.** Decision D-108;
+**R2 · frozen implementation candidate; Phase C (C1, C2 and mandatory Codex)
+complete, PASS_WITH_NONBLOCKING_NOTES; final acceptance/merge pending.**
+Implementation `c385136c93826879b41509f1e30533ef46eee64c`; D-109 approves
+four bounded P3 dispositions, preserves all five NOTEs and authorizes only
+documentation/evidence staging. [Receipt](../reviews/2026-10-11-bp10-acceptance-staging-receipt.md).
+The original branch/behavior remains frozen; documentation children are not a
+new audited implementation. Decisions D-108 / D-109;
 [task contract](../tasks/BP-10-idempotent-message-send.md).
 
 | Area | Classification | State |
 |---|---|---|
-| message-send idempotency (`client_message_id`, unique (sender, key), advisory send lock) | **CANDIDATE (builder verified)** | both send routes; same key → 201 with the same message; replay writes nothing; FE-003 §10.1 "equivalent unique key" (port deviation #23) |
-| stable code `IDEMPOTENCY_KEY_REUSED` | **CANDIDATE (builder verified)** | 409, same key with another body or target; added to the BP-1 code inventory |
+| message-send idempotency (`client_message_id`, unique (sender, key), advisory send lock) | **CANDIDATE (independently audited; merge pending)** | both send routes; same key → 201 with the same message; replay writes nothing; FE-003 §10.1 "equivalent unique key" (port deviation #23); narrow caller-owned rejected-key422 exception and scoped temporal/input/test debt in BP-10 §8 |
+| stable code `IDEMPOTENCY_KEY_REUSED` | **CANDIDATE (independently audited; merge pending)** | 409, same key with another body or target; added to the BP-1 code inventory |
 | canonical `platform.idempotency_keys` (04 §73) | **CANON PRESENT · PHYSICAL IMPLEMENTATION MISSING** | unchanged; not used by BP-10 (D-108) |
 | idempotency of property / classified creates | **DEBT** | separate future work (D-108) |
+
+Only an explicit founder-approved merge makes these candidate rows integrated.
+EXPAND / rollback BLOCKED and BB-11 all-instances gate remain; raw PG DETAIL
+is outside application parameter hiding, and all 28 semantic mutation kills
+are not certified. IBB-001 remains the last formal baseline. D-109 does not
+change canonical domain rules, authorize FE-003/FE-VIS-001 or deployment,
+or accept unrelated D-88 milestone work.
 
 ## P-0 and HM-1 — DESIGN-001C implementation handoff (2026-10-05, documentation)
 

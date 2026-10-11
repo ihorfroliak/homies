@@ -3,7 +3,7 @@ id: AUDIT-HISTORY
 name: Homies audit history
 type: audit_index
 status: accepted
-as_of: 2026-10-06
+as_of: 2026-10-11
 current_baseline: IBB-001 (last formal baseline; volatile status in docs/PROJECT-STATUS.md)
 current_baseline_sha: 5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98
 ---
@@ -245,6 +245,26 @@ trigger, scope, acceptance threshold or whether it produces a successor
 baseline. This section lists scope only; it defines none of those.
 
 ---
+
+## 9. BP-10 — reviewed candidate; acceptance staging (2026-10-11)
+
+Frozen implementation `c385136c93826879b41509f1e30533ef46eee64c`, tree
+`15c26d7aedd525e2b5ea4beef8383e313a1473fd`, from
+`be150da11b9838409fcf8ee2d8ca4bd8b0311307`.
+[Original independent Codex audit](2026-10-11-bp10-codex-final-audit.md)
+is archived byte-for-byte: SHA256
+`5b289d02391b7f049df65c71c2e4e6cb4a2fa6d48241100e4520d36678a9461a`.
+Verdict PASS_WITH_NONBLOCKING_NOTES: P0/P1/P2=0, P3=4, NOTE=5. C1/C2
+secondary identities, evidence limits and exact candidate CI are in the
+[receipt](2026-10-11-bp10-acceptance-staging-receipt.md).
+
+Founder D-109 approves only the narrow 422 exception and bounded temporal
+authority, malformed-input and mutation-test debt; all NOTEs remain visible.
+This is a completed independent audit and staged finding dispositions,
+**not a merge record or formal successor baseline**. Documentation children
+do not replace the independently audited implementation. Final acceptance
+and both BP-10/AGENT-001 merge permissions remain pending; current status
+belongs to [PROJECT-STATUS](../PROJECT-STATUS.md). No broad re-audit is started.
 
 ## Before the canon (historical)
 

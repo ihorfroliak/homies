@@ -2,10 +2,10 @@
 id: PROJECT-STATUS
 type: status_index
 role: single semantic owner of volatile project status (D-106, 05 §14)
-as_of: 2026-10-10
+as_of: 2026-10-11
 reconciled_through:
   code_and_product: BP-12 merge a7756e16c5ae2888776bf02a022b44b0221c0f7a
-  documentation: TASK-016 source-of-truth reconciliation
+  documentation: TASK-016 plus proposed BP-10 audit/disposition staging (D-109); not an approved merge
 last_formal_baseline:
   id: IBB-001
   name: Integrated Backend Baseline 001
@@ -19,7 +19,7 @@ latest_code_bearing_main_state:
 repository_head: resolved from Git (origin/main); intentionally not embedded here
 next_task:
   id: BP-10
-  status: CANDIDATE  # builder-verified on its branch, not on main (D-108); Phase C required
+  status: CANDIDATE  # Phase C complete; D-109 dispositions approved; final acceptance/merge pending
 fe003_implementation_authorized: false
 fe_vis_001_implementation_authorized: false
 production_ready: false
@@ -36,8 +36,11 @@ deployed: false
 > and [DECISIONS](DECISIONS.md). If this page disagrees with them, they win —
 > fix this page. Nothing is accepted because it is listed here.
 
-**As of:** 2026-10-06. Code and product state reconciled through the BP-12
-merge; documentation reconciled by TASK-016.
+**As of:** 2026-10-11, on the **BP-10 acceptance-staging candidate branch**.
+Observed main remains `be150da11b9838409fcf8ee2d8ca4bd8b0311307` (latest
+code-bearing state BP-12); this record does not claim BP-10 is already merged.
+The proposed merge-effective transition below applies only after an explicit
+founder-approved merge containing BP-10 and its staged records.
 
 ## Three different "current" states
 
@@ -50,6 +53,8 @@ merge; documentation reconciled by TASK-016.
 ## Flags
 
 ```text
+BP-10 MERGE AUTHORIZED:              NO   (D-109 dispositions approved; merge decision pending)
+AGENT-001 MERGE AUTHORIZED:          NO   (configuration foundation approved; separate PR)
 FE-003 IMPLEMENTATION AUTHORIZED:     NO   (contract approved, D-104/D-105)
 FE-VIS-001 IMPLEMENTATION AUTHORIZED: NO   (D-104 OD-5; DESIGN-001C handoff §26, §31)
 PRODUCTION READY:                     NO   (NOT_READY)
@@ -60,13 +65,28 @@ DEPLOYMENT:                           NO   (NOT_DEPLOYED; no production environm
 
 | Order | Item | Status |
 |---|---|---|
-| next | **BP-10** — idempotent conversation start / message append (FE-003 §10.1; beta blocker BB-11; D-108) | **CANDIDATE** — builder-verified on branch `claude/BP-10-idempotent-message-send` (exact SHA in its builder handoff); **not merged**, not integrated; Phase C (C1, C2, mandatory Codex audit) required; `MERGE AUTHORIZED: NO` |
-| then | BP-5 + BP-6, BP-8 → BP-11, BP-9 (security review) → BP-3, BP-4 | NOT STARTED — order from [FE-003 §10.3](tasks/FE-003-save-conversation-viewing-DRAFT.md) |
+| awaiting decision | **BP-10** — idempotent conversation start / message append (D-108 / D-109) | **CANDIDATE** — frozen implementation `c385136c93826879b41509f1e30533ef46eee64c`; C1/C2/Codex reports complete, `PASS_WITH_NONBLOCKING_NOTES`; four P3 dispositions approved and five NOTEs retained. [Acceptance-staging receipt](reviews/2026-10-11-bp10-acceptance-staging-receipt.md). Documentation child is not a new audited implementation. Final acceptance/merge pending; `MERGE AUTHORIZED: NO`. |
+| next only after BP-10 approved merge | BP-5 + BP-6, then BP-8 → BP-11, BP-9 (security review) → BP-3, BP-4 | NOT STARTED; separate task authorization required — order from [FE-003 §10.3](tasks/FE-003-save-conversation-viewing-DRAFT.md). BP-10 review completion alone does not start them. |
+| separate configuration candidate | **AGENT-001** — [Draft PR #5](https://github.com/ihorfroliak/homies/pull/5) | D-109 approves a permanent project-wide foundation with six Claude specialists and six corresponding Codex roles. Native-dispatch verification remains open; shared repo state is not synchronized vendor cache/memory. May be recommended for merge, but `AGENT-001 MERGE AUTHORIZED: NO`; not an FE-003 prerequisite. |
 | later | MARKET-001 residential rental market research ([research family](research/README.md)) | NOT STARTED — separate task, non-normative |
 
 FE-003 slices start only with a separate founder authorisation per slice
 (FE-003 §13); beta blockers BB-1…BB-11 stay open until their own tasks close
 them.
+
+### Proposed merge-effective BP-10 transition (05 §7 / §14)
+
+Only if the founder explicitly approves and performs the merge, BP-10 becomes
+integrated as the independently audited implementation
+`c385136c93826879b41509f1e30533ef46eee64c` plus documentation-only evidence
+children. The actual main integration SHA/CI comes from Git, not an invented
+self-reference. BP-5 + BP-6 then become next, under a separately approved
+contract. IBB-001 remains the last formal baseline; no IBB-002 is created.
+Schema EXPAND / rollback-to-previous BLOCKED and BB-11 all-serving-instances
+gate remain; code integration does not certify deployment or external beta.
+Until that approved merge occurs, the observed main and pending candidate
+states above apply. Suggested separate sequence: BP-10 first, then reconcile
+AGENT-001 and preserve both DEVLOG entries if they conflict.
 
 ## Integrated on `main` since IBB-001
 
