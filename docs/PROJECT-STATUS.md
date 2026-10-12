@@ -2,10 +2,10 @@
 id: PROJECT-STATUS
 type: status_index
 role: single semantic owner of volatile project status (D-106, 05 §14)
-as_of: 2026-10-11
+as_of: 2026-10-12
 reconciled_through:
   code_and_product: BP-10 merge 064be3e1827d279890a9e026e9b1a48e476d7dbd (D-110)
-  documentation: BP-10 integrated; AGENT-001 configuration integrated when PR 5 reaches main (D-110)
+  documentation: BP-10 and AGENT-001 integrated; BP-5/BP-6 candidate in progress (D-110)
 last_formal_baseline:
   id: IBB-001
   name: Integrated Backend Baseline 001
@@ -17,11 +17,11 @@ latest_code_bearing_main_state:
   what: BP-10 INTEGRATED / ACCEPTED FOR CONTINUED DEVELOPMENT
   merge_sha: 064be3e1827d279890a9e026e9b1a48e476d7dbd
   candidate_ci: 38129196394 success 6/6
-  main_ci: resolve actual post-merge run from GitHub
+  main_ci: BP-10 38152493505 success 6/6; final integration 38217864176 success 6/6
 repository_head: resolved from Git (origin/main); intentionally not embedded here
 next_task:
   id: BP-5 + BP-6
-  status: AUTHORIZED — begins immediately after PR 5 integration
+  status: IN PROGRESS — BP-5 implementation, then BP-6; independent review and new merge authorization pending
 fe003_implementation_authorized: false
 fe_vis_001_implementation_authorized: false
 production_ready: false
@@ -38,13 +38,19 @@ deployed: false
 > and [DECISIONS](DECISIONS.md). If this page disagrees with them, they win —
 > fix this page. Nothing is accepted because it is listed here.
 
-**As of:** 2026-10-11. **BP-10 is INTEGRATED / ACCEPTED FOR CONTINUED
-DEVELOPMENT** via PR #6, merge `064be3e1827d279890a9e026e9b1a48e476d7dbd`;
-exact-head CI `38129196394` SUCCESS 6/6. AGENT-001 is accepted under D-110:
-this branch is the reconciled PR #5 candidate until merge; **when this record
-lands on main through PR #5, AGENT-001 is INTEGRATED / ACCEPTED FOR CONTINUED
-DEVELOPMENT** and BP-5/BP-6 implementation begins. Actual PR #5 merge SHA and
-post-merge CI come from Git/GitHub, never a predicted self-reference.
+**As of:** 2026-10-12. **BP-10 and AGENT-001 are INTEGRATED / ACCEPTED
+FOR CONTINUED DEVELOPMENT** under D-110. PR #6 merge
+`064be3e1827d279890a9e026e9b1a48e476d7dbd` has candidate and post-merge CI
+SUCCESS 6/6. PR #5 merge `74a7065e167e6cea8d4251a17138ffe775b02a54`
+has exact reconciled-head CI `38152688469` SUCCESS 6/6; its post-merge run
+`38217864176` is SUCCESS 6/6. Integrated main tree is
+`735e1557a1362c0070f815c4875bab7fa69920f8`. Both original candidates remain
+ancestors; both DEVLOG entries and specialist configurations are preserved.
+
+BP-5/BP-6 development is in progress on its own branch from that main,
+under the [bounded contract](tasks/BP-5-BP-6-viewing-cancellation.md).
+It is a candidate, not accepted or merged; separate exact-SHA review,
+required CI and subsequent founder merge authorization remain due.
 
 ## Three different "current" states
 
@@ -71,8 +77,8 @@ DEPLOYMENT:                           NO   (NOT_DEPLOYED; no production environm
 | Order | Item | Status |
 |---|---|---|
 | integration 1 | **BP-10** — [PR #6](https://github.com/ihorfroliak/homies/pull/6) | INTEGRATED / ACCEPTED FOR CONTINUED DEVELOPMENT (D-110), merge `064be3e1827d279890a9e026e9b1a48e476d7dbd`, candidate CI `38129196394` SUCCESS 6/6. Audited code `c385136c93826879b41509f1e30533ef46eee64c`, PASS_WITH_NONBLOCKING_NOTES; all four P3 and five NOTEs/debt retained under D-109. [Historical staging receipt](reviews/2026-10-11-bp10-acceptance-staging-receipt.md) |
-| integration 2 | **AGENT-001** — [PR #5](https://github.com/ihorfroliak/homies/pull/5) | ACCEPTED FOR CONTINUED DEVELOPMENT; INTEGRATED when reconciled PR #5 lands on main after green checks. Six Claude/six Codex specialists preserved. Native dispatch NOT VERIFIED where unavailable is an accepted nonblocking limitation; no shared vendor memory/cache or guaranteed routing |
-| immediately after both merges | **BP-5 + BP-6** | IMPLEMENTATION AUTHORIZED (D-110), Codex temporary sole bounded writer in a dedicated worktree/feature branch. BP-5 first, BP-6 second; real PostgreSQL, migrations/API/types/release checks, CI and separate exact-SHA R2 review; Draft PR, subsequent founder merge authorization required |
+| integration 2 | **AGENT-001** — [PR #5](https://github.com/ihorfroliak/homies/pull/5) | INTEGRATED / ACCEPTED FOR CONTINUED DEVELOPMENT; merge `74a7065e167e6cea8d4251a17138ffe775b02a54`, exact-head CI `38152688469` SUCCESS 6/6. Six Claude/six Codex specialists preserved. Native dispatch NOT VERIFIED where unavailable is an accepted nonblocking limitation; no shared vendor memory/cache or guaranteed routing |
+| in progress | **BP-5 + BP-6** | IMPLEMENTATION AUTHORIZED / CANDIDATE IN PROGRESS (D-110), Codex temporary sole bounded writer in a dedicated worktree/feature branch. BP-5 first, BP-6 second; real PostgreSQL, migrations/API/types/release checks, CI and separate exact-SHA R2 review; Draft PR, subsequent founder merge authorization required |
 | later, separately authorized | BP-8 → BP-11, BP-9 → BP-3, BP-4; MARKET-001 | Existing [FE-003 sequencing](tasks/FE-003-save-conversation-viewing-DRAFT.md); no authorization added here |
 
 FE-003 frontend and FE-VIS-001 remain unauthorized. Beta blockers BB-1…BB-11

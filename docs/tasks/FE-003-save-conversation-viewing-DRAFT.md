@@ -713,7 +713,7 @@ authority holder (BP-9), all fictional, under the existing opt-ins.
 | BP-2 | Typed `viewing-slots` response incl. `timezone` | R1 | e |
 | BP-3 | Provider listing enumeration by MANAGE_VIEWINGS / MANAGE_MESSAGES | R1 | f |
 | BP-4 | Requester display projection "first name + surname initial" on provider DTOs (OD-3; fallback; no verified label) | R1 | f |
-| BP-5 | Explicit immutable viewing cancellation source REQUESTER / PROVIDER / HOMIES (schema EXPAND) | R2 | e, f, BP-6 |
+| BP-5 | Explicit immutable viewing cancellation source REQUESTER / PROVIDER / HOMIES (BP-5 strict-write migration: BARRIER; preliminary EXPAND estimate refined under D-110 and release policy) | R2 | e, f, BP-6 |
 | BP-6 | OD-1 C: atomic cancellation of future viewings on G-14 restriction (§4) | R2 | e, f |
 | BP-7 | **REQUIRED**: backend refuses cancel at/after `starts_at` (`VIEWING_STARTED`) for both sides | R1 | e |
 | BP-8 | OD-2/OD-8: G-14 bars **new and repeat** contact reveal (`RECONTACT_BLOCKED`), checked before the repeat fast path; the refusal carries no phone | R1 | d |

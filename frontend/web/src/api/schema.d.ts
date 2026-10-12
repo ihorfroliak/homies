@@ -3292,6 +3292,11 @@ export interface components {
             /** Attendee Count */
             attendee_count: number;
             /**
+             * Cancelled By
+             * @description Immutable cancellation source. Null for non-cancelled viewings and historical cancellations whose actor cannot be proven.
+             */
+            cancelled_by?: ("REQUESTER" | "PROVIDER" | "HOMIES") | null;
+            /**
              * Cancelled By Homies
              * @default false
              */
@@ -3933,6 +3938,11 @@ export interface components {
         ViewingOut: {
             /** Attendee Count */
             attendee_count: number;
+            /**
+             * Cancelled By
+             * @description Immutable cancellation source. Null for non-cancelled viewings and historical cancellations whose actor cannot be proven.
+             */
+            cancelled_by?: ("REQUESTER" | "PROVIDER" | "HOMIES") | null;
             /**
              * Cancelled By Homies
              * @default false

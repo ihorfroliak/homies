@@ -120,6 +120,7 @@ def test_bootstrap_from_ibb001_and_back(scratch_url, monkeypatch):  # noqa: F811
     assert [s["revision"] for s in result["steps"]] == [
         LINEAGE_REVISION,
         "a3c5e7f9b1d4",
+        "11d778ab87a3",
         _graph().head,
     ]
     assert len(_lineage(scratch_url)) == len(_graph().steps)

@@ -17,6 +17,7 @@ what decides who may read it.
 from datetime import date, datetime, time, timezone
 from uuid import uuid4
 
+from sqlalchemy import event, false, inspect
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -291,6 +292,16 @@ class Viewing(Base):
             "(status = 'CANCELLED') = (cancelled_at IS NOT NULL)",
             name="ck_viewings_cancelled_state",
         ),
+        CheckConstraint(
+            "cancelled_by IS NULL OR cancelled_by IN ('REQUESTER', 'PROVIDER', 'HOMIES')",
+            name="ck_viewings_cancelled_by",
+        ),
+        CheckConstraint(
+            "(status = 'CANCELLED' AND ((cancelled_by IS NOT NULL AND NOT cancellation_source_legacy)"
+            " OR (cancelled_by IS NULL AND cancellation_source_legacy))) OR "
+            "(status <> 'CANCELLED' AND cancelled_by IS NULL AND NOT cancellation_source_legacy)",
+            name="ck_viewings_cancellation_source_state",
+        ),
         Index("ix_viewings_listing_starts", "listing_id", "starts_at"),
         Index("ix_viewings_requester_starts", "requester_user_id", "starts_at"),
         Index("ix_viewings_status_starts", "status", "starts_at"),
@@ -314,5 +325,26 @@ class Viewing(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_by: Mapped[str | None] = mapped_column(String(16), nullable=True, active_history=True)
+    # Only pre-migration cancellations without provable attribution. Never an API input.
+    cancellation_source_legacy: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), active_history=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     version: Mapped[int] = mapped_column(BigInteger, default=1)
+
+
+@event.listens_for(Viewing, "before_insert")
+def _no_new_legacy_cancellation(mapper, connection, target):  # noqa: ARG001
+    if target.cancellation_source_legacy:
+        raise ValueError("legacy cancellation exceptions are migration-only")
+
+
+@event.listens_for(Viewing, "before_update")
+def _immutable_cancellation_source(mapper, connection, target):  # noqa: ARG001
+    # PostgreSQL also enforces this for bulk/raw SQL through the BP-5 trigger.
+    state = inspect(target)
+    source = state.attrs.cancelled_by.history
+    if source.has_changes() and source.deleted and source.deleted[0] is not None:
+        raise ValueError("viewing cancellation source is immutable")
+    if state.attrs.cancellation_source_legacy.history.has_changes():
+        raise ValueError("legacy cancellation exception is immutable")

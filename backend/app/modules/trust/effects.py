@@ -8,10 +8,8 @@ Two effects, both written in the decision's own transaction:
   governs the final wording, not this module);
 * cancelling a listing's future viewings — REQUESTED or CONFIRMED viewings
   that start after the decision become CANCELLED, with `cancelled_at` set to
-  the decision's database instant. That instant is what marks a viewing as
-  cancelled by Homies (`cancelled_by_homies`): a user's cancellation can
-  never carry exactly the instant of a close-engagement decision on the
-  same listing, because both are written under the viewing's row lock.
+  the decision's database instant and the immutable source HOMIES (BP-5).
+  The compatibility boolean is derived from that source, never a timestamp coincidence.
 
 Lock order (Phase A §14): the caller already holds property → listing; here
 conversations are locked in id order, then viewings in id order. Every path
@@ -94,7 +92,8 @@ def close_listing_engagement(db: Session, listing_id: str,
         db.execute(
             update(Viewing)
             .where(Viewing.id.in_(viewing_ids), Viewing.status.in_(CANCELLABLE))
-            .values(status="CANCELLED", cancelled_at=effective, version=Viewing.version + 1)
+            .values(status="CANCELLED", cancelled_at=effective, cancelled_by="HOMIES",
+                    version=Viewing.version + 1)
             .execution_options(synchronize_session=False)
         )
         for v in viewings:
@@ -111,19 +110,8 @@ def close_listing_engagement(db: Session, listing_id: str,
 
 
 def cancelled_by_homies(db: Session, viewings: list[Viewing]) -> set[str]:
-    """Ids of the given CANCELLED viewings that a close-engagement decision on
-    their listing cancelled — one statement for the whole list."""
-    cancelled = [v for v in viewings if v.status == "CANCELLED" and v.cancelled_at is not None]
-    if not cancelled:
-        return set()
-    listing_ids = {v.listing_id for v in cancelled}
-    instants = {(r.listing_id, _utc(r.effective_from)) for r in db.execute(
-        select(ModerationDecision.listing_id, ModerationDecision.effective_from)
-        .where(ModerationDecision.target_type == "LISTING",
-               ModerationDecision.listing_id.in_(listing_ids),
-               ModerationDecision.close_engagement.is_(True))
-    )}
-    return {v.id for v in cancelled if (v.listing_id, _utc(v.cancelled_at)) in instants}
+    """Compatibility projection from the durable source; unknown is not HOMIES."""
+    return {v.id for v in viewings if v.status == "CANCELLED" and v.cancelled_by == "HOMIES"}
 
 
 def _utc(value: datetime | None) -> datetime | None:

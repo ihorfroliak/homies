@@ -3887,6 +3887,23 @@
             "title": "Attendee Count",
             "type": "integer"
           },
+          "cancelled_by": {
+            "anyOf": [
+              {
+                "enum": [
+                  "REQUESTER",
+                  "PROVIDER",
+                  "HOMIES"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Immutable cancellation source. Null for non-cancelled viewings and historical cancellations whose actor cannot be proven.",
+            "title": "Cancelled By"
+          },
           "cancelled_by_homies": {
             "default": false,
             "title": "Cancelled By Homies",
@@ -5467,6 +5484,23 @@
           "attendee_count": {
             "title": "Attendee Count",
             "type": "integer"
+          },
+          "cancelled_by": {
+            "anyOf": [
+              {
+                "enum": [
+                  "REQUESTER",
+                  "PROVIDER",
+                  "HOMIES"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Immutable cancellation source. Null for non-cancelled viewings and historical cancellations whose actor cannot be proven.",
+            "title": "Cancelled By"
           },
           "cancelled_by_homies": {
             "default": false,

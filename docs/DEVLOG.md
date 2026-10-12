@@ -1261,3 +1261,39 @@ NOT VERIFIED, де runtime не був доступний; попередні st
 не повторювалися. Далі авторизовані BP-5, потім BP-6, окремий R2 review і Draft
 PR без дозволу на його merge. IBB-001 без змін; FE-003/FE-VIS-001 та deployment
 не авторизовані, production NOT READY.
+
+
+## 2026-10-12 — Integration receipt and BP-5 candidate (D-110)
+
+PR #5 normally merged as `74a7065e167e6cea8d4251a17138ffe775b02a54`,
+tree `735e1557a1362c0070f815c4875bab7fa69920f8`, identical to reconciled
+candidate `ff6392e410dca239017dbf6c5a668e353d1a230b` (CI `38152688469`,
+SUCCESS 6/6). PR #6 post-merge CI `38152493505` also SUCCESS 6/6.
+Final main CI `38217864176` pending at this entry. Original BP-10 and
+AGENT-001 ancestry, immutable audit report, D-109, both complete DEVLOG
+entries, six Claude/six Codex specialists and their permissions preserved.
+Native dispatch remains NOT VERIFIED where unavailable; no new claim of
+shared vendor memory/cache. IBB-001 unchanged; production/deployment NO.
+
+BP-5 implemented on the dedicated BP-5/BP-6 branch: durable immutable
+REQUESTER/PROVIDER/HOMIES attribution in model, writes and API; generated
+OpenAPI/types; migration `23e89acb98b4` after `11d778ab87a3`. Historical
+unknowns retain a sealed private legacy exception; no invented actor.
+Strict database guards reject missing new sources and changes to known
+sources. Actual old-writer incompatibility is proven, so the migration is
+BARRIER / rollback BLOCKED under release policy, refining the preliminary
+FE-003 EXPAND estimate. Historical BP-10 restrictions remain intact.
+
+Completed checks so far: targeted SQLite 85 passed; PostgreSQL backfill,
+guards, old-writer and round trip 1 passed; release/schema/OpenAPI 87 passed;
+ruff clean, mypy clean (126 files), generated frontend types/typecheck pass.
+Broader PostgreSQL/restore evidence and the later BP-6 slice are pending.
+This is implementation evidence, not independent acceptance. Separate
+exact-SHA R2 review, required CI and Draft PR remain due; new PR merge is
+not authorized. FE-003/FE-VIS implementation remains unauthorized.
+
+BP-5 slice completion: PostgreSQL regression 68 passed; strengthened restore
+attribution/immutable guard drill 1 passed after correcting its requester-token
+fixture. Final integrated main CI `38217864176` SUCCESS 6/6. BP-5 is ready as a
+coherent implementation commit; continue immediately with BP-6. Full candidate
+CI and independent review are still pending, not waived.
