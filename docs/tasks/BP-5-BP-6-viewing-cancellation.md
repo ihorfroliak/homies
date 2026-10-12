@@ -123,3 +123,41 @@ No mutation-test result is claimed. Not deployed.
 BP-6 HTTP privacy/late-rollback checks: 2 passed after correcting the provider
 inbox URL in the test fixture; previous combined targeted run also passed the
 other 29 regression cases. This correction changes no implementation behavior.
+
+
+### Candidate review and bounded regression-test repair
+
+[Draft PR #7](https://github.com/ihorfroliak/homies/pull/7) is open. Initial
+BP-6 candidate `f7e7280ba2afdc8ea1c467499b9a28b5a08972ed` follows BP-5.
+One separate reviewer verified that exact SHA in its own read-only worktree
+and disposable database. Its focused suite passed 106 cases, with two
+additional independent semantic probes passing. Its broader PostgreSQL
+regression passed 65 and failed three stale lock/ordering expectations;
+a fourth constraint-name failure was independently reproduced separately.
+These are verification findings, not an independent acceptance of the candidate.
+
+The bounded test-only repair updates E-R1c/E-R2 to observe the earlier listing
+lock, F6b to require waiting then RECONTACT_BLOCKED with zero viewings, and the
+old cancellation-state test to accept either applicable guard while separately
+isolating the original timestamp guard. Finalizers release/join touched races.
+No product locking or cancellation behavior was weakened. The builder rerun
+of all 10 BP-6 PostgreSQL cases plus the four repaired cases passed **14/14**;
+ruff and diff checks passed.
+
+The initial local full run was deliberately interrupted for these repairs:
+542 passed / 5 failed / 1 skipped, not full certification. Four failures were
+the verified obsolete expectations above. The fifth was HTTP 401 during
+fixture setup before a BP-6 race, after a long host/user interruption; its
+cause is not conclusively established and no authentication bypass was added.
+That race subsequently passed in the 14-case rerun and in the independent
+focused suite. Full exact-head GitHub Actions on Python 3.12/PG/PostGIS is
+still required. Initial CI run `38284319500` is not claimed successful.
+
+Inherited boundary: current provider-notice recipients use MANAGE_VIEWINGS
+via the existing authority.holders semantics. The pre-existing BP-9/BB-10
+verification of authority qualification must include this notice surface.
+It is not repaired or represented as closed by BP-5/BP-6. Other D-109 debt,
+IBB-001, FE-003 authorization and production flags remain unchanged.
+
+The corrected exact SHA still requires the separate reviewer's bounded delta
+check and green required CI. PR #7 remains Draft and merge is not authorized.

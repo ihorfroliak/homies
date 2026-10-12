@@ -1314,3 +1314,17 @@ Targeted real PostgreSQL 10 passed (eight observed blocking schedules plus
 boundary/isolation/rollback/repeats and republish). Ruff/mypy clean. Full suite,
 required CI, independent exact-SHA review and Draft PR are pending. The code
 is a candidate only; production/deployment NO; new PR merge not authorized.
+
+
+## 2026-10-12 — BP-5/BP-6 bounded verification repair
+
+Draft PR #7 opened on candidate `f7e7280`; separate reviewer reproduced four
+obsolete regression-test expectations caused by the new source CHECK and
+intentional earlier G-14 listing lock. Updated only those test oracles and
+thread cleanup; product code unchanged. New source guard and original
+cancellation timestamp guard are both asserted. Builder PostgreSQL rerun
+14 passed, Ruff/diff checks clean. Initial local full run was interrupted
+(542 passed/5 failed/1 skipped), including a fixture-setup 401 not attributed
+conclusively; no full-pass claim. Full exact-head CI and the reviewer's delta
+verification remain gates. New provider notice recipients inherit BP-9/BB-10
+authority-qualification debt. No deployment or new PR merge authorization.

@@ -67,8 +67,8 @@ def test_restriction_serializes_both_orders(pg_client, pg_migrated_engine, other
         gate.set()
         for thread in threads:
             thread.join(25)
-        assert all(not t.is_alive() for t in threads), "race worker did not terminate"
         paused.close()
+        assert all(not t.is_alive() for t in threads), "race worker did not terminate"
     assert not isinstance(results[first], Exception), results[first]
     if restriction_first:
         assert getattr(results[other], "status_code", None) == 409, results[other]

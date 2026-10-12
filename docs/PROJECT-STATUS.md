@@ -49,6 +49,7 @@ ancestors; both DEVLOG entries and specialist configurations are preserved.
 
 BP-5/BP-6 are implemented as a candidate on their own branch from that main,
 under the [bounded contract](tasks/BP-5-BP-6-viewing-cancellation.md).
+[Draft PR #7](https://github.com/ihorfroliak/homies/pull/7) is open.
 It is a candidate, not accepted or merged; separate exact-SHA review,
 required CI and subsequent founder merge authorization remain due.
 
