@@ -7,7 +7,7 @@
 | Base | Integrated main `74a7065e167e6cea8d4251a17138ffe775b02a54`, tree `735e1557a1362c0070f815c4875bab7fa69920f8` |
 | Branch | `codex/BP-5-BP-6-viewing-cancellation` |
 | Risk | R2: migration/data transformation, immutable attribution, moderation, locking and private engagement |
-| State | IMPLEMENTATION IN PROGRESS; BP-5 first, BP-6 second; no acceptance or test success implied |
+| State | BP-5 and BP-6 IMPLEMENTED CANDIDATE; full verification and independent review in progress |
 | Delivery | Coherent feature-branch commits, tests, required exact-head CI, Draft PR, one separate exact-SHA independent review; new PR merge NOT authorized |
 
 ## Scope and preserved boundaries
@@ -103,5 +103,23 @@ module was rerun separately with `HOMIES_REQUIRE_RESTORE_DRILL=1` and real
 pg_dump/pg_restore. `ruff check --no-cache app tests` plus the new migration;
 `mypy app`; frontend `npm run gen:api` and `npm run typecheck`.
 
-BP-6, full candidate CI and separate exact-SHA review remain pending.
+BP-6 implemented after coherent BP-5 commit
+`423c53f2ff4c684326b06222688edbde06348153`. Only FEATURE_RESTRICTED takes
+listing FOR NO KEY UPDATE before the conversation and sorted viewing locks.
+A shared cancellation helper applies the strict requester/listing/time/state
+scope; listing close-engagement retains its prior scope. Row changes, HOMIES
+attribution, facts and neutral both-party inbox notices share the decision
+transaction. Existing F6 generation semantics are preserved.
+
+Targeted PostgreSQL BP-6 tests: 10 passed, including eight observed blocking
+schedules (both orders against confirm/request/requester cancel/provider cancel),
+strict database-instant equality, unrelated/terminal isolation, rollback,
+repeat refusal without duplicate effects, and republish behavior. An initial
+test assumed republish replaces an ACTIVE conversation; corrected to assert the
+actual incremented publication generation while the active conversation persists.
+Ruff clean, mypy clean (126 files). Full candidate CI and separate exact-SHA
+review remain pending; the full SQLite+PostgreSQL suite is running.
 No mutation-test result is claimed. Not deployed.
+BP-6 HTTP privacy/late-rollback checks: 2 passed after correcting the provider
+inbox URL in the test fixture; previous combined targeted run also passed the
+other 29 regression cases. This correction changes no implementation behavior.

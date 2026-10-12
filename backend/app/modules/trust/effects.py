@@ -70,7 +70,6 @@ def close_listing_engagement(db: Session, listing_id: str,
     """Close every ACTIVE conversation of the listing and cancel its future
     REQUESTED/CONFIRMED viewings. Returns (closed conversation ids, cancelled
     viewing ids). The caller holds the property and listing row locks."""
-    effective: datetime = decision.effective_from
     conversations = db.scalars(
         select(Conversation)
         .where(Conversation.listing_id == listing_id, Conversation.status == "ACTIVE")
@@ -80,13 +79,31 @@ def close_listing_engagement(db: Session, listing_id: str,
     ).all()
     closed = [c.id for c in conversations if close_conversation(db, c, decision)]
 
-    viewings = db.execute(
-        select(Viewing.id, Viewing.status)
-        .where(Viewing.listing_id == listing_id, Viewing.status.in_(CANCELLABLE),
-               Viewing.starts_at > effective)
-        .order_by(Viewing.id)
-        .with_for_update()
-    ).all()
+    viewing_ids = cancel_future_viewings(db, listing_id, decision)
+    if closed or viewing_ids:
+        audit(db, actor=decision.decided_by_user_id, action="moderation.engagement_closed",
+              entity_type="classified_offer", entity_id=listing_id,
+              data={"decision_id": decision.id, "conversation_ids": closed,
+                    "viewing_ids": viewing_ids})
+    return closed, viewing_ids
+
+
+def cancel_future_viewings(db: Session, listing_id: str, decision: ModerationDecision,
+                           *, requester_user_id: str | None = None) -> list[str]:
+    """Cancel locked future rows and emit their facts in the caller's transaction.
+
+    BP-6 uses the requester restriction; listing close-engagement uses all rows.
+    Caller holds the listing lock excluding new requests/confirmations. The
+    SELECT FOR UPDATE rechecks a row changed by a concurrent party cancellation.
+    No publication-generation predicate: old-generation viewings remain in scope.
+    """
+    effective = decision.effective_from
+    query = select(Viewing.id, Viewing.status).where(
+        Viewing.listing_id == listing_id, Viewing.status.in_(CANCELLABLE),
+        Viewing.starts_at > effective)
+    if requester_user_id is not None:
+        query = query.where(Viewing.requester_user_id == requester_user_id)
+    viewings = db.execute(query.order_by(Viewing.id).with_for_update()).all()
     viewing_ids = [v.id for v in viewings]
     if viewing_ids:
         db.execute(
@@ -101,12 +118,7 @@ def close_listing_engagement(db: Session, listing_id: str,
                 db, viewing_id=v.id, listing_id=listing_id, prior_status=v.status,
                 cancelled_by="HOMIES", moderation_decision_id=decision.id,
                 cancelled_at=freshness.canonical_instant(effective))
-    if closed or viewing_ids:
-        audit(db, actor=decision.decided_by_user_id, action="moderation.engagement_closed",
-              entity_type="classified_offer", entity_id=listing_id,
-              data={"decision_id": decision.id, "conversation_ids": closed,
-                    "viewing_ids": viewing_ids})
-    return closed, viewing_ids
+    return viewing_ids
 
 
 def cancelled_by_homies(db: Session, viewings: list[Viewing]) -> set[str]:

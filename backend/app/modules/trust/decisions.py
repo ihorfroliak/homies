@@ -541,7 +541,7 @@ def apply_conversation_decision(
     if reclassified_category is not None and reclassified_category not in REPORT_CATEGORIES:
         raise InvalidDecision("unknown category")
 
-    _share_listing_of(db, conversation_id)
+    _share_listing_of(db, conversation_id, restrict_viewings=action == "FEATURE_RESTRICTED")
     conv = effects.lock_conversation(db, conversation_id)
     if conv is None:
         raise TargetNotFound("conversation not found")
@@ -590,8 +590,13 @@ def apply_conversation_decision(
     db.refresh(decision, attribute_names=["effective_from"])
 
     closed: tuple[str, ...] = ()
+    cancelled: list[str] = []
     if action == "FEATURE_RESTRICTED" and effects.close_conversation(db, conv, decision):
         closed = (conv.id,)
+        if conv.listing_id is not None:
+            cancelled = effects.cancel_future_viewings(
+                db, conv.listing_id, decision, requester_user_id=conv.requester_user_id)
+            notices.notify_viewings_cancelled(db, decision, cancelled, provider_property_id=prop)
     resolved = _resolve_reports(db, "CONVERSATION", conversation_id, decision.id, actor.id)
     audit(
         db,
@@ -614,6 +619,7 @@ def apply_conversation_decision(
         resolved_report_ids=resolved,
         effective_from=decision.effective_from,
         closed_conversation_ids=closed,
+        cancelled_viewing_ids=tuple(cancelled),
     )
 
 
@@ -728,8 +734,12 @@ def apply_media_decision(
     )
 
 
-def _share_listing_of(db: Session, conversation_id: str) -> None:
-    """The conversation's listing FOR KEY SHARE, before the conversation row.
+def _share_listing_of(db: Session, conversation_id: str, *, restrict_viewings: bool = False) -> None:
+    """The conversation's listing lock, before the conversation row.
+
+    BP-6 restrictions take FOR NO KEY UPDATE: it conflicts with request/confirm
+    FOR SHARE, so either their committed row is cleaned up or they see the
+    restriction/cancellation. Other decisions retain FOR KEY SHARE.
 
     A conversation or message decision inserts a decision referencing the
     listing; that foreign-key check takes FOR KEY SHARE on it. Taken there —
@@ -742,7 +752,7 @@ def _share_listing_of(db: Session, conversation_id: str) -> None:
                            .where(Conversation.id == conversation_id))
     if listing_id is not None:
         db.execute(select(ClassifiedOffer.id).where(ClassifiedOffer.id == listing_id)
-                   .with_for_update(read=True, key_share=True))
+                   .with_for_update(read=not restrict_viewings, key_share=True))
 
 
 def _validate_removal(action: str, removal: str, reason_code: str, what: str) -> None:

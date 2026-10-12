@@ -21,7 +21,7 @@ latest_code_bearing_main_state:
 repository_head: resolved from Git (origin/main); intentionally not embedded here
 next_task:
   id: BP-5 + BP-6
-  status: IN PROGRESS — BP-5 implementation, then BP-6; independent review and new merge authorization pending
+  status: CANDIDATE — BP-5/BP-6 implemented; full verification and independent review pending
 fe003_implementation_authorized: false
 fe_vis_001_implementation_authorized: false
 production_ready: false
@@ -47,7 +47,7 @@ has exact reconciled-head CI `38152688469` SUCCESS 6/6; its post-merge run
 `735e1557a1362c0070f815c4875bab7fa69920f8`. Both original candidates remain
 ancestors; both DEVLOG entries and specialist configurations are preserved.
 
-BP-5/BP-6 development is in progress on its own branch from that main,
+BP-5/BP-6 are implemented as a candidate on their own branch from that main,
 under the [bounded contract](tasks/BP-5-BP-6-viewing-cancellation.md).
 It is a candidate, not accepted or merged; separate exact-SHA review,
 required CI and subsequent founder merge authorization remain due.

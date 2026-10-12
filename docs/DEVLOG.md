@@ -1297,3 +1297,20 @@ attribution/immutable guard drill 1 passed after correcting its requester-token
 fixture. Final integrated main CI `38217864176` SUCCESS 6/6. BP-5 is ready as a
 coherent implementation commit; continue immediately with BP-6. Full candidate
 CI and independent review are still pending, not waived.
+
+
+## 2026-10-12 — BP-6 implementation candidate (D-104/D-105, D-110)
+
+G-14 now cancels the restricted requester's existing future REQUESTED/CONFIRMED
+viewings on that listing, strictly after the decision's database instant,
+regardless of publication generation. Listing FOR NO KEY UPDATE orders the
+restriction against new requests/confirmations before conversation/viewing
+locks; concurrent party cancellation preserves its winning source. Atomic
+HOMIES attribution, cancellation facts with decision ID, and neutral notices
+to requester and current MANAGE_VIEWINGS providers. No allegation/reason in
+viewing notices; no change to F6's separate generation gate or BP-10 behavior.
+
+Targeted real PostgreSQL 10 passed (eight observed blocking schedules plus
+boundary/isolation/rollback/repeats and republish). Ruff/mypy clean. Full suite,
+required CI, independent exact-SHA review and Draft PR are pending. The code
+is a candidate only; production/deployment NO; new PR merge not authorized.
