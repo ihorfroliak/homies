@@ -9,7 +9,7 @@
 | Baseline | `main` = `be150da11b9838409fcf8ee2d8ca4bd8b0311307` (tree `7a21621725f6250fd0f84e67db09fbda0964be7b`), CI `37518003115` success 6/6; Alembic head `a3c5e7f9b1d4` |
 | Branch | `claude/BP-10-idempotent-message-send` |
 | Phase A | read-only audit + proposed contract, PASS (2026-10-07); transport report outside the repository (not authority) |
-| Status | **ACCEPTED FOR CONTINUED DEVELOPMENT (D-110); INTEGRATED effective upon PR #6 merge to main**. Before merge this branch is a candidate. Phase C C1/C2/Codex PASS_WITH_NONBLOCKING_NOTES; D-109 dispositions and all open debt unchanged. Actual merge identity is recorded by Git/PR #6, not predicted |
+| Status | **INTEGRATED / ACCEPTED FOR CONTINUED DEVELOPMENT (D-110)**. PR #6 normal merge `064be3e1827d279890a9e026e9b1a48e476d7dbd`, candidate `a936e7a127c6eabff87a1f328f47321c15281bfc`, CI `38129196394` SUCCESS 6/6. Original audited implementation below unchanged; all D-109 debt retained |
 | Frozen audited implementation | `c385136c93826879b41509f1e30533ef46eee64c`, tree `15c26d7aedd525e2b5ea4beef8383e313a1473fd`; CI `38047352161` success 6/6. Documentation children are not substituted as this audited implementation SHA. [Receipt](../reviews/2026-10-11-bp10-acceptance-staging-receipt.md) |
 
 ## 1. Problem

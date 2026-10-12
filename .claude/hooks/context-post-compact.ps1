@@ -1,5 +1,5 @@
-# CTX-001 PostCompact hook: archive the compaction result (the whole hook input,
-# including compact_summary when Claude Code provides it) chronologically.
+# CTX-001 PostCompact hook: archive bounded metadata (never raw hook input,
+# with compact_summary stored only by explicit opt-in and within its size cap).
 # Never rewrites repository or canonical documents. Always exits 0.
 $ErrorActionPreference = 'Stop'
 try {
@@ -23,9 +23,9 @@ try {
         head            = $head
         checkpoint_path = $env:HOMIES_CHECKPOINT
         summary_file    = $null
-        hook_input      = $in
+        # Raw hook event intentionally omitted (privacy).
     }
-    if ($summary) {
+    if ($env:HOMIES_ARCHIVE_COMPACT_SUMMARY -eq '1' -and $summary -and $summary.Length -le 16384) {
         $summaryFile = Join-Path $archive "$ts-summary.md"
         @("# Compact summary $ts", '', "session: $($record.session_id)  trigger: $($record.trigger)  head: $head", '', $summary) |
             Set-Content -LiteralPath $summaryFile -Encoding UTF8

@@ -23,7 +23,15 @@ try {
         try { (& git -C $cwd @gitArgs 2>$null) -join "`n" } catch { $errors.Add("git $($gitArgs -join ' '): $($_.Exception.Message)"); '' }
     }
     function Sha([string]$path) {
-        try { if ($path -and (Test-Path -LiteralPath $path)) { (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLower() } else { $null } }
+        try {
+            if (-not $path -or -not (Test-Path -LiteralPath $path)) { return $null }
+            # Works in Windows PowerShell even when a parent pwsh process supplies
+            # a module path that omits Microsoft.PowerShell.Utility.
+            $stream = [System.IO.File]::OpenRead($path)
+            $algorithm = [System.Security.Cryptography.SHA256]::Create()
+            try { ([System.BitConverter]::ToString($algorithm.ComputeHash($stream))).Replace('-', '').ToLowerInvariant() }
+            finally { $algorithm.Dispose(); $stream.Dispose() }
+        }
         catch { $errors.Add("hash ${path}: $($_.Exception.Message)"); $null }
     }
 
@@ -32,10 +40,10 @@ try {
     if ($transcript -and (Test-Path -LiteralPath $transcript)) {
         try {
             $size = (Get-Item -LiteralPath $transcript).Length
-            if ($size -le 300MB) {
+            if ($env:HOMIES_ARCHIVE_FULL_TRANSCRIPT -eq '1' -and $size -le 20MB) {
                 $copy = Join-Path $archive "$ts-transcript.jsonl"
                 Copy-Item -LiteralPath $transcript -Destination $copy
-            } else { $errors.Add("transcript not copied: $size bytes > 300MB") }
+            } else { $errors.Add("transcript archival skipped (opt-in, max 20 MiB): $size bytes") }
         } catch { $errors.Add("transcript copy: $($_.Exception.Message)"); $copy = $null }
     }
 
@@ -49,7 +57,7 @@ try {
         head               = Invoke-HomiesGit @('rev-parse', 'HEAD')
         git_status_short   = Invoke-HomiesGit @('status', '--short')
         transcript_path    = $transcript
-        transcript_sha256  = Sha $transcript
+        transcript_sha256  = if ($copy) { Sha $copy } else { $null }
         transcript_copy    = $copy
         checkpoint_path    = $env:HOMIES_CHECKPOINT
         checkpoint_sha256  = Sha $env:HOMIES_CHECKPOINT

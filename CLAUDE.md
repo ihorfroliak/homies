@@ -88,3 +88,9 @@ units. Exact location private; public point only.
   the SHA of its own commit (TRACEABILITY, self-reference rule).
 * Market or product research goes to `docs/research/` (non-normative,
   independent synthesis, no named commercial competitor as authority; D-106).
+
+<!-- AGENT-001:BEGIN -->
+## Permanent bounded specialist reviewers (AGENT-001)
+
+Six project-defined, read-only specialists: `.claude/agents/{backend-reviewer,postgres-auditor,security-auditor,frontend-reviewer,test-engineer,devops-reviewer}.md`. Delegate a single risk-matched review when it meaningfully improves evidence; do not spawn all six. Typical docs/R0→none; R1→0–1; R2/R3→up to 2 non-overlapping specialist reviews unless canonical requirements are stricter. Descriptions enable best-effort auto-routing, not guaranteed dispatch. Explicitly invoke a mandatory specialist if automatic routing does not select it; if unavailable, record NOT VERIFIED and leave that review gate open. Main Claude session remains the one authorized implementation writer. Internal specialists do NOT fulfill the independent Codex audit. Read `docs/engineering/AGENT-OPERATING-MODEL.md`, `CONTEXT-AND-CACHE.md` and current Task Contract. After compact/resume verify branch, full SHA and task CHECKPOINT. No agent may merge/deploy without explicit founder instruction.
+<!-- AGENT-001:END -->

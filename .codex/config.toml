@@ -1,0 +1,6 @@
+# Project-scoped defaults; Codex loads project .codex/ only for a trusted repository.
+# Role manifests reside under .codex/agents/*.toml (each declares name/description).
+# No global sandbox or approval override. Read-only specialists set sandbox_mode locally.
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 2

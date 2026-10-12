@@ -1149,6 +1149,16 @@ milestone — CANONICAL DECISION REQUIRED. Наступна інженерна �
 (не розпочата). `FE-003 / FE-VIS-001 IMPLEMENTATION AUTHORIZED: NO`;
 `PRODUCTION READY: NO`; `DEPLOYMENT: NO`.
 
+## 2026-10-11 — AGENT-001: multi-vendor agent foundation (candidate)
+
+Founder-authorized Codex Session B in an isolated feature worktree: six read-only
+Claude specialists and six Codex roles, bounded routing and mandatory escalation,
+Copilot instructions, corrected micro-cycle/security-probe skills, opt-in bounded
+context archives. Product code and canonical decisions are outside scope.
+Contract: `docs/tasks/AGENT-001-agent-foundation.md`; actual validation evidence and
+limitations: `docs/engineering/AGENT-001-AUDIT.md`. Candidate pending founder decision;
+no merge or deployment. BP-10 Session A is not repeated.
+
 ## 2026-10-10 — BP-10 Phase B: ідемпотентні відправки повідомлень (кандидат, не змерджено)
 
 **Зроблено** (гілка `claude/BP-10-idempotent-message-send` від `be150da`;
@@ -1230,3 +1240,24 @@ reconciliation та required CI. Попередній staging entry і D-109 з�
 де його не спостерігали; це прийняте неблокуюче обмеження.
 IBB-001 без змін; EXPAND / rollback BLOCKED / migrate-first / BB-11 gate
 збережено; FE-003/FE-VIS-001 не авторизовані; production/deployment — NO.
+
+## 2026-10-11 — BP-10 інтегровано; reconciliation AGENT-001 (D-110)
+
+PR #6 змерджено звичайним GitHub merge зі збереженням історії:
+`064be3e1827d279890a9e026e9b1a48e476d7dbd`, дерево
+`40b438dc8b596459633d0eabd8e73113763944c9`. Candidate
+`a936e7a127c6eabff87a1f328f47321c15281bfc`, CI `38129196394` SUCCESS 6/6.
+Merge tree дорівнює перевіреному candidate; audited code, report SHA256 і D-109
+не змінено. Перевірку post-merge CI веде GitHub; тут немає твердження про
+результат незавершеного запуску.
+
+PR #5 reconciled з цим main у власному worktree. Єдиний конфлікт DEVLOG
+вирішено збереженням обох повних історичних entries: AGENT-001, потім BP-10
+staging і фінальної авторизації. Всі agent definitions, конфігурації,
+permissions, skills/hooks і privacy rules збережено. AGENT-001 ACCEPTED FOR
+CONTINUED DEVELOPMENT; INTEGRATED набуває сили після PR #5 merge та required
+CI. Це не твердження про ще не створений merge SHA. Native dispatch лишається
+NOT VERIFIED, де runtime не був доступний; попередні static/runtime evidence
+не повторювалися. Далі авторизовані BP-5, потім BP-6, окремий R2 review і Draft
+PR без дозволу на його merge. IBB-001 без змін; FE-003/FE-VIS-001 та deployment
+не авторизовані, production NOT READY.
