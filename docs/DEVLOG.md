@@ -1328,3 +1328,12 @@ cancellation timestamp guard are both asserted. Builder PostgreSQL rerun
 conclusively; no full-pass claim. Full exact-head CI and the reviewer's delta
 verification remain gates. New provider notice recipients inherit BP-9/BB-10
 authority-qualification debt. No deployment or new PR merge authorization.
+
+## 2026-10-13 — BP-5/BP-6 final migration-head pin
+
+Full Linux CI on `fec9993`: 1982 passed/1 failed/1 skipped; only failure was
+an old current-Alembic-head literal in test_moderation_core. Corrected that
+literal/comment without changing product code; targeted head/release/schema
+82 passed. Independent reviewer confirmed previous bounded repairs (12 passed)
+and closed the original verification finding. New exact-head CI and the final
+test-only delta review remain required. PR #7 stays Draft; no merge/deployment.

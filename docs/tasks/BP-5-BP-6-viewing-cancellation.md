@@ -161,3 +161,22 @@ IBB-001, FE-003 authorization and production flags remain unchanged.
 
 The corrected exact SHA still requires the separate reviewer's bounded delta
 check and green required CI. PR #7 remains Draft and merge is not authorized.
+
+### 2026-10-13 — final migration-head test pin
+
+Full Linux CI `38285854632` on `fec999399c64837fa8431aa98535df889625d98e`
+completed **1982 passed / 1 failed / 1 skipped** (live Stripe intentionally
+not requested). The sole failure was the old `11d778ab87a3` literal in
+`test_moderation_core.test_one_migration_head_and_it_is_the_release_head`;
+Alembic and release manifest both correctly returned `23e89acb98b4`.
+All concurrency/restore cases passed in that full run. Five other CI jobs
+passed; the run as a whole failed and is not acceptance evidence.
+
+Updated only that test's current-head literal/comment. The targeted head,
+release and schema suite then passed **82/82** on Python 3.12. Separate
+reviewer independently confirmed **12/12** corrected regression/cleanup
+cases at `fec9993` and closed its original verification finding. It will
+check this final test-only delta; no product code changed since `f7e7280`.
+Required CI must pass on the new exact head. PR #7 stays Draft, with founder
+merge authorization still required. Independent reports and final run IDs
+are linked in the PR handoff rather than predicted in this commit.

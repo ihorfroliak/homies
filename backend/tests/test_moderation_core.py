@@ -529,5 +529,5 @@ def test_one_migration_head_and_it_is_the_release_head():
 
     heads = ScriptDirectory.from_config(alembic_config()).get_heads()
     manifest = json.loads(release.MANIFEST_PATH.read_text(encoding="utf-8"))
-    # BP-10's message key (11d778ab87a3) sits on the Slice 1 head a3c5e7f9b1d4.
-    assert heads == [manifest["schema_head"]] == ["11d778ab87a3"]
+    # BP-5's cancellation source follows BP-10's message-key migration.
+    assert heads == [manifest["schema_head"]] == ["23e89acb98b4"]
