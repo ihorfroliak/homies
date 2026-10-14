@@ -274,3 +274,6 @@ Reports dated 2026-07 (enterprise-architecture review, OAT reports,
 full-system and technical audits) predate the canonical documents and
 TASK-000. They describe the earlier booking-era system and are historical
 context only; they are not part of any acceptance above.
+
+## BP-5/BP-6 accepted independent review (D-111)
+[Final report](BP56-independent-review-b400bc9-final.md), [original](BP56-independent-review-f7e7280.md), [repair addendum](BP56-independent-review-fec9993-addendum.md): archived byte-for-byte. Final SHA256 fe185b69d0a9238a34422bd4b0a038b0dfeab50fd5ef05e4c25c32b9cf0a9d04. Accepted b400bc9, PR7 merge38db9c1. PASS WITH NONBLOCKING NOTE; BP9/BB10 gate retained. No repeated audit.

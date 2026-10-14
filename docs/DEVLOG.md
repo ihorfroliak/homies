@@ -1337,3 +1337,23 @@ literal/comment without changing product code; targeted head/release/schema
 82 passed. Independent reviewer confirmed previous bounded repairs (12 passed)
 and closed the original verification finding. New exact-head CI and the final
 test-only delta review remain required. PR #7 stays Draft; no merge/deployment.
+
+## 2026-10-14 — D-111 founder BP-5/BP-6 acceptance and BP-8 execution
+Founder accepts exact b400bc9ea8f638e5915c9892b29abe444db7d242 with independent
+PASS WITH NONBLOCKING NOTE. PR #7 merged normally as
+38db9c100eae331fbe978432c9197d5ceb893121, tree225cc074f8358b521bbf79f033b57313ebe7821e.
+Candidate CI38363820860 SUCCESS6/6; main run38546637969 started.
+Full independent reports are archived byte-for-byte in docs/reviews; final
+BP56-independent-review-b400bc9-final.md SHA256
+fe185b69d0a9238a34422bd4b0a038b0dfeab50fd5ef05e4c25c32b9cf0a9d04.
+BARRIER/rollback BLOCKED, sealed historical NULL, BP-9/BB-10 notification
+VERIFIED-root gate and all technical debt retained. Local Docker clock
+instability is not a certified application defect. IBB-001 unchanged;
+FE-003/FE-VIS not authorized; production NOT READY/NOT DEPLOYED.
+Codex authorized as sole bounded BP-8 writer under D-104/D-105 OD-2/OD-8:
+block current-generation restricted new AND repeat contact reveal before
+repeat fast path with neutral RECONTACT_BLOCKED/no phone. Preserve later
+generations, normal authorization, quotas, repeats and audit semantics.
+Contract, implementation, tests, feature-branch commit/push and Draft PR
+are authorized immediately, separate exact-SHA review per governance9.
+New BP-8 PR merge is NOT authorized; no general BP-5/BP-6 re-audit.

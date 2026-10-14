@@ -2,10 +2,10 @@
 id: PROJECT-STATUS
 type: status_index
 role: single semantic owner of volatile project status (D-106, 05 §14)
-as_of: 2026-10-12
+as_of: 2026-10-14
 reconciled_through:
-  code_and_product: BP-10 merge 064be3e1827d279890a9e026e9b1a48e476d7dbd (D-110)
-  documentation: BP-10 and AGENT-001 integrated; BP-5/BP-6 candidate in progress (D-110)
+  code_and_product: BP-5/BP-6 merge 38db9c100eae331fbe978432c9197d5ceb893121 (D-111)
+  documentation: BP-10 and AGENT-001 integrated; BP-5/BP-6 integrated; BP-8 authorized (D-111)
 last_formal_baseline:
   id: IBB-001
   name: Integrated Backend Baseline 001
@@ -13,15 +13,15 @@ last_formal_baseline:
   tag: backend-baseline-001
   status: ACCEPTED
 latest_code_bearing_main_state:
-  implementation_sha: c385136c93826879b41509f1e30533ef46eee64c
-  what: BP-10 INTEGRATED / ACCEPTED FOR CONTINUED DEVELOPMENT
-  merge_sha: 064be3e1827d279890a9e026e9b1a48e476d7dbd
-  candidate_ci: 38129196394 success 6/6
-  main_ci: BP-10 38152493505 success 6/6; final integration 38217864176 success 6/6
+  implementation_sha: b400bc9ea8f638e5915c9892b29abe444db7d242
+  what: BP-5 and BP-6 INTEGRATED / ACCEPTED FOR CONTINUED DEVELOPMENT
+  merge_sha: 38db9c100eae331fbe978432c9197d5ceb893121
+  candidate_ci: 38363820860 success 6/6
+  main_ci: 38546637969 pending at receipt preparation; result on GitHub
 repository_head: resolved from Git (origin/main); intentionally not embedded here
 next_task:
-  id: BP-5 + BP-6
-  status: CANDIDATE — BP-5/BP-6 implemented; full verification and independent review pending
+  id: BP-8
+  status: IMPLEMENTATION AUTHORIZED — new/repeat G-14 contact reveal restriction; Draft PR only
 fe003_implementation_authorized: false
 fe_vis_001_implementation_authorized: false
 production_ready: false
@@ -47,18 +47,29 @@ has exact reconciled-head CI `38152688469` SUCCESS 6/6; its post-merge run
 `735e1557a1362c0070f815c4875bab7fa69920f8`. Both original candidates remain
 ancestors; both DEVLOG entries and specialist configurations are preserved.
 
-BP-5/BP-6 are implemented as a candidate on their own branch from that main,
-under the [bounded contract](tasks/BP-5-BP-6-viewing-cancellation.md).
-[Draft PR #7](https://github.com/ihorfroliak/homies/pull/7) is open.
-It is a candidate, not accepted or merged; separate exact-SHA review,
-required CI and subsequent founder merge authorization remain due.
+**2026-10-14 — BP-5 and BP-6 INTEGRATED (D-111).** PR #7 normal merge
+`38db9c100eae331fbe978432c9197d5ceb893121` preserves accepted candidate
+`b400bc9ea8f638e5915c9892b29abe444db7d242` and tree
+`225cc074f8358b521bbf79f033b57313ebe7821e`. CI38363820860 SUCCESS6/6,
+1983passed/1skip (live Stripe), restore10/10, coverage92.2%.
+Postmerge CI: [38546637969](https://github.com/ihorfroliak/homies/actions/runs/38546637969).
+[Independent final report](reviews/BP56-independent-review-b400bc9-final.md)
+and its two antecedents are archived byte-for-byte; final SHA256
+`fe185b69d0a9238a34422bd4b0a038b0dfeab50fd5ef05e4c25c32b9cf0a9d04`.
+Founder accepts PASS WITH NONBLOCKING NOTE. BP-9/BB-10 must include provider
+notice VERIFIED-root authority filtering before external provider beta.
+Migration23e89acb98b4 remains BARRIER / rollback_to_previous BLOCKED;
+unprovable historical actors retain sealed NULL legacy exception.
+Local Docker clock instability is not a certified application defect.
+Next: authorized BP-8 implementation under D-104/D-105 OD-2/OD-8; its merge
+requires subsequent founder authorization. No debt/baseline/deployment change.
 
 ## Three different "current" states
 
 | Concept | Value | How to read it |
 |---|---|---|
 | **Last formal backend baseline** | Integrated Backend Baseline 001 (`IBB-001`), `5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98`, tag `backend-baseline-001`, **ACCEPTED** (CONV-001A) | the last state accepted through the baseline process ([record](baselines/IBB-001.md)). There is no IBB-002 |
-| **Latest code-bearing `main` state** | BP-10 merge `064be3e1827d279890a9e026e9b1a48e476d7dbd`; audited implementation `c385136c93826879b41509f1e30533ef46eee64c` preserved | ACCEPTED FOR CONTINUED DEVELOPMENT (D-110), D-109 dispositions retained; candidate CI `38129196394` SUCCESS 6/6; post-merge CI from GitHub. No successor formal baseline |
+| **Historical BP-10 main state** | BP-10 merge `064be3e1827d279890a9e026e9b1a48e476d7dbd`; audited implementation `c385136c93826879b41509f1e30533ef46eee64c` preserved | ACCEPTED FOR CONTINUED DEVELOPMENT (D-110), D-109 dispositions retained; candidate CI `38129196394` SUCCESS 6/6; post-merge CI from GitHub. No successor formal baseline |
 | **Repository HEAD** | read it from Git: `git rev-parse origin/main` | this file does not embed the SHA of the commit that contains it ([TRACEABILITY](engineering/TRACEABILITY.md#self-reference-a-file-cannot-name-its-own-commit)). Documentation-only children do not replace the frozen audited implementation identity |
 
 ## Flags
@@ -66,7 +77,8 @@ required CI and subsequent founder merge authorization remain due.
 ```text
 BP-10 MERGE AUTHORIZED:              YES  (PR #6 only, D-110)
 AGENT-001 MERGE AUTHORIZED:          YES  (PR #5 only, after reconciliation/checks, D-110)
-BP-5 / BP-6 IMPLEMENTATION AUTHORIZED: YES  (after both integrations; new PR merge NOT authorized)
+BP-5 / BP-6:                         INTEGRATED (D-111, PR #7)
+BP-8 IMPLEMENTATION AUTHORIZED:       YES (bounded backend; Draft PR only)
 FE-003 IMPLEMENTATION AUTHORIZED:     NO   (contract approved, D-104/D-105)
 FE-VIS-001 IMPLEMENTATION AUTHORIZED: NO   (D-104 OD-5; DESIGN-001C handoff §26, §31)
 PRODUCTION READY:                     NO   (NOT_READY)
@@ -79,15 +91,16 @@ DEPLOYMENT:                           NO   (NOT_DEPLOYED; no production environm
 |---|---|---|
 | integration 1 | **BP-10** — [PR #6](https://github.com/ihorfroliak/homies/pull/6) | INTEGRATED / ACCEPTED FOR CONTINUED DEVELOPMENT (D-110), merge `064be3e1827d279890a9e026e9b1a48e476d7dbd`, candidate CI `38129196394` SUCCESS 6/6. Audited code `c385136c93826879b41509f1e30533ef46eee64c`, PASS_WITH_NONBLOCKING_NOTES; all four P3 and five NOTEs/debt retained under D-109. [Historical staging receipt](reviews/2026-10-11-bp10-acceptance-staging-receipt.md) |
 | integration 2 | **AGENT-001** — [PR #5](https://github.com/ihorfroliak/homies/pull/5) | INTEGRATED / ACCEPTED FOR CONTINUED DEVELOPMENT; merge `74a7065e167e6cea8d4251a17138ffe775b02a54`, exact-head CI `38152688469` SUCCESS 6/6. Six Claude/six Codex specialists preserved. Native dispatch NOT VERIFIED where unavailable is an accepted nonblocking limitation; no shared vendor memory/cache or guaranteed routing |
-| in progress | **BP-5 + BP-6** | IMPLEMENTATION AUTHORIZED / CANDIDATE IN PROGRESS (D-110), Codex temporary sole bounded writer in a dedicated worktree/feature branch. BP-5 first, BP-6 second; real PostgreSQL, migrations/API/types/release checks, CI and separate exact-SHA R2 review; Draft PR, subsequent founder merge authorization required |
-| later, separately authorized | BP-8 → BP-11, BP-9 → BP-3, BP-4; MARKET-001 | Existing [FE-003 sequencing](tasks/FE-003-save-conversation-viewing-DRAFT.md); no authorization added here |
+| integrated | **BP-5 + BP-6** | INTEGRATED / ACCEPTED, D-111, PR #7 merge38db9c1; exact-head CI and independent review accepted |
+| next | **BP-8** | IMPLEMENTATION AUTHORIZED, D-111; bounded backend, separate review and Draft PR; merge not authorized |
+| later, separately authorized | BP-11, BP-9 → BP-3, BP-4; MARKET-001 | Existing [FE-003 sequencing](tasks/FE-003-save-conversation-viewing-DRAFT.md); no authorization added here |
 
 FE-003 frontend and FE-VIS-001 remain unauthorized. Beta blockers BB-1…BB-11
 stay open until their own criteria close them. IBB-001 remains the last formal
 baseline; no IBB-002. BP-10 release restrictions remain **EXPAND /
 rollback_to_previous = BLOCKED / migrate-first / BB-11 all-serving-instances**.
 Integration does not certify deployment or external beta. No completed audit
-is reopened by this integration; new BP-5/BP-6 work has its own review gate.
+is reopened by this integration; new BP-8 work has its own review gate.
 
 ## Integrated on `main` since IBB-001
 
