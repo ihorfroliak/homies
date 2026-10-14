@@ -132,28 +132,24 @@ def test_the_image_has_no_placeholder_build_identity():
 
 
 def test_this_release_declares_its_rollback_honestly(graph):
-    """BP-10 (D-108) adds messages.client_message_id and its unique index on
-    top of the TASK-015 head a3c5e7f9b1d4: EXPAND, because the previous
-    release still runs on the new schema — yet rollback is BLOCKED, because
-    that release drops client_message_id from requests and so writes a
-    second message on every retry of a lost send (BB-11). This build reads
-    and writes the column, so its minimum schema is its own head."""
+    """BP-5's strict source CHECK rejects the old cancellation writer: BARRIER."""
     manifest = _parse(graph)
-    assert manifest.schema_transition == release.EXPAND
+    assert manifest.schema_transition == release.BARRIER
     assert manifest.rollback_to_previous == release.BLOCKED
     assert manifest.rollback_allowed() is False
     assert manifest.schema_head == manifest.minimum_schema == manifest.maximum_schema \
-        == "11d778ab87a3"
-    assert manifest.previous_schema_head == "a3c5e7f9b1d4"
-    # The one step since the previous release is BP-10's own, declared EXPAND/BLOCKED.
-    step = graph.steps["11d778ab87a3"]
-    assert step.down_revision == "a3c5e7f9b1d4"
-    assert (step.schema_transition, step.rollback_to_previous) == ("EXPAND", "BLOCKED")
-    # The barrier names the build it protects against, and keeps the TASK-015 ones.
-    assert MANIFEST["previous_release"]["id"] == "TASK-015-S4b"
-    assert "ROLLBACK BLOCKED" in MANIFEST["rollback_note"]
-    assert "duplicate-send" in MANIFEST["rollback_note"]
-    assert "TASK-015 safety barriers" in MANIFEST["rollback_note"]
+        == "23e89acb98b4"
+    assert manifest.previous_schema_head == "11d778ab87a3"
+    step = graph.steps["23e89acb98b4"]
+    assert step.down_revision == "11d778ab87a3"
+    assert (step.schema_transition, step.rollback_to_previous) == ("BARRIER", "BLOCKED")
+    # The immutable BP-10 history is still EXPAND/BLOCKED, not rewritten by BP-5.
+    previous = graph.steps["11d778ab87a3"]
+    assert previous.down_revision == "a3c5e7f9b1d4"
+    assert (previous.schema_transition, previous.rollback_to_previous) == ("EXPAND", "BLOCKED")
+    assert MANIFEST["previous_release"]["id"] == "BP-10"
+    for retained in ("ROLLBACK BLOCKED", "duplicate-send", "TASK-015 safety barriers", "BB-11"):
+        assert retained in MANIFEST["rollback_note"]
 
 
 # --- malformed manifests are errors, never compatible -----------------------------------------
@@ -174,12 +170,12 @@ def test_this_release_declares_its_rollback_honestly(graph):
     (_with(previous_release={"id": "IBB-001"}), "previous_release"),
     # the declared transition must match the migrations since the previous release
     (_with(schema_transition="NO_SCHEMA_CHANGE"), "contradicts"),
-    (_with(schema_transition="BARRIER"), "contradicts"),
-    # BP-10's own step declares rollback BLOCKED: the release cannot promise SAFE
+    (_with(schema_transition="EXPAND"), "contradicts"),
+    # BP-5's own step declares rollback BLOCKED: the release cannot promise SAFE
     (_with(rollback_to_previous="SAFE"), "contradicts a migration"),
     (_with(schema_transition="NO_SCHEMA_CHANGE", previous_release=PR_003), "contradicts"),
     # a release cannot promise SAFE across a step that declares BLOCKED
-    (_with(schema_transition="EXPAND", rollback_to_previous="SAFE",
+    (_with(schema_transition="BARRIER", rollback_to_previous="SAFE",
            previous_release=PR_003), "contradicts a migration"),
 ])
 def test_a_malformed_or_contradictory_manifest_is_refused(graph, data, message):
@@ -265,9 +261,9 @@ def test_rollback_metadata_fails_closed(case, data, allowed):
 
 def test_every_migration_has_valid_declarations(graph):
     # REGISTRY classifies the 26 steps before PR-002; every later step
-    # (PR-002's lineage, TASK-015 S1's moderation core, BP-10's message key)
+    # (PR-002 lineage, TASK-015 moderation, BP-10 key and BP-5 source)
     # declares itself.
-    assert len(graph.steps) == len(REGISTRY) + 3
+    assert len(graph.steps) == len(REGISTRY) + 4
     for step in graph.steps.values():
         assert step.schema_transition in release.STEP_TRANSITIONS
         assert step.rollback_to_previous in release.ROLLBACK_VALUES

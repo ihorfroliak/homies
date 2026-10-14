@@ -160,12 +160,21 @@ def test_no_viewing_is_ever_confirmed_with_a_cancellation_time(pg_client, pg_mig
 
     from tests.test_viewings_pg import _setup
 
-    owner, _, (first, _) = _setup(pg_client)
+    owner, _, (first, second) = _setup(pg_client)
     assert pg_client.post(f"/v1/viewings/{first}/cancel",
                           headers=auth(owner)).status_code == 200
     with pytest.raises(IntegrityError) as caught, pg_migrated_engine.begin() as conn:
         conn.execute(text("UPDATE viewings SET status = 'CONFIRMED' WHERE id = :v"),
                      {"v": first})
+    assert caught.value.orig.sqlstate == "23514"
+    # Both independent checks reject resurrection with cancellation metadata.
+    assert caught.value.orig.diag.constraint_name in {
+        "ck_viewings_cancelled_state", "ck_viewings_cancellation_source_state"}
+    # Also isolate the original timestamp backstop: a source-free live row
+    # satisfies BP-5's source shape but may not carry a cancellation timestamp.
+    with pytest.raises(IntegrityError) as caught, pg_migrated_engine.begin() as conn:
+        conn.execute(text("UPDATE viewings SET status='CONFIRMED', cancelled_at=now() "
+                          "WHERE id=:v"), {"v": second})
     assert caught.value.orig.sqlstate == "23514"
     assert caught.value.orig.diag.constraint_name == "ck_viewings_cancelled_state"
 

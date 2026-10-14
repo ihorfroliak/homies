@@ -8,10 +8,8 @@ Two effects, both written in the decision's own transaction:
   governs the final wording, not this module);
 * cancelling a listing's future viewings — REQUESTED or CONFIRMED viewings
   that start after the decision become CANCELLED, with `cancelled_at` set to
-  the decision's database instant. That instant is what marks a viewing as
-  cancelled by Homies (`cancelled_by_homies`): a user's cancellation can
-  never carry exactly the instant of a close-engagement decision on the
-  same listing, because both are written under the viewing's row lock.
+  the decision's database instant and the immutable source HOMIES (BP-5).
+  The compatibility boolean is derived from that source, never a timestamp coincidence.
 
 Lock order (Phase A §14): the caller already holds property → listing; here
 conversations are locked in id order, then viewings in id order. Every path
@@ -72,7 +70,6 @@ def close_listing_engagement(db: Session, listing_id: str,
     """Close every ACTIVE conversation of the listing and cancel its future
     REQUESTED/CONFIRMED viewings. Returns (closed conversation ids, cancelled
     viewing ids). The caller holds the property and listing row locks."""
-    effective: datetime = decision.effective_from
     conversations = db.scalars(
         select(Conversation)
         .where(Conversation.listing_id == listing_id, Conversation.status == "ACTIVE")
@@ -82,26 +79,7 @@ def close_listing_engagement(db: Session, listing_id: str,
     ).all()
     closed = [c.id for c in conversations if close_conversation(db, c, decision)]
 
-    viewings = db.execute(
-        select(Viewing.id, Viewing.status)
-        .where(Viewing.listing_id == listing_id, Viewing.status.in_(CANCELLABLE),
-               Viewing.starts_at > effective)
-        .order_by(Viewing.id)
-        .with_for_update()
-    ).all()
-    viewing_ids = [v.id for v in viewings]
-    if viewing_ids:
-        db.execute(
-            update(Viewing)
-            .where(Viewing.id.in_(viewing_ids), Viewing.status.in_(CANCELLABLE))
-            .values(status="CANCELLED", cancelled_at=effective, version=Viewing.version + 1)
-            .execution_options(synchronize_session=False)
-        )
-        for v in viewings:
-            facts.viewing_cancelled(
-                db, viewing_id=v.id, listing_id=listing_id, prior_status=v.status,
-                cancelled_by="HOMIES", moderation_decision_id=decision.id,
-                cancelled_at=freshness.canonical_instant(effective))
+    viewing_ids = cancel_future_viewings(db, listing_id, decision)
     if closed or viewing_ids:
         audit(db, actor=decision.decided_by_user_id, action="moderation.engagement_closed",
               entity_type="classified_offer", entity_id=listing_id,
@@ -110,20 +88,42 @@ def close_listing_engagement(db: Session, listing_id: str,
     return closed, viewing_ids
 
 
+def cancel_future_viewings(db: Session, listing_id: str, decision: ModerationDecision,
+                           *, requester_user_id: str | None = None) -> list[str]:
+    """Cancel locked future rows and emit their facts in the caller's transaction.
+
+    BP-6 uses the requester restriction; listing close-engagement uses all rows.
+    Caller holds the listing lock excluding new requests/confirmations. The
+    SELECT FOR UPDATE rechecks a row changed by a concurrent party cancellation.
+    No publication-generation predicate: old-generation viewings remain in scope.
+    """
+    effective = decision.effective_from
+    query = select(Viewing.id, Viewing.status).where(
+        Viewing.listing_id == listing_id, Viewing.status.in_(CANCELLABLE),
+        Viewing.starts_at > effective)
+    if requester_user_id is not None:
+        query = query.where(Viewing.requester_user_id == requester_user_id)
+    viewings = db.execute(query.order_by(Viewing.id).with_for_update()).all()
+    viewing_ids = [v.id for v in viewings]
+    if viewing_ids:
+        db.execute(
+            update(Viewing)
+            .where(Viewing.id.in_(viewing_ids), Viewing.status.in_(CANCELLABLE))
+            .values(status="CANCELLED", cancelled_at=effective, cancelled_by="HOMIES",
+                    version=Viewing.version + 1)
+            .execution_options(synchronize_session=False)
+        )
+        for v in viewings:
+            facts.viewing_cancelled(
+                db, viewing_id=v.id, listing_id=listing_id, prior_status=v.status,
+                cancelled_by="HOMIES", moderation_decision_id=decision.id,
+                cancelled_at=freshness.canonical_instant(effective))
+    return viewing_ids
+
+
 def cancelled_by_homies(db: Session, viewings: list[Viewing]) -> set[str]:
-    """Ids of the given CANCELLED viewings that a close-engagement decision on
-    their listing cancelled — one statement for the whole list."""
-    cancelled = [v for v in viewings if v.status == "CANCELLED" and v.cancelled_at is not None]
-    if not cancelled:
-        return set()
-    listing_ids = {v.listing_id for v in cancelled}
-    instants = {(r.listing_id, _utc(r.effective_from)) for r in db.execute(
-        select(ModerationDecision.listing_id, ModerationDecision.effective_from)
-        .where(ModerationDecision.target_type == "LISTING",
-               ModerationDecision.listing_id.in_(listing_ids),
-               ModerationDecision.close_engagement.is_(True))
-    )}
-    return {v.id for v in cancelled if (v.listing_id, _utc(v.cancelled_at)) in instants}
+    """Compatibility projection from the durable source; unknown is not HOMIES."""
+    return {v.id for v in viewings if v.status == "CANCELLED" and v.cancelled_by == "HOMIES"}
 
 
 def _utc(value: datetime | None) -> datetime | None:

@@ -1,7 +1,7 @@
 """Moderation notices (TASK-015 S3, founder D-9; S4b: viewing requesters and photos).
 
 Inbox only (`user_notifications`), category TRANSACTIONAL: no email, no
-outbox, no provider, no preference can switch them off, and TASK-014's
+outbox, no email provider, no preference can switch them off, and TASK-014's
 `alert_deliveries` is not involved.
 
 Written by the decision service (`decisions.apply_*_decision`), in the
@@ -97,20 +97,30 @@ MEDIA_NOTICE_DATA_KEYS = ("media_asset_id", "listing_id", "decision_id", "action
 
 
 def notify_viewings_cancelled(db: Session, decision: ModerationDecision,
-                              viewing_ids: list[str]) -> list[str]:
-    """One notice per cancelled viewing, to its requester."""
+                              viewing_ids: list[str], *,
+                              provider_property_id: str | None = None) -> list[str]:
+    """Neutral notice per viewing/requester; BP-6 also includes its providers.
+
+    The recipient union prevents a duplicate when one account has both roles.
+    Existing listing close-engagement calls retain their requester-only policy.
+    """
     title_key, body_key = _KEYS[VIEWING_CANCELLED]
     rows = db.execute(select(Viewing.id, Viewing.listing_id, Viewing.requester_user_id)
                       .where(Viewing.id.in_(viewing_ids)).order_by(Viewing.id)).all()
+    providers = authority.holders(db, provider_property_id, "MANAGE_VIEWINGS") \
+        if provider_property_id is not None and rows else []
+    recipients = []
     for row in rows:
-        db.add(UserNotification(
-            user_id=row.requester_user_id, category=TRANSACTIONAL,
-            notification_type=VIEWING_CANCELLED, title_key=title_key, body_key=body_key,
-            data={"viewing_id": row.id, "listing_id": row.listing_id,
-                  "effective_from": freshness.canonical_instant(decision.effective_from)},
-            created_at=decision.effective_from,
-        ))
-    return [r.requester_user_id for r in rows]
+        for user_id in sorted({row.requester_user_id, *providers}):
+            db.add(UserNotification(
+                user_id=user_id, category=TRANSACTIONAL,
+                notification_type=VIEWING_CANCELLED, title_key=title_key, body_key=body_key,
+                data={"viewing_id": row.id, "listing_id": row.listing_id,
+                      "effective_from": freshness.canonical_instant(decision.effective_from)},
+                created_at=decision.effective_from,
+            ))
+            recipients.append(user_id)
+    return recipients
 
 
 def notify_media_restricted(db: Session, decision: ModerationDecision,

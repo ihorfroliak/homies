@@ -1,14 +1,14 @@
 {
   "manifest_version": 1,
-  "release": "BP-10 — idempotent conversation start and message append (client_message_id, D-108)",
-  "schema_head": "11d778ab87a3",
-  "minimum_schema": "11d778ab87a3",
-  "maximum_schema": "11d778ab87a3",
-  "schema_transition": "EXPAND",
+  "release": "BP-5 — immutable viewing cancellation source",
+  "schema_head": "23e89acb98b4",
+  "minimum_schema": "23e89acb98b4",
+  "maximum_schema": "23e89acb98b4",
+  "schema_transition": "BARRIER",
   "rollback_to_previous": "BLOCKED",
-  "rollback_note": "ROLLBACK BLOCKED. Migration 11d778ab87a3 only adds messages.client_message_id and its partial unique index, so the previous release still runs on this schema (EXPAND), but returning to it restores the unkeyed message-write path: that build silently drops client_message_id from requests, so every retry of a send whose response was lost writes a second message (the BP-10 / BB-11 duplicate-send defect). This build reads and writes the column, so its minimum schema is its own head (migrate first). Keyed frontend sends stay off until every serving instance runs this build. The TASK-015 safety barriers of the previous release still stand behind it. Recovery is forward repair only.",
+  "rollback_note": "ROLLBACK BLOCKED. BP-5 requires a valid immutable source for every new cancellation. The previous BP-10 writer omits it, so its cancellation writes fail the new CHECK: BARRIER, not merely additive EXPAND. Migrate first under the existing --allow-barrier maintenance procedure; no deployment is authorized. Historical cancellations without authoritative attribution alone retain a sealed legacy exception. BP-10 remains historically EXPAND/BLOCKED, and its duplicate-send protection, BB-11 all-serving-instances gate and TASK-015 safety barriers remain mandatory. Recovery is forward repair only.",
   "previous_release": {
-    "id": "TASK-015-S4b",
-    "schema_head": "a3c5e7f9b1d4"
+    "id": "BP-10",
+    "schema_head": "11d778ab87a3"
   }
 }

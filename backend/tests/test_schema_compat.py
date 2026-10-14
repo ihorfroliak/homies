@@ -150,9 +150,11 @@ BP10_HEAD, PRE_BP10_HEAD = "11d778ab87a3", "a3c5e7f9b1d4"
 
 def test_the_real_chain_is_decided_by_ancestry(real):
     graph, m = real
-    # BP-10 (D-108): this build reads and writes messages.client_message_id,
-    # so it runs only on its own head (minimum = maximum = head; migration first).
-    assert graph.head == m.schema_head == BP10_HEAD
+    # BP-5 reads/writes cancellation source: migrate first, exact new head.
+    assert graph.head == m.schema_head == "23e89acb98b4"
+    assert graph.steps[graph.head].down_revision == BP10_HEAD
+    assert release.evaluate(m, graph, [BP10_HEAD],
+                            {r: graph.steps[r] for r in graph.ancestors(BP10_HEAD)}).code == TOO_OLD
     assert m.minimum_schema == m.maximum_schema == m.schema_head
     full = {r: graph.steps[r] for r in graph.ancestors(graph.head)}
     assert release.evaluate(m, graph, [m.schema_head], full).code == EXACT

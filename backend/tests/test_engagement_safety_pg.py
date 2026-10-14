@@ -220,6 +220,7 @@ def test_e_r1c_continuing_a_thread_waits_for_its_closure_and_is_barred(pg_client
     mod = _account(eng, role="admin")
     a = _session(eng)
     result: dict = {}
+    t = None
     try:
         _restrict(a, s["conv"], mod)
 
@@ -229,11 +230,15 @@ def test_e_r1c_continuing_a_thread_waits_for_its_closure_and_is_barred(pg_client
                     s["offer"], conversations.MessageIn(client_message_id=uuid4(), body="me again"),
                     user=_user(r, s["tenant"]), db=r)
         t = _run(result, "start", again)
-        assert _blocked_on(eng, "conversations", _pid(a))
+        assert _blocked_on(eng, "classified_offers", _pid(a))
         a.commit()
         t.join(15)
     finally:
+        a.rollback()
         a.close()
+        if t is not None:
+            t.join(15)
+            assert not t.is_alive(), "race worker did not terminate"
     assert getattr(result["start"], "status_code", None) == 409
     assert result["start"].detail.startswith("RECONTACT_BLOCKED")
     assert _user_messages(eng, s["conv"]) == 1
@@ -249,6 +254,7 @@ def test_e_r2_two_moderators_restrict_once(pg_client, pg_migrated_engine):
     m1, m2 = _account(eng, role="admin"), _account(eng, role="admin")
     a = _session(eng)
     result: dict = {}
+    t = None
     try:
         first = _restrict(a, s["conv"], m1)
         b = _session(eng)
@@ -260,11 +266,15 @@ def test_e_r2_two_moderators_restrict_once(pg_client, pg_migrated_engine):
                 b.rollback()
                 b.close()
         t = _run(result, "b", second)
-        assert _blocked_on(eng, "conversations", _pid(a))
+        assert _blocked_on(eng, "classified_offers", _pid(a))
         a.commit()
         t.join(15)
     finally:
+        a.rollback()
         a.close()
+        if t is not None:
+            t.join(15)
+            assert not t.is_alive(), "race worker did not terminate"
     assert isinstance(result["b"], decisions.StaleHead)
     assert result["b"].current_head_id == first.decision_id
     assert _scalar(eng, "SELECT count(*) FROM moderation_decisions WHERE target_id = :c",
@@ -812,31 +822,33 @@ def test_f6a_restriction_committed_first_the_viewing_is_refused(pg_client, pg_mi
     assert _viewings_of(eng, s["offer"]) == 0
 
 
-def test_f6b_a_restriction_in_flight_neither_blocks_the_request_nor_is_bypassed_after(
+def test_f6b_a_restriction_in_flight_blocks_then_refuses_the_request(
         pg_client, pg_migrated_engine):
-    """The request takes the listing FOR SHARE, the decision FOR KEY SHARE:
-    they do not wait for each other. A request that reads before the decision
-    commits orders before it (as a viewing that already existed would); once
-    the decision is committed, the same requester is refused."""
+    """BP-6 orders restriction NO KEY UPDATE before request SHARE. The waiter
+    sees the committed restriction, so no viewing escapes the cleanup scan."""
     eng = pg_migrated_engine
     s = _setup(pg_client)
     mod = _account(eng, role="admin")
     a = _session(eng)
     result: dict = {}
+    t = None
     try:
-        _restrict(a, s["conv"], mod)  # uncommitted: conversation FOR UPDATE, listing KEY SHARE
+        _restrict(a, s["conv"], mod)
         t = _run(result, "first", lambda: _request_viewing(eng, s, 10))
-        t.join(15)
-        assert not t.is_alive(), "the viewing request waited on the decision"
-        assert isinstance(result["first"], str), result["first"]
+        assert _blocked_on(eng, "classified_offers", _pid(a))
         a.commit()
     finally:
+        a.rollback()
         a.close()
-    assert _status(eng, "viewings", result["first"]) == "REQUESTED"
-    # The requester calls it off and tries again: now the restriction stands.
-    with _session(eng) as c:
-        viewings.cancel(result["first"], user=_user(c, s["tenant"]), db=c)
-    _run(result, "again", lambda: _request_viewing(eng, s, 11)).join(15)
+        if t is not None:
+            t.join(15)
+            assert not t.is_alive(), "viewing worker did not terminate"
+    assert getattr(result["first"], "status_code", None) == 409
+    assert result["first"].detail.startswith("RECONTACT_BLOCKED")
+    assert _viewings_of(eng, s["offer"]) == 0
+    again = _run(result, "again", lambda: _request_viewing(eng, s, 11))
+    again.join(15)
+    assert not again.is_alive()
     assert getattr(result["again"], "status_code", None) == 409
     assert result["again"].detail.startswith("RECONTACT_BLOCKED")
-    assert _viewings_of(eng, s["offer"]) == 1
+    assert _viewings_of(eng, s["offer"]) == 0

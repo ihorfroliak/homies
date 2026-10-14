@@ -196,6 +196,12 @@ def _seed_engagement(pg_client, sessions, owner, renter, offers):
     assert pg_client.post(f"/v1/viewings/{viewing.json()['id']}/confirm",
                           headers=auth(owner)).status_code == 200
 
+    cancelled = pg_client.post(f"/v1/classifieds/{offers[0]}/viewings",
+                               json={"starts_at": _slot(day, 11)}, headers=auth(other))
+    assert cancelled.status_code == 201, cancelled.text
+    assert pg_client.post(f"/v1/viewings/{cancelled.json()['id']}/cancel",
+                          headers=auth(other)).status_code == 200
+
     with sessions() as db:
         prop = db.scalar(select(ClassifiedOffer.property_id).where(ClassifiedOffer.id == offers[1]))
     cover = _approved(pg_client, owner, prop)
@@ -223,7 +229,8 @@ def _seed_engagement(pg_client, sessions, owner, renter, offers):
         db.commit()
         other_id = db.scalar(select(User.id).where(User.email == "dr-phase1-tenant2@example.com"))
     return {"live": live_id, "closed": closed_id, "message": message_id,
-            "viewing": viewing.json()["id"], "cover": cover, "stolen": stolen,
+            "viewing": viewing.json()["id"], "cancelled_viewing": cancelled.json()["id"],
+            "cover": cover, "stolen": stolen,
             "closed_requester": other_id}
 
 
@@ -340,6 +347,22 @@ def test_phase1_data_survives_backup_destroy_restore(pg_client, pg_session,
                 "USING btree (sender_user_id, client_message_id) "
                 "WHERE (client_message_id IS NOT NULL)")
         assert _public_ids(target) == public_before  # same public answer, stale stays hidden
+
+        # BP-5: attribution and its database immutability guard survive restore.
+        with restored.connect() as conn:
+            row = conn.execute(text(
+                "SELECT status, cancelled_by, cancellation_source_legacy FROM viewings "
+                "WHERE id=:v"), {"v": e["cancelled_viewing"]}).one()
+            assert tuple(row) == ("CANCELLED", "REQUESTER", False)
+        with pytest.raises(DBAPIError) as caught, restored.begin() as conn:
+            conn.execute(text("UPDATE viewings SET cancelled_by='HOMIES' WHERE id=:v"),
+                         {"v": e["cancelled_viewing"]})
+        assert caught.value.orig.sqlstate == "23514"
+        assert "source is immutable" in str(caught.value.orig)
+        with pytest.raises(IntegrityError) as caught, restored.begin() as conn:
+            conn.execute(text("UPDATE viewings SET status='CANCELLED', cancelled_at=now() "
+                              "WHERE id=:v"), {"v": e["viewing"]})
+        assert caught.value.orig.diag.constraint_name == "ck_viewings_cancellation_source_state"
 
         # TASK-014 on the copy: the saved search is still a VALID stored query
         # (canonical form and fingerprint intact), and the emailed unsubscribe

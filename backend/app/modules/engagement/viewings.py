@@ -222,6 +222,9 @@ class ViewingOut(BaseModel):
     attendee_count: int
     # CANCELLED by a Homies moderation decision (close engagement), not by
     # either side. Never a reason: the requester is not told why.
+    cancelled_by: Literal["REQUESTER", "PROVIDER", "HOMIES"] | None = Field(
+        default=None, description="Immutable cancellation source. Null for non-cancelled "
+        "viewings and historical cancellations whose actor cannot be proven.")
     cancelled_by_homies: bool = False
 
     model_config = {"from_attributes": True}
@@ -256,7 +259,7 @@ def _shared_listing(db: Session, listing_id: str) -> ClassifiedOffer:
 
 
 def _outs(db: Session, viewings: list[Viewing], model=None) -> list:
-    """Viewings as responses, with `cancelled_by_homies` from one lookup."""
+    """Viewings as responses, with the compatibility boolean from durable attribution."""
     model = model or ViewingOut
     by_homies = effects.cancelled_by_homies(db, viewings)
     return [model.model_validate({**{c: getattr(v, c) for c in model.model_fields
@@ -653,13 +656,16 @@ def cancel(viewing_id: str, user: User = Depends(get_current_user),
     if _aware(viewing.starts_at) <= decision_now:
         raise _conflict(VIEWING_STARTED, "the viewing has already started")
     prior = viewing.status
-    _transition(db, viewing, HELD, status="CANCELLED", cancelled_at=decision_now)
+    # The requester remains the requester even if they also manage this listing.
+    source = "REQUESTER" if viewing.requester_user_id == user.id else "PROVIDER"
+    _transition(db, viewing, HELD, status="CANCELLED", cancelled_at=decision_now,
+                cancelled_by=source)
     audit(db, actor=user.id, action="viewing.cancelled", entity_type="viewing",
           entity_id=viewing.id)
     # The requester is the requester even when they also manage the listing.
     facts.viewing_cancelled(
         db, viewing_id=viewing.id, listing_id=viewing.listing_id, prior_status=prior,
-        cancelled_by="REQUESTER" if viewing.requester_user_id == user.id else "PROVIDER",
+        cancelled_by=source,
         cancelled_at=freshness.canonical_instant(decision_now))
     db.commit()
     return viewing
