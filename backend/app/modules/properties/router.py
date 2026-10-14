@@ -1014,12 +1014,32 @@ def my_reveal_quota(user=Depends(get_current_user), db: Session = Depends(get_db
     )
 
 
+def _contact_listing(db: Session, offer_id: str, viewer_id: str) -> ClassifiedOffer:
+    # BP-8: listing before viewer, as in other engagement paths. FOR SHARE
+    # conflicts with G-14's NO KEY UPDATE and publication changes. Refresh a
+    # preloaded row after waiting so generation and phone cannot be stale.
+    offer = db.scalar(select(ClassifiedOffer).where(ClassifiedOffer.id == offer_id)
+                      .with_for_update(read=True, of=ClassifiedOffer)
+                      .execution_options(populate_existing=True))
+    if offer is None or not freshness.is_public(offer, freshness.db_now(db)):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
+    if moderation_hold.recontact_blocked(db, offer.id, viewer_id, offer.public_generation):
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "RECONTACT_BLOCKED: contact is unavailable for this publication")
+    if offer.contact_mode != "phone" or not offer.contact_phone:
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            f"{MESSAGES_ONLY}: this owner accepts messages only, not phone calls")
+    return offer
+
+
 @router.post(
     "/classifieds/{offer_id}/contact", response_model=ContactRevealOut,
     responses={
         403: {"description": "`PHONE_NOT_VERIFIED`: the caller has no verified phone."},
         404: {"description": "No public listing with this id."},
-        409: {"description": "`MESSAGES_ONLY`: the owner accepts messages only."},
+        409: {"description": "`MESSAGES_ONLY`: the owner accepts messages only; "
+                             "`RECONTACT_BLOCKED`: G-14 bars new and repeat contact reveal "
+                             "for this publication generation. No phone is returned."},
         429: {"description": "`REVEAL_QUOTA`: the daily limit of owner contacts is reached, "
                              "or the rate limit (no code). Both send `Retry-After`.",
               "headers": {"Retry-After": {"description": "Seconds until a retry can succeed.",
@@ -1048,16 +1068,7 @@ def reveal_contact(
             status.HTTP_403_FORBIDDEN,
             f"{PHONE_NOT_VERIFIED}: verify your phone number before contacting owners",
         )
-    offer = db.get(ClassifiedOffer, offer_id)
-    if offer is None or not freshness.is_public(offer, freshness.db_now(db)):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
-    if offer.contact_mode != "phone" or not offer.contact_phone:
-        # The owner chose messages. Saying so is not a leak, and pretending the
-        # offer does not exist would be a lie.
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            f"{MESSAGES_ONLY}: this owner accepts messages only, not phone calls",
-        )
+    offer = _contact_listing(db, offer_id, user.id)
 
     # Serialise this viewer's disclosure decisions (TASK-001 F-03). Counting
     # and then inserting is a race between two requests for two different
@@ -1097,6 +1108,9 @@ def reveal_contact(
         # Two requests for the same offer racing each other. The unique
         # constraint is what decides; the loser gets the same answer.
         db.rollback()
+        # Rollback released the listing lock: never disclose using its old
+        # authorization/generation snapshot, including this conflict fallback.
+        offer = _contact_listing(db, offer_id, user.id)
         REVEALS.labels(outcome="repeat").inc()
         return ContactRevealOut(offer_id=offer.id, contact_phone=offer.contact_phone)
 

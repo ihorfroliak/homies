@@ -5374,7 +5374,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description `MESSAGES_ONLY`: the owner accepts messages only. */
+            /** @description `MESSAGES_ONLY`: the owner accepts messages only; `RECONTACT_BLOCKED`: G-14 bars new and repeat contact reveal for this publication generation. No phone is returned. */
             409: {
                 headers: {
                     [name: string]: unknown;

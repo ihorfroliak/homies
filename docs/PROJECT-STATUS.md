@@ -21,7 +21,7 @@ latest_code_bearing_main_state:
 repository_head: resolved from Git (origin/main); intentionally not embedded here
 next_task:
   id: BP-8
-  status: IMPLEMENTATION AUTHORIZED — new/repeat G-14 contact reveal restriction; Draft PR only
+  status: IMPLEMENTED CANDIDATE — BP-8 tests passing; exact-head CI and independent review pending; Draft PR only
 fe003_implementation_authorized: false
 fe_vis_001_implementation_authorized: false
 production_ready: false
