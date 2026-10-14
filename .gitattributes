@@ -1,2 +1,5 @@
 # Archived independent audit reports are kept byte-for-byte (no EOL normalisation).
 docs/reviews/*-audit.md -text
+
+# Preserve independent BP-5/BP-6 audit evidence bytes and published SHA256.
+docs/reviews/BP56-independent-review*.md -text
