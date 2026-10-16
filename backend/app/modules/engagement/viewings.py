@@ -243,7 +243,8 @@ class OutcomeIn(BaseModel):
 
 
 def _listing(db: Session, listing_id: str) -> ClassifiedOffer:
-    offer = db.get(ClassifiedOffer, listing_id)
+    offer = db.scalar(select(ClassifiedOffer).where(ClassifiedOffer.id == listing_id)
+                      .execution_options(populate_existing=True))
     if offer is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
     return offer
@@ -270,13 +271,13 @@ def _outs(db: Session, viewings: list[Viewing], model=None) -> list:
 
 def _provider_listing(db: Session, user: User, listing_id: str) -> ClassifiedOffer:
     offer = _listing(db, listing_id)
-    if not authority.can_act(db, user.id, offer.property_id, "MANAGE_VIEWINGS", verified=False):
+    if not authority.can_act(db, user.id, offer.property_id, "MANAGE_VIEWINGS", verified=True):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
     return offer
 
 
 def _is_provider(db: Session, user: User, offer: ClassifiedOffer) -> bool:
-    return authority.can_act(db, user.id, offer.property_id, "MANAGE_VIEWINGS", verified=False)
+    return authority.can_act(db, user.id, offer.property_id, "MANAGE_VIEWINGS", verified=True)
 
 
 # --- slots --------------------------------------------------------------------
@@ -399,7 +400,8 @@ def _settings(db: Session, listing_id: str, lock: bool = False) -> ViewingSettin
 def put_settings(listing_id: str, body: SettingsIn, user: User = Depends(get_current_user),
                  db: Session = Depends(get_db)):
     _provider_listing(db, user, listing_id)
-    current = _settings(db, listing_id)
+    current = _settings(db, listing_id, lock=True)
+    _provider_listing(db, user, listing_id)  # A settings-row wait may outlive authority.
     if current is None:
         current = ViewingSettings(listing_id=listing_id)
         db.add(current)
@@ -482,7 +484,7 @@ def request_viewing(listing_id: str, body: ViewingRequest,
     offer = _shared_listing(db, listing_id)
     if not freshness.is_public(offer, freshness.db_now(db)):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
-    if _is_provider(db, user, offer):
+    if authority.can_act(db, user.id, offer.property_id, "MANAGE_VIEWINGS", verified=False):
         raise _conflict(OWN_LISTING, "this is your own listing")
     # F6 (founder/GPT, 2026-10-04; extends G-14): a requester whose
     # conversation Homies restricted cannot route around it by requesting a
@@ -587,6 +589,7 @@ def _respond(db: Session, user: User, viewing_id: str, confirm: bool) -> Viewing
     # Re-read under the row lock: a cancel may have committed while we waited
     # for the settings lock (TASK-001 F-06).
     viewing = _locked(db, viewing_id)
+    _provider_listing(db, user, viewing.listing_id)
     if viewing.status != "REQUESTED":
         raise _state_conflict(viewing.status)
     if confirm:
@@ -650,6 +653,7 @@ def cancel(viewing_id: str, user: User = Depends(get_current_user),
     for the check, the row's `cancelled_at` and the fact alike."""
     _viewing_for(db, user, viewing_id)
     viewing = _locked(db, viewing_id)
+    _viewing_for(db, user, viewing_id)
     if viewing.status not in HELD:
         raise _state_conflict(viewing.status)
     decision_now = freshness.db_now(db)
@@ -684,6 +688,7 @@ def record_outcome(viewing_id: str, body: OutcomeIn, user: User = Depends(get_cu
     if not provider:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Viewing not found")
     viewing = _locked(db, viewing_id)
+    _provider_listing(db, user, viewing.listing_id)
     if viewing.status != "CONFIRMED":
         raise _state_conflict(viewing.status)
     if _aware(viewing.starts_at) > _now():
