@@ -1,4 +1,4 @@
-# BP-9 â€” Verified private engagement authority
+# BP-9 — Verified private engagement authority
 
 Status: BUILDER_VERIFIED; candidate, independent exact-SHA review and CI required.
 Baseline: `4ed8fe8ab334a8d8e344b80e266da2be3b661aee` (integrated BP-8).
