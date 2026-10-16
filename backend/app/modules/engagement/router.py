@@ -75,13 +75,15 @@ from app.modules.engagement.models import (
 )
 from app.modules.events import facts
 from app.modules.identity.models import (
+    LegalParty,
+    Organization,
     OrganizationLegalParty,
     OrganizationMembership,
     PersonLegalParty,
     User,
 )
 from app.modules.properties import authority, freshness
-from app.modules.properties.models import ClassifiedOffer, PropertyAuthority
+from app.modules.properties.models import ClassifiedOffer, PropertyAuthority, PropertyAuthorityScope
 from app.modules.trust import hold
 
 CONVERSATION_CLOSED = "CONVERSATION_CLOSED"
@@ -222,7 +224,8 @@ def _side(db: Session, user: User, conv: Conversation) -> str | None:
 
 
 def _load(db: Session, user: User, conversation_id: str) -> tuple[Conversation, str]:
-    conv = db.get(Conversation, conversation_id)
+    conv = db.scalar(select(Conversation).where(Conversation.id == conversation_id)
+                     .execution_options(populate_existing=True))
     side = _side(db, user, conv) if conv else None
     if conv is None or side is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
@@ -245,18 +248,26 @@ def _out(conv: Conversation, side: str):
 
 def _provider_participant(db: Session, property_id: str) -> ConversationParticipant | None:
     """Who the conversation is recorded as being with, on the provider side:
-    the organisation, when one holds the publishing right; else the person."""
+    an active legal party holding verified, in-force MANAGE_MESSAGES authority."""
     holder = db.scalar(
         select(PropertyAuthority.holder_legal_party_id)
+        .join(LegalParty, LegalParty.id == PropertyAuthority.holder_legal_party_id)
+        .join(PropertyAuthorityScope,
+              PropertyAuthorityScope.property_authority_id == PropertyAuthority.id)
         .where(PropertyAuthority.property_id == property_id,
-               PropertyAuthority.status == "ACTIVE")
-        .order_by(PropertyAuthority.verification_state.desc(), PropertyAuthority.created_at)
+               PropertyAuthority.verification_state == "VERIFIED",
+               authority._in_force(authority.decision_date(db)),
+               LegalParty.status == "ACTIVE",
+               PropertyAuthorityScope.scope == "MANAGE_MESSAGES")
+        .order_by(PropertyAuthority.created_at, PropertyAuthority.id)
         .limit(1)
     )
     if holder is None:
         return None
-    org = db.scalar(select(OrganizationLegalParty.organization_id).where(
-        OrganizationLegalParty.legal_party_id == holder))
+    org = db.scalar(select(OrganizationLegalParty.organization_id)
+                    .join(Organization, Organization.id == OrganizationLegalParty.organization_id)
+                    .where(OrganizationLegalParty.legal_party_id == holder,
+                           Organization.status == "ACTIVE"))
     if org is not None:
         return ConversationParticipant(participant_type="ORGANIZATION", organization_id=org)
     person = db.scalar(select(PersonLegalParty.linked_user_id).where(
@@ -582,7 +593,7 @@ def _start(db: Session, offer_id: str, body: str, key: str, user: User) -> "Conv
 @router.get("/conversations", response_model=list[ConversationOut | ProviderConversationOut])
 def inbox(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Conversations you started, and those about listings you answer for."""
-    mine = authority.authorized_property_ids(user.id, "MANAGE_MESSAGES")
+    mine = authority.authorized_property_ids(user.id, "MANAGE_MESSAGES", verified=True)
     rows = db.scalars(
         select(Conversation)
         .outerjoin(ClassifiedOffer, ClassifiedOffer.id == Conversation.listing_id)
@@ -635,6 +646,7 @@ def send_message(
     conv, side = _load(db, user, conversation_id)
     user_id, conv_id, key = user.id, conv.id, str(body.client_message_id)
     _serialise_send(db, user_id, key)
+    conv, side = _load(db, user, conv_id)  # Recheck after the advisory wait (CX-02).
     earlier = _keyed(db, user_id, key)
     if earlier is not None:
         return _replay_append(conv_id, body.body, earlier, "replay")
@@ -643,6 +655,7 @@ def send_message(
         # closure that committed before this point is seen; one that comes
         # later waits for this message (S4b, invariant I-1).
         locked = _lock(db, conv_id)
+        _, side = _load(db, user, conv_id)  # Row waits can outlive provider authority.
         if locked is None or locked.status != "ACTIVE":
             raise _closed()
         message = _post(db, user, locked, side, body.body, key)
@@ -651,6 +664,7 @@ def send_message(
     except IntegrityError as exc:
         failure = _integrity_failure(exc)
     db.rollback()
+    _load(db, user, conv_id)  # Rollback starts a new authorization decision.
     winner = _winner_of_lost_race(db, "append", user_id, key, failure)
     return _replay_append(conv_id, body.body, winner, "race_recovered")
 
@@ -669,13 +683,15 @@ def assign(
     conv, side = _load(db, user, conversation_id)
     if side != "provider":
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
+    conv = _lock(db, conv.id) or conv
+    conv, side = _load(db, user, conv.id)
+    if side != "provider":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
     prop = _property_of(db, conv)
     if prop is None or not authority.can_act(db, body.user_id, prop, "MANAGE_MESSAGES",
-                                             verified=False):
+                                             verified=True):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             "That person cannot answer for this listing")
-    # Locked and re-read, so the version bump never overwrites a closure's.
-    conv = _lock(db, conv.id) or conv
     conv.assigned_to_user_id = body.user_id
     conv.version += 1
     db.commit()
@@ -693,6 +709,9 @@ def set_stage(
     if side != "provider":
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
     conv = _lock(db, conv.id) or conv
+    conv, side = _load(db, user, conv.id)
+    if side != "provider":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
     before = conv.provider_stage
     conv.provider_stage = body.provider_stage
     conv.version += 1
