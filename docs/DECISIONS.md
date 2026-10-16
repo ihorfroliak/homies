@@ -152,3 +152,24 @@ generations, normal authorization, quotas, repeats and audit semantics.
 Contract, implementation, tests, feature-branch commit/push and Draft PR
 are authorized immediately, separate exact-SHA review per governance9.
 New BP-8 PR merge is NOT authorized; no general BP-5/BP-6 re-audit.
+
+## 2026-10-16 — D-112 HOMIES-DELIVERY-002 founder execution authorization
+
+The founder authorizes the exact reviewed BP-8 PR #9 normal merge, AGENT-002,
+BP-11 (including measured resource-exhaustion repair), BP-9, BP-3, BP-4 and
+conditional FE-003 implementation. [Full binding directive](tasks/HOMIES-DELIVERY-002.md).
+Codex is the authorized bounded writer when Claude CLI is unavailable; one
+writer per context, isolated worktrees, independent exact-SHA reviews under
+05 section 9. Subsequent feature PRs are Draft and require a new founder merge
+decision. No general repeat audits. Stacked verified dependencies are permitted
+and must be explicit; they do not imply integration into main.
+
+FE-003 IMPLEMENTATION AUTHORIZED: YES, conditional on all mandatory backend
+prerequisites in the verified dependency chain. This supersedes earlier NO
+implementation flags, not the approved FE-003 product semantics. FE-VIS-001
+remains NOT AUTHORIZED. No new canonical name/authority/business semantics.
+Main protection is authorized: PR plus actual CI checks, no force push/deletion,
+no broad bypass, normal sole-contributor merges without a nonexistent approver.
+
+IBB-001, all debt, BP-5 BARRIER / rollback BLOCKED, BP-10 EXPAND / BB-11 remain.
+Production NOT READY / NOT DEPLOYED; no paid providers or production data.

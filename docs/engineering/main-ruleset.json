@@ -1,0 +1,67 @@
+{
+  "name": "Homies main protected integration",
+  "bypass_actors": [],
+  "target": "branch",
+  "conditions": {
+    "ref_name": {
+      "include": [
+        "refs/heads/main"
+      ],
+      "exclude": []
+    }
+  },
+  "rules": [
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    },
+    {
+      "parameters": {
+        "require_code_owner_review": false,
+        "dismiss_stale_reviews_on_push": true,
+        "require_last_push_approval": false,
+        "required_approving_review_count": 0,
+        "allowed_merge_methods": [
+          "merge"
+        ],
+        "required_review_thread_resolution": true
+      },
+      "type": "pull_request"
+    },
+    {
+      "parameters": {
+        "strict_required_status_checks_policy": true,
+        "required_status_checks": [
+          {
+            "integration_id": 15368,
+            "context": "backend"
+          },
+          {
+            "integration_id": 15368,
+            "context": "web"
+          },
+          {
+            "integration_id": 15368,
+            "context": "contracts"
+          },
+          {
+            "integration_id": 15368,
+            "context": "monitoring"
+          },
+          {
+            "integration_id": 15368,
+            "context": "image"
+          },
+          {
+            "integration_id": 15368,
+            "context": "secrets"
+          }
+        ]
+      },
+      "type": "required_status_checks"
+    }
+  ],
+  "enforcement": "active"
+}
