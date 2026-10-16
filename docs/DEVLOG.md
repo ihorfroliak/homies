@@ -1357,3 +1357,6 @@ generations, normal authorization, quotas, repeats and audit semantics.
 Contract, implementation, tests, feature-branch commit/push and Draft PR
 are authorized immediately, separate exact-SHA review per governance9.
 New BP-8 PR merge is NOT authorized; no general BP-5/BP-6 re-audit.
+
+## 2026-10-14 — BP-8 G-14 phone restriction candidate
+Founder-authorized D-111 implementation: listing FOR SHARE OF lock and refreshed generation, G-14 before repeat fast path, revalidation after rollback fallback. Same current-generation restriction; later generation normal rules. Private phone/refusal/audit and quota tests, real PG blocking observations. Combined focused31passed; Ruff/mypy126/OpenAPI6/type generation+typecheck passed. Contract BP-8-contact-reveal-restriction.md records actual initial failures/corrections. Exact-head CI and independent review pending; Draft PR only, no merge/deploy.
