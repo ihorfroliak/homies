@@ -17,7 +17,7 @@ latest_code_bearing_main_state:
   what: BP-8 INTEGRATED; prior BP-5/BP-6 acceptance retained
   merge_sha: 4ed8fe8ab334a8d8e344b80e266da2be3b661aee
   candidate_ci: 38548793363 success 6/6
-  main_ci: post-merge verification in progress; result on GitHub
+  main_ci: 38859368831 success (exact merge SHA verified)
 repository_head: resolved from Git (origin/main); intentionally not embedded here
 next_task:
   id: HOMIES-DELIVERY-002
@@ -67,7 +67,7 @@ This historical acceptance is followed by BP-8 integration under D-112; no debt/
 `4ed8fe8ab334a8d8e344b80e266da2be3b661aee`; exact accepted tree
 `b29e0ceac644c026ecaa3d3e5dd01cc625b27f27`. Candidate CI38548793363 SUCCESS6/6;
 independent PASS [report](reviews/BP8-independent-review-24a47e8.md) archived
-with original SHA256. Post-merge CI is being verified. New program scope and
+with original SHA256. Post-merge CI38859368831 is SUCCESS. New program scope and
 conditional FE-003 authorization: [D-112](DECISIONS.md),
 [full directive](tasks/HOMIES-DELIVERY-002.md). Claude CLI is installed but not
 authenticated; Codex is authorized writer. New feature branches remain candidates.

@@ -173,3 +173,14 @@ no broad bypass, normal sole-contributor merges without a nonexistent approver.
 
 IBB-001, all debt, BP-5 BARRIER / rollback BLOCKED, BP-10 EXPAND / BB-11 remain.
 Production NOT READY / NOT DEPLOYED; no paid providers or production data.
+
+## 2026-10-16 — D-113 BP-4 name projection clarification
+
+Founder explicitly selected: split full_name on whitespace, normalize excess
+whitespace, preserve Unicode. Use the first word plus the initial of the last
+word; if there is only one word, show that word alone. Empty values use the
+already approved fallback "Użytkownik Homies". This is a display projection
+of unverified free text, not a legal-name parser or a verified identity claim.
+OD-3 data minimization remains binding: no email, phone, full legal identity,
+or verification metadata. Provider authorization remains BP-9. Encode these
+examples and privacy boundaries in the bounded BP-4 contract and tests.
