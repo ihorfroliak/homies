@@ -396,6 +396,18 @@ class ModerationStateOut(BaseModel):
     review: Literal["NONE", "OPEN", "ANSWERED"] = "NONE"
 
 
+class ProviderListingOut(BaseModel):
+    """Minimal discovery for one verified engagement capability (BP-3).
+
+    This is not an owner projection and grants no subsequent API access.
+    """
+
+    id: str
+    title: str
+    status: str
+    scope: Literal["MANAGE_MESSAGES", "MANAGE_VIEWINGS"]
+
+
 class ClassifiedOwnerOut(ClassifiedOut):
     """What the owner/agent sees of their own listing, in any status."""
 

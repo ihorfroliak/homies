@@ -84,6 +84,7 @@ from app.modules.properties.schemas import (
     ClassifiedCreate,
     ClassifiedOut,
     ClassifiedOwnerOut,
+    ProviderListingOut,
     ModerationStateOut,
     FreshnessOut,
     QualityCheckOut,
@@ -793,11 +794,32 @@ def change_availability(
     return _public(offer)
 
 
-@router.get("/me/classifieds", response_model=list[ClassifiedOwnerOut])
-def my_classifieds(user=Depends(get_current_user), db: Session = Depends(get_db)):
-    """Every listing this account may manage, in any status — including the
-    ones the public can no longer see — with its freshness and what would
-    improve it."""
+@router.get("/me/classifieds", response_model=list[ClassifiedOwnerOut] | list[ProviderListingOut])
+def my_classifieds(
+    scope: Literal["PUBLISH_LISTING", "MANAGE_MESSAGES", "MANAGE_VIEWINGS"] = Query(
+        default="PUBLISH_LISTING",
+        description="Publication management keeps the owner projection. Engagement scopes "
+                    "require VERIFIED authority and return only id, title, status and scope.",
+    ),
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Listings the caller can manage for the requested capability, in any status.
+
+    Engagement enumeration is a minimal projection, never an authorization
+    token for a later operation. Each private operation checks its own scope.
+    """
+    if scope != "PUBLISH_LISTING":
+        # Select scalar columns: do not materialize private property/address
+        # relationships or run owner-only quality/moderation projections.
+        rows = db.execute(
+            select(ClassifiedOffer.id, ClassifiedOffer.title, ClassifiedOffer.status)
+            .where(ClassifiedOffer.property_id.in_(
+                authority.authorized_property_ids(user.id, scope, verified=True)))
+            .order_by(ClassifiedOffer.created_at.desc(), ClassifiedOffer.id)
+        )
+        return [ProviderListingOut(id=row.id, title=row.title, status=row.status, scope=scope)
+                for row in rows]
     now = freshness.db_now(db)
     offers = db.scalars(
         select(ClassifiedOffer)
