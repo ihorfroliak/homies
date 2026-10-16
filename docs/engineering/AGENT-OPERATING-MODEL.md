@@ -1,4 +1,4 @@
-# AGENT-001 â€” Multi-vendor agent operating model (proposed)
+# Homies multi-vendor agent operating model
 
 AGENT-001 is integrated under D-110. AGENT-002 extends delivery orchestration under the founder's HOMIES-DELIVERY-002 directive (2026-10-16), as a candidate until its own PR is accepted. Guidance is subordinate to canonical authority.
 
@@ -20,14 +20,14 @@ Claude specialists expose only Read, Grep and Glob. Codex specialists prohibit w
 
 ## Proportional agent-selection policy
 
-1. Resolve the task, contract, exact base/candidate SHA, changed paths and risk R0â€“R3.
-2. R0/docs: 0 specialists by default. R1: 0â€“1 where useful. R2/R3: select up to 2 **non-overlapping** specialists for material risk. This is a default cost guideline, not a prohibition on mandatory independent audit.
-3. Trigger: database migration/advisory locks â‡’ postgres; auth/private data â‡’ security; API/business logic â‡’ backend; React/BFF â‡’ frontend; test semantics/flakiness â‡’ test-engineer; CI/rollout â‡’ devops. Cross-domain work may warrant two. **Do not auto-spawn all six**.
+1. Resolve the task, contract, exact base/candidate SHA, changed paths and risk R0–R3.
+2. R0/docs: 0 specialists by default. R1: 0–1 where useful. R2/R3: select up to 2 **non-overlapping** specialists for material risk. This is a default cost guideline, not a prohibition on mandatory independent audit.
+3. Trigger: database migration/advisory locks ⇒ postgres; auth/private data ⇒ security; API/business logic ⇒ backend; React/BFF ⇒ frontend; test semantics/flakiness ⇒ test-engineer; CI/rollout ⇒ devops. Cross-domain work may warrant two. **Do not auto-spawn all six**.
 4. Primary writer runs targeted tests then required regression/CI; read-only reviewers identify falsifiable risks. Unchanged SHA + unchanged evidence should not trigger another review. Findings must have file:line, causality, confidence, minimal remedy; no claim of complete correctness from finite tests.
 5. Single active writer per bounded context; separate Git worktrees. Exact SHA and approved task contract are the handoff. Specialists do not merge or deploy.
 
 ## Definition of Done (delivery, not audit theater)
-One approved vertical slice and bounded diff; tests on accepted invariants; relevant DB/security proof; green CI on exact SHA; documented material risks; independent Codex audit only where canon Â§9 mandates it; founder merge approval. Do not start an unapproved audit program or roadmap refactor. Track cycle time, agent calls, escaped material defects, repeat review loops and total tokens if measured. Optimize on **observed** benefit, not assumptions.
+One approved vertical slice and bounded diff; tests on accepted invariants; relevant DB/security proof; green CI on exact SHA; documented material risks; independent Codex audit only where canon §9 mandates it; founder merge approval. Do not start an unapproved audit program or roadmap refactor. Track cycle time, agent calls, escaped material defects, repeat review loops and total tokens if measured. Optimize on **observed** benefit, not assumptions.
 
 ## Real routing smoke test
 Fresh Claude/Codex sessions on **same checked-out AGENT-001 SHA**: (1) row-lock regression -> postgres; (2) Next.js focus regression -> frontend; (3) docs typo -> no specialist. Record actual spawned role, whether tool routing occurred or explicit prompt was necessary, and version/surface. Config presence is NOT proof of runtime invocation. Mandatory reviews must be explicitly requested if model-directed selection does not occur. If the runtime cannot perform a mandatory review, record NOT VERIFIED and keep its gate open; a parent self-review cannot silently replace it.

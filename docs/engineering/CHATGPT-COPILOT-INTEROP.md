@@ -1,4 +1,4 @@
-# AGENT-001 â€” ChatGPT and GitHub Copilot interoperability
+# AGENT-001 — ChatGPT and GitHub Copilot interoperability
 
 ChatGPT is the **advisory planning/architecture/adjudication layer**, not a native agent automatically installed by `.claude/agents/*.md` or `.codex/agents/*.toml`. For consequential planning, it must read the canonical repository contract and exact SHA through its available GitHub connector/Work tools; it should distinguish source evidence, founder decisions, hypotheses and gaps. Its sessions are not a trusted durable source of code or project status.
 

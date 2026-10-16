@@ -7,6 +7,6 @@ Claude native initialization found all seven roles; actual invocation blocked by
 Codex0.162.0-alpha.17.2 strict app-server config/read loaded project layer and enabled agents.
 Codex debug prompt-input returned0 but did not expose new customrole; native dispatch NOT VERIFIED.
 Existing six specialists pervendor, hooks/settings preserved. No productcode changed.
-Last command to write final evidence/CIstep/DEVLOG and commit was NOT EXECUTED due usage-limit approval failure.
+Evidence and CI step now committed. Windows text encoding corrected before review freeze.
 NEXT finish evidence/minimal CI step, freeze candidate, bounded independent review, push/DraftPR and CI.
-No commit/push/PR yet. Parent owns PROJECT-STATUS. No merge/deployment authorization.
+Implementation commit a710f0b52eddba8344eb3a7d99645948dc41f59a; corrective documentation commit follows. No push/PR yet. Parent owns PROJECT-STATUS. No merge/deployment authorization.

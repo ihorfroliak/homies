@@ -99,7 +99,7 @@ jobs:
         env:
           ALEMBIC_DATABASE_URL: postgresql+psycopg://homies:homies@localhost:5432/homies_ci
         run: |
-          # PR-002: the migration job itself â€” lock, plan, upgrade, lineage and
+          # PR-002: the migration job itself — lock, plan, upgrade, lineage and
           # privilege verification. A fresh database crosses historical
           # BARRIERs, hence --allow-barrier; running it twice is a no-op.
           python -m app.scripts.migrate --allow-barrier
@@ -150,12 +150,12 @@ jobs:
         working-directory: backend
         # A deliberately old, vulnerable pin that is never installed. The step
         # passes only when pip-audit's JSON report lists urllib3==1.26.4 with a
-        # PYSEC/GHSA/CVE advisory â€” an advisory-lookup failure (network, PyPI,
+        # PYSEC/GHSA/CVE advisory — an advisory-lookup failure (network, PyPI,
         # OSV) is a failure, not a detection (PR-001R2, PR-001RA RA-2).
         run: python scripts/ci/audit_canary.py ../ops/ci/pip-audit-canary.pins
 
   # M9b: the image was never built in CI. Every deploy artifact was unverified,
-  # and TD-01 made this load-bearing â€” the image must carry alembic/ or
+  # and TD-01 made this load-bearing — the image must carry alembic/ or
   # ensure_schema() refuses to start (D-35). A Dockerfile typo would have been
   # found at deploy time, on a green build.
   image:
@@ -186,7 +186,7 @@ jobs:
         run: |
           test "$(docker run --rm homies-backend:ci printenv ENV)" = "production"
       - name: Verify the image carries migrations (TD-01 / D-35)
-        # Not a smoke test of the app â€” a check that the artifact contains what
+        # Not a smoke test of the app — a check that the artifact contains what
         # startup requires. Without alembic/ the container starts and then
         # refuses to serve, which is a deploy-time failure, not a build one.
         run: |
@@ -211,7 +211,7 @@ jobs:
     # OBS-06. An alert rule is code: the usual failure is a typo in a metric
     # name that nobody notices until the outage the rule was written for. This
     # job proves the config parses and that every alert fires on the condition
-    # it claims â€” and stays silent on the ones it must ignore.
+    # it claims — and stays silent on the ones it must ignore.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
