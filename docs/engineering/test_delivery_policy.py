@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import tomllib
 import unittest
+from unittest.mock import patch
 import delivery_policy as policy
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -69,7 +70,7 @@ class PolicyTests(unittest.TestCase):
             current = verified_task(changes=['privacy'])
             current['evidence']['review'].update(changes)
             with self.subTest(changes=changes), self.assertRaises(ValueError):
-                policy.draft_payload(current)
+                policy.delivery_gates(current)
 
     def test_stale_tests_ci_and_blockers(self):
         for key in ('tests', 'ci'):
@@ -108,16 +109,6 @@ class PolicyTests(unittest.TestCase):
         upstream['integrated_sha'] = A
         self.assertIsNone(policy.select([upstream, dependent]))
 
-    def test_draft_is_always_draft_and_can_trigger_ci(self):
-        current = verified_task(state='REVIEWED', changes=['privacy'])
-        del current['evidence']['ci']
-        payload = policy.draft_payload(current)
-        self.assertIs(payload['draft'], True)
-        self.assertIn('CI pending', payload['body'])
-        self.assertNotIn('merge', payload)
-        current['state'] = 'MERGE_AUTHORIZED'
-        with self.assertRaises(ValueError):
-            policy.draft_payload(current)
 
 
 class OwnershipTests(unittest.TestCase):
@@ -232,6 +223,97 @@ class OwnershipTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'unblocked'):
             self.claim()
 
+    def test_orphan_busy_blocks_plan_and_acquire(self):
+        marker = policy.claim_path(self.root, self.current).with_suffix('.busy')
+        marker.parent.mkdir(parents=True)
+        marker.write_text('', encoding='utf-8')
+        self.assertIsNone(policy.select([self.current], policy.active_contexts(self.root)))
+        with self.assertRaises(ValueError):
+            self.claim()
+        self.assertFalse(policy.claim_path(self.root, self.current).exists())
+        self.assertTrue(marker.exists())
+        backlog = Path(self.temp.name) / 'backlog.json'
+        backlog.write_text(json.dumps([self.current]), encoding='utf-8')
+        result = subprocess.run(['python', str(ROOT / 'docs/engineering/delivery_policy.py'),
+                                 'plan', str(backlog), '--root', str(self.root)],
+                                check=True, capture_output=True, text=True)
+        self.assertIsNone(json.loads(result.stdout)['task'])
+
+    def test_acquire_waits_for_release_operation_to_finish(self):
+        self.claim()
+        # Pause release precisely after deleting its claim, before clearing .busy.
+        with policy.owner_operation(self.root, self.current, 'writer-1'):
+            policy.claim_path(self.root, self.current).unlink()
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                contender = pool.submit(policy.acquire, self.root, self.current, 'writer-2')
+                with self.assertRaises((ValueError, FileExistsError)):
+                    contender.result(timeout=10)
+            self.assertFalse(policy.claim_path(self.root, self.current).exists())
+        self.assertEqual(policy.acquire(self.root, self.current, 'writer-2')['owner'], 'writer-2')
+
+    def test_acquire_checks_operation_marker_after_stale_selection(self):
+        marker = policy.claim_path(self.root, self.current).with_suffix('.busy')
+        marker.parent.mkdir(parents=True)
+        marker.write_text('', encoding='utf-8')
+        # Simulate a selection snapshot taken before another operation acquired
+        # the marker. Atomic marker creation must still exclude this claimant.
+        with patch.object(policy, 'active_contexts', return_value=set()):
+            with self.assertRaises(FileExistsError):
+                self.claim()
+        self.assertTrue(marker.exists())
+        self.assertFalse(policy.claim_path(self.root, self.current).exists())
+
+    def test_changed_input_branch_rejected_without_replacing_checkpoint(self):
+        self.claim()
+        current = self.checkpoint_task()
+        policy.checkpoint(self.root, current, 'writer-1')
+        path = policy.checkpoint_path(self.root, current)
+        previous = path.read_bytes()
+        changed = dict(current, branch='codex/DIFFERENT-NONEXISTENT')
+        for action in (policy.checkpoint, policy.resume):
+            with self.subTest(action=action.__name__), self.assertRaisesRegex(ValueError, 'branch'):
+                action(self.root, changed, 'writer-1')
+        with self.assertRaisesRegex(ValueError, 'branch'):
+            policy.draft_payload(changed, self.root, 'writer-1')
+        self.assertEqual(path.read_bytes(), previous)
+        self.assertEqual(policy.resume(self.root, current, 'writer-1')['checkpoint']['branch'], current['branch'])
+
+    def test_changed_saved_branch_rejected_on_resume(self):
+        self.claim()
+        current = self.checkpoint_task()
+        saved = policy.checkpoint(self.root, current, 'writer-1')
+        saved['branch'] = 'codex/DIFFERENT-NONEXISTENT'
+        path = policy.checkpoint_path(self.root, current)
+        path.write_text(json.dumps(saved), encoding='utf-8')
+        previous = path.read_bytes()
+        with self.assertRaisesRegex(ValueError, 'branch'):
+            policy.resume(self.root, current, 'writer-1')
+        self.assertEqual(path.read_bytes(), previous)
+
+    def test_draft_is_always_draft_and_can_trigger_ci(self):
+        self.claim()
+        current = self.checkpoint_task()
+        current.update(state='REVIEWED', changes=['privacy'])
+        del current['evidence']['ci']
+        payload = policy.draft_payload(current, self.root, 'writer-1')
+        self.assertIs(payload['draft'], True)
+        self.assertEqual(payload['head'], policy.git(self.root, 'branch', '--show-current'))
+        self.assertIn('CI pending', payload['body'])
+        self.assertNotIn('merge', payload)
+        current['state'] = 'MERGE_AUTHORIZED'
+        with self.assertRaises(ValueError):
+            policy.draft_payload(current, self.root, 'writer-1')
+
+    def test_cli_draft_smoke(self):
+        self.claim()
+        path = Path(self.temp.name) / 'task.json'
+        path.write_text(json.dumps(self.checkpoint_task()), encoding='utf-8')
+        result = subprocess.run(['python', str(ROOT / 'docs/engineering/delivery_policy.py'),
+                                 'draft', str(path), '--root', str(self.root), '--owner', 'writer-1'],
+                                check=True, capture_output=True, text=True)
+        self.assertIs(json.loads(result.stdout)['draft'], True)
+
+
 
 class ConfigurationTests(unittest.TestCase):
     def test_six_specialists_unchanged_plus_one_orchestrator(self):
@@ -256,13 +338,6 @@ class ConfigurationTests(unittest.TestCase):
             self.assertEqual(policy.git(ROOT, 'hash-object', '--path', rel, rel),
                              policy.git(ROOT, 'rev-parse', BASE + ':' + rel))
 
-    def test_cli_draft_smoke(self):
-        with tempfile.TemporaryDirectory(prefix='homies-agent002-payload-') as temp:
-            path = Path(temp) / 'task.json'
-            path.write_text(json.dumps(verified_task()), encoding='utf-8')
-            result = subprocess.run(['python', str(ROOT / 'docs/engineering/delivery_policy.py'),
-                                     'draft', str(path)], check=True, capture_output=True, text=True)
-            self.assertIs(json.loads(result.stdout)['draft'], True)
 
 
 if __name__ == '__main__':

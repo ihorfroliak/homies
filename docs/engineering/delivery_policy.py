@@ -167,10 +167,15 @@ def checkpoint_path(root, task):
     return ownership_dir(root) / (task["context"] + "." + task["id"] + ".checkpoint.json")
 
 
+def active_contexts(root):
+    directory = ownership_dir(root)
+    return {p.stem for p in directory.glob("*.json")
+            if not p.name.endswith(".checkpoint.json")} | {p.stem for p in directory.glob("*.busy")}
+
+
 def acquire(root, task, owner, backlog=None):
     validate(task)
-    active = [p.stem for p in ownership_dir(root).glob("*.json")
-              if not p.name.endswith(".checkpoint.json")]
+    active = active_contexts(root)
     selected = select(backlog if backlog is not None else [task], active)
     require(selected == task, "task is not next authorized unblocked work")
     require(task["authorization"], "explicit authorization required")
@@ -191,8 +196,11 @@ def acquire(root, task, owner, backlog=None):
               "contract_sha256": hashlib.sha256(contract.read_bytes()).hexdigest()}
     # O_EXCL arbitrates contenders, including separate processes/worktrees. A partial
     # write left by interruption remains a blocking claim; never auto-steal or expire.
-    with path.open("x", encoding="utf-8") as stream:
-        json.dump(record, stream, indent=2)
+    # Acquisition and release share the same operation marker. Even if a release
+    # removes the claim after selection, acquisition cannot enter until it finishes.
+    with operation_lock(root, task):
+        with path.open("x", encoding="utf-8") as stream:
+            json.dump(record, stream, indent=2)
     return record
 
 
@@ -200,7 +208,8 @@ def owned(root, task, owner):
     record = json.loads(claim_path(root, task).read_text(encoding="utf-8"))
     require(record["owner"] == owner and record["task"] == task["id"], "different active owner/task")
     require(record["worktree"] == str(Path(root).resolve()), "different writer worktree")
-    require(record["branch"] == git(root, "branch", "--show-current"), "writer branch changed")
+    require(record["branch"] == task["branch"] == git(root, "branch", "--show-current"),
+            "writer branch changed")
     require(record["base_sha"] == task["base_sha"], "base changed")
     contract = Path(root) / record["contract"]
     require(record["contract"] == task["contract"] and
@@ -210,15 +219,21 @@ def owned(root, task, owner):
 
 
 @contextmanager
-def owner_operation(root, task, owner):
+def operation_lock(root, task):
     path = claim_path(root, task).with_suffix(".busy")
     with path.open("x", encoding="utf-8"):
         pass
     try:
-        owned(root, task, owner)
         yield
     finally:
         path.unlink()
+
+
+@contextmanager
+def owner_operation(root, task, owner):
+    with operation_lock(root, task):
+        owned(root, task, owner)
+        yield
 
 
 def checkpoint(root, task, owner):
@@ -266,6 +281,7 @@ def resume(root, task, owner):
     start = time.perf_counter()
     with owner_operation(root, task, owner):
         data = json.loads(checkpoint_path(root, task).read_text(encoding="utf-8"))
+        owned(root, data, owner)
         require(data["head"] == git(root, "rev-parse", "HEAD"), "HEAD changed; reconcile, do not restart")
         require(data["tree"] == git(root, "rev-parse", "HEAD^{tree}"), "tree changed")
         require(not git(root, "status", "--porcelain"), "dirty worktree; preserve and reconcile")
@@ -273,9 +289,12 @@ def resume(root, task, owner):
     return {"checkpoint": data, "recovery_ms": round((time.perf_counter() - start) * 1000, 2)}
 
 
-def draft_payload(task):
+def draft_payload(task, root, owner):
     delivery_gates(task, include_ci=task["state"] in ("CI_GREEN", "DRAFT_PR_READY"))
     require(task["state"] in ("BUILDER_VERIFIED", "REVIEWED", "CI_GREEN", "DRAFT_PR_READY"), "not ready for Draft preparation")
+    with owner_operation(root, task, owner):
+        require(task["candidate_sha"] == git(root, "rev-parse", "HEAD"), "candidate differs from writer HEAD")
+        require(not git(root, "status", "--porcelain"), "dirty writer worktree")
     return {"title": task["id"] + ": " + task["context"], "head": task["branch"],
             "base": task["base_branch"], "draft": True,
             "body": "Contract: " + task["contract"] + "\nCandidate: " + task["candidate_sha"] +
@@ -296,9 +315,7 @@ def main():
     args = parser.parse_args()
     data = json.loads(args.input.read_text(encoding="utf-8-sig"))
     if args.action == "plan":
-        directory = ownership_dir(args.root)
-        active = [p.stem for p in directory.glob("*.json") if not p.name.endswith(".checkpoint.json")]
-        task = select(data, active)
+        task = select(data, active_contexts(args.root))
         result = {"task": task, "specialists": specialists(task) if task else [],
                   "independent_review_required": review_required(task) if task else False}
     elif args.action == "claim":
@@ -309,7 +326,7 @@ def main():
     elif args.action == "resume":
         result = resume(args.root, data, args.owner)
     elif args.action == "draft":
-        result = draft_payload(data)
+        result = draft_payload(data, args.root, args.owner)
     else:
         with owner_operation(args.root, data, args.owner):
             claim_path(args.root, data).unlink()

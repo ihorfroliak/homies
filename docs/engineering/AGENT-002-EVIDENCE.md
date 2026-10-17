@@ -46,3 +46,17 @@ No transcript copying, cache clearing or shared provider-cache claims. Compactio
 context savings, token savings and cycle improvement NOT MEASURED. The test time
 is one fixture observation. Separate review/CI receipts follow for the exact head.
 New PR is Draft; no founder merge authorization or production-readiness claim.
+
+## Independent-review repair — 2026-10-17
+
+Separate reviewer found A-01 and A-02 (P2) at candidate
+7d8e0923f31ac568e93cc9dff99049bd4d70545e; that candidate is not accepted.
+Immutable report SHA256:337382A9F166D4646995FE28B2226A4F52B81AB7AF97D952BE8481F05379B9F0.
+A-01 repaired by enumerating busy markers during plan/claim and serializing
+claim creation with the same operation marker as release. A-02 repaired by
+binding supplied/saved branch to claim and actual Git branch; Draft preparation
+also checks local ownership, clean tree and candidate HEAD. New regressions cover
+orphan busy, paused release, stale selection and changed input/saved branch.
+Post-repair initial25 tests PASS in38.054s; final26 tests PASS in39.053s,
+including stale-selection contention; Ruff PASS. New exact commit is in the handoff. Separate focused review
+addendum remains required; the builder does not self-close the review gate.

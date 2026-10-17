@@ -1,12 +1,12 @@
-# AGENT-002 checkpoint — 2026-10-16 verification complete
+# AGENT-002 repair checkpoint — 2026-10-17
 
-Owner /root/agent002_builder, sole writer, own agent002-orchestrator/homies worktree.
-Base 4ed8fe8ab334a8d8e344b80e266da2be3b661aee; branch codex/AGENT-002-implementation-orchestrator.
-21 synthetic tests passed in16.492s; Ruff passed via existing backend venv.
-Claude native initialization found all seven roles; actual invocation blocked by expired OAuth.
-Codex0.162.0-alpha.17.2 strict app-server config/read loaded project layer and enabled agents.
-Codex debug prompt-input returned0 but did not expose new customrole; native dispatch NOT VERIFIED.
-Existing six specialists pervendor, hooks/settings preserved. No productcode changed.
-Evidence and CI step now committed. Windows text encoding corrected before review freeze.
-NEXT finish evidence/minimal CI step, freeze candidate, bounded independent review, push/DraftPR and CI.
-Implementation commit a710f0b52eddba8344eb3a7d99645948dc41f59a; corrective documentation commit follows. No push/PR yet. Parent owns PROJECT-STATUS. No merge/deployment authorization.
+STATUS: bounded A-01/A-02 repair built; independent addendum required.
+BASE: 4ed8fe8ab334a8d8e344b80e266da2be3b661aee.
+PREVIOUS CANDIDATE: 7d8e0923f31ac568e93cc9dff99049bd4d70545e (two P2 findings).
+BRANCH: codex/AGENT-002-implementation-orchestrator; DraftPR12.
+FILES: delivery_policy.py, focused tests, delivery/evidence/task/DEVLOG records.
+TESTS: final26 tests PASS in39.053s; Ruff PASS; whitespace check PASS.
+REVIEW: prior CHANGES REQUIRED; new exact-SHA focused addendum pending.
+CI: new candidate CI follows push. No product code or configuration changes.
+NEXT: freeze repaired head, push sameDraft, parent requests independent addendum.
+MERGE/DEPLOYMENT: NO. Parent owns PROJECT-STATUS. Runtime limits unchanged.

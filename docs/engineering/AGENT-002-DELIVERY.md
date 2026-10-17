@@ -35,7 +35,7 @@ and an active-session workflow, not a background scheduler or new product author
    replaces only that task's bounded checkpoint. `resume` checks ownership, path,
    branch, base, contract hash, HEAD/tree and cleanliness; returns saved blockers,
    next step and evidence. It does not rerun an unchanged audit or reimplement work.
-7. Run `draft task.json` for a GitHub create-PR payload with `draft: true`. No network
+7. Run `draft task.json --root <worktree> --owner <session-id>` for a GitHub create-PR payload with `draft: true`. No network
    or credentials are used by the helper. The top-level authorized session checks
    live branch/head/base and sends the payload using available GitHub tooling. It
    may open the Draft to trigger PR-only CI; this is explicitly marked CI pending.
@@ -107,3 +107,14 @@ agent_calls, input_tokens/output_tokens where exposed, cycle_ms. Unknown measure
 remain NOT MEASURED. Do not clear caches or load complete histories to resume.
 
 Run bounded tests: `python -m unittest discover -s docs/engineering -p test_delivery_policy.py`.
+
+## Independent-review repairs (2026-10-17)
+
+A-01: plan and claim both treat unresolved .busy markers as active contexts;
+claim creation participates in the same exclusive operation marker as release,
+so stale selection cannot admit a writer during interrupted/in-progress release.
+A-02: owned requires supplied task branch == saved claim branch == actual Git
+branch. Resume additionally validates the saved checkpoint against the claim.
+Draft payload preparation now requires root and owner, verifies that ownership
+and clean exact candidate HEAD locally, then still requires live GitHub checks
+before publication. Intentional branch changes require explicit reconciliation.
