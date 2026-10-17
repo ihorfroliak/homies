@@ -31,4 +31,4 @@ ENV HOMIES_BUILD_SHA=$GIT_SHA
 LABEL org.opencontainers.image.revision=$GIT_SHA
 
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers"]

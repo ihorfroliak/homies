@@ -1360,3 +1360,18 @@ New BP-8 PR merge is NOT authorized; no general BP-5/BP-6 re-audit.
 
 ## 2026-10-14 — BP-8 G-14 phone restriction candidate
 Founder-authorized D-111 implementation: listing FOR SHARE OF lock and refreshed generation, G-14 before repeat fast path, revalidation after rollback fallback. Same current-generation restriction; later generation normal rules. Private phone/refusal/audit and quota tests, real PG blocking observations. Combined focused31passed; Ruff/mypy126/OpenAPI6/type generation+typecheck passed. Contract BP-8-contact-reveal-restriction.md records actual initial failures/corrections. Exact-head CI and independent review pending; Draft PR only, no merge/deploy.
+
+## 2026-10-17 — BP-11 public derived viewing slots (builder candidate)
+
+Founder HOMIES-DELIVERY-002 sections5–6 executed from integrated BP-8 main.
+Anonymous PUBLIC slot reads retain only UTC starts/duration/timezone; writes
+remain authenticated. Replaced per-candidate occupancy SQL with three bounded
+interval projections. Dedicated fail-closed IP budget, explicit trusted proxy
+CIDRs/hops and preserved socket attribution; bounded date/row/CPU requests
+refuse without partial availability. No migration, index, cache or deployment.
+
+Identical synthetic PostgreSQL fixtures: 2488→8 HTTP SQL calls on large
+schedules; max-days median7415→126ms, identical slot arrays. Detailed actual
+checks/failures and limitations: docs/tasks/BP-11-performance.md. Builder
+verification complete; required CI and separate exact-SHA review pending.
+Draft PR only. IBB-001, existing debt and BARRIER/rollback BLOCKED preserved.
