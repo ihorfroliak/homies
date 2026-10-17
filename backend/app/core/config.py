@@ -1,4 +1,5 @@
 import logging
+from ipaddress import ip_network
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
@@ -70,6 +71,14 @@ class Settings(BaseSettings):
     # NOT trusted and the socket peer is used. Only raise this when the
     # deployment actually terminates through that many trusted proxies.
     trust_proxy_hops: int = 0
+    # BP-11: never trust a hop count alone. JSON list of the real proxy CIDRs;
+    # empty by default. Direct peers outside these networks cannot spoof XFF.
+    trusted_proxy_cidrs: list[str] = []
+
+    @field_validator("trusted_proxy_cidrs")
+    @classmethod
+    def valid_proxy_networks(cls, value: list[str]) -> list[str]:
+        return [str(ip_network(cidr)) for cidr in value]
 
     # Booking lifecycle (BK-01): how long an unpaid booking holds inventory
     # before the expiry sweep frees it. Default = a checkout session lifetime.

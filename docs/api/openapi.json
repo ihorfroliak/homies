@@ -8101,6 +8101,7 @@
     },
     "/v1/classifieds/{listing_id}/viewing-slots": {
       "get": {
+        "description": "Public derived availability only; reads do not reserve a place.\n\nThis same public projection is returned whether or not credentials were\nsent. Booking/configuration endpoints continue requiring authentication.",
         "operationId": "list_slots_v1_classifieds__listing_id__viewing_slots_get",
         "parameters": [
           {
@@ -8157,21 +8158,15 @@
             "description": "No public listing with this id."
           },
           "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
+            "description": "days must be 1–31; start must be today through 366 days ahead, in the schedule's timezone (UTC without settings)."
+          },
+          "429": {
+            "description": "Public viewing-slot IP budget exhausted; Retry-After."
+          },
+          "503": {
+            "description": "Availability work budget exceeded; retry later. No partial availability is returned. Retry-After."
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "List Slots",
         "tags": [
           "viewings"
