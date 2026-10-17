@@ -61,6 +61,7 @@ from sqlalchemy.orm import Session
 from app.core.audit import audit
 from app.core.db import get_db, lock_row
 from app.core.security import get_current_user
+from app.modules.engagement.display import FALLBACK_NAME, requester_names
 from app.modules.engagement.models import (
     Viewing,
     ViewingBlackout,
@@ -231,6 +232,7 @@ class ViewingOut(BaseModel):
 
 
 class ProviderViewingOut(ViewingOut):
+    requester_display_name: str
     requester_user_id: str
     requester_note: str | None
 
@@ -263,10 +265,15 @@ def _outs(db: Session, viewings: list[Viewing], model=None) -> list:
     """Viewings as responses, with the compatibility boolean from durable attribution."""
     model = model or ViewingOut
     by_homies = effects.cancelled_by_homies(db, viewings)
-    return [model.model_validate({**{c: getattr(v, c) for c in model.model_fields
-                                     if c != "cancelled_by_homies"},
-                                  "cancelled_by_homies": v.id in by_homies})
-            for v in viewings]
+    names = requester_names(db, (v.requester_user_id for v in viewings)) \
+        if model is ProviderViewingOut else {}
+    return [model.model_validate({
+        **{c: getattr(v, c) for c in model.model_fields
+           if c not in {"cancelled_by_homies", "requester_display_name"}},
+        "cancelled_by_homies": v.id in by_homies,
+        **({"requester_display_name": names.get(v.requester_user_id, FALLBACK_NAME)}
+           if model is ProviderViewingOut else {}),
+    }) for v in viewings]
 
 
 def _provider_listing(db: Session, user: User, listing_id: str) -> ClassifiedOffer:

@@ -1381,3 +1381,13 @@ No migration or public API shape change. Independent exact-SHA review and CI
 remain required; feature branch/Draft PR only, no merge or deployment.
 IBB-001, BARRIER/rollback BLOCKED, all other debt and external beta BP-9/BB-10
 gate retained until integration/verification. PROJECT-STATUS owner unchanged.
+
+## 2026-10-17 — BP-4 requester display projection
+
+Provider conversation and viewing DTOs now include server-projected unverified
+requester_display_name under BP9 authorization. FounderD113: first word and
+last-word initial, one word unchanged, normalized whitespace/Unicode retained,
+empty fallback Użytkownik Homies. Bulk queries select only account id/full_name;
+no legal identity, email, phone or verification metadata is projected. Tenant
+DTOs unchanged. 24focused/API checks passed; broader126pass2setuperrors with
+4-case rerunpass; Ruff/mypy127/API/typecheckpass. Independent review and CI pending.
