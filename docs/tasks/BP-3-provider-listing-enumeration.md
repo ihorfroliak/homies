@@ -41,3 +41,16 @@ API/type checks passed. Required Linux CI remains a separate gate.
 No migration, paid providers or deployment. No PostgreSQL concurrency claim:
 this delta is a scalar SELECT using existing authorization chains. Full PG suite
 will run in required CI. Separate exact-SHA review remains required before acceptance.
+
+## Required CI repair — 2026-10-17
+
+CI38941330601 at94935fa ran2003 tests successfully and failed the inherited
+PostgreSQL moderation R9 direct-handler call: the scope Query default was a
+FastAPI metadata object outside dependency injection. HTTP behavior was correct,
+but direct-call compatibility was broken. The follow-up uses Annotated metadata
+with a plain PUBLISH_LISTING default and preserves the original user/db positional
+arguments. Added direct-call regression. Targeted Python3.12 run20passed20.80s:
+13 BP-3 cases,6 OpenAPI checks and the actual previously failing PostgreSQL R9.
+Disposable tmpfs database removed after exact identity verification. Focused
+Ruff and mypy passed. API snapshot unchanged. Original independent report remains
+immutable evidence for94935fa; this new candidate needs a focused addendum and CI.

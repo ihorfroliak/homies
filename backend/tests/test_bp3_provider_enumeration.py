@@ -128,3 +128,19 @@ def test_organization_role_and_revocation_are_current(client):
         member.status = "REVOKED"
         db.commit()
     assert listing_rows(client, agent, "MANAGE_VIEWINGS").json() == []
+
+
+def test_direct_owner_call_preserves_default_and_positional_contract(client):
+    from app.modules.identity.models import User
+    from app.modules.properties.router import my_classifieds
+
+    owner = register_and_login(client, "bp3-direct@example.com", "host")
+    prop = _register(client, owner)
+    offer = _draft(client, owner, prop["id"])
+    owner_id = client.get("/v1/me", headers=auth(owner)).json()["id"]
+    with TestingSession() as db:
+        # Existing PG moderation projection code calls the handler directly.
+        # Defaults must be plain values outside FastAPI dependency resolution.
+        rows = my_classifieds(db.get(User, owner_id), db)
+        assert rows[0].id == offer
+        assert "freshness_detail" in rows[0].model_dump()

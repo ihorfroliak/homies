@@ -28,7 +28,7 @@ Still open: the owner-facing "who asked for my number" view. The rows exist.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Literal, cast
+from typing import Annotated, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from prometheus_client import Counter
@@ -796,13 +796,12 @@ def change_availability(
 
 @router.get("/me/classifieds", response_model=list[ClassifiedOwnerOut] | list[ProviderListingOut])
 def my_classifieds(
-    scope: Literal["PUBLISH_LISTING", "MANAGE_MESSAGES", "MANAGE_VIEWINGS"] = Query(
-        default="PUBLISH_LISTING",
-        description="Publication management keeps the owner projection. Engagement scopes "
-                    "require VERIFIED authority and return only id, title, status and scope.",
-    ),
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    scope: Annotated[Literal["PUBLISH_LISTING", "MANAGE_MESSAGES", "MANAGE_VIEWINGS"], Query(
+        description="Publication management keeps the owner projection. Engagement scopes "
+                    "require VERIFIED authority and return only id, title, status and scope.",
+    )] = "PUBLISH_LISTING",
 ):
     """Listings the caller can manage for the requested capability, in any status.
 
