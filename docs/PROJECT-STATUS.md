@@ -2,7 +2,7 @@
 id: PROJECT-STATUS
 type: status_index
 role: single semantic owner of volatile project status (D-106, 05 §14)
-as_of: 2026-10-16
+as_of: 2026-10-17
 reconciled_through:
   code_and_product: BP-8 merge 4ed8fe8ab334a8d8e344b80e266da2be3b661aee (D-112)
   documentation: BP-8 integrated; HOMIES-DELIVERY-002 authorized (D-112)
@@ -21,7 +21,7 @@ latest_code_bearing_main_state:
 repository_head: resolved from Git (origin/main); intentionally not embedded here
 next_task:
   id: HOMIES-DELIVERY-002
-  status: AUTHORIZED — AGENT-002 and BP-11/BP-9 in progress on isolated branches; subsequent PRs Draft only
+  status: AUTHORIZED — backend candidates in Draft PRs; focused reviews and CI in progress; FE-003 dependency verification pending
 fe003_implementation_authorized: true # conditional on verified backend prerequisites; D-112
 fe_vis_001_implementation_authorized: false
 production_ready: false
@@ -72,6 +72,33 @@ conditional FE-003 authorization: [D-112](DECISIONS.md),
 [full directive](tasks/HOMIES-DELIVERY-002.md). Claude CLI is installed but not
 authenticated; Codex is authorized writer. New feature branches remain candidates.
 
+## Delivery checkpoint — 2026-10-17
+
+All candidates below are implemented, pushed and **unmerged Draft PRs**.
+No new merge authorization is inferred. BP-4 is stacked on BP-9; the other
+listed candidates start at integrated BP-8 main. FE-003 implementation waits
+for the verified backend dependency chain; documentation/preparation is ongoing.
+
+| Task | Exact candidate | Verification and review | CI run | Draft PR |
+|---|---|---|---|---|
+| AGENT-002 | `ff972255587d4737604073993dd88278e1af1c07` | 26 synthetic tests + Ruff; both original P2 findings repaired, focused independent addendum pending; native runtime invocation limitations retained | 39029912878 running | [#12](https://github.com/ihorfroliak/homies/pull/12) |
+| BP-11 | `e3841a638b4cc54bba10b2caed29569aaffd54e5` | Builder benchmark: all 10 outputs identical; largest fixture SQL 2488 to 8, median 7415 to 126 ms; independent review in progress | 39007470216 SUCCESS | [#14](https://github.com/ihorfroliak/homies/pull/14) |
+| BP-9 | `fb5b3e57a6e4881ab14ad378a15e15f49475e682` | Independent PASS_WITH_NONBLOCKING_NOTES; 121 repository tests + 7 independent probes, Ruff/mypy/OpenAPI clean; no P0-P3 findings | 38941516780 SUCCESS | [#13](https://github.com/ihorfroliak/homies/pull/13) |
+| BP-3 | `55c9d43d218b9fa749789348adeccc59306fe9ea` | Original CI direct-handler default regression repaired; 20 focused tests including PostgreSQL regression + API drift; focused independent addendum pending | 39029843865 running | [#11](https://github.com/ihorfroliak/homies/pull/11) |
+| BP-4 | `d138fadf9d5fdcc245fae31fe7f2515283c979e3` | 24 focused/API checks; broader 126 passes + 2 setup errors, unchanged failed selection 4 passes; Ruff/mypy/types clean; independent privacy review in progress | 39029895032 running | [#15](https://github.com/ihorfroliak/homies/pull/15), base BP-9 |
+
+[BP-9 independent report](reviews/2026-10-17-bp9-independent-review-fb5b3e57.md)
+is archived byte-for-byte, SHA256
+`2d8b1b750d78fc83757a1a1eedbfcfc25bfcfa84cdcb23c8e3e4abd4ce5299bf`.
+Its two nonblocking notes retain the bounded temporal authorization guarantee
+and optionally promote the independent probes; no strict commit-time guarantee
+or production certification is asserted. Original reviews of other candidates
+remain preserved externally until their focused addenda are archived.
+
+Main ruleset **25221028 ACTIVE**: PRs and six current-base CI checks required,
+force-push/deletion blocked, merge commits only, no bypass actors. IBB-001,
+BARRIER/rollback BLOCKED, BP-10 EXPAND/BB-11 and all existing debt remain.
+FE-VIS-001 unauthorized; production NOT READY / NOT DEPLOYED.
 ## Three different "current" states
 
 | Concept | Value | How to read it |
