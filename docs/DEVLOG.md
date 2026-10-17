@@ -1391,3 +1391,12 @@ empty fallback Użytkownik Homies. Bulk queries select only account id/full_name
 no legal identity, email, phone or verification metadata is projected. Tenant
 DTOs unchanged. 24focused/API checks passed; broader126pass2setuperrors with
 4-case rerunpass; Ruff/mypy127/API/typecheckpass. Independent review and CI pending.
+## 2026-10-16 — BP-3 provider listing enumeration
+
+Added optional scope to GET /v1/me/classifieds. Default PUBLISH_LISTING preserves
+existing owner-management output; MANAGE_MESSAGES and MANAGE_VIEWINGS use
+VERIFIED effective authority and return only id/title/status/scope. Neither
+projection grants rights to later operations. 35 focused/authority tests and6
+OpenAPI checks passed; Ruff/mypy126/generated API/TypeScript checks passed.
+Separate branch under HOMIES-DELIVERY-002, Draft only; independent review and
+CI required. BP-9 remains prerequisite for private engagement and FE-003.
