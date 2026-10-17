@@ -1360,3 +1360,21 @@ New BP-8 PR merge is NOT authorized; no general BP-5/BP-6 re-audit.
 
 ## 2026-10-14 — BP-8 G-14 phone restriction candidate
 Founder-authorized D-111 implementation: listing FOR SHARE OF lock and refreshed generation, G-14 before repeat fast path, revalidation after rollback fallback. Same current-generation restriction; later generation normal rules. Private phone/refusal/audit and quota tests, real PG blocking observations. Combined focused31passed; Ruff/mypy126/OpenAPI6/type generation+typecheck passed. Contract BP-8-contact-reveal-restriction.md records actual initial failures/corrections. Exact-head CI and independent review pending; Draft PR only, no merge/deploy.
+
+## 2026-10-16 — AGENT-002 candidate
+
+HOMIES-DELIVERY-002 section 4: one implementation-orchestrator role per vendor,
+six specialists and AGENT-001 hooks/settings preserved. Added deterministic
+selection, exclusive shared-Git context claims, exact-SHA checkpoint recovery,
+independent review and Draft-only preparation. 21 synthetic tests and Ruff pass.
+Claude finds seven roles; invocation blocked by expired OAuth. Codex strict
+project config loads; native named-role invocation NOT VERIFIED. See
+docs/engineering/AGENT-002-EVIDENCE.md. No product code or deployment.
+
+## 2026-10-17 — AGENT-002 independent-review repairs
+
+Addressed A-01/A-02: orphan operation markers block selection/acquisition,
+acquisition serializes with release, and task/checkpoint/Draft branch identity
+is bound to the active claim and Git checkout. Added focused regression cases.
+Builder verification and independent review remain separate; the new candidate
+requires an exact-SHA addendum. No product code, merge or deployment changes.
