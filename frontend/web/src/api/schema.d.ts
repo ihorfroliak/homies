@@ -571,7 +571,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Slots */
+        /**
+         * List Slots
+         * @description Public derived availability only; reads do not reserve a place.
+         *
+         *     This same public projection is returned whether or not credentials were
+         *     sent. Booking/configuration endpoints continue requiring authentication.
+         */
         get: operations["list_slots_v1_classifieds__listing_id__viewing_slots_get"];
         put?: never;
         post?: never;
@@ -5096,14 +5102,26 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Validation Error */
+            /** @description days must be 1–31; start must be today through 366 days ahead, in the schedule's timezone (UTC without settings). */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                content?: never;
+            };
+            /** @description Public viewing-slot IP budget exhausted; Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
                 };
+                content?: never;
+            };
+            /** @description Availability work budget exceeded; retry later. No partial availability is returned. Retry-After. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
