@@ -19,6 +19,8 @@ from tests.test_engagement_safety import _request, _viewing_ready
     ("Łukasz Żółć", "Łukasz Ż."), ("Марія Коваль", "Марія К."),
     ("李 雷", "李 雷."), ("单名", "单名"),
     ("Jean-Luc de Gaulle", "Jean-Luc G."),
+    ("आशा किरण", "आशा कि."),
+    ("মিনা দাস", "মিনা দা."),
     ("Ana N\u0303unez", "Ana N\u0303."),
     ("<b>Ana</b> Nowak", "<b>Ana</b> N."),
 ])

@@ -41,3 +41,12 @@ No migration or new PG lock protocol. Inherited BP9 CI38941516780 SUCCESS;
 its mandatory independent review and this candidate's separate review remain
 acceptance prerequisites. Draft stacked on BP9, not independently mergeable
 against unprepared main. No deployment or production certification.
+
+## Focused Unicode repair
+Independent review of d138fadf found a P3: nonzero canonical combining class
+is not equivalent to Unicode mark membership. Class-zero spacing vowel signs
+were lost from Devanagari/Bengali initials. The repair retains successive
+Unicode Mn/Mc/Me marks and adds both causal regressions. The approved display
+rule, authorization and API shape are unchanged. Source-pinned focused tests:
+26 passed in11.30s (20 BP4 +6 OpenAPI), Ruff and focused mypy clean.
+Original full review remains immutable; new exact-SHA addendum and CI required.

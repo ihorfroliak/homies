@@ -18,10 +18,10 @@ def requester_display_name(full_name: str | None) -> str:
         return words[0]
     last = words[-1]
     initial = last[0]
-    # Keep a decomposed accent attached to the initial without changing its
-    # Unicode spelling. This is a display rule, not a legal-name parser.
+    # Keep Unicode marks (including class-zero vowel signs) attached to the
+    # initial. This is a display rule, not a legal-name parser.
     for char in last[1:]:
-        if not unicodedata.combining(char):
+        if not unicodedata.category(char).startswith("M"):
             break
         initial += char
     return f"{words[0]} {initial}."
