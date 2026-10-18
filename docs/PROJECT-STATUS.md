@@ -2,7 +2,7 @@
 id: PROJECT-STATUS
 type: status_index
 role: single semantic owner of volatile project status (D-106, 05 §14)
-as_of: 2026-10-17
+as_of: 2026-10-18
 reconciled_through:
   code_and_product: BP-8 merge 4ed8fe8ab334a8d8e344b80e266da2be3b661aee (D-112)
   documentation: BP-8 integrated; HOMIES-DELIVERY-002 authorized (D-112)
@@ -72,7 +72,7 @@ conditional FE-003 authorization: [D-112](DECISIONS.md),
 [full directive](tasks/HOMIES-DELIVERY-002.md). Claude CLI is installed but not
 authenticated; Codex is authorized writer. New feature branches remain candidates.
 
-## Delivery checkpoint — 2026-10-17
+## Delivery checkpoint — 2026-10-18
 
 All candidates below are implemented, pushed and **unmerged Draft PRs**.
 No new merge authorization is inferred. BP-4 is stacked on BP-9; the other
@@ -81,20 +81,36 @@ for the verified backend dependency chain; documentation/preparation is ongoing.
 
 | Task | Exact candidate | Verification and review | CI run | Draft PR |
 |---|---|---|---|---|
-| AGENT-002 | `ff972255587d4737604073993dd88278e1af1c07` | 26 synthetic tests + Ruff; both original P2 findings repaired, focused independent addendum pending; native runtime invocation limitations retained | 39029912878 running | [#12](https://github.com/ihorfroliak/homies/pull/12) |
-| BP-11 | `e3841a638b4cc54bba10b2caed29569aaffd54e5` | Builder benchmark: all 10 outputs identical; largest fixture SQL 2488 to 8, median 7415 to 126 ms; independent review in progress | 39007470216 SUCCESS | [#14](https://github.com/ihorfroliak/homies/pull/14) |
+| AGENT-002 | `ff972255587d4737604073993dd88278e1af1c07` | 26 synthetic tests + Ruff; both original P2 findings repaired, independent repair addendum PASS, both P2 closed; native runtime invocation limitations retained | 39029912878 SUCCESS | [#12](https://github.com/ihorfroliak/homies/pull/12) |
+| BP-11 | `e3841a638b4cc54bba10b2caed29569aaffd54e5` | Builder benchmark: all 10 outputs identical; largest fixture SQL 2488 to 8, median 7415 to 126 ms; independent PASS_WITH_NONBLOCKING_NOTES, 135 cases +120 differential comparisons | 39007470216 SUCCESS | [#14](https://github.com/ihorfroliak/homies/pull/14) |
 | BP-9 | `fb5b3e57a6e4881ab14ad378a15e15f49475e682` | Independent PASS_WITH_NONBLOCKING_NOTES; 121 repository tests + 7 independent probes, Ruff/mypy/OpenAPI clean; no P0-P3 findings | 38941516780 SUCCESS | [#13](https://github.com/ihorfroliak/homies/pull/13) |
-| BP-3 | `55c9d43d218b9fa749789348adeccc59306fe9ea` | Original CI direct-handler default regression repaired; 20 focused tests including PostgreSQL regression + API drift; focused independent addendum pending | 39029843865 running | [#11](https://github.com/ihorfroliak/homies/pull/11) |
-| BP-4 | `d138fadf9d5fdcc245fae31fe7f2515283c979e3` | 24 focused/API checks; broader 126 passes + 2 setup errors, unchanged failed selection 4 passes; Ruff/mypy/types clean; independent privacy review in progress | 39029895032 running | [#15](https://github.com/ihorfroliak/homies/pull/15), base BP-9 |
+| BP-3 | `55c9d43d218b9fa749789348adeccc59306fe9ea` | Original CI direct-handler default regression repaired; 20 focused tests including PostgreSQL regression + API drift; independent repair addendum PASS (19 tests + Ruff) | 39029843865 SUCCESS | [#11](https://github.com/ihorfroliak/homies/pull/11) |
+| BP-4 | `2fc30a28939c7d8b8a5b6f62a71a920ad444d693` | Unicode P3 repaired; independent addendum closes finding, 4 independent probes pass; initial fixture errors retained transparently | 39060137761 SUCCESS | [#15](https://github.com/ihorfroliak/homies/pull/15), base BP-9 |
 
 [BP-9 independent report](reviews/2026-10-17-bp9-independent-review-fb5b3e57.md)
 is archived byte-for-byte, SHA256
 `2d8b1b750d78fc83757a1a1eedbfcfc25bfcfa84cdcb23c8e3e4abd4ce5299bf`.
 Its two nonblocking notes retain the bounded temporal authorization guarantee
 and optionally promote the independent probes; no strict commit-time guarantee
-or production certification is asserted. Original reviews of other candidates
-remain preserved externally until their focused addenda are archived.
+or production certification is asserted. Original reviews and their focused addenda are archived below.
 
+
+Independent evidence archived unchanged (each full SHA256 verified before copy):
+
+- [BP-3 original](reviews/BP-3-independent-review.md) and [repair PASS](reviews/BP-3-repair-addendum-55c9d43.md).
+- [AGENT-002 original](reviews/AGENT-002-independent-review.md) and [repair PASS](reviews/AGENT-002-repair-addendum-ff97225.md).
+- [BP-11 PASS with notes](reviews/BP11-independent-review-e3841a6.md).
+- [BP-4 original P3](reviews/2026-10-17-bp4-independent-review-d138fadf.md) and [repair closure](reviews/2026-10-17-bp4-repair-addendum-2fc30a28.md).
+
+**Explicit dependency Draft [PR16](https://github.com/ihorfroliak/homies/pull/16):**
+`ee19b3affc9f33d560c7624ebc6b562276c56000`, tree
+`18a6c794d3d37c4eca63a57d4cb910c18c7048a8`, base BP-4 PR15; preserves BP-9,
+BP-3 and BP-11 ancestry. No product-code conflicts; combined schema generation
+matches. Combined regressions:200 passed +1 fixture setup error; unchanged
+single-case rerun1 passed7.93s. Ruff/mypy127/API/types pass. Composition-only
+independent review and exact composed CI pending. FE-003 writer has read-only
+preparation only until the verified-chain gate is released. This branch is
+not main and does not authorize any merge or deployment.
 Main ruleset **25221028 ACTIVE**: PRs and six current-base CI checks required,
 force-push/deletion blocked, merge commits only, no bypass actors. IBB-001,
 BARRIER/rollback BLOCKED, BP-10 EXPAND/BB-11 and all existing debt remain.
