@@ -21,7 +21,7 @@ latest_code_bearing_main_state:
 repository_head: resolved from Git (origin/main); intentionally not embedded here
 next_task:
   id: HOMIES-DELIVERY-002
-  status: AUTHORIZED — backend candidates in Draft PRs; focused reviews and CI in progress; FE-003 dependency verification pending
+  status: AUTHORIZED — backend candidates in Draft PRs; focused reviews and CI in progress; FE-003 implementing on verified dependency chain
 fe003_implementation_authorized: true # conditional on verified backend prerequisites; D-112
 fe_vis_001_implementation_authorized: false
 production_ready: false
@@ -76,8 +76,7 @@ authenticated; Codex is authorized writer. New feature branches remain candidate
 
 All candidates below are implemented, pushed and **unmerged Draft PRs**.
 No new merge authorization is inferred. BP-4 is stacked on BP-9; the other
-listed candidates start at integrated BP-8 main. FE-003 implementation waits
-for the verified backend dependency chain; documentation/preparation is ongoing.
+listed candidates start at integrated BP-8 main. FE-003 implementation is in progress on the independently verified dependency chain; exact composed CI remains an acceptance gate.
 
 | Task | Exact candidate | Verification and review | CI run | Draft PR |
 |---|---|---|---|---|
@@ -107,9 +106,7 @@ Independent evidence archived unchanged (each full SHA256 verified before copy):
 `18a6c794d3d37c4eca63a57d4cb910c18c7048a8`, base BP-4 PR15; preserves BP-9,
 BP-3 and BP-11 ancestry. No product-code conflicts; combined schema generation
 matches. Combined regressions:200 passed +1 fixture setup error; unchanged
-single-case rerun1 passed7.93s. Ruff/mypy127/API/types pass. Composition-only
-independent review and exact composed CI pending. FE-003 writer has read-only
-preparation only until the verified-chain gate is released. This branch is
+single-case rerun1 passed7.93s. Ruff/mypy127/API/types pass. [Composition-only independent review](reviews/FE003-composition-review-ee19b3a.md) PASS;36 tests and41 shared definitions verified. Exact composed CI39112216176 pending. FE-003 implementation entry released after independent feature/composition verification; the sole frontend writer uses its own isolated worktree at this exact base. This branch is
 not main and does not authorize any merge or deployment.
 Main ruleset **25221028 ACTIVE**: PRs and six current-base CI checks required,
 force-push/deletion blocked, merge commits only, no bypass actors. IBB-001,
