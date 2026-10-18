@@ -1391,3 +1391,26 @@ empty fallback Użytkownik Homies. Bulk queries select only account id/full_name
 no legal identity, email, phone or verification metadata is projected. Tenant
 DTOs unchanged. 24focused/API checks passed; broader126pass2setuperrors with
 4-case rerunpass; Ruff/mypy127/API/typecheckpass. Independent review and CI pending.
+## 2026-10-16 — BP-3 provider listing enumeration
+
+Added optional scope to GET /v1/me/classifieds. Default PUBLISH_LISTING preserves
+existing owner-management output; MANAGE_MESSAGES and MANAGE_VIEWINGS use
+VERIFIED effective authority and return only id/title/status/scope. Neither
+projection grants rights to later operations. 35 focused/authority tests and6
+OpenAPI checks passed; Ruff/mypy126/generated API/TypeScript checks passed.
+Separate branch under HOMIES-DELIVERY-002, Draft only; independent review and
+CI required. BP-9 remains prerequisite for private engagement and FE-003.
+## 2026-10-17 — BP-11 public derived viewing slots (builder candidate)
+
+Founder HOMIES-DELIVERY-002 sections5–6 executed from integrated BP-8 main.
+Anonymous PUBLIC slot reads retain only UTC starts/duration/timezone; writes
+remain authenticated. Replaced per-candidate occupancy SQL with three bounded
+interval projections. Dedicated fail-closed IP budget, explicit trusted proxy
+CIDRs/hops and preserved socket attribution; bounded date/row/CPU requests
+refuse without partial availability. No migration, index, cache or deployment.
+
+Identical synthetic PostgreSQL fixtures: 2488→8 HTTP SQL calls on large
+schedules; max-days median7415→126ms, identical slot arrays. Detailed actual
+checks/failures and limitations: docs/tasks/BP-11-performance.md. Builder
+verification complete; required CI and separate exact-SHA review pending.
+Draft PR only. IBB-001, existing debt and BARRIER/rollback BLOCKED preserved.
