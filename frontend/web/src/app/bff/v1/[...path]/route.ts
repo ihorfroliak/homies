@@ -58,6 +58,9 @@ async function handle(request: Request, { params }: Params): Promise<Response> {
     const value = upstream.headers.get(name);
     if (value) headers.set(name, value);
   }
+  // Duplicate saved searches carry a same-API reference, never an arbitrary redirect.
+  const location = upstream.headers.get("location");
+  if (location && /^\/v1\/me\/saved-searches\/[A-Za-z0-9-]{1,64}$/.test(location)) headers.set("location", location);
   return new Response(upstream.body, { status: upstream.status, headers });
 }
 
