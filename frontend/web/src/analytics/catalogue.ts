@@ -12,6 +12,18 @@ interface EventSpec {
 }
 
 export const CATALOGUE = {
+  save_toggled: { version: 1, props: { listing_id: "string", action: "string", outcome: "string", surface: "string" } },
+  conversation_start_submitted: { version: 1, props: { listing_id: "string", outcome: "string" } },
+  message_send_submitted: { version: 1, props: { outcome: "string", side: "string", retried: "boolean" } },
+  message_report_submitted: { version: 1, props: { reason: "string", outcome: "string" } },
+  viewing_slot_selected: { version: 1, props: { listing_id: "string", days_ahead_bucket: "string", hour_bucket: "string", authenticated: "boolean" } },
+  viewing_request_submitted: { version: 1, props: { listing_id: "string", outcome: "string", attendees_bucket: "string" } },
+  viewing_cancel_submitted: { version: 1, props: { outcome: "string" } },
+  contact_reveal_submitted: { version: 1, props: { listing_id: "string", outcome: "string", quota_bucket: "string" } },
+  auth_interrupted: { version: 1, props: { intent: "string" } },
+  auth_resumed: { version: 1, props: { intent: "string", outcome: "string" } },
+  engagement_refused: { version: 1, props: { surface: "string", code: "string" } },
+  engagement_api_error: { version: 1, props: { route_template: "string", status: "number", code: "string", kind: "string" } },
   session_started: { version: 1, props: {} },
   landing_viewed: { version: 1, props: { channel_code: "string" } },
   attribution_captured: { version: 1, props: { channel_code: "string", utm_source: "string", utm_medium: "string", utm_campaign: "string", click_id_present: "boolean", click_id_platform: "string" } },
