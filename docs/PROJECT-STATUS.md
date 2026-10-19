@@ -2,7 +2,7 @@
 id: PROJECT-STATUS
 type: status_index
 role: single semantic owner of volatile project status (D-106, 05 §14)
-as_of: 2026-10-18
+as_of: 2026-10-19
 reconciled_through:
   code_and_product: BP-8 merge 4ed8fe8ab334a8d8e344b80e266da2be3b661aee (D-112)
   documentation: BP-8 integrated; HOMIES-DELIVERY-002 authorized (D-112)
@@ -21,7 +21,7 @@ latest_code_bearing_main_state:
 repository_head: resolved from Git (origin/main); intentionally not embedded here
 next_task:
   id: HOMIES-DELIVERY-002
-  status: AUTHORIZED — backend candidates in Draft PRs; focused reviews and CI in progress; FE-003 implementing on verified dependency chain
+  status: AUTHORIZED — backend candidates reviewed with CI green in Draft PRs; FE-003 implementation and integration in progress
 fe003_implementation_authorized: true # conditional on verified backend prerequisites; D-112
 fe_vis_001_implementation_authorized: false
 production_ready: false
@@ -72,7 +72,7 @@ conditional FE-003 authorization: [D-112](DECISIONS.md),
 [full directive](tasks/HOMIES-DELIVERY-002.md). Claude CLI is installed but not
 authenticated; Codex is authorized writer. New feature branches remain candidates.
 
-## Delivery checkpoint — 2026-10-18
+## Delivery checkpoint — 2026-10-19
 
 All candidates below are implemented, pushed and **unmerged Draft PRs**.
 No new merge authorization is inferred. BP-4 is stacked on BP-9; the other
@@ -106,8 +106,20 @@ Independent evidence archived unchanged (each full SHA256 verified before copy):
 `18a6c794d3d37c4eca63a57d4cb910c18c7048a8`, base BP-4 PR15; preserves BP-9,
 BP-3 and BP-11 ancestry. No product-code conflicts; combined schema generation
 matches. Combined regressions:200 passed +1 fixture setup error; unchanged
-single-case rerun1 passed7.93s. Ruff/mypy127/API/types pass. [Composition-only independent review](reviews/FE003-composition-review-ee19b3a.md) PASS;36 tests and41 shared definitions verified. Exact composed CI39112216176 SUCCESS6/6. FE-003 implementation entry released after independent feature/composition verification; the sole frontend writer uses its own isolated worktree at this exact base. This branch is
+single-case rerun1 passed7.93s. Ruff/mypy127/API/types pass. [Composition-only independent review](reviews/FE003-composition-review-ee19b3a.md) PASS;36 tests and41 shared definitions verified. Exact composed CI39112216176 SUCCESS6/6. FE-003 implementation entry released after independent feature/composition verification; frontend, conversation and synthetic-fixture writers use separate bounded contexts and isolated worktrees derived from this exact base. This branch is
 not main and does not authorize any merge or deployment.
+
+**FE-003 in progress (not a final candidate):** foundation
+`22382ac04936f985cc7bae37562f6837220ffb81` has builder-reported 100/100 Vitest,
+typecheck and lint PASS. Synthetic fixture candidate
+`b44e7bdbff4bf5da6b8e904bec29cc57bd16818f` has 13 tests PASS, including real
+PostGIS repeat-run and partial-state refusal; Ruff and mypy (128 files) PASS.
+The original 12 fixtures remain intact; desktop/mobile engagement data is
+separate. Contact, viewing and conversation surfaces plus integrated browser
+tests remain in progress. Full FE-003 exact-SHA independent review, required CI
+and Draft PR are still pending. These component results do not certify FE-003
+or external beta.
+
 Main ruleset **25221028 ACTIVE**: PRs and six current-base CI checks required,
 force-push/deletion blocked, merge commits only, no bypass actors. IBB-001,
 BARRIER/rollback BLOCKED, BP-10 EXPAND/BB-11 and all existing debt remain.
