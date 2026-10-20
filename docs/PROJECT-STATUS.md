@@ -2,7 +2,7 @@
 id: PROJECT-STATUS
 type: status_index
 role: single semantic owner of volatile project status (D-106, 05 §14)
-as_of: 2026-10-19
+as_of: 2026-10-20
 reconciled_through:
   code_and_product: BP-8 merge 4ed8fe8ab334a8d8e344b80e266da2be3b661aee (D-112)
   documentation: BP-8 integrated; HOMIES-DELIVERY-002 authorized (D-112)
@@ -72,7 +72,7 @@ conditional FE-003 authorization: [D-112](DECISIONS.md),
 [full directive](tasks/HOMIES-DELIVERY-002.md). Claude CLI is installed but not
 authenticated; Codex is authorized writer. New feature branches remain candidates.
 
-## Delivery checkpoint — 2026-10-19
+## Delivery checkpoint — 2026-10-20
 
 All candidates below are implemented, pushed and **unmerged Draft PRs**.
 No new merge authorization is inferred. BP-4 is stacked on BP-9; the other
@@ -110,15 +110,27 @@ single-case rerun1 passed7.93s. Ruff/mypy127/API/types pass. [Composition-only i
 not main and does not authorize any merge or deployment.
 
 **FE-003 in progress (not a final candidate):** foundation
-`22382ac04936f985cc7bae37562f6837220ffb81` has builder-reported 100/100 Vitest,
-typecheck and lint PASS. Synthetic fixture candidate
-`b44e7bdbff4bf5da6b8e904bec29cc57bd16818f` has 13 tests PASS, including real
-PostGIS repeat-run and partial-state refusal; Ruff and mypy (128 files) PASS.
+`22382ac04936f985cc7bae37562f6837220ffb81` and conversation implementation
+`b2e5a46baf86fb4efb7f3add39ed24cb7f680210` are integrated on the feature
+branch. Builder reports 145 frontend tests and lint PASS; browser execution,
+final exact-SHA independent review, required CI and Draft PR remain pending.
+Conversation E2E candidate `edb0c2d2d3ab8bc95492b948d3f100c4151f7e67`
+has 14 tests discovered, not yet runtime-certified. These results do not
+certify FE-003 or external beta.
+
+Synthetic seed `b44e7bdbff4bf5da6b8e904bec29cc57bd16818f` independently
+passed 13 targeted tests. [Original review](reviews/FE003-seed-review-b44e7bd.md)
+found one P3 fixture-state validation gap, with no P0-P2 findings. Repair
+`81ef509837eb3f1a113455f6e17343d2877f4d24` closes it: the
+[independent addendum](reviews/FE003-seed-repair-review-81ef509.md) verifies
+four rejected mode/role mutations, no silent repair and unchanged replay;
+one focused PostgreSQL test PASS (218.60 s). Both reports are archived
+byte-for-byte. Original SHA256:
+`64fafb0fedbccbf14774e58661b75c06e77e3a6675cb4731cb3f17bcdbb75d91`;
+addendum SHA256:
+`d678aac1923b72a8774a81e1232731767dd1ce90de3d9edd1381c5ee0ac04ffd`.
 The original 12 fixtures remain intact; desktop/mobile engagement data is
-separate. Contact, viewing and conversation surfaces plus integrated browser
-tests remain in progress. Full FE-003 exact-SHA independent review, required CI
-and Draft PR are still pending. These component results do not certify FE-003
-or external beta.
+separate. No product authorization defect was found in this narrow seed review.
 
 Main ruleset **25221028 ACTIVE**: PRs and six current-base CI checks required,
 force-push/deletion blocked, merge commits only, no bypass actors. IBB-001,
