@@ -18,7 +18,7 @@ from sqlalchemy import select
 
 from app.core.config import settings
 from app.core.db import SessionLocal
-from app.modules.engagement.models import Viewing
+from app.modules.engagement.models import Viewing, ViewingSettings
 from app.modules.events.providers import DeliveryResult
 from app.modules.geography import service as geography
 from app.modules.geography.models import GeoArea, GeoSource
@@ -233,12 +233,29 @@ def verify(api, manifest):
         for key, account in accounts.items():
             _require(account == {"email": _email(project, key), "password": PASSWORD}, "account identity")
             tokens[key] = api.login(account["email"], account["password"])
+            me = api.call("GET", "/v1/me", tokens[key]).json()
+            expected_role = "host" if key in (
+                "provider", "unverified_provider", "host_without_authority") else "guest"
+            _require(me["role"] == expected_role, f"account role: {project}/{key}")
         for key, listing in listings.items():
             with SessionLocal() as db:
                 offer = db.get(ClassifiedOffer, listing)
                 _require(offer is not None and offer.title == f"FE003 {project} {key}", "listing identity")
             expected = 404 if key in ("held", "unavailable") else 200
             api.call("GET", f"/v1/classifieds/{listing}", expect=(expected,))
+        # No settings GET endpoint exists. Inspect persisted configuration without
+        # changing it; public slots intentionally do not expose booking mode.
+        booking_modes = {
+            "approval": "REQUEST_APPROVAL", "instant": "INSTANT_BOOKING",
+            "held": "REQUEST_APPROVAL", "restricted": "REQUEST_APPROVAL",
+            "past_requested": "REQUEST_APPROVAL", "past_confirmed": "INSTANT_BOOKING",
+            "unverified": "REQUEST_APPROVAL",
+        }
+        with SessionLocal() as db:
+            for key, mode in booking_modes.items():
+                schedule = db.get(ViewingSettings, listings[key])
+                _require(schedule is not None and schedule.booking_mode == mode,
+                         f"booking mode: {project}/{key}")
         for key in ("approval", "instant"):
             slots = api.call("GET", f"/v1/classifieds/{listings[key]}/viewing-slots").json()
             _require(slots["timezone"] == "Europe/Warsaw" and slots["slots"], "public offered slots")

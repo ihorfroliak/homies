@@ -55,8 +55,40 @@ def test_seed_twice_preserves_discovery_and_rejects_partial_state(pg_session, tm
     absent = run("app.scripts.seed_engagement_e2e", "--manifest", tmp_path / "absent.json", ok=False)
     assert "existing fixtures without their completion manifest" in absent.stderr
     assert counts() == first_counts
-    # A partially consumed fixture is refused, not silently reset or accepted.
+    # F-SEED-01: slots and provider access alone cannot prove the named fixtures.
+    # Flip both promised modes and both role directions, changing nothing else.
+    # A failed verification must preserve the mutation; fixture repair is explicit.
     desktop = data["projects"]["desktop"]
+    for key, original, changed in (
+        ("instant", "INSTANT_BOOKING", "REQUEST_APPROVAL"),
+        ("approval", "REQUEST_APPROVAL", "INSTANT_BOOKING"),
+    ):
+        params = {"id": desktop["listings"][key], "value": changed}
+        pg_session.execute(text("UPDATE viewing_settings SET booking_mode = :value WHERE listing_id = :id"), params)
+        pg_session.commit()
+        refused = run("app.scripts.seed_engagement_e2e", "--manifest", manifest, ok=False)
+        assert f"booking mode: desktop/{key}" in refused.stderr
+        assert pg_session.scalar(text("SELECT booking_mode FROM viewing_settings WHERE listing_id = :id"), params) == changed
+        pg_session.execute(text("UPDATE viewing_settings SET booking_mode = :value WHERE listing_id = :id"),
+                           {**params, "value": original})
+        pg_session.commit()
+    for key, original, changed in (
+        ("guest_provider", "guest", "host"),
+        ("host_without_authority", "host", "guest"),
+    ):
+        params = {"email": desktop["accounts"][key]["email"], "value": changed}
+        pg_session.execute(text("UPDATE users SET role = :value WHERE email = :email"), params)
+        pg_session.commit()
+        refused = run("app.scripts.seed_engagement_e2e", "--manifest", manifest, ok=False)
+        assert f"account role: desktop/{key}" in refused.stderr
+        assert pg_session.scalar(text("SELECT role FROM users WHERE email = :email"), params) == changed
+        pg_session.execute(text("UPDATE users SET role = :value WHERE email = :email"),
+                           {**params, "value": original})
+        pg_session.commit()
+    run("app.scripts.seed_engagement_e2e", "--manifest", manifest)
+    assert counts() == first_counts
+    assert manifest.read_bytes() == first_bytes
+    # A partially consumed fixture is refused, not silently reset or accepted.
     pg_session.execute(text("UPDATE viewings SET status = 'DECLINED' WHERE id = :id"),
                        {"id": desktop["viewings"]["held"]})
     pg_session.commit()
