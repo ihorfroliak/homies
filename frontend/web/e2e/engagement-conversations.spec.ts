@@ -50,7 +50,7 @@ test.describe("FE-003c real conversations", () => {
     await expect(page.getByLabel("Wiadomość", { exact: true })).toBeEditable();
     await page.goto(`/wiadomosci/${data.conversations.closed}`);
     await expect(page.getByRole("log")).toBeVisible();
-    await expect(page.getByText("Homies zamknął tę rozmowę", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Homies zamknął tę rozmowę", { exact: true }).filter({ visible: true }).first()).toBeVisible();
     await expect(page.getByLabel("Wiadomość", { exact: true })).toHaveCount(0);
     await page.goto(`/wiadomosci/${data.conversations.redacted}`);
     await expect(page.getByRole("log").getByText("Wiadomość usunięta przez Homies", { exact: true })).toBeVisible();
@@ -126,13 +126,14 @@ test.describe("FE-003c real conversations", () => {
     const unique = randomUUID();
     const created = await page.request.post("/bff/auth/register", {
       headers: { origin: baseURL!, "x-homies-csrf": "1" },
-      data: { email: `fe003-message-${unique}@example.test`, password: `SyntheticOnly-${unique}!`, full_name: "FE003 Message Requester" },
+      data: { email: `fe003-message-${unique}@example.com`, password: `SyntheticOnly-${unique}!`, full_name: "FE003 Message Requester" },
     });
     expect(created.status()).toBe(200);
     const restored = page.waitForResponse(response => response.url().endsWith("/bff/auth/session"));
     await page.goto(`/oferta/${data.listings.instant}`);
     expect((await (await restored).json() as { authenticated: boolean }).authenticated).toBe(true);
-    await page.getByRole("button", { name: "Napisz", exact: true }).click();
+    if (info.project.name === "mobile") await page.getByRole("button", { name: "Więcej działań", exact: true }).click();
+    await page.getByRole("button", { name: "Napisz", exact: true }).filter({ visible: true }).click();
     const composer = page.getByRole("dialog");
     const body = `Syntetyczna wiadomość ${unique}`;
     await composer.getByLabel("Wiadomość", { exact: true }).fill(body);

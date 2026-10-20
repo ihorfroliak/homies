@@ -42,6 +42,8 @@ function ComposerScope({ listingId, conversationId, status = "ACTIVE", my_side =
   const length = [...draft.trim()].length;
   const valid = length > 0 && length <= 4000;
   const pending = visible.attempt;
+  const retainDraft = session.retainDraft;
+  useEffect(() => { if (draft || pending) return retainDraft?.(); }, [draft, pending, retainDraft]);
 
   async function send(event?: FormEvent) {
     event?.preventDefault();
@@ -76,7 +78,7 @@ function ComposerScope({ listingId, conversationId, status = "ACTIVE", my_side =
   return <form className={styles.form} onSubmit={send} aria-busy={sending}>
     {closed && <p role="status">{statusText(status === "ACTIVE" ? "CLOSED" : status)}</p>}
     {blocked && <p role="alert">{e.conversationUnavailable}</p>}
-    {(!closed && !blocked || draft) && <label htmlFor={textareaId}>{e.draft}<textarea id={textareaId} value={draft} readOnly={Boolean(pending) || sending || closed || blocked || Boolean(visible.final)} aria-describedby={hintId} onChange={event => setState({ owner: session.user?.id, draft: event.target.value })} onKeyDown={event => { if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void send(); } }} /></label>}
+    {(!closed && !blocked || draft) && <><label htmlFor={textareaId}>{e.draft}</label><textarea id={textareaId} value={draft} readOnly={Boolean(pending) || sending || closed || blocked || Boolean(visible.final)} aria-describedby={hintId} onChange={event => setState({ owner: session.user?.id, draft: event.target.value })} onKeyDown={event => { if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void send(); } }} /></>}
     <p id={hintId} className={styles.muted}>{closed || blocked ? e.copiedDraft : pending ? text.pending : e.privacyHint}{length >= 3600 && <span> {length}/4000</span>}</p>
     {length > 4000 && <p role="alert">{text.tooLong}</p>}
     {pending && !sending && <p role="status">{e.unknownSend}</p>}
@@ -169,7 +171,7 @@ function Workspace({ userId, provider, conversationId }: { userId: string; provi
     <ErrorNotice error={error} retry={refresh} />
     {loading && <p aria-busy="true">{e.loading}</p>}
     {!error && !loading && <div className={styles.split}>
-      <nav aria-label={provider ? text.providerInbox : e.inbox} className={conversationId ? c.inboxOnThread : undefined}>
+      <nav aria-label={provider ? text.providerInbox : e.inbox} className={conversationId && selected ? c.inboxOnThread : undefined}>
         {rows.length ? <ul className={styles.list}>{rows.map(row => <li key={row.id} className={styles.card}><Link href={`${base}/${encodeURIComponent(row.id)}`} aria-current={row.id === conversationId ? "page" : undefined}><ListingLabel listingId={row.listing_id} />{provider && "requester_display_name" in row && <p>{row.requester_display_name}</p>}<p>{statusText(row.status)}</p><time dateTime={row.last_message_at ?? row.created_at}>{formatTime(row.last_message_at ?? row.created_at)}</time></Link></li>)}</ul> : <p>{provider && !managed.data?.length ? text.noProvider : e.emptyInbox} {!provider && <Link href="/szukaj">{text.search}</Link>}</p>}
       </nav>
       {conversationId ? selected ? <Thread key={conversationId} conversation={selected} userId={userId} base={base} onChanged={refresh} onDenied={deny} /> : <p role="status">{e.noAccess}</p> : rows.length > 0 && <p>{text.chooseThread}</p>}

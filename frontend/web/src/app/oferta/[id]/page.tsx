@@ -7,11 +7,13 @@ import { ApiError } from "@/api/errors";
 import { errorMessage } from "@/api/messages";
 import { ListingViewTracker } from "@/analytics/trackers";
 import { coverOf, freshnessLabel, monthlyLabel, moveInLabel, placeLabel } from "@/components/listing/format";
-import { fmt, formatMoney, plural, t } from "@/i18n";
+import { fmt, plural, t } from "@/i18n";
 import { listing as fetchListing, type Classified } from "@/search/server";
 import { pageMetadata } from "@/seo";
 
 import styles from "./detail.module.css";
+import { CostBreakdown } from "@/engagement/cost-breakdown";
+import { DetailEngagement } from "@/engagement/detail";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -75,6 +77,7 @@ export default async function ListingPage({ params }: Props) {
         <p className={styles.place}>{placeLabel(l)}</p>
         {freshness ? <p className={styles.fresh}>{freshness}</p> : null}
       </header>
+      <div className={styles.mobileCosts}><CostBreakdown listing={l} /></div>
 
       {photos.length > 0 ? (
         <section aria-label={t.detail.photos} className={styles.gallery}>
@@ -123,36 +126,9 @@ export default async function ListingPage({ params }: Props) {
           </section>
         </div>
 
-        <aside className={styles.aside} aria-labelledby="koszty">
-          <section className={styles.costs}>
-            <h2 id="koszty">{t.detail.costs}</h2>
-            <p className={styles.total}>{monthlyLabel(l)}</p>
-            <dl className={styles.breakdown}>
-              <Cost term={t.detail.rent} value={formatMoney(l.rent_amount)} />
-              {l.admin_fee > 0 ? <Cost term={t.detail.adminFee} value={formatMoney(l.admin_fee)} /> : null}
-              <Cost
-                term={t.detail.utilities}
-                value={l.utilities_basis === "INCLUDED" ? t.detail.utilitiesIncluded : l.utilities_basis === "ESTIMATED" ? `${formatMoney(l.utilities_amount)} (${t.detail.utilitiesEstimated})` : t.detail.utilitiesNotStated}
-              />
-              {l.parking_fee > 0 ? <Cost term={t.detail.parkingFee} value={formatMoney(l.parking_fee)} /> : null}
-              <Cost term={t.detail.monthlyTotal} value={formatMoney(l.monthly_total_estimate)} strong />
-            </dl>
-            {l.utilities_basis === "NOT_STATED" ? <p className="small muted">{t.detail.lowerBoundNote}</p> : null}
-            {l.other_costs ? (
-              <p className="small">
-                <strong>{t.detail.otherCosts}:</strong> {l.other_costs}
-              </p>
-            ) : null}
-            <dl className={styles.breakdown}>
-              {l.deposit_amount > 0 ? <Cost term={t.detail.deposit} value={formatMoney(l.deposit_amount)} /> : null}
-              <Cost term={t.detail.moveInTotal} value={formatMoney(l.move_in_total)} strong />
-            </dl>
-            <p className="small muted">{t.detail.moveInNote}</p>
-          </section>
-          <section className={styles.contact} aria-labelledby="kontakt">
-            <h2 id="kontakt">{t.detail.contact}</h2>
-            <p className="small">{t.detail.contactSoon}</p>
-          </section>
+        <aside className={styles.aside} aria-label="Koszty i kontakt">
+          <CostBreakdown listing={l} />
+          <DetailEngagement listing={{ id: l.id, title: l.title, contact_mode: l.contact_mode, monthly_total_estimate: l.monthly_total_estimate, utilities_basis: l.utilities_basis, currency: l.currency }} />
         </aside>
       </div>
       <ListingViewTracker listingId={l.id} />
@@ -163,15 +139,6 @@ export default async function ListingPage({ params }: Props) {
 function Fact({ term, value }: { term: string; value: string }) {
   return (
     <div>
-      <dt>{term}</dt>
-      <dd>{value}</dd>
-    </div>
-  );
-}
-
-function Cost({ term, value, strong = false }: { term: string; value: string; strong?: boolean }) {
-  return (
-    <div className={strong ? styles.strong : undefined}>
       <dt>{term}</dt>
       <dd>{value}</dd>
     </div>

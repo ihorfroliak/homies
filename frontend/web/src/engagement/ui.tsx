@@ -24,14 +24,15 @@ export function Modal({ title, children, onClose, initialFocus }: { title: strin
 }
 
 export function useCountdown(error: unknown) {
-  const [remaining, setRemaining] = useState(0);
+  const [clock, setClock] = useState<{ error: unknown; remaining: number }>({ error: undefined, remaining: 0 });
+  const initial = error instanceof ApiError ? error.retryAfterSeconds ?? 0 : 0;
   useEffect(() => {
     const until = Date.now() + (error instanceof ApiError ? error.retryAfterSeconds ?? 0 : 0) * 1000;
-    const tick = () => setRemaining(Math.max(0, Math.ceil((until - Date.now()) / 1000)));
+    const tick = () => setClock({ error, remaining: Math.max(0, Math.ceil((until - Date.now()) / 1000)) });
     const timer = setInterval(tick, 250);
     return () => clearInterval(timer);
   }, [error]);
-  return remaining;
+  return clock.error === error ? clock.remaining : initial;
 }
 export function ErrorNotice({ error, retry }: { error: unknown; retry?: () => void }) {
   const remaining = useCountdown(error);

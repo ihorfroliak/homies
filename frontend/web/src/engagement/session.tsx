@@ -9,7 +9,7 @@ import { ErrorNotice, Modal, styles, useCountdown } from "./ui";
 export interface SessionUser { id: string; name: string; phoneVerified: boolean; emailVerified: boolean }
 interface Session { authenticated: boolean; user?: SessionUser }
 type IntentInput = Omit<Intent, "created_at" | "initiator_id"> & { initiator_id?: string };
-interface Context { user?: SessionUser; ready: boolean; ensure: (intent: IntentInput, force?: boolean) => Promise<boolean>; refresh: () => Promise<Session>; resumed?: Intent; consume: () => void; blocked: ReadonlySet<string>; block: (id: string) => void }
+interface Context { user?: SessionUser; ready: boolean; ensure: (intent: IntentInput, force?: boolean) => Promise<boolean>; refresh: () => Promise<Session>; resumed?: Intent; consume: () => void; blocked: ReadonlySet<string>; block: (id: string) => void; retainDraft: () => () => void }
 const SessionContext = createContext<Context | null>(null);
 export function useSession() { const value = useContext(SessionContext); if (!value) throw new Error("EngagementProvider missing"); return value; }
 export function EngagementProvider({ children }: { children: ReactNode }) {
@@ -20,6 +20,8 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
   const [notice, setNotice] = useState("");
   const [offline, setOffline] = useState(false);
   const resolve = useRef<((value: boolean) => void) | undefined>(undefined);
+  const drafts = useRef(0);
+  const retainDraft = useCallback(() => { drafts.current++; return () => { drafts.current--; }; }, []);
   const refresh = useCallback(async () => { const next = await api<Session>("/auth/session"); setSession(next); return next; }, []);
   const ensure = useCallback((input: IntentInput, force = false): Promise<boolean> => {
     if (session?.authenticated && !force) return Promise.resolve(true);
@@ -42,7 +44,9 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
     return () => { active = false; window.removeEventListener("online", on); window.removeEventListener("offline", off); resolve.current?.(false); };
   }, [refresh]);
   useEffect(() => {
-    const focus = () => { if (document.visibilityState === "visible") void refresh().catch(() => undefined); };
+    // A background session probe must not unmount an unresolved send. Explicit
+    // login/logout refresh still clears identity; each resource/write is authorized by the BFF.
+    const focus = () => { if (!drafts.current && document.visibilityState === "visible") void refresh().catch(() => undefined); };
     window.addEventListener("focus", focus); document.addEventListener("visibilitychange", focus);
     return () => { window.removeEventListener("focus", focus); document.removeEventListener("visibilitychange", focus); };
   }, [refresh]);
@@ -51,15 +55,15 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
     writeIntent(); setIntent(undefined);
     const done = resolve.current; resolve.current = undefined;
     if (success && current && !done) setResumed(current);
-    done?.(success && Boolean(current));
     setNotice(success ? e.authDone : "");
-    requestAnimationFrame(() => (document.getElementById(current?.initiator_id ?? "") ?? document.getElementById("engagement-status"))?.focus());
+    // Continue only after the authenticated render and account-scoped effects commit.
+    requestAnimationFrame(() => { (document.getElementById(current?.initiator_id ?? "") ?? document.getElementById("engagement-status"))?.focus(); done?.(success && Boolean(current)); });
   };
   const prefix = `${session?.user?.id ?? ""}:`;
   const blocked = new Set([...restrictions].filter(key => key.startsWith(prefix)).map(key => key.slice(prefix.length)));
-  return <SessionContext.Provider value={{ user: session?.authenticated ? session.user : undefined, ready: Boolean(session), ensure, refresh, resumed, consume: () => setResumed(undefined), blocked, block: id => setRestrictions(prev => new Set([...prev, `${prefix}${id}`])) }}>
+  return <SessionContext.Provider value={{ user: session?.authenticated ? session.user : undefined, ready: Boolean(session), ensure, refresh, resumed, consume: () => setResumed(undefined), blocked, block: id => setRestrictions(prev => new Set([...prev, `${prefix}${id}`])), retainDraft }}>
     {offline && <p role="status" className={styles.error}>{e.offline}</p>}
-    <p id="engagement-status" tabIndex={-1} role="status" className={notice ? styles.status : "sr-only"}>{notice}</p>
+    <p id="engagement-status" tabIndex={-1} role="status" className={notice ? styles.status : "visually-hidden"}>{notice}</p>
     {children}
     {intent && <Modal title={e.authRequired} onClose={() => finish(false)} initialFocus='input[type="email"]'><AuthForm onSuccess={() => finish(true)} /></Modal>}
   </SessionContext.Provider>;

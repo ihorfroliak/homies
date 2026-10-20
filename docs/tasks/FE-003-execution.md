@@ -6,6 +6,6 @@ Base: `ee19b3affc9f33d560c7624ebc6b562276c56000`, tree `18a6c794d3d37c4eca63a57d
 
 Scope: auth interruption/registration; saved listings/searches; keyed conversations and reports; verified-phone reveal; public slot selection and requester/provider viewing lifecycle; authority-backed Panel context; semantic-token responsive surfaces, accessibility, Polish copy and consent-gated analytics. Binding routes from DESIGN-001C are `/wiadomosci`, `/ogladania`, `/panel/leady`, `/panel/ogladania`; provider thread detail uses `/panel/leady/[id]` and the shared authorized thread API.
 
-One writer owns frontend and fictional E2E seed changes. Independent exact-SHA review is mandatory before acceptance. Founder merge decision remains required. No deployment, external beta, production mutations, paid-provider activation, new migrations or FE-VIS-001. Existing beta blockers remain.
+Each bounded context has one writer: frontend integration/auth/saves/contact/viewings; separately delegated conversation/report components and routes; separately delegated fictional E2E seed; and isolated CI integration. Each uses its own worktree, and feature commits are combined with ancestry preserved. Independent exact-SHA review is mandatory before acceptance. Founder merge decision remains required. No deployment, external beta, production mutations, paid-provider activation, new migrations or FE-VIS-001. Existing beta blockers remain.
 
 Validation and candidate identities will be recorded after execution. Current program status remains owned by `docs/PROJECT-STATUS.md`.
