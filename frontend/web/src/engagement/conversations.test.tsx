@@ -10,7 +10,7 @@ const harness = vi.hoisted(() => ({
   track: vi.fn(),
 }));
 vi.mock("./session", () => ({ useSession: () => harness.session, RequireSession: ({ children }: { children: ReactNode }) => harness.session.user ? children : <p>Logowanie wymagane</p> }));
-vi.mock("./analytics", () => ({ trackEngagement: harness.track }));
+vi.mock("./analytics", async () => ({ ...await vi.importActual<typeof import("./analytics")>("./analytics"), trackEngagement: harness.track }));
 const fetchMock = vi.fn<typeof fetch>();
 const message: Message = { id: "message-1", body: "Odpowiedź", message_type: "USER", moderation_state: "NONE", created_at: "2026-10-19T10:00:00Z", sender_user_id: "provider", sender_organization_id: null };
 const conversation: Conversation = { id: "thread-1", listing_id: "listing-1", status: "ACTIVE", my_side: "tenant", created_at: "2026-10-18T10:00:00Z", last_message_at: "2026-10-19T10:00:00Z" };

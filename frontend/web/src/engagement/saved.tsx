@@ -5,6 +5,8 @@ import { ApiError } from "@/api/errors";
 import { ListingCard } from "@/components/listing/listing-card";
 import { api, EngagementError, uncertain, type Schema } from "./api";
 import { e } from "./copy";
+import { limits } from "./limits";
+import { trackEngagement } from "./analytics";
 import { RequireSession, useSession } from "./session";
 import { Empty, ErrorNotice, Modal, styles, useCountdown, useResource } from "./ui";
 interface SavedContext { ids: ReadonlySet<string>; ready: boolean; error?: unknown; busy: ReadonlySet<string>; toggle: (id: string, save: boolean) => Promise<void>; reload: () => Promise<void> }
@@ -27,7 +29,7 @@ export function SavedProvider({ children }: { children: ReactNode }) {
         for (const item of page.items) ids.add(item.listing_id);
         if (offset + page.items.length >= page.total || !page.items.length) break;
       }
-      if (version === sequence.current && account.current === owner) setState({ account: owner, ids, ready: true });
+      if (version === sequence.current && account.current === owner) { initialRead.current = Promise.resolve(); setState({ account: owner, ids, ready: true }); }
     } catch (error) {
       if (version === sequence.current && account.current === owner) setState(previous => ({ account: owner, ids: previous.account === owner ? previous.ids : new Set(), ready: false, error }));
       throw error;
@@ -59,14 +61,14 @@ export function SavedProvider({ children }: { children: ReactNode }) {
   return <Context.Provider value={{ ids: state.account === user?.id ? state.ids : new Set(), error: state.account === user?.id ? state.error : undefined, ready: !user || state.account === user.id && state.ready, busy, toggle, reload }}>{children}</Context.Provider>;
 }
 export function useSaved() { const context = useContext(Context); if (!context) throw new Error("SavedProvider missing"); return context; }
-export function SaveButton({ listingId, title, removeOnly = false }: { listingId: string; title: string; removeOnly?: boolean }) {
+export function SaveButton({ listingId, title, removeOnly = false, surface = "card" }: { listingId: string; title: string; removeOnly?: boolean; surface?: "card" | "rail" | "dock" | "saved" }) {
   const session = useSession(); const saved = useSaved(); const [error, setError] = useState<unknown>(); const wait = useCountdown(error);
   const pressed = saved.ids.has(listingId); const pending = saved.busy.has(listingId);
   async function act() {
     const save = !removeOnly && !pressed;
     if (!await session.ensure({ action: "save", listing_id: listingId })) return;
     setError(undefined);
-    try { await saved.toggle(listingId, save); }
+    try { await saved.toggle(listingId, save); trackEngagement("save_toggled", { listing_id: listingId, action: save ? "save" : "unsave", outcome: "success", surface }); }
     catch (error) { setError(error); if (error instanceof ApiError && error.status === 401 && await session.ensure({ action: "save", listing_id: listingId }, true)) { try { await saved.toggle(listingId, save); setError(undefined); } catch (next) { setError(next); } } }
   }
   return <div className={styles.save}><button className="btn" aria-label={`${pressed || removeOnly ? e.unsave : e.save}: ${title}`} aria-pressed={pressed} aria-busy={pending} disabled={pending || wait > 0 || Boolean(session.user) && !saved.ready} onClick={() => void act()}>{pending ? e.saving : pressed || removeOnly ? e.unsave : e.save}</button><ErrorNotice error={saved.error} retry={() => { void saved.reload().catch(() => undefined); }} /><ErrorNotice error={error} />{error instanceof ApiError && error.code === "SAVED_LIMIT" && <Link href="/zapisane">{e.saved}</Link>}</div>;
@@ -80,7 +82,7 @@ function SaveSearchForm({ query }: { query: string }) {
   const session = useSession(); const [name, setName] = useState(""); const [alerts, setAlerts] = useState(false); const [pending, setPending] = useState(false); const [error, setError] = useState<unknown>(); const [done, setDone] = useState(false); const wait = useCountdown(error);
   async function submit(event: FormEvent) { event.preventDefault(); setPending(true); setError(undefined); try { await api("/v1/me/saved-searches", "POST", { name: name.trim(), query, notifications_enabled: alerts }); setDone(true); } catch (error) { setError(error); if (error instanceof ApiError && error.status === 401) await session.ensure({ action: "save_search", search_query: query }, true); } finally { setPending(false); } }
   if (done) return <p role="status">{e.saved} <Link href="/zapisane#wyszukiwania">{e.searches}</Link></p>;
-  return <form className={styles.form} onSubmit={submit}><label>{e.searchName}<input required maxLength={80} value={name} onChange={event => setName(event.target.value)} /></label><label><input type="checkbox" checked={alerts} onChange={event => setAlerts(event.target.checked)} />{e.alerts}</label><ErrorNotice error={error} />{error instanceof EngagementError && error.location && <Link href={`/zapisane?wyszukiwanie=${error.location}#wyszukiwania`}>{e.openExisting}</Link>}<button className="btn btn--primary" disabled={pending || wait > 0 || !name.trim()}>{e.save}</button></form>;
+  return <form className={styles.form} onSubmit={submit}><label>{e.searchName}<input required maxLength={limits.searchName} value={name} onChange={event => setName(event.target.value)} /></label><label><input type="checkbox" checked={alerts} onChange={event => setAlerts(event.target.checked)} />{e.alerts}</label><ErrorNotice error={error} />{error instanceof EngagementError && error.location && <Link href={`/zapisane?wyszukiwanie=${error.location}#wyszukiwania`}>{e.openExisting}</Link>}<button className="btn btn--primary" disabled={pending || wait > 0 || !name.trim()}>{e.save}</button></form>;
 }
 export function SavedPage() { return <div className={`container ${styles.page}`}><h1>{e.saved}</h1><RequireSession><SavedContent /></RequireSession></div>; }
 function SavedContent() {

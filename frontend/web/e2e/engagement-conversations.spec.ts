@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { isAbsolute } from "node:path";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 /** Real API, disposable synthetic fixtures only. Never attach the private manifest. */
 type Account = { email: string; password: string };
@@ -48,6 +49,7 @@ test.describe("FE-003c real conversations", () => {
     await page.locator(`a[href='/wiadomosci/${data.conversations.approval}']`).click();
     await expect(page.getByRole("log")).toBeVisible();
     await expect(page.getByLabel("Wiadomość", { exact: true })).toBeEditable();
+    expect((await new AxeBuilder({ page }).analyze()).violations.map(item => ({ id: item.id, impact: item.impact }))).toEqual([]);
     await page.goto(`/wiadomosci/${data.conversations.closed}`);
     await expect(page.getByRole("log")).toBeVisible();
     await expect(page.getByText("Homies zamknął tę rozmowę", { exact: true }).filter({ visible: true }).first()).toBeVisible();
@@ -72,6 +74,7 @@ test.describe("FE-003c real conversations", () => {
     await page.getByRole("log").getByRole("button", { name: "Zgłoś wiadomość", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "Zgłoś wiadomość", exact: true });
     await expect(dialog).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations.map(item => ({ id: item.id, impact: item.impact }))).toEqual([]);
     const reportResult = page.waitForResponse(response => response.url().endsWith("/bff/v1/reports") && response.request().method() === "POST");
     await dialog.getByRole("button", { name: "Wyślij zgłoszenie", exact: true }).click();
     const first = await reportResult;

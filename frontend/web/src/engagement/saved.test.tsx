@@ -59,6 +59,7 @@ describe("saved listing confirmation and reconciliation", () => {
   it("offers recovery after initial saved-set read fails instead of disabling save forever", async () => {
     fetchMock.mockResolvedValueOnce(response({ detail: "temporary failure" }, 503)).mockResolvedValue(response(emptyListings));
     renderSave(); fireEvent.click(await screen.findByRole("button", { name: e.retry })); expect(await saveButton()).toBeEnabled(); expect(writes()).toHaveLength(0);
+    fireEvent.click(await saveButton()); await screen.findByRole("button", { name: "Usuń z zapisanych: Oferta" }); expect(writes()).toHaveLength(1);
   });
   it("ignores old account delayed save after account change", async () => {
     let complete!: (response: Response) => void;

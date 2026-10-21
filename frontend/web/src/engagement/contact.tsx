@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { usePathname } from "next/navigation";
 import { ApiError } from "@/api/errors";
-import { api, type Schema } from "./api";
+import { api, uncertain, type Schema } from "./api";
+import { trackEngagement } from "./analytics";
 import { e } from "./copy";
 import { useSession } from "./session";
 import { ErrorNotice, styles, useCountdown, useResource } from "./ui";
@@ -15,18 +16,22 @@ export function ContactReveal({ listingId, onMessage }: { listingId: string; onM
   const [verify, setVerify] = useState(!session.user?.phoneVerified);
   const quota = useResource<Schema<"RevealQuotaOut">>(session.user ? "/v1/me/reveal-quota" : null, session.user?.id);
   const wait = useCountdown(error); const restricted = session.blocked.has(listingId);
+  const disclosure = useRef(0);
   useEffect(() => {
-    const clear = () => setPhone(undefined);
+    const invalidate = () => { disclosure.current++; };
+    const clear = () => { invalidate(); setPhone(undefined); };
     window.addEventListener("blur", clear); document.addEventListener("visibilitychange", clear);
-    return () => { window.removeEventListener("blur", clear); document.removeEventListener("visibilitychange", clear); };
+    return () => { invalidate(); window.removeEventListener("blur", clear); document.removeEventListener("visibilitychange", clear); };
   }, []);
   async function reveal() {
     setPhone(undefined); setError(undefined);
     if (!await session.ensure({ action: "reveal", listing_id: listingId })) return;
     if (!session.user?.phoneVerified) { setVerify(true); return; }
     setPending(true);
-    try { const value = await api<Schema<"ContactRevealOut">>(`/v1/classifieds/${listingId}/contact`, "POST"); setPhone({ value: value.contact_phone, owner: session.user.id, path: pathname }); quota.reload(); }
-    catch (error) { setError(error); if (error instanceof ApiError) { if (error.code === "RECONTACT_BLOCKED") session.block(listingId); if (error.code === "PHONE_NOT_VERIFIED") setVerify(true); if (error.status === 401) await session.ensure({ action: "reveal", listing_id: listingId }, true); } }
+    const epoch = ++disclosure.current;
+    const quota_bucket = quota.data ? quota.data.remaining === 0 ? "empty" : quota.data.remaining < 5 ? "low" : "available" : "unknown";
+    try { const value = await api<Schema<"ContactRevealOut">>(`/v1/classifieds/${listingId}/contact`, "POST"); if (epoch === disclosure.current && document.visibilityState === "visible") setPhone({ value: value.contact_phone, owner: session.user.id, path: pathname }); quota.reload(); trackEngagement("contact_reveal_submitted", { listing_id: listingId, outcome: "success", quota_bucket }); }
+    catch (error) { setError(error); trackEngagement("contact_reveal_submitted", { listing_id: listingId, outcome: uncertain(error) ? "unknown" : "refused", quota_bucket }); if (error instanceof ApiError) { if (error.code === "RECONTACT_BLOCKED") { session.block(listingId); trackEngagement("engagement_refused", { surface: "reveal", code: error.code }); } if (error.code === "PHONE_NOT_VERIFIED") setVerify(true); if (error.status === 401) await session.ensure({ action: "reveal", listing_id: listingId }, true); } }
     finally { setPending(false); }
   }
   if (restricted) return <p role="status">{e.phoneUnavailable}</p>;

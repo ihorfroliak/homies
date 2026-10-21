@@ -2,10 +2,25 @@
 
 Founder HOMIES-DELIVERY-002 (D-112; directive on documentation PR #10) authorizes the complete approved FE-003a-f contract. This supersedes the historical implementation-NO labels; FE-VIS-001 remains unauthorized. No new product decisions are made here.
 
-Base: `ee19b3affc9f33d560c7624ebc6b562276c56000`, tree `18a6c794d3d37c4eca63a57d4cb910c18c7048a8`, stacked on `codex/FE-003-backend-dependencies` (PR #16). Individual backend prerequisites have completed reviews and CI; combined review PASS. Combined CI is a final acceptance gate tracked by the orchestrator.
+Base: `ee19b3affc9f33d560c7624ebc6b562276c56000`, tree `18a6c794d3d37c4eca63a57d4cb910c18c7048a8`, stacked on `codex/FE-003-backend-dependencies` (PR #16). Individual backend prerequisites have completed reviews and CI; combined review PASS and exact combined CI39112216176 SUCCESS. Fresh direct founder confirmation on2026-10-21 additionally authorizes completing the bounded fixes, tests, commit/push and Draft PR; main merge, deployment and paid providers remain excluded.
 
 Scope: auth interruption/registration; saved listings/searches; keyed conversations and reports; verified-phone reveal; public slot selection and requester/provider viewing lifecycle; authority-backed Panel context; semantic-token responsive surfaces, accessibility, Polish copy and consent-gated analytics. Binding routes from DESIGN-001C are `/wiadomosci`, `/ogladania`, `/panel/leady`, `/panel/ogladania`; provider thread detail uses `/panel/leady/[id]` and the shared authorized thread API.
 
 Each bounded context has one writer: frontend integration/auth/saves/contact/viewings; separately delegated conversation/report components and routes; separately delegated fictional E2E seed; and isolated CI integration. Each uses its own worktree, and feature commits are combined with ancestry preserved. Independent exact-SHA review is mandatory before acceptance. Founder merge decision remains required. No deployment, external beta, production mutations, paid-provider activation, new migrations or FE-VIS-001. Existing beta blockers remain.
 
-Validation and candidate identities will be recorded after execution. Current program status remains owned by `docs/PROJECT-STATUS.md`.
+Current program status remains owned by `docs/PROJECT-STATUS.md`. The following checkpoint is for independent client review; final browser certification remains pending.
+
+## Acceptance evidence checkpoint —2026-10-21
+
+| Contract scope | Implemented evidence | Execution at checkpoint |
+|---|---|---|
+| a / A1–A8 | `foundation.test.ts`, register route tests, real `session.test.tsx`: safe/expired intent, registration field/token privacy, committed auth continuation, transient503 vs authoritative401, stale account probe, retained pending UUID and private thread revocation | Unit PASS; guest save and viewing registration exercised on real API; final combined browser pending |
+| b / S1–S6 | `saved.test.tsx`: confirmed204, unknown outcome reread, two lost responses, initial-read recovery, account ordering, tombstones, versions, INVALID invalidation, safe duplicate Location |18PASS; real save/unsave/search pause/delete previously exercised; final browser pending |
+| c / C1–C13 | `conversations.test.tsx`: keyed start/append, blank/4000, immutable retry, final/transient refusal, closed/archive/redaction, eligible reports, denied private projections |32PASS; real lost-response/report/provider cases present in browser suite; final execution pending |
+| d / RV1–RV6 | `contact.test.tsx`, `engagement-contact.spec.ts`: verification second press, API quota/new+repeat, G14 exact409, no phone after blur/navigation including a late response |3unitPASS; contact browser14 discovered only, not yet executed; verification success deliberately mocked, no SMS provider |
+| e/f / V1–V10,P1–P7 | `viewing-model.test.ts`, journey/viewings browser specs: exact slots/timezone/DST, unknown response reconciliation, current authority, explicit UTC historical fallback, past REQUESTED readonly, held, outcome, requester cancel | Model tests PASS; guest request→provider confirm→requester cancel previously PASS on both projects; final viewings browser pending |
+| §9.2 parity / G2,G3,G6,G8 | Generated OpenAPI refusal catalogue equals Polish table; form limits pinned to OpenAPI; deliberately non-additive EUR totals; safe API route templates; consent and forbidden payload tests; authority fixtures never infer role | Focused parity2/cost1/route privacy1PASS; analytics consent tests in179PASS unit run |
+| §9.3 / G7 / rail,dock | Native modal focus/escape/background inert; email autofocus; desktop rail vs mobile dock; mobile day tabs; axe assertions on auth/save/viewing/contact/inbox/report | Earlier auth/viewing axe PASS; expanded new-surface axe and full keyboard/browser check pending |
+| G1,G5,G9 | No exact address or provider identity enrichment; explicit BFF method/auth allowlist; existing semantic tokens | BFF unchanged atdbf0668, independent105/105PASS reported by orchestrator; final blob match required |
+
+Full unit run before the final parity additions:179/179PASS. Added focused checks pass as listed; current type/lint and final production build/browser evidence must be recorded before acceptance. Discovery is not execution. No external beta readiness is claimed; §10.2 blockers remain governed separately. Seed13tests and independent seed repair closure are inherited from frozen81ef509, not rerun as a new backend audit.

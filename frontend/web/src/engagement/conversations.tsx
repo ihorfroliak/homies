@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 
 import { ApiError } from "@/api/errors";
 import { api, retrySend, type Conversation, type Listing, type Schema } from "./api";
 import { e, reasons } from "./copy";
+import { limits } from "./limits";
 import { trackEngagement } from "./analytics";
 import { RequireSession, useSession } from "./session";
 import { ErrorNotice, Modal, styles, useCountdown, useResource } from "./ui";
@@ -40,7 +41,7 @@ function ComposerScope({ listingId, conversationId, status = "ACTIVE", my_side =
   const closed = status !== "ACTIVE" || visible.error instanceof ApiError && visible.error.code === "CONVERSATION_CLOSED";
   const draft = visible.draft;
   const length = [...draft.trim()].length;
-  const valid = length > 0 && length <= 4000;
+  const valid = length > 0 && length <= limits.message;
   const pending = visible.attempt;
   const retainDraft = session.retainDraft;
   useEffect(() => { if (draft || pending) return retainDraft?.(); }, [draft, pending, retainDraft]);
@@ -79,8 +80,8 @@ function ComposerScope({ listingId, conversationId, status = "ACTIVE", my_side =
     {closed && <p role="status">{statusText(status === "ACTIVE" ? "CLOSED" : status)}</p>}
     {blocked && <p role="alert">{e.conversationUnavailable}</p>}
     {(!closed && !blocked || draft) && <><label htmlFor={textareaId}>{e.draft}</label><textarea id={textareaId} value={draft} readOnly={Boolean(pending) || sending || closed || blocked || Boolean(visible.final)} aria-describedby={hintId} onChange={event => setState({ owner: session.user?.id, draft: event.target.value })} onKeyDown={event => { if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void send(); } }} /></>}
-    <p id={hintId} className={styles.muted}>{closed || blocked ? e.copiedDraft : pending ? text.pending : e.privacyHint}{length >= 3600 && <span> {length}/4000</span>}</p>
-    {length > 4000 && <p role="alert">{text.tooLong}</p>}
+    <p id={hintId} className={styles.muted}>{closed || blocked ? e.copiedDraft : pending ? text.pending : e.privacyHint}{length >= limits.message * 0.9 && <span> {length}/{limits.message}</span>}</p>
+    {length > limits.message && <p role="alert">{text.tooLong}</p>}
     {pending && !sending && <p role="status">{e.unknownSend}</p>}
     <ErrorNotice error={visible.error} />
     {visible.notice && <p role="status">{visible.notice}</p>}
@@ -122,7 +123,7 @@ export function ReportDialog({ messageId, onClose, onAccessLost }: { messageId: 
   const lock = useRef(false);
   const remaining = useCountdown(error);
   const length = [...body.trim()].length;
-  const valid = length <= 2000 && (reason !== "OTHER" || length >= 20);
+  const valid = length <= limits.report && (reason !== "OTHER" || length >= 20);
   async function submit(event: FormEvent) {
     event.preventDefault(); if (lock.current || remaining || !valid) return;
     if (!session.user) { await session.ensure({ action: "report", message_id: messageId }); return; }
@@ -135,7 +136,7 @@ export function ReportDialog({ messageId, onClose, onAccessLost }: { messageId: 
     {accepted ? <p role="status">{e.reportAccepted}</p> : <form className={styles.form} onSubmit={submit} aria-busy={pending}>
       <label>{e.reason}<select value={reason} onChange={event => setReason(event.target.value as keyof typeof reasons)} disabled={pending}>{Object.entries(reasons).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       <label>{e.reportText}<textarea value={body} onChange={event => setBody(event.target.value)} disabled={pending} /></label>
-      {reason === "OTHER" && <p>{e.otherHint}</p>}<p className={styles.muted}>{length}/2000 · {e.privacyHint}</p>
+      {reason === "OTHER" && <p>{e.otherHint}</p>}<p className={styles.muted}>{length}/{limits.report} · {e.privacyHint}</p>
       {error instanceof ApiError && (error.status === 404 || error.status === 409) ? <p role="alert">{text.reportUnavailable}</p> : <ErrorNotice error={error} />}
       <button className="btn btn--primary" disabled={pending || remaining > 0 || !valid}>{pending ? e.sending : text.reportSend}</button>
     </form>}
@@ -165,7 +166,7 @@ function Workspace({ userId, provider, conversationId }: { userId: string; provi
   const loading = inbox.loading || provider && managed.loading;
   const refresh = () => { inbox.reload(); managed.reload(); };
   const selected = rows.find(row => row.id === conversationId);
-  return <main className={`container ${styles.page}`}>
+  return <div className={`container ${styles.page}`}>
     <h1>{provider ? text.providerInbox : e.inbox}</h1>
     <div className={styles.actions}><Link href={provider ? "/wiadomosci" : "/ogladania"}>{provider ? e.seeker : e.myViewings}</Link>{provider && <Link href="/panel/ogladania">{e.providerViewings}</Link>}</div>
     <ErrorNotice error={error} retry={refresh} />
@@ -176,7 +177,7 @@ function Workspace({ userId, provider, conversationId }: { userId: string; provi
       </nav>
       {conversationId ? selected ? <Thread key={conversationId} conversation={selected} userId={userId} base={base} onChanged={refresh} onDenied={deny} /> : <p role="status">{e.noAccess}</p> : rows.length > 0 && <p>{text.chooseThread}</p>}
     </div>}
-  </main>;
+  </div>;
 }
 function Thread({ conversation, userId, base, onChanged, onDenied }: { conversation: Conversation; userId: string; base: string; onChanged: () => void; onDenied: (id: string) => void }) {
   const resource = useResource<ConversationDetail>(`/v1/conversations/${encodeURIComponent(conversation.id)}`, userId);

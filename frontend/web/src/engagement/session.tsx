@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode, type FormEvent } from "react";
 import { ApiError } from "@/api/errors";
 import { api } from "./api";
+import { trackEngagement } from "./analytics";
 import { e } from "./copy";
 import { readIntent, safeIntent, writeIntent, type Intent } from "./intent";
 import { ErrorNotice, Modal, styles, useCountdown } from "./ui";
@@ -22,14 +23,23 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
   const resolve = useRef<((value: boolean) => void) | undefined>(undefined);
   const drafts = useRef(0);
   const retainDraft = useCallback(() => { drafts.current++; return () => { drafts.current--; }; }, []);
-  const refresh = useCallback(async () => { const next = await api<Session>("/auth/session"); setSession(next); return next; }, []);
+  const probe = useRef(0);
+  const latest = useRef<Session | undefined>(undefined);
+  const refresh = useCallback(async () => {
+    const version = ++probe.current;
+    let next: Session;
+    try { next = await api<Session>("/auth/session"); }
+    catch (error) { if (!(error instanceof ApiError) || error.status !== 401) throw error; next = { authenticated: false }; }
+    if (version === probe.current) { latest.current = next; setSession(next); }
+    return latest.current ?? next;
+  }, []);
   const ensure = useCallback((input: IntentInput, force = false): Promise<boolean> => {
     if (session?.authenticated && !force) return Promise.resolve(true);
     resolve.current?.(false);
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
     if (opener && !opener.id) opener.id = `intent-${crypto.randomUUID()}`;
     const pending: Intent = { ...input, initiator_id: input.initiator_id ?? opener?.id ?? "engagement-status", created_at: Date.now() };
-    writeIntent(pending); setIntent(pending);
+    writeIntent(pending); setIntent(pending); trackEngagement("auth_interrupted", { intent: input.action });
     return new Promise<boolean>(done => { resolve.current = done; });
   }, [session?.authenticated]);
   useEffect(() => {
@@ -38,7 +48,7 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
       if (!active) return;
       const pending = readIntent();
       if (pending) { if (next.authenticated) { setResumed(pending); writeIntent(); } else setIntent(pending); }
-    }).catch(() => { if (active) setSession({ authenticated: false }); });
+    }).catch(() => { if (active) setSession(previous => previous ?? { authenticated: false }); });
     const on = () => setOffline(false); const off = () => setOffline(true);
     window.addEventListener("online", on); window.addEventListener("offline", off);
     return () => { active = false; window.removeEventListener("online", on); window.removeEventListener("offline", off); resolve.current?.(false); };
@@ -52,6 +62,7 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
   const finish = (success: boolean) => {
     const current = safeIntent(intent);
+    if (current) trackEngagement("auth_resumed", { intent: current.action, outcome: success ? "success" : "cancelled" });
     writeIntent(); setIntent(undefined);
     const done = resolve.current; resolve.current = undefined;
     if (success && current && !done) setResumed(current);
@@ -78,6 +89,7 @@ export function AuthForm({ registration = false, onSuccess }: { registration?: b
   const [pending, setPending] = useState(false);
   const [exists, setExists] = useState(false);
   const wait = useCountdown(error);
+  useEffect(() => { if (register) trackEngagement("signup_started", { intent: "account" }); }, [register]);
   async function submit(event: FormEvent) {
     event.preventDefault(); if (pending || wait) return;
     setPending(true); setError(undefined);

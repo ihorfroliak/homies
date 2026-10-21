@@ -4,7 +4,7 @@ import { formatMoney, t } from "@/i18n";
 import styles from "@/app/oferta/[id]/detail.module.css";
 
 /** Totals are authoritative API fields, never sums calculated in the UI. */
-export function CostBreakdown({ listing: l }: { listing: Listing }) {
+export function CostBreakdown({ listing: l }: { listing: Pick<Listing, "rent_amount" | "admin_fee" | "utilities_basis" | "utilities_amount" | "parking_fee" | "monthly_total_estimate" | "deposit_amount" | "move_in_total" | "currency" | "other_costs"> }) {
   return (
 <section className={styles.costs}>
             <h2 >{t.detail.costs}</h2>
