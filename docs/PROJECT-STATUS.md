@@ -2,7 +2,7 @@
 id: PROJECT-STATUS
 type: status_index
 role: single semantic owner of volatile project status (D-106, 05 §14)
-as_of: 2026-10-20
+as_of: 2026-10-21
 reconciled_through:
   code_and_product: BP-8 merge 4ed8fe8ab334a8d8e344b80e266da2be3b661aee (D-112)
   documentation: BP-8 integrated; HOMIES-DELIVERY-002 authorized (D-112)
@@ -72,7 +72,7 @@ conditional FE-003 authorization: [D-112](DECISIONS.md),
 [full directive](tasks/HOMIES-DELIVERY-002.md). Claude CLI is installed but not
 authenticated; Codex is authorized writer. New feature branches remain candidates.
 
-## Delivery checkpoint — 2026-10-20
+## Delivery checkpoint — 2026-10-21
 
 All candidates below are implemented, pushed and **unmerged Draft PRs**.
 No new merge authorization is inferred. BP-4 is stacked on BP-9; the other
@@ -109,14 +109,26 @@ matches. Combined regressions:200 passed +1 fixture setup error; unchanged
 single-case rerun1 passed7.93s. Ruff/mypy127/API/types pass. [Composition-only independent review](reviews/FE003-composition-review-ee19b3a.md) PASS;36 tests and41 shared definitions verified. Exact composed CI39112216176 SUCCESS6/6. FE-003 implementation entry released after independent feature/composition verification; frontend, conversation and synthetic-fixture writers use separate bounded contexts and isolated worktrees derived from this exact base. This branch is
 not main and does not authorize any merge or deployment.
 
-**FE-003 in progress (not a final candidate):** foundation
-`22382ac04936f985cc7bae37562f6837220ffb81` and conversation implementation
-`b2e5a46baf86fb4efb7f3add39ed24cb7f680210` are integrated on the feature
-branch. Builder reports 145 frontend tests and lint PASS; browser execution,
-final exact-SHA independent review, required CI and Draft PR remain pending.
-Conversation E2E candidate `edb0c2d2d3ab8bc95492b948d3f100c4151f7e67`
-has 14 tests discovered, not yet runtime-certified. These results do not
-certify FE-003 or external beta.
+**FE-003 in progress — client review checkpoint, not accepted:**
+`ec2bfa9ed8857eccc9551feaa30daa889d6c282c`, tree
+`1e913787609d98871013a0ce154fe61aba147944`, branch
+`codex/FE-003-engagement-journey`, based on PR16. Founder directly reconfirmed
+bounded fixes, tests, commit/push and Draft PR on 2026-10-21; no main merge,
+deployment or paid-provider activation. Builder reports full unit183/183,
+typecheck, lint, generated API equality and production build PASS. The fresh
+90-case browser run and independent client-state/flow review are in progress;
+no final browser, CI, PR or FE-003 acceptance claim is made. The implementation
+contract contains an acceptance evidence map, including pending checks.
+
+The [bounded BFF review](reviews/FE003-bff-review-dbf0668.md) independently
+passed105/105 tests at `dbf06681a78c128c27bfcf3a2ae94f485dec6cb2`, with no
+P0-P3 findings and one optional regression-retention NOTE. SHA256:
+`4d3a45197e75f9a7bbaecf901d0249cb056cb5e66d0c9a4f93af210e5b2fde2a`.
+Report and supporting synthetic probes/output/blob identities are archived
+byte-for-byte. At the client checkpoint the complete BFF/server boundary,
+proxy, package/lockfile and Next/TypeScript config diff is empty against that
+review SHA. Final-candidate reuse still requires comparison. This narrow
+result does not certify client privacy, full FE-003 or external beta.
 
 Synthetic seed `b44e7bdbff4bf5da6b8e904bec29cc57bd16818f` independently
 passed 13 targeted tests. [Original review](reviews/FE003-seed-review-b44e7bd.md)
