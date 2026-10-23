@@ -20,6 +20,7 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
   const [restrictions, setRestrictions] = useState<Set<string>>(new Set());
   const [notice, setNotice] = useState("");
   const [offline, setOffline] = useState(false);
+  const [completion, setCompletion] = useState<{ current: Intent | undefined; done: ((value: boolean) => void) | undefined; success: boolean }>();
   const resolve = useRef<((value: boolean) => void) | undefined>(undefined);
   const drafts = useRef(0);
   const retainDraft = useCallback(() => { drafts.current++; return () => { drafts.current--; }; }, []);
@@ -67,9 +68,18 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
     const done = resolve.current; resolve.current = undefined;
     if (success && current && !done) setResumed(current);
     setNotice(success ? e.authDone : "");
-    // Continue only after the authenticated render and account-scoped effects commit.
-    requestAnimationFrame(() => { (document.getElementById(current?.initiator_id ?? "") ?? document.getElementById("engagement-status"))?.focus(); done?.(success && Boolean(current)); });
+    setCompletion({ current, done, success });
   };
+  useEffect(() => {
+    if (!completion) return;
+    // Passive child effects establish account ownership before a resumed write.
+    // A frame scheduled directly inside finish can run before that React commit.
+    const frame = requestAnimationFrame(() => {
+      (document.getElementById(completion.current?.initiator_id ?? "") ?? document.getElementById("engagement-status"))?.focus();
+      completion.done?.(completion.success && Boolean(completion.current)); setCompletion(undefined);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [completion]);
   const prefix = `${session?.user?.id ?? ""}:`;
   const blocked = new Set([...restrictions].filter(key => key.startsWith(prefix)).map(key => key.slice(prefix.length)));
   return <SessionContext.Provider value={{ user: session?.authenticated ? session.user : undefined, ready: Boolean(session), ensure, refresh, resumed, consume: () => setResumed(undefined), blocked, block: id => setRestrictions(prev => new Set([...prev, `${prefix}${id}`])), retainDraft }}>

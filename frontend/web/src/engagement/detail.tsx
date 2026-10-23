@@ -16,7 +16,7 @@ export function DetailEngagement({ listing }: { listing: Pick<Listing, "id" | "t
   const session = useSession(); const router = useRouter(); const [surface, setSurface] = useState<"message" | "viewing" | "phone" | "more">(); const [keyboard, setKeyboard] = useState(false); const [clock, setClock] = useState(() => Date.now());
   const threads = useResource<Conversation[]>(session.user ? "/v1/conversations" : null, session.user?.id);
   const viewings = useResource<Viewing[]>(session.user ? "/v1/me/viewings" : null, session.user?.id);
-  const thread = threads.data?.find(item => item.listing_id === listing.id && item.my_side === "tenant");
+  const thread = threads.data?.find(item => item.listing_id === listing.id && item.my_side === "tenant" && item.status === "ACTIVE");
   const viewing = viewings.data?.find(item => item.listing_id === listing.id && ["REQUESTED", "CONFIRMED"].includes(item.status) && Date.parse(item.starts_at) > clock);
   const restricted = session.blocked.has(listing.id);
   const [restoredSlot, setRestoredSlot] = useState<string>();

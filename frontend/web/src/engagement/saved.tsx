@@ -45,6 +45,7 @@ export function SavedProvider({ children }: { children: ReactNode }) {
       if (account.current !== owner) return;
       try { await api(`/v1/me/saved-listings/${id}`, save ? "POST" : "DELETE"); }
       catch (error) {
+        if (account.current !== owner) return;
         if (error instanceof ApiError && ["network", "timeout"].includes(error.kind)) {
           try { await api(`/v1/me/saved-listings/${id}`, save ? "POST" : "DELETE"); }
           catch (retryError) { if (uncertain(retryError) && account.current === owner) await reload(); throw retryError; }

@@ -129,7 +129,7 @@ export function ReportDialog({ messageId, onClose, onAccessLost }: { messageId: 
     if (!session.user) { await session.ensure({ action: "report", message_id: messageId }); return; }
     lock.current = true; setPending(true); setError(undefined);
     try { await api("/v1/reports", "POST", { target_type: "MESSAGE", target_id: messageId, reason, text: body.trim() || null }); if (identity.current === account) { trackEngagement("message_report_submitted", { reason, outcome: "success" }, "/wiadomosci/[id]"); setBody(""); setAccepted(true); } }
-    catch (error) { if (identity.current === account) { trackEngagement("message_report_submitted", { reason, outcome: "refused" }, "/wiadomosci/[id]"); setError(error); if (error instanceof ApiError && (error.status === 403 || error.status === 404)) onAccessLost?.(); } }
+    catch (error) { if (identity.current === account) { trackEngagement("message_report_submitted", { reason, outcome: "refused" }, "/wiadomosci/[id]"); setError(error); if (error instanceof ApiError && error.status === 401) await session.ensure({ action: "report", message_id: messageId }, true); if (error instanceof ApiError && (error.status === 403 || error.status === 404)) onAccessLost?.(); } }
     finally { lock.current = false; setPending(false); }
   }
   return <Modal title={e.report} onClose={onClose} initialFocus="select">

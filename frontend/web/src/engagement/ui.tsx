@@ -18,7 +18,14 @@ export function Modal({ title, children, onClose, initialFocus }: { title: strin
     field?.focus();
     return () => { dialog?.close(); if (opener?.isConnected) opener.focus(); else document.getElementById("engagement-status")?.focus(); };
   }, [initialFocus]);
-  return <dialog ref={ref} className={styles.modal} aria-labelledby={id} onCancel={(event) => { event.preventDefault(); close.current(); }}>
+  return <dialog ref={ref} className={styles.modal} aria-labelledby={id} onKeyDown={event => {
+    if (event.key !== "Tab") return;
+    const items = [...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])')].filter(item => item.getClientRects().length > 0 && item.tabIndex >= 0);
+    const first = items[0]; const last = items.at(-1);
+    if (!first) { event.preventDefault(); return; }
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }} onCancel={(event) => { event.preventDefault(); close.current(); }}>
     <div className={styles.modalHeader}><h2 id={id}>{title}</h2><button type="button" className="btn" onClick={onClose} aria-label={e.close}>×</button></div>{children}
   </dialog>;
 }

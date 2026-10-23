@@ -168,7 +168,7 @@ export const pl = {
     utilitiesEstimated: "szacunkowo",
     utilitiesNotStated: "nie podano",
     parkingFee: "Parking",
-    otherCosts: "Inne koszty (opis właściciela)",
+    otherCosts: "Inne koszty (opis właściciela, nie wliczone w sumy)",
     moveInTotal: "Na start",
     deposit: "Kaucja (zwrotna)",
     moveInNote: "Na start = koszt pierwszego miesiąca i opłaty jednorazowe, w tym kaucja.",

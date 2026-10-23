@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiError } from "@/api/errors";
 import { api, uncertain, type Schema, type Viewing } from "./api";
 import { trackEngagement } from "./analytics";
@@ -10,7 +10,18 @@ import { RequireSession, useSession } from "./session";
 import { Empty, ErrorNotice, Modal, styles, useCountdown, useResource } from "./ui";
 import { slotGroups, viewingActions, viewingLabel, viewingLabels, viewingTime } from "./viewing-model";
 
-export function ViewingPicker({ listingId, initialSlot, onClose, onMessage }: { listingId: string; initialSlot?: string; onClose: () => void; onMessage: () => void }) {
+type PickerProps = { listingId: string; initialSlot?: string; onClose: () => void; onMessage: () => void };
+export function ViewingPicker(props: PickerProps) {
+  const { user } = useSession();
+  const [identity, setIdentity] = useState({ owner: user?.id, generation: 0 });
+  // Guest authentication retains the selected public instant. Leaving an
+  // authenticated identity resets private form state before children render.
+  if (identity.owner !== user?.id) setIdentity({ owner: user?.id, generation: identity.generation + (identity.owner ? 1 : 0) });
+  return <ViewingPickerScope key={`${props.listingId}:${identity.generation}`} {...props} />;
+}
+function ViewingPickerScope({ listingId, initialSlot, onClose, onMessage }: PickerProps) {
+  const active = useRef(true);
+  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const session = useSession(); const [days, setDays] = useState(14); const [selected, setSelected] = useState(initialSlot ?? ""); const [confirm, setConfirm] = useState(false); const [suspended, setSuspended] = useState(false); const [count, setCount] = useState(1); const [note, setNote] = useState(""); const [pending, setPending] = useState(false); const [error, setError] = useState<unknown>(); const [result, setResult] = useState<Viewing>(); const [invalidSlot, setInvalidSlot] = useState(false);
   const slots = useResource<Schema<"ViewingSlotsOut">>(`/v1/classifieds/${listingId}/viewing-slots?days=${days}`); const wait = useCountdown(error);
   const validSelection = Boolean(selected && slots.data?.slots.includes(selected));
@@ -19,6 +30,7 @@ export function ViewingPicker({ listingId, initialSlot, onClose, onMessage }: { 
     if (!session.user) {
       setSuspended(true);
       const authenticated = await session.ensure({ action: "viewing", listing_id: listingId, starts_at: selected });
+      if (!active.current) return;
       setSuspended(false); if (!authenticated) return;
     }
     setPending(true); setError(undefined);
@@ -26,12 +38,13 @@ export function ViewingPicker({ listingId, initialSlot, onClose, onMessage }: { 
   }
   async function submit(event: FormEvent) {
     event.preventDefault(); setPending(true); setError(undefined);
-    try { setResult(await api<Viewing>(`/v1/classifieds/${listingId}/viewings`, "POST", { starts_at: selected, attendee_count: count, note: note.trim() || null })); trackEngagement("viewing_request_submitted", { listing_id: listingId, outcome: "success", attendees_bucket: count > 3 ? "4plus" : String(count) }); }
+    try { const created = await api<Viewing>(`/v1/classifieds/${listingId}/viewings`, "POST", { starts_at: selected, attendee_count: count, note: note.trim() || null }); if (!active.current) return; setResult(created); trackEngagement("viewing_request_submitted", { listing_id: listingId, outcome: "success", attendees_bucket: count > 3 ? "4plus" : String(count) }); }
     catch (error) {
+      if (!active.current) return;
       setError(error);
       trackEngagement("viewing_request_submitted", { listing_id: listingId, outcome: uncertain(error) ? "unknown" : "refused", attendees_bucket: count > 3 ? "4plus" : String(count) });
       if (uncertain(error)) {
-        try { const existing = await api<Viewing[]>("/v1/me/viewings"); const found = existing.find(item => item.listing_id === listingId && Date.parse(item.starts_at) === Date.parse(selected) && ["REQUESTED", "CONFIRMED"].includes(item.status)); if (found) { setResult(found); setError(undefined); } } catch { /* Preserve uncertainty; never blindly repeat. */ }
+        try { const existing = await api<Viewing[]>("/v1/me/viewings"); if (!active.current) return; const found = existing.find(item => item.listing_id === listingId && Date.parse(item.starts_at) === Date.parse(selected) && ["REQUESTED", "CONFIRMED"].includes(item.status)); if (found) { setResult(found); setError(undefined); } } catch { /* Preserve uncertainty; never blindly repeat. */ }
       }
       if (error instanceof ApiError) {
         if (error.code === "RECONTACT_BLOCKED") { session.block(listingId); trackEngagement("engagement_refused", { surface: "viewing", code: error.code }); }
