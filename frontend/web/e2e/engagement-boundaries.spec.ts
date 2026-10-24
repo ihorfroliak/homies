@@ -19,6 +19,9 @@ test("restored report intent rechecks the authorized thread and opens an empty f
   const f = fixture(info);
   expect((await page.request.post("/bff/auth/login", { headers: { origin: baseURL!, "x-homies-csrf": "1" }, data: f.accounts.seeker })).status()).toBe(200);
   await page.goto("/logowanie");
+  // Finish this document's initial session/intent probe before simulating an
+  // intent persisted by the preceding interaction and navigating to its thread.
+  await expect(page.getByRole("button", { name: "Wyloguj się", exact: true })).toBeVisible();
   await page.evaluate(({ key, message }) => sessionStorage.setItem(key, JSON.stringify({ action: "report", message_id: message, initiator_id: "engagement-status", created_at: Date.now() })), { key: INTENT_KEY, message: f.messages.reportable });
   let reports = 0; page.on("request", request => { if (request.url().endsWith("/bff/v1/reports") && request.method() === "POST") reports++; });
   await page.goto(`/wiadomosci/${f.conversations.approval}`);
