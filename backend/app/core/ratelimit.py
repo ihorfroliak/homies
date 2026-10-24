@@ -24,6 +24,7 @@ from __future__ import annotations
 import threading
 import time
 from dataclasses import dataclass
+from ipaddress import ip_address, ip_network
 from typing import Protocol
 
 from prometheus_client import Counter
@@ -91,6 +92,10 @@ PREFERENCE_WRITE = Policy("preference_write", capacity=10, refill_per_second=0.1
 UNSUBSCRIBE = Policy("unsubscribe", capacity=10, refill_per_second=0.1,
                      on_store_failure="closed")
 PUBLIC_READ = Policy("public_read", capacity=120, refill_per_second=10.0)
+# BP-11: a public derived schedule costs more than a single listing read.
+# One shared IP budget across listing ids, dates and authentication states.
+VIEWING_SLOTS = Policy("viewing_slots", capacity=20, refill_per_second=0.2,
+                       on_store_failure="closed")
 # TASK-015 (founder D-4): filing a report. Burst 5 (D-4); the sustained rate is
 # inherited from the stranger-facing writes (CONTACT_REVEAL, CONVERSATION_START:
 # one token per 20 s) — D-4 sets none. The per-account quota (10 per 24 h,
@@ -237,20 +242,35 @@ limiter = RateLimiter()
 
 
 # --- Keying -----------------------------------------------------------------
-def client_ip(request, trust_proxy_hops: int) -> str:
+def client_ip(request, trust_proxy_hops: int, trusted_proxy_cidrs: list[str] | None = None) -> str:
     """Resolve the caller's address.
 
-    X-Forwarded-For is NEVER trusted unless the deployment declares how many
-    proxies sit in front (`TRUST_PROXY_HOPS`). With 0 hops we use the socket
-    peer, so a spoofed header cannot be used to evade or frame anyone.
+    Both an explicit trusted peer network and hop count are required. Every
+    intermediary in that suffix must also be trusted. Uvicorn proxy rewriting
+    must be disabled so request.client remains the actual socket peer.
     """
-    if trust_proxy_hops > 0:
+    client = getattr(request, "client", None)
+    peer = getattr(client, "host", None) or "unknown"
+    networks = [ip_network(cidr) for cidr in (trusted_proxy_cidrs or [])]
+
+    def trusted(value: str) -> bool:
+        try:
+            address = ip_address(value)
+            return any(address in network for network in networks)
+        except ValueError:
+            return False
+
+    if trust_proxy_hops > 0 and trusted(peer):
         forwarded = request.headers.get("x-forwarded-for", "")
         parts = [p.strip() for p in forwarded.split(",") if p.strip()]
         if len(parts) >= trust_proxy_hops:
-            return parts[-trust_proxy_hops]
-    client = getattr(request, "client", None)
-    return getattr(client, "host", None) or "unknown"
+            suffix = parts[-trust_proxy_hops:]
+            if all(trusted(hop) for hop in suffix[1:]):
+                try:
+                    return str(ip_address(suffix[0]))
+                except ValueError:
+                    pass
+    return peer
 
 
 def resolve_policy(method: str, path: str) -> Policy | None:
@@ -274,6 +294,8 @@ def resolve_policy(method: str, path: str) -> Policy | None:
     ):
         return PROPERTY_WRITE
     if method in ("GET", "HEAD", "OPTIONS"):
+        if path.startswith("/v1/classifieds/") and path.rstrip("/").endswith("/viewing-slots"):
+            return VIEWING_SLOTS
         return PUBLIC_READ
     if path.startswith("/v1/reports"):
         return REPORT_CREATE
