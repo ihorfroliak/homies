@@ -67,6 +67,7 @@ from app.core.config import settings
 from app.core.db import get_db, lock_row
 from app.core.security import get_current_user
 from app.modules.engagement import access
+from app.modules.engagement.display import FALLBACK_NAME, requester_names
 from app.modules.engagement.models import (
     PROVIDER_STAGES,
     Conversation,
@@ -188,6 +189,7 @@ class ProviderConversationOut(ConversationOut):
     sees: how an agency ranks a lead is not the lead's business."""
 
     requester_user_id: str
+    requester_display_name: str
     provider_stage: str | None
     assigned_to_user_id: str | None
 
@@ -232,15 +234,17 @@ def _load(db: Session, user: User, conversation_id: str) -> tuple[Conversation, 
     return conv, side
 
 
-def _out(conv: Conversation, side: str):
+def _out(db: Session, conv: Conversation, side: str, names: dict[str, str] | None = None):
     base = {
         "id": conv.id, "listing_id": conv.listing_id, "status": conv.status,
         "created_at": conv.created_at, "last_message_at": conv.last_message_at,
         "my_side": side,
     }
     if side == "provider":
+        names = requester_names(db, [conv.requester_user_id]) if names is None else names
         return ProviderConversationOut.model_validate({
             **base, "requester_user_id": conv.requester_user_id,
+            "requester_display_name": names.get(conv.requester_user_id, FALLBACK_NAME),
             "provider_stage": conv.provider_stage, "assigned_to_user_id": conv.assigned_to_user_id,
         })
     return ConversationOut.model_validate(base)
@@ -371,7 +375,7 @@ def _replay_start(db: Session, user_id: str, offer_id: str, body: str, message: 
         record_message_idempotency("start", "conflict")
         raise _reused()
     record_message_idempotency("start", outcome)
-    return ConversationDetail(conversation=_out(conv, "tenant"),
+    return ConversationDetail(conversation=_out(db, conv, "tenant"),
                               messages=[MessageOut.model_validate(message)])
 
 
@@ -573,7 +577,7 @@ def _start(db: Session, offer_id: str, body: str, key: str, user: User) -> "Conv
             conv = existing
             message = _post(db, user, conv, "tenant", body, key)
             db.commit()
-            return ConversationDetail(conversation=_out(conv, "tenant"),
+            return ConversationDetail(conversation=_out(db, conv, "tenant"),
                                       messages=[MessageOut.model_validate(message)])
         db.add(ConversationParticipant(conversation_id=conv.id, participant_type="USER",
                                        user_id=user.id))
@@ -586,7 +590,7 @@ def _start(db: Session, offer_id: str, body: str, key: str, user: User) -> "Conv
 
     message = _post(db, user, conv, "tenant", body, key)
     db.commit()
-    return ConversationDetail(conversation=_out(conv, "tenant"),
+    return ConversationDetail(conversation=_out(db, conv, "tenant"),
                               messages=[MessageOut.model_validate(message)])
 
 
@@ -601,7 +605,11 @@ def inbox(user: User = Depends(get_current_user), db: Session = Depends(get_db))
                    ClassifiedOffer.property_id.in_(mine)))
         .order_by(Conversation.last_message_at.desc())
     )
-    return [_out(c, "tenant" if c.requester_user_id == user.id else "provider") for c in rows]
+    allowed = list(rows)
+    names = requester_names(db, (c.requester_user_id for c in allowed
+                                 if c.requester_user_id != user.id))
+    return [_out(db, c, "tenant" if c.requester_user_id == user.id else "provider", names)
+            for c in allowed]
 
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationDetail)
@@ -615,7 +623,7 @@ def read_conversation(
         select(Message).where(Message.conversation_id == conv.id)
         .order_by(Message.created_at, Message.id)
     )
-    return ConversationDetail(conversation=_out(conv, side),
+    return ConversationDetail(conversation=_out(db, conv, side),
                               messages=[MessageOut.model_validate(m) for m in messages])
 
 
@@ -695,7 +703,7 @@ def assign(
     conv.assigned_to_user_id = body.user_id
     conv.version += 1
     db.commit()
-    return _out(conv, "provider")
+    return _out(db, conv, "provider")
 
 
 @router.post("/conversations/{conversation_id}/stage", response_model=ProviderConversationOut)
@@ -717,5 +725,5 @@ def set_stage(
     conv.version += 1
     facts.conversation_stage_changed(db, conv, before)
     db.commit()
-    return _out(conv, "provider")
+    return _out(db, conv, "provider")
 
