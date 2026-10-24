@@ -21,7 +21,7 @@ latest_code_bearing_main_state:
 repository_head: resolved from Git (origin/main); intentionally not embedded here
 next_task:
   id: HOMIES-DELIVERY-002
-  status: DELIVERY COMPLETE AS DRAFT CANDIDATES — frontend and dependency exact CI green; founder main integration decision pending
+  status: INTEGRATION AUTHORIZED — D-114, package PRs 10–18; protected merge execution in progress
 fe003_implementation_authorized: true # conditional on verified backend prerequisites; D-112
 fe_vis_001_implementation_authorized: false
 production_ready: false
@@ -73,6 +73,12 @@ conditional FE-003 authorization: [D-112](DECISIONS.md),
 authenticated; Codex is authorized writer. New feature branches remain candidates.
 
 ## Delivery checkpoint — 2026-10-24
+
+**D-114: founder now authorizes integration of PRs #10–18.** The prior Draft-only
+statements below describe the delivered candidates before this decision. Follow
+[the bounded integration contract](tasks/HOMIES-DELIVERY-002-integration.md);
+no integration is claimed until its actual merge is recorded. No deployment.
+
 
 All candidates below are implemented, pushed and **unmerged Draft PRs**.
 No new merge authorization is inferred. BP-4 is stacked on BP-9; the other

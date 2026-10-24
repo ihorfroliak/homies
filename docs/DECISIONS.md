@@ -184,3 +184,26 @@ of unverified free text, not a legal-name parser or a verified identity claim.
 OD-3 data minimization remains binding: no email, phone, full legal identity,
 or verification metadata. Provider authorization remains BP-9. Encode these
 examples and privacy boundaries in the bounded BP-4 contract and tests.
+
+## 2026-10-24 — D-114 founder package integration authorization
+
+The founder explicitly answered: "Так, інтегруй увесь перевірений пакет" to
+integration of prepared PRs #10–18 into main, beginning with DEP-001 #18,
+refreshing dependent branches, requiring successful CI for every current
+candidate, preserving commit ancestry, and completing FE-003 plus the report
+archive. This supersedes the earlier Draft-only/no-main-merge boundary for
+this named package. It does not authorize deployment or paid providers.
+
+Candidate identities and the bounded sequence are recorded in
+[HOMIES-DELIVERY-002 integration contract](tasks/HOMIES-DELIVERY-002-integration.md).
+Use normal protected GitHub merges only; no squash, rebase, force push or
+protection bypass. Current-base CI and original reviewed ancestry must be
+verified. Reuse unchanged independent evidence; assess and review only any
+material integration delta. Record a fully incorporated composition PR by
+ancestry rather than manufacturing an empty merge.
+
+Founder accepts the package's documented limitations for this integration:
+IBB-001 remains the last formal baseline; BARRIER/rollback BLOCKED, technical
+debt, external beta gates and independent nonblocking notes remain; native
+vendor invocation remains NOT VERIFIED. FE-VIS-001 is not authorized.
+Production remains NOT READY and NOT DEPLOYED.
