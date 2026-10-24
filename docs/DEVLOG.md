@@ -1405,3 +1405,21 @@ schedules; max-days median7415→126ms, identical slot arrays. Detailed actual
 checks/failures and limitations: docs/tasks/BP-11-performance.md. Builder
 verification complete; required CI and separate exact-SHA review pending.
 Draft PR only. IBB-001, existing debt and BARRIER/rollback BLOCKED preserved.
+
+## 2026-10-16 — AGENT-002 candidate
+
+HOMIES-DELIVERY-002 section 4: one implementation-orchestrator role per vendor,
+six specialists and AGENT-001 hooks/settings preserved. Added deterministic
+selection, exclusive shared-Git context claims, exact-SHA checkpoint recovery,
+independent review and Draft-only preparation. 21 synthetic tests and Ruff pass.
+Claude finds seven roles; invocation blocked by expired OAuth. Codex strict
+project config loads; native named-role invocation NOT VERIFIED. See
+docs/engineering/AGENT-002-EVIDENCE.md. No product code or deployment.
+
+## 2026-10-17 — AGENT-002 independent-review repairs
+
+Addressed A-01/A-02: orphan operation markers block selection/acquisition,
+acquisition serializes with release, and task/checkpoint/Draft branch identity
+is bound to the active claim and Git checkout. Added focused regression cases.
+Builder verification and independent review remain separate; the new candidate
+requires an exact-SHA addendum. No product code, merge or deployment changes.

@@ -238,6 +238,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # AGENT-002 checks unchanged inherited agent/hook blobs against its base.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Delivery policy synthetic checks (AGENT-002)
+        run: python -m unittest discover -s docs/engineering -p test_delivery_policy.py
       # BASELINE-001: the validators come from a committed, exactly pinned
       # toolchain (ops/contracts/package.json + package-lock.json), installed
       # with `npm ci`. `npx --yes <package>` resolved a floating npm graph on
