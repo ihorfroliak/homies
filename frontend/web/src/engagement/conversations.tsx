@@ -180,6 +180,7 @@ function Workspace({ userId, provider, conversationId }: { userId: string; provi
   </div>;
 }
 function Thread({ conversation, userId, base, onChanged, onDenied }: { conversation: Conversation; userId: string; base: string; onChanged: () => void; onDenied: (id: string) => void }) {
+  const session = useSession();
   const resource = useResource<ConversationDetail>(`/v1/conversations/${encodeURIComponent(conversation.id)}`, userId);
   const [report, setReport] = useState<string>();
   const [notice, setNotice] = useState("");
@@ -187,6 +188,14 @@ function Thread({ conversation, userId, base, onChanged, onDenied }: { conversat
   useEffect(() => { if (denial) onDenied(conversation.id); }, [denial, onDenied, conversation.id]);
   const data = resource.data;
   const accessible = data && data.conversation.my_side === conversation.my_side;
+  useEffect(() => {
+    if (session.resumed?.action !== "report" || !accessible || !data) return;
+    const message = data.messages.find(item => item.id === session.resumed?.message_id);
+    session.consume();
+    // The fresh authorized thread is the only source of eligibility. Opening the
+    // form never submits, and discarded free text is never restored from storage.
+    if (message && mayReport(message, data.conversation, userId)) queueMicrotask(() => setReport(message.id));
+  }, [session, accessible, data, userId]);
   const refresh = () => { resource.reload(); onChanged(); };
   if (resource.error) return <section><Link href={base}>{e.back}</Link><ErrorNotice error={resource.error} retry={refresh} /></section>;
   if (!accessible) return <p aria-busy="true">{e.loading}</p>;

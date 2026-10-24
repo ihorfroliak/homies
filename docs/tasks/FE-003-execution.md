@@ -8,7 +8,7 @@ Scope: auth interruption/registration; saved listings/searches; keyed conversati
 
 Each bounded context has one writer: frontend integration/auth/saves/contact/viewings; separately delegated conversation/report components and routes; separately delegated fictional E2E seed; and isolated CI integration. Each uses its own worktree, and feature commits are combined with ancestry preserved. Independent exact-SHA review is mandatory before acceptance. Founder merge decision remains required. No deployment, external beta, production mutations, paid-provider activation, new migrations or FE-VIS-001. Existing beta blockers remain.
 
-Current program status remains owned by `docs/PROJECT-STATUS.md`. The following checkpoint is for independent client review; final browser certification remains pending.
+Current program status remains owned by `docs/PROJECT-STATUS.md`. The historical checkpoint below is superseded by the latest repair evidence appended here; independent closure and combined CI remain acceptance gates.
 
 ## Acceptance evidence checkpoint —2026-10-21
 
@@ -24,3 +24,11 @@ Current program status remains owned by `docs/PROJECT-STATUS.md`. The following 
 | G1,G5,G9 | No exact address or provider identity enrichment; explicit BFF method/auth allowlist; existing semantic tokens | BFF unchanged atdbf0668, independent105/105PASS reported by orchestrator; final blob match required |
 
 Full unit run before the final parity additions:179/179PASS. Added focused checks pass as listed; current type/lint and final production build/browser evidence must be recorded before acceptance. Discovery is not execution. No external beta readiness is claimed; §10.2 blockers remain governed separately. Seed13tests and independent seed repair closure are inherited from frozen81ef509, not rerun as a new backend audit.
+
+## Repair evidence — 2026-10-24
+
+The c3b68a5 candidate executed all96 browser tests successfully on the real disposable API/PostGIS environment (desktop and mobile), including52 FE-003 cases. Eight contact cases explicitly mock verification/refusal/privacy edges; no SMS provider was activated. This supersedes the discovery-only and pending-browser rows above. Its full194 unit tests, typecheck, lint and production build passed; CI web passed. The separately owned dependency audit repair remains pending integration.
+
+Independent review produced five findings and focused repair verification retained two extensions: a saved operation surviving A→anonymous→A, and a persisted report intent without a consumer. The current repair scopes saved reads, writes, retries and busy locks to an identity generation, so an old completion cannot retry or unlock a new account operation. Restored report intent waits for a fresh authorized thread, rechecks message eligibility and opens an empty form without sending.
+
+Twelve retained/extended closure tests pass, including old-operation lock isolation and own/removed/system report rejection. Current full suite:205/206 passed initially; the unchanged growth distribution test exceeded its existing5s timeout while the build ran, then all12 growth tests passed unchanged in a focused rerun. Typecheck, lint and production build pass. The original failed output is retained; no assertion or timeout was weakened. Focused real-browser report-resume and fresh-account save stress are running at this checkpoint; their outcomes must be appended before final acceptance. React best-practices checklist applied to the changed account/effect lifetimes. The BFF/server boundary is unchanged.

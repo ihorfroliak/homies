@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import { isAbsolute } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type TestInfo } from "@playwright/test";
-type Fixture = { accounts: { provider: { email: string; password: string } }; listings: { approval: string } };
+import { INTENT_KEY } from "../src/engagement/intent";
+type Fixture = { accounts: Record<"provider" | "seeker", { email: string; password: string }>; listings: { approval: string }; conversations: { approval: string }; messages: { reportable: string } };
 function fixture(info: TestInfo): Fixture {
   const file = process.env.E2E_ENGAGEMENT_MANIFEST;
   if (!file || !isAbsolute(file)) throw new Error("Private absolute fixture manifest required");
@@ -13,6 +14,19 @@ function fixture(info: TestInfo): Fixture {
 }
 test.use({ trace: "off", screenshot: "off", video: "off" });
 test.skip(process.env.E2E_ENGAGEMENT !== "1", "Requires disposable engagement fixtures");
+
+test("restored report intent rechecks the authorized thread and opens an empty form without sending", async ({ page, baseURL }, info) => {
+  const f = fixture(info);
+  expect((await page.request.post("/bff/auth/login", { headers: { origin: baseURL!, "x-homies-csrf": "1" }, data: f.accounts.seeker })).status()).toBe(200);
+  await page.goto("/logowanie");
+  await page.evaluate(({ key, message }) => sessionStorage.setItem(key, JSON.stringify({ action: "report", message_id: message, initiator_id: "engagement-status", created_at: Date.now() })), { key: INTENT_KEY, message: f.messages.reportable });
+  let reports = 0; page.on("request", request => { if (request.url().endsWith("/bff/v1/reports") && request.method() === "POST") reports++; });
+  await page.goto(`/wiadomosci/${f.conversations.approval}`);
+  const dialog = page.getByRole("dialog", { name: "Zgłoś wiadomość", exact: true });
+  await expect(dialog).toBeVisible(); await expect(dialog.getByLabel("Dodatkowe informacje (opcjonalnie)", { exact: true })).toHaveValue("");
+  expect(reports).toBe(0); expect(await page.evaluate(key => sessionStorage.getItem(key), INTENT_KEY)).toBeNull();
+  await dialog.getByRole("button", { name: "Zamknij", exact: true }).click(); expect(reports).toBe(0);
+});
 
 test("auth sheet traps keyboard focus, Escape abandons intent and restores the initiator", async ({ page }, info) => {
   await page.goto(`/oferta/${fixture(info).listings.approval}`);
