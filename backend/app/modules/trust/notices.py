@@ -107,7 +107,7 @@ def notify_viewings_cancelled(db: Session, decision: ModerationDecision,
     title_key, body_key = _KEYS[VIEWING_CANCELLED]
     rows = db.execute(select(Viewing.id, Viewing.listing_id, Viewing.requester_user_id)
                       .where(Viewing.id.in_(viewing_ids)).order_by(Viewing.id)).all()
-    providers = authority.holders(db, provider_property_id, "MANAGE_VIEWINGS") \
+    providers = authority.holders(db, provider_property_id, "MANAGE_VIEWINGS", verified=True) \
         if provider_property_id is not None and rows else []
     recipients = []
     for row in rows:

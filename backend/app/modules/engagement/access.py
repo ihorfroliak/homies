@@ -8,6 +8,7 @@ is a participant).
   participant rows copied when the conversation began.
 """
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.modules.engagement.models import Conversation
@@ -18,15 +19,16 @@ from app.modules.properties.models import ClassifiedOffer
 def property_of(db: Session, conv: Conversation) -> str | None:
     if conv.listing_id is None:
         return None
-    offer = db.get(ClassifiedOffer, conv.listing_id)
-    return offer.property_id if offer else None
+    return db.scalar(select(ClassifiedOffer.property_id).where(
+        ClassifiedOffer.id == conv.listing_id))
 
 
-def side(db: Session, user_id: str, conv: Conversation) -> str | None:
-    """'tenant', 'provider', or None (no access)."""
+def side(db: Session, user_id: str, conv: Conversation, *,
+         verified: bool = True) -> str | None:
+    """Current side; verified=False is reserved for conservative conflict checks."""
     if conv.requester_user_id == user_id:
         return "tenant"
     prop = property_of(db, conv)
-    if prop and authority.can_act(db, user_id, prop, "MANAGE_MESSAGES", verified=False):
+    if prop and authority.can_act(db, user_id, prop, "MANAGE_MESSAGES", verified=verified):
         return "provider"
     return None

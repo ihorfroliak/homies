@@ -424,7 +424,7 @@ def apply_message_decision(
     # authority over that property, the message's own sender, or a moderator
     # with a live report on it. A former provider with no current right is not
     # conflicted by history alone.
-    if conversation_access.side(db, actor.id, conv) is not None:
+    if conversation_access.side(db, actor.id, conv, verified=False) is not None:
         raise ConflictOfInterest("the moderator is a participant of this conversation")
     prop = conversation_access.property_of(db, conv)
     if prop is not None and any(authority.can_act(db, actor.id, prop, scope, verified=False)
@@ -546,7 +546,7 @@ def apply_conversation_decision(
     if conv is None:
         raise TargetNotFound("conversation not found")
 
-    if conversation_access.side(db, actor.id, conv) is not None:
+    if conversation_access.side(db, actor.id, conv, verified=False) is not None:
         raise ConflictOfInterest("the moderator is a participant of this conversation")
     prop = conversation_access.property_of(db, conv)
     if prop is not None and any(authority.can_act(db, actor.id, prop, scope, verified=False)

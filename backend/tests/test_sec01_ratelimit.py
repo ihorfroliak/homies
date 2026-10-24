@@ -105,8 +105,9 @@ def test_forwarded_header_is_ignored_unless_proxies_are_declared():
     # 0 hops declared => spoofed header must not be honoured
     assert rl.client_ip(request, trust_proxy_hops=0) == "10.0.0.9"
     # 1 declared proxy => take the hop nearest to us, not the attacker-controlled left edge
-    assert rl.client_ip(request, trust_proxy_hops=1) == "5.6.7.8"
-    assert rl.client_ip(request, trust_proxy_hops=2) == "1.2.3.4"
+    assert rl.client_ip(request, trust_proxy_hops=1) == "10.0.0.9"
+    assert rl.client_ip(request, 1, ["10.0.0.0/8"]) == "5.6.7.8"
+    assert rl.client_ip(request, 2, ["10.0.0.0/8", "5.6.7.8/32"]) == "1.2.3.4"
 
 
 def test_missing_client_does_not_crash():
