@@ -3881,6 +3881,39 @@
         "title": "ProviderConversationOut",
         "type": "object"
       },
+      "ProviderListingOut": {
+        "description": "Minimal discovery for one verified engagement capability (BP-3).\n\nThis is not an owner projection and grants no subsequent API access.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "MANAGE_MESSAGES",
+              "MANAGE_VIEWINGS"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "status",
+          "scope"
+        ],
+        "title": "ProviderListingOut",
+        "type": "object"
+      },
       "ProviderViewingOut": {
         "properties": {
           "attendee_count": {
@@ -9531,22 +9564,61 @@
     },
     "/v1/me/classifieds": {
       "get": {
-        "description": "Every listing this account may manage, in any status — including the\nones the public can no longer see — with its freshness and what would\nimprove it.",
+        "description": "Listings the caller can manage for the requested capability, in any status.\n\nEngagement enumeration is a minimal projection, never an authorization\ntoken for a later operation. Each private operation checks its own scope.",
         "operationId": "my_classifieds_v1_me_classifieds_get",
+        "parameters": [
+          {
+            "description": "Publication management keeps the owner projection. Engagement scopes require VERIFIED authority and return only id, title, status and scope.",
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "default": "PUBLISH_LISTING",
+              "description": "Publication management keeps the owner projection. Engagement scopes require VERIFIED authority and return only id, title, status and scope.",
+              "enum": [
+                "PUBLISH_LISTING",
+                "MANAGE_MESSAGES",
+                "MANAGE_VIEWINGS"
+              ],
+              "title": "Scope",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/ClassifiedOwnerOut"
-                  },
-                  "title": "Response My Classifieds V1 Me Classifieds Get",
-                  "type": "array"
+                  "anyOf": [
+                    {
+                      "items": {
+                        "$ref": "#/components/schemas/ClassifiedOwnerOut"
+                      },
+                      "type": "array"
+                    },
+                    {
+                      "items": {
+                        "$ref": "#/components/schemas/ProviderListingOut"
+                      },
+                      "type": "array"
+                    }
+                  ],
+                  "title": "Response My Classifieds V1 Me Classifieds Get"
                 }
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [

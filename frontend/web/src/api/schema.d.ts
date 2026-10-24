@@ -1076,9 +1076,10 @@ export interface paths {
         };
         /**
          * My Classifieds
-         * @description Every listing this account may manage, in any status — including the
-         *     ones the public can no longer see — with its freshness and what would
-         *     improve it.
+         * @description Listings the caller can manage for the requested capability, in any status.
+         *
+         *     Engagement enumeration is a minimal projection, never an authorization
+         *     token for a later operation. Each private operation checks its own scope.
          */
         get: operations["my_classifieds_v1_me_classifieds_get"];
         put?: never;
@@ -3292,6 +3293,25 @@ export interface components {
             requester_user_id: string;
             /** Status */
             status: string;
+        };
+        /**
+         * ProviderListingOut
+         * @description Minimal discovery for one verified engagement capability (BP-3).
+         *
+         *     This is not an owner projection and grants no subsequent API access.
+         */
+        ProviderListingOut: {
+            /** Id */
+            id: string;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "MANAGE_MESSAGES" | "MANAGE_VIEWINGS";
+            /** Status */
+            status: string;
+            /** Title */
+            title: string;
         };
         /** ProviderViewingOut */
         ProviderViewingOut: {
@@ -6061,7 +6081,10 @@ export interface operations {
     };
     my_classifieds_v1_me_classifieds_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Publication management keeps the owner projection. Engagement scopes require VERIFIED authority and return only id, title, status and scope. */
+                scope?: "PUBLISH_LISTING" | "MANAGE_MESSAGES" | "MANAGE_VIEWINGS";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -6074,7 +6097,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClassifiedOwnerOut"][];
+                    "application/json": components["schemas"]["ClassifiedOwnerOut"][] | components["schemas"]["ProviderListingOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
