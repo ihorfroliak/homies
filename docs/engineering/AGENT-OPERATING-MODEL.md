@@ -1,9 +1,9 @@
-# AGENT-001 — Multi-vendor agent operating model (proposed)
+# Homies multi-vendor agent operating model
 
-Status: PROPOSED on AGENT-001 branch. Guidance, **not new canonical product authority**. No product roadmap or BP-10 decision changed.
+AGENT-001 is integrated under D-110. AGENT-002 extends delivery orchestration under the founder's HOMIES-DELIVERY-002 directive (2026-10-16), as a candidate until its own PR is accepted. Guidance is subordinate to canonical authority.
 
 ## Authority and roles
-Founder decides semantics, merge and release. ChatGPT performs advisory planning/adjudication with repository evidence. Claude Code is the primary single writer implementing approved contracts. Codex independently audits exact SHAs, read-only by default; founder-authorized AGENT-001 branch is a narrow exception, not a standing privilege. Copilot is auxiliary. A Claude subagent or Codex specialist is **not** a second primary developer or replacement for the governance-mandated independent Codex audit.
+Founder decides semantics, merge and release. ChatGPT performs advisory planning/adjudication with repository evidence. Claude Code is the primary single writer implementing approved contracts. Codex independently audits exact SHAs, read-only by default; the founder may explicitly assign bounded implementation, as in HOMIES-DELIVERY-002. This is not standing writing authority. Copilot is auxiliary. A Claude subagent or Codex specialist is **not** a second primary developer or replacement for the governance-mandated independent Codex audit.
 
 ## Six equivalent specializations, different runtimes
 
@@ -16,7 +16,7 @@ Founder decides semantics, merge and release. ChatGPT performs advisory planning
 | Fixtures/mutations/test truth | `test-engineer` | `test_engineer` |
 | CI/Docker/restore/release | `devops-reviewer` | `devops_reviewer` |
 
-Claude specialists expose only Read, Grep and Glob. Codex specialists request a read-only filesystem sandbox; external connectors are governed separately by the parent runtime. These controls do not restrict a fully privileged parent. Every specialist is prohibited from Git writes, external mutations and deployment, and must ask the authorized writer to execute any required mutating test. Codex project roles load only if the project is trusted and the Codex surface supports them. Claude descriptions enable best-effort automatic delegation; Codex local releases may spawn after an explicit request **or applicable project instruction**. Natural-language routing is nondeterministic: **do not claim a perfect automatic dispatcher**.
+Claude specialists expose only Read, Grep and Glob. Codex specialists prohibit writes in their instructions. Current runtimes inherit parent permissions; the sandbox_mode field in a custom role does not override them. Use an actually read-only parent review session; external connectors are governed separately. These controls do not restrict a fully privileged parent. Every specialist is prohibited from Git writes, external mutations and deployment, and must ask the authorized writer to execute any required mutating test. Codex project roles load only if the project is trusted and the Codex surface supports them. Claude descriptions enable best-effort automatic delegation; Codex local releases may spawn after an explicit request **or applicable project instruction**. AGENT-002 adds deterministic selection in delivery_policy.py; actual runtime invocation still depends on the available session tools.
 
 ## Proportional agent-selection policy
 
@@ -32,4 +32,12 @@ One approved vertical slice and bounded diff; tests on accepted invariants; rele
 ## Real routing smoke test
 Fresh Claude/Codex sessions on **same checked-out AGENT-001 SHA**: (1) row-lock regression -> postgres; (2) Next.js focus regression -> frontend; (3) docs typo -> no specialist. Record actual spawned role, whether tool routing occurred or explicit prompt was necessary, and version/surface. Config presence is NOT proof of runtime invocation. Mandatory reviews must be explicitly requested if model-directed selection does not occur. If the runtime cannot perform a mandatory review, record NOT VERIFIED and keep its gate open; a parent self-review cannot silently replace it.
 
-**Routing disclaimer:** agent descriptions provide heuristic, model-selected routing rather than deterministic dispatch. In Codex, explicit subagent invocation may be required depending on client/runtime. Neither tool context nor provider cache is synchronized cross-vendor. A material mandatory independent Codex audit is always a separate exact-SHA task and is not satisfied by these in-process specialist roles.
+**Routing boundary:** agent descriptions alone provide heuristic selection. AGENT-002's explicit policy deterministically selects roles, while the top-level session dispatches them. In Codex, explicit subagent invocation may be required depending on client/runtime. Neither tool context nor provider cache is synchronized cross-vendor. A material mandatory independent Codex audit is always a separate exact-SHA task and is not satisfied by these in-process specialist roles.
+
+## Delivery extension (AGENT-002)
+
+One Implementation Orchestrator per vendor coordinates authorized backlog work.
+Follow [AGENT-002 delivery](AGENT-002-DELIVERY.md) for selection, exact-base claims,
+checkpoint recovery, independent review and Draft preparation. Six specialists
+remain unchanged. It has no merge/deploy authority, hidden scheduler or shared
+provider cache. Native subagent delegation is never assumed recursively.
