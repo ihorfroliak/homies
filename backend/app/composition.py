@@ -225,7 +225,8 @@ def build_app(
         limiter.enabled = settings.rate_limit_enabled
         policy = resolve_policy(request.method, request.url.path)
         if policy is not None:
-            key = f"{policy.name}:ip:{client_ip(request, settings.trust_proxy_hops)}"
+            address = client_ip(request, settings.trust_proxy_hops, settings.trusted_proxy_cidrs)
+            key = f"{policy.name}:ip:{address}"
             allowed, retry_after = limiter.check(key, policy)
             if not allowed:
                 return JSONResponse(
