@@ -451,8 +451,10 @@ def test_no_settings_means_no_authoritative_timezone(client, tenant, listing):
         "slots": [], "duration_minutes": None, "timezone": None}
 
 
-def test_the_slot_response_stays_signed_in_only(client, listing):
-    assert client.get(f"/v1/classifieds/{listing}/viewing-slots").status_code == 401
+def test_the_slot_response_is_public_but_the_request_stays_authenticated(client, listing):
+    assert client.get(f"/v1/classifieds/{listing}/viewing-slots").status_code == 200
+    assert client.post(f"/v1/classifieds/{listing}/viewings",
+                       json={"starts_at": _iso(_utc(SUMMER, 10))}).status_code == 401
 
 
 def test_the_slot_response_is_a_named_schema_in_openapi(client):

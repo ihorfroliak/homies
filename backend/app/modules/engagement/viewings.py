@@ -48,13 +48,14 @@ its outcome:
   `cancelled_by_homies: true` (trust/effects.py).
 """
 
+from bisect import bisect_left, bisect_right
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Literal, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, field_validator, model_validator
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
@@ -108,6 +109,12 @@ router = APIRouter(tags=["viewings"])
 
 HELD = ("REQUESTED", "CONFIRMED")
 MAX_SLOT_DAYS = 31
+# Read transport/work ceilings, not new schedule or booking domain constraints.
+MAX_SLOT_START_AHEAD_DAYS = 366
+MAX_SLOT_WINDOWS = 2000
+MAX_SLOT_BLACKOUTS = 2000
+MAX_SLOT_BOOKINGS = 10000
+MAX_SLOT_CANDIDATES = 100000
 
 
 def _now() -> datetime:
@@ -243,7 +250,8 @@ class OutcomeIn(BaseModel):
 
 
 def _listing(db: Session, listing_id: str) -> ClassifiedOffer:
-    offer = db.get(ClassifiedOffer, listing_id)
+    offer = db.scalar(select(ClassifiedOffer).where(ClassifiedOffer.id == listing_id)
+                      .execution_options(populate_existing=True))
     if offer is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
     return offer
@@ -270,13 +278,13 @@ def _outs(db: Session, viewings: list[Viewing], model=None) -> list:
 
 def _provider_listing(db: Session, user: User, listing_id: str) -> ClassifiedOffer:
     offer = _listing(db, listing_id)
-    if not authority.can_act(db, user.id, offer.property_id, "MANAGE_VIEWINGS", verified=False):
+    if not authority.can_act(db, user.id, offer.property_id, "MANAGE_VIEWINGS", verified=True):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
     return offer
 
 
 def _is_provider(db: Session, user: User, offer: ClassifiedOffer) -> bool:
-    return authority.can_act(db, user.id, offer.property_id, "MANAGE_VIEWINGS", verified=False)
+    return authority.can_act(db, user.id, offer.property_id, "MANAGE_VIEWINGS", verified=True)
 
 
 # --- slots --------------------------------------------------------------------
@@ -334,16 +342,28 @@ def unique_instant(wall: datetime, zone: ZoneInfo) -> datetime | None:
 
 
 def slots(db: Session, settings: ViewingSettings, first: date, days: int) -> list[datetime]:
-    """Offered slot start times (UTC), in order."""
+    """Offered starts, with at most three SQL queries regardless of candidates.
+
+    Count intersecting intervals as starts before the end minus ends at/before
+    the start. This is exactly the previous strict SQL overlap predicate, not
+    peak simultaneous occupancy (which would change capacity semantics).
+    Limits refuse the whole computation; a partial list would be misleading.
+    """
     if not settings.enabled:
         return []
     zone = ZoneInfo(settings.timezone)
     step = timedelta(minutes=settings.duration_minutes)
     earliest = _now() + timedelta(minutes=settings.minimum_notice_minutes)
+    last = first + timedelta(days=days - 1)
     windows = list(db.scalars(select(ViewingWindow).where(
-        ViewingWindow.listing_id == settings.listing_id)))
-    blackouts = [(_aware(b.starts_at), _aware(b.ends_at)) for b in db.scalars(
-        select(ViewingBlackout).where(ViewingBlackout.listing_id == settings.listing_id))]
+        ViewingWindow.listing_id == settings.listing_id,
+        or_(ViewingWindow.valid_from.is_(None), ViewingWindow.valid_from <= last),
+        or_(ViewingWindow.valid_until.is_(None), ViewingWindow.valid_until >= first),
+        or_(ViewingWindow.window_type == "WEEKLY",
+            ViewingWindow.local_date.between(first, last)),
+    ).limit(MAX_SLOT_WINDOWS + 1)))
+    if len(windows) > MAX_SLOT_WINDOWS:
+        raise _availability_busy()
     # Every viewing, booked or candidate, keeps its buffers clear. Two such
     # padded intervals overlap exactly when the candidate, widened by BOTH
     # buffers on each side, overlaps the booked viewing as stored. Widening the
@@ -353,7 +373,8 @@ def slots(db: Session, settings: ViewingSettings, first: date, days: int) -> lis
         minutes=settings.buffer_before_minutes + settings.buffer_after_minutes
     )
 
-    found: list[datetime] = []
+    candidates: set[datetime] = set()
+    examined = 0
     for offset in range(days):
         day = first + timedelta(days=offset)
         for w in _windows_for(windows, day):
@@ -363,6 +384,9 @@ def slots(db: Session, settings: ViewingSettings, first: date, days: int) -> lis
             cursor = datetime.combine(day, time(sh, sm))
             window_end = datetime.combine(day, time(eh, em))
             while cursor + step <= window_end:
+                examined += 1
+                if examined > MAX_SLOT_CANDIDATES:
+                    raise _availability_busy()
                 wall = cursor
                 cursor += step
                 start = unique_instant(wall, zone)
@@ -376,13 +400,41 @@ def slots(db: Session, settings: ViewingSettings, first: date, days: int) -> lis
                     continue
                 if start < earliest:
                     continue
-                if any(start < b_end and end > b_start for b_start, b_end in blackouts):
-                    continue
-                if _held_overlapping(db, settings.listing_id, start - clearance,
-                                     end + clearance) >= settings.max_concurrent_bookings:
-                    continue
-                found.append(start)
-    return sorted(set(found))
+                candidates.add(start)
+    if not candidates:
+        return []
+    ordered = sorted(candidates)
+    blackouts = list(db.execute(select(ViewingBlackout.starts_at, ViewingBlackout.ends_at).where(
+        ViewingBlackout.listing_id == settings.listing_id,
+        ViewingBlackout.starts_at < ordered[-1] + step,
+        ViewingBlackout.ends_at > ordered[0],
+    ).limit(MAX_SLOT_BLACKOUTS + 1)))
+    if len(blackouts) > MAX_SLOT_BLACKOUTS:
+        raise _availability_busy()
+    blackout_starts = sorted(_aware(b.starts_at) for b in blackouts)
+    blackout_ends = sorted(_aware(b.ends_at) for b in blackouts)
+    offered = [start for start in ordered
+               if bisect_left(blackout_starts, start + step)
+               - bisect_right(blackout_ends, start) == 0]
+    if not offered:
+        return []
+    bookings = list(db.execute(select(Viewing.starts_at, Viewing.ends_at).where(
+        Viewing.listing_id == settings.listing_id, Viewing.status == "CONFIRMED",
+        Viewing.starts_at < offered[-1] + step + clearance,
+        Viewing.ends_at > offered[0] - clearance,
+    ).limit(MAX_SLOT_BOOKINGS + 1)))
+    if len(bookings) > MAX_SLOT_BOOKINGS:
+        raise _availability_busy()
+    booking_starts = sorted(_aware(b.starts_at) for b in bookings)
+    booking_ends = sorted(_aware(b.ends_at) for b in bookings)
+    return [start for start in offered
+            if bisect_left(booking_starts, start + step + clearance)
+            - bisect_right(booking_ends, start - clearance) < settings.max_concurrent_bookings]
+
+
+def _availability_busy() -> HTTPException:
+    return HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
+                         "Viewing availability temporarily unavailable", headers={"Retry-After": "1"})
 
 
 def _settings(db: Session, listing_id: str, lock: bool = False) -> ViewingSettings | None:
@@ -399,7 +451,8 @@ def _settings(db: Session, listing_id: str, lock: bool = False) -> ViewingSettin
 def put_settings(listing_id: str, body: SettingsIn, user: User = Depends(get_current_user),
                  db: Session = Depends(get_db)):
     _provider_listing(db, user, listing_id)
-    current = _settings(db, listing_id)
+    current = _settings(db, listing_id, lock=True)
+    _provider_listing(db, user, listing_id)  # A settings-row wait may outlive authority.
     if current is None:
         current = ViewingSettings(listing_id=listing_id)
         db.add(current)
@@ -448,18 +501,32 @@ def add_blackout(listing_id: str, body: BlackoutIn, user: User = Depends(get_cur
 
 @router.get(
     "/classifieds/{listing_id}/viewing-slots", response_model=ViewingSlotsOut,
-    responses={404: {"description": "No public listing with this id."}},
+    responses={404: {"description": "No public listing with this id."},
+               422: {"description": "days must be 1–31; start must be today through 366 days "
+                                    "ahead, in the schedule's timezone (UTC without settings)."},
+               429: {"description": "Public viewing-slot IP budget exhausted; Retry-After."},
+               503: {"description": "Availability work budget exceeded; retry later. "
+                                    "No partial availability is returned. Retry-After."}},
 )
 def list_slots(listing_id: str, start: date | None = None,
                days: int = Query(default=14, ge=1, le=MAX_SLOT_DAYS),
-               user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+               db: Session = Depends(get_db)):
+    """Public derived availability only; reads do not reserve a place.
+
+    This same public projection is returned whether or not credentials were
+    sent. Booking/configuration endpoints continue requiring authentication.
+    """
     offer = _listing(db, listing_id)
     if not freshness.is_public(offer, freshness.db_now(db)):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
     settings = _settings(db, listing_id)
+    today = _now().astimezone(ZoneInfo(settings.timezone) if settings else timezone.utc).date()
+    first = start or today
+    if first < today or first > today + timedelta(days=MAX_SLOT_START_AHEAD_DAYS):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                            "start must be today through 366 days ahead")
     if settings is None:
         return ViewingSlotsOut(slots=[], duration_minutes=None, timezone=None)
-    first = start or _now().astimezone(ZoneInfo(settings.timezone)).date()
     return ViewingSlotsOut(slots=slots(db, settings, first, days),
                            duration_minutes=settings.duration_minutes,
                            timezone=settings.timezone)
@@ -482,7 +549,7 @@ def request_viewing(listing_id: str, body: ViewingRequest,
     offer = _shared_listing(db, listing_id)
     if not freshness.is_public(offer, freshness.db_now(db)):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
-    if _is_provider(db, user, offer):
+    if authority.can_act(db, user.id, offer.property_id, "MANAGE_VIEWINGS", verified=False):
         raise _conflict(OWN_LISTING, "this is your own listing")
     # F6 (founder/GPT, 2026-10-04; extends G-14): a requester whose
     # conversation Homies restricted cannot route around it by requesting a
@@ -587,6 +654,7 @@ def _respond(db: Session, user: User, viewing_id: str, confirm: bool) -> Viewing
     # Re-read under the row lock: a cancel may have committed while we waited
     # for the settings lock (TASK-001 F-06).
     viewing = _locked(db, viewing_id)
+    _provider_listing(db, user, viewing.listing_id)
     if viewing.status != "REQUESTED":
         raise _state_conflict(viewing.status)
     if confirm:
@@ -650,6 +718,7 @@ def cancel(viewing_id: str, user: User = Depends(get_current_user),
     for the check, the row's `cancelled_at` and the fact alike."""
     _viewing_for(db, user, viewing_id)
     viewing = _locked(db, viewing_id)
+    _viewing_for(db, user, viewing_id)
     if viewing.status not in HELD:
         raise _state_conflict(viewing.status)
     decision_now = freshness.db_now(db)
@@ -684,6 +753,7 @@ def record_outcome(viewing_id: str, body: OutcomeIn, user: User = Depends(get_cu
     if not provider:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Viewing not found")
     viewing = _locked(db, viewing_id)
+    _provider_listing(db, user, viewing.listing_id)
     if viewing.status != "CONFIRMED":
         raise _state_conflict(viewing.status)
     if _aware(viewing.starts_at) > _now():

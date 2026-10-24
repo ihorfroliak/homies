@@ -206,7 +206,8 @@ def authorized_property_ids(user_id: str, scope: str, *, verified: bool = False)
     return _chains(user_id, scope, verified=verified)
 
 
-def holders(db: Session, property_id: str, scope: str) -> list[str]:
+def holders(db: Session, property_id: str, scope: str, *,
+            verified: bool = False) -> list[str]:
     """Every account that may act on this property with `scope` today — the
     same three chains as `_holder_parties`/`_chains`, read from the property
     end, in one statement (no query per candidate). Distinct, sorted.
@@ -231,6 +232,8 @@ def holders(db: Session, property_id: str, scope: str) -> list[str]:
             _in_force(today),
         )
     )
+    if verified:
+        held_by = held_by.where(PropertyAuthority.verification_state == "VERIFIED")
     personal = select(PersonLegalParty.linked_user_id.label("user_id")).where(
         PersonLegalParty.legal_party_id.in_(held_by),
         PersonLegalParty.linked_user_id.is_not(None),
