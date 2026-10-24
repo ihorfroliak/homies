@@ -17,6 +17,20 @@ export interface BffRoute {
 const ID = "[A-Za-z0-9-]{1,64}";
 
 export const BFF_ROUTES: readonly BffRoute[] = [
+  { method: "GET", pattern: /^\/v1\/me\/(saved-listings|saved-searches|viewings|classifieds|reveal-quota)$/, auth: "required" },
+  { method: "POST", pattern: new RegExp(`^/v1/me/saved-listings/${ID}$`), auth: "required" },
+  { method: "DELETE", pattern: new RegExp(`^/v1/me/saved-listings/${ID}$`), auth: "required" },
+  { method: "POST", pattern: /^\/v1\/me\/saved-searches$/, auth: "required" },
+  { method: "GET", pattern: new RegExp(`^/v1/me/saved-searches/${ID}(/matches)?$`), auth: "required" },
+  { method: "PATCH", pattern: new RegExp(`^/v1/me/saved-searches/${ID}$`), auth: "required" },
+  { method: "DELETE", pattern: new RegExp(`^/v1/me/saved-searches/${ID}$`), auth: "required" },
+  { method: "GET", pattern: new RegExp(`^/v1/conversations(/${ID})?$`), auth: "required" },
+  { method: "POST", pattern: new RegExp(`^/v1/conversations/${ID}/messages$`), auth: "required" },
+  { method: "POST", pattern: new RegExp(`^/v1/classifieds/${ID}/(conversations|viewings|contact)$`), auth: "required" },
+  { method: "GET", pattern: new RegExp(`^/v1/classifieds/${ID}/viewings$`), auth: "required" },
+  { method: "POST", pattern: new RegExp(`^/v1/viewings/${ID}/(confirm|decline|cancel|outcome)$`), auth: "required" },
+  { method: "POST", pattern: /^\/v1\/reports$/, auth: "required" },
+  { method: "POST", pattern: /^\/v1\/me\/verify\/phone\/(start|confirm)$/, auth: "required" },
   { method: "GET", pattern: /^\/v1\/classifieds$/, auth: "optional" },
   { method: "GET", pattern: /^\/v1\/classifieds\/map$/, auth: "optional" },
   { method: "GET", pattern: new RegExp(`^/v1/classifieds/${ID}$`), auth: "optional" },

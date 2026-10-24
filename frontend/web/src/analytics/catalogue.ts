@@ -12,6 +12,18 @@ interface EventSpec {
 }
 
 export const CATALOGUE = {
+  save_toggled: { version: 1, props: { listing_id: "string", action: "string", outcome: "string", surface: "string" } },
+  conversation_start_submitted: { version: 1, props: { listing_id: "string", outcome: "string" } },
+  message_send_submitted: { version: 1, props: { outcome: "string", side: "string", retried: "boolean" } },
+  message_report_submitted: { version: 1, props: { reason: "string", outcome: "string" } },
+  viewing_slot_selected: { version: 1, props: { listing_id: "string", days_ahead_bucket: "string", hour_bucket: "string", authenticated: "boolean" } },
+  viewing_request_submitted: { version: 1, props: { listing_id: "string", outcome: "string", attendees_bucket: "string" } },
+  viewing_cancel_submitted: { version: 1, props: { outcome: "string" } },
+  contact_reveal_submitted: { version: 1, props: { listing_id: "string", outcome: "string", quota_bucket: "string" } },
+  auth_interrupted: { version: 1, props: { intent: "string" } },
+  auth_resumed: { version: 1, props: { intent: "string", outcome: "string" } },
+  engagement_refused: { version: 1, props: { surface: "string", code: "string" } },
+  engagement_api_error: { version: 1, props: { route_template: "string", status: "number", code: "string", kind: "string" } },
   session_started: { version: 1, props: {} },
   landing_viewed: { version: 1, props: { channel_code: "string" } },
   attribution_captured: { version: 1, props: { channel_code: "string", utm_source: "string", utm_medium: "string", utm_campaign: "string", click_id_present: "boolean", click_id_platform: "string" } },
@@ -53,6 +65,7 @@ const EMAIL = /@/;
 const PHONE = /(?:\d[\s-]?){7,}/;
 const URLISH = /:\/\/|^www\.|[?&=]/i;
 const SAFE_STRING = /^[A-Za-z0-9_.:-]{1,64}$/;
+export const ENGAGEMENT_API_ROUTES = ["/auth/session", "/auth/login", "/auth/register", "/auth/logout", "/v1/me/saved-listings", "/v1/me/saved-listings/[id]", "/v1/me/saved-searches", "/v1/me/saved-searches/[id]", "/v1/me/saved-searches/[id]/matches", "/v1/me/viewings", "/v1/me/classifieds", "/v1/me/reveal-quota", "/v1/me/verify/phone/start", "/v1/me/verify/phone/confirm", "/v1/conversations", "/v1/conversations/[id]", "/v1/conversations/[id]/messages", "/v1/classifieds/[id]", "/v1/classifieds/[id]/conversations", "/v1/classifieds/[id]/viewing-slots", "/v1/classifieds/[id]/viewings", "/v1/classifieds/[id]/contact", "/v1/viewings/[id]/confirm", "/v1/viewings/[id]/decline", "/v1/viewings/[id]/cancel", "/v1/viewings/[id]/outcome", "/v1/reports"] as const;
 
 export function unsafeValue(value: string): boolean {
   return EMAIL.test(value) || URLISH.test(value) || !SAFE_STRING.test(value) || (PHONE.test(value) && !/^[0-9a-f-]{36}$/i.test(value));
@@ -64,6 +77,10 @@ export function validate(name: string, props: Record<string, unknown>): string |
   if (!spec) return `unknown event ${name}`;
   for (const [key, value] of Object.entries(props)) {
     if (value === undefined) continue;
+    if (name === "engagement_api_error" && key === "route_template") {
+      if (typeof value !== "string" || !(ENGAGEMENT_API_ROUTES as readonly string[]).includes(value)) return "unknown engagement route template";
+      continue;
+    }
     const type = spec.props[key];
     if (!type) return `property ${key} is not allowed on ${name}`;
     if (type === "string[]") {

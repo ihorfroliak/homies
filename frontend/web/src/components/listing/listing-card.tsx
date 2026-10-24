@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SaveButton } from "@/engagement/saved";
 
 import type { components } from "@/api/schema";
 import { fmt, formatMoney, t } from "@/i18n";
@@ -42,6 +43,7 @@ export function ListingCard({ listing, position, priority = false }: { listing: 
         <p className={styles.meta}>{moveInLabel(listing)}</p>
         {freshness ? <p className={styles.fresh}>{freshness}</p> : null}
       </div>
+      <SaveButton listingId={listing.id} title={listing.title} />
     </article>
   );
 }

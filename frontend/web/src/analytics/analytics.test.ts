@@ -24,6 +24,24 @@ function setup(granted: ("ANALYTICS_FIRST_PARTY" | "MARKETING_ATTRIBUTION")[] = 
 }
 
 describe("consent gate", () => {
+  it("gates engagement telemetry and rejects private fields and raw resource paths", () => {
+    const { sink, analytics, consent, refused } = setup([]);
+    analytics.track("contact_reveal_submitted", { listing_id: "l-1", outcome: "success", quota_bucket: "available" }, { route: "/oferta/[id]" });
+    expect(sink.events).toHaveLength(0);
+    consent.set(["ANALYTICS_FIRST_PARTY"]);
+    analytics.track("engagement_api_error", { route_template: "/v1/conversations/[id]/messages", status: 409, code: "CONVERSATION_CLOSED", kind: "conflict" }, { route: "/wiadomosci/[id]" });
+    expect(sink.events.at(-1)?.event_name).toBe("engagement_api_error");
+    const count = sink.events.length;
+    analytics.track("engagement_api_error", { route_template: "/v1/conversations/private-id/messages?body=private" }, { route: "/wiadomosci/[id]" });
+    // @ts-expect-error Private content is never an accepted event property.
+    analytics.track("message_send_submitted", { outcome: "success", body: "private message" }, { route: "/wiadomosci/[id]" });
+    // @ts-expect-error Contact values are never an accepted event property.
+    analytics.track("contact_reveal_submitted", { phone: "+48123456789" }, { route: "/oferta/[id]" });
+    expect(refused).toHaveLength(3); expect(sink.events).toHaveLength(count);
+    consent.set([]);
+    analytics.track("auth_resumed", { intent: "viewing", outcome: "success" }, { route: "/oferta/[id]" });
+    expect(sink.events).toHaveLength(count);
+  });
   it("emits nothing without analytics consent", () => {
     const { sink, analytics } = setup([]);
     analytics.track("listing_viewed", { listing_id: "abc" }, { route: "/oferta/[id]" });

@@ -6,6 +6,7 @@ import { errorMessage } from "@/api/messages";
 import { ApiError } from "@/api/errors";
 import { SearchTracker } from "@/analytics/trackers";
 import { ListingCard } from "@/components/listing/listing-card";
+import { SaveSearchButton } from "@/engagement/saved";
 import { fmt, plural, t } from "@/i18n";
 import { activeFilters, apiQuery, isBare, MAX_PAGE, PAGE_SIZE, parseSearch, searchHref, type SearchState } from "@/search/codec";
 import { mapPage, relaxations, resolvePlace, searchKey, searchOnce, type MapPage, type ResolvedPlace } from "@/search/server";
@@ -75,6 +76,8 @@ export default async function ResultsPage(props: Props) {
   const searchId = crypto.randomUUID();
   const lastPage = page ? Math.min(MAX_PAGE, Math.max(1, Math.ceil(page.total / PAGE_SIZE))) : 1;
   const api = apiQuery(state, ids);
+  const savedQuery = new URLSearchParams();
+  for (const [key, value] of Object.entries(api)) for (const part of Array.isArray(value) ? value : [value]) savedQuery.append(key, String(part));
   const dimensions = Object.keys(api).filter((k) => k !== "country_code" && k !== "sort");
   const band = state.monthlyMax ?? state.monthlyMin;
 
@@ -97,6 +100,7 @@ export default async function ResultsPage(props: Props) {
       <div className={styles.toolbar}>
         <FilterPanel state={state} place={place} total={page?.total} />
         <SortForm state={state} />
+        <SaveSearchButton query={savedQuery.toString()} />
         <nav aria-label={t.results.viewSwitch} className={styles.views}>
           <Link href={searchHref({ ...state, view: "list", page: 1 })} aria-current={state.view === "list" ? "page" : undefined} className={styles.view}>
             {t.results.list}

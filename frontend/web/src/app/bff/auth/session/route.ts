@@ -18,10 +18,10 @@ export async function GET(): Promise<Response> {
   }
   if (upstream.status === 401) return Response.json({ authenticated: false }, { headers: noStore });
   if (!upstream.ok) return Response.json({ detail: "Upstream error" }, { status: 502, headers: noStore });
-  const user = (await upstream.json()) as { id: string; full_name: string; role: string; email_verified_at: string | null; phone: string | null };
+  const user = (await upstream.json()) as { id: string; full_name: string; email_verified_at: string | null; phone_verified_at: string | null };
   // Only what the UI needs; e-mail and phone stay on the account page's own call.
   return Response.json(
-    { authenticated: true, user: { id: user.id, name: user.full_name, role: user.role, emailVerified: user.email_verified_at !== null, phoneVerified: user.phone !== null } },
+    { authenticated: true, user: { id: user.id, name: user.full_name, emailVerified: Boolean(user.email_verified_at), phoneVerified: Boolean(user.phone_verified_at) } },
     { headers: noStore },
   );
 }

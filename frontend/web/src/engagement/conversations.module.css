@@ -1,0 +1,6 @@
+.system { font-style: italic; color: var(--c-ink-500); }
+.mobileBack { display: none; }
+@media (max-width:1023px) {
+  .inboxOnThread { display: none; }
+  .mobileBack { display: inline-block; margin-bottom: var(--sp-4); }
+}
