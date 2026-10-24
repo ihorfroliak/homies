@@ -1361,6 +1361,26 @@ New BP-8 PR merge is NOT authorized; no general BP-5/BP-6 re-audit.
 ## 2026-10-14 — BP-8 G-14 phone restriction candidate
 Founder-authorized D-111 implementation: listing FOR SHARE OF lock and refreshed generation, G-14 before repeat fast path, revalidation after rollback fallback. Same current-generation restriction; later generation normal rules. Private phone/refusal/audit and quota tests, real PG blocking observations. Combined focused31passed; Ruff/mypy126/OpenAPI6/type generation+typecheck passed. Contract BP-8-contact-reveal-restriction.md records actual initial failures/corrections. Exact-head CI and independent review pending; Draft PR only, no merge/deploy.
 
+## 2026-10-16 — BP-9 verified private engagement candidate
+
+Founder HOMIES-DELIVERY-002 / D-105: Codex is sole bounded BP-9 writer from
+integrated BP-8 `4ed8fe8ab334a8d8e344b80e266da2be3b661aee`. Private provider
+engagement now requires VERIFIED, in-force, scoped authority; own requester
+access and broader self-dealing/conflict guards remain. BP-6 provider notices
+and assignment/provider participant capture use the tightened rule. Fresh
+post-wait checks cover sends/replays, lead mutations and viewing actions;
+this is the bounded CX-02 repair, not strict commit-time authorization.
+
+Evidence: [BP-9 contract](tasks/BP-9-verified-engagement-authority.md).
+Host conversation/viewing/BP-9 selection 100 passed; expanded targeted
+SQLite/PostgreSQL/OpenAPI selection 117 passed and two inherited Windows
+commit-deadline failures; the same two probes passed on Linux Python 3.12.
+Two additional conservative-conflict tests passed. Ruff clean; mypy126 clean.
+No migration or public API shape change. Independent exact-SHA review and CI
+remain required; feature branch/Draft PR only, no merge or deployment.
+IBB-001, BARRIER/rollback BLOCKED, all other debt and external beta BP-9/BB-10
+gate retained until integration/verification. PROJECT-STATUS owner unchanged.
+
 ## 2026-10-16 — BP-3 provider listing enumeration
 
 Added optional scope to GET /v1/me/classifieds. Default PUBLISH_LISTING preserves
