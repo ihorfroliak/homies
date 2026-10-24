@@ -571,7 +571,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Slots */
+        /**
+         * List Slots
+         * @description Public derived availability only; reads do not reserve a place.
+         *
+         *     This same public projection is returned whether or not credentials were
+         *     sent. Booking/configuration endpoints continue requiring authentication.
+         */
         get: operations["list_slots_v1_classifieds__listing_id__viewing_slots_get"];
         put?: never;
         post?: never;
@@ -1070,9 +1076,10 @@ export interface paths {
         };
         /**
          * My Classifieds
-         * @description Every listing this account may manage, in any status — including the
-         *     ones the public can no longer see — with its freshness and what would
-         *     improve it.
+         * @description Listings the caller can manage for the requested capability, in any status.
+         *
+         *     Engagement enumeration is a minimal projection, never an authorization
+         *     token for a later operation. Each private operation checks its own scope.
          */
         get: operations["my_classifieds_v1_me_classifieds_get"];
         put?: never;
@@ -3287,6 +3294,25 @@ export interface components {
             /** Status */
             status: string;
         };
+        /**
+         * ProviderListingOut
+         * @description Minimal discovery for one verified engagement capability (BP-3).
+         *
+         *     This is not an owner projection and grants no subsequent API access.
+         */
+        ProviderListingOut: {
+            /** Id */
+            id: string;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "MANAGE_MESSAGES" | "MANAGE_VIEWINGS";
+            /** Status */
+            status: string;
+            /** Title */
+            title: string;
+        };
         /** ProviderViewingOut */
         ProviderViewingOut: {
             /** Attendee Count */
@@ -5096,14 +5122,26 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Validation Error */
+            /** @description days must be 1–31; start must be today through 366 days ahead, in the schedule's timezone (UTC without settings). */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                content?: never;
+            };
+            /** @description Public viewing-slot IP budget exhausted; Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
                 };
+                content?: never;
+            };
+            /** @description Availability work budget exceeded; retry later. No partial availability is returned. Retry-After. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -6043,7 +6081,10 @@ export interface operations {
     };
     my_classifieds_v1_me_classifieds_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Publication management keeps the owner projection. Engagement scopes require VERIFIED authority and return only id, title, status and scope. */
+                scope?: "PUBLISH_LISTING" | "MANAGE_MESSAGES" | "MANAGE_VIEWINGS";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -6056,7 +6097,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClassifiedOwnerOut"][];
+                    "application/json": components["schemas"]["ClassifiedOwnerOut"][] | components["schemas"]["ProviderListingOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
