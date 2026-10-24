@@ -1360,3 +1360,11 @@ New BP-8 PR merge is NOT authorized; no general BP-5/BP-6 re-audit.
 
 ## 2026-10-14 — BP-8 G-14 phone restriction candidate
 Founder-authorized D-111 implementation: listing FOR SHARE OF lock and refreshed generation, G-14 before repeat fast path, revalidation after rollback fallback. Same current-generation restriction; later generation normal rules. Private phone/refusal/audit and quota tests, real PG blocking observations. Combined focused31passed; Ruff/mypy126/OpenAPI6/type generation+typecheck passed. Contract BP-8-contact-reveal-restriction.md records actual initial failures/corrections. Exact-head CI and independent review pending; Draft PR only, no merge/deploy.
+
+## 2026-10-16 — HOMIES-DELIVERY-002 / BP-8 integration
+
+Merged exact accepted BP-8 PR #9 normally as4ed8fe8; candidate/tree unchanged,
+ancestry verified. Archived independent report byte-for-byte. Recorded D-112
+full founder directive and conditional FE-003 authorization. No product code
+changed in this documentation branch. Product implementations use separate
+branches and Draft PRs; mandatory independent reviews remain separate.

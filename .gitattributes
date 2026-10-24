@@ -3,3 +3,28 @@ docs/reviews/*-audit.md -text
 
 # Preserve independent BP-5/BP-6 audit evidence bytes and published SHA256.
 docs/reviews/BP56-independent-review*.md -text
+
+docs/reviews/BP8-independent-review*.md -text
+docs/reviews/2026-10-17-bp9-independent-review-fb5b3e57.md -text
+docs/reviews/AGENT-002-repair-addendum-ff97225.md -text
+docs/reviews/BP-3-repair-addendum-55c9d43.md -text
+docs/reviews/BP-3-independent-review.md -text
+docs/reviews/AGENT-002-independent-review.md -text
+docs/reviews/2026-10-17-bp4-independent-review-d138fadf.md -text
+docs/reviews/BP11-independent-review-e3841a6.md -text
+docs/reviews/2026-10-17-bp4-repair-addendum-2fc30a28.md -text
+docs/reviews/FE003-composition-review-ee19b3a.md -text
+docs/reviews/FE003-seed-review-b44e7bd.md -text
+docs/reviews/FE003-seed-repair-review-81ef509.md -text
+docs/reviews/FE003-bff-review-dbf0668.md -text
+docs/reviews/FE003-bff-probes-dbf0668/* -text
+
+docs/reviews/FE003-client-review-ec2bfa9.md -text
+
+docs/reviews/FE003-client-repair-review-c3b68a5.md -text
+
+docs/reviews/FE003-client-final-review-46b187e.md -text
+
+docs/reviews/DEP001-independent-review-47b1be5.md -text
+
+docs/reviews/DEP001-independent-addendum-289b816.md -text

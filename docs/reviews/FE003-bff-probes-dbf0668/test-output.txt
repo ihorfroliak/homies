@@ -1,0 +1,15 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - `__dirname` (vitest.config.mts:10:25). Use `import.meta.dirname` instead
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.3 [39m[90m/tmp/audit[39m
+
+ [32m✓[39m src/app/bff/auth/register/route.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 98[2mms[22m[39m
+ [32m✓[39m src/server/server.test.ts [2m([22m[2m26 tests[22m[2m)[22m[32m 115[2mms[22m[39m
+ [32m✓[39m src/boundary.test.ts [2m([22m[2m75 tests[22m[2m)[22m[32m 199[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[32m105 passed[39m[22m[90m (105)[39m
+[2m   Start at [22m 11:37:45
+[2m   Duration [22m 10.73s[2m (environment 77%, transform 15%, setup 5%, import 2%, tests 2%)[22m
+

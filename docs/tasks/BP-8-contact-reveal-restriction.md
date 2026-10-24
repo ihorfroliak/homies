@@ -66,3 +66,13 @@ Required CI and genuinely separate independent exact-SHA review pending.
 No mutation success/full local suite claimed. No schema migration.
 
 Existing F03 concurrent quota/repeat regression: 2 passed, 5 deselected,15.50s; final changed-file Ruff clean.
+
+## Integration receipt — 2026-10-16, D-112
+
+PR #9 normally merged as `4ed8fe8ab334a8d8e344b80e266da2be3b661aee`.
+Parents: `64a9cebd763d74d2ea6fb718734fa486750e0c55` and accepted
+`24a47e81cfd31948e4de642ff7c2cb2fbe5bf521`; tree
+`b29e0ceac644c026ecaa3d3e5dd01cc625b27f27` equals reviewed candidate.
+Independent PASS report archived in ../reviews/BP8-independent-review-24a47e8.md.
+Exact-head CI38548793363 SUCCESS 6/6; post-merge result tracked on GitHub.
+No implementation change and no repeated audit.
