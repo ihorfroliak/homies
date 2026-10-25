@@ -152,3 +152,58 @@ generations, normal authorization, quotas, repeats and audit semantics.
 Contract, implementation, tests, feature-branch commit/push and Draft PR
 are authorized immediately, separate exact-SHA review per governance9.
 New BP-8 PR merge is NOT authorized; no general BP-5/BP-6 re-audit.
+
+## 2026-10-16 — D-112 HOMIES-DELIVERY-002 founder execution authorization
+
+The founder authorizes the exact reviewed BP-8 PR #9 normal merge, AGENT-002,
+BP-11 (including measured resource-exhaustion repair), BP-9, BP-3, BP-4 and
+conditional FE-003 implementation. [Full binding directive](tasks/HOMIES-DELIVERY-002.md).
+Codex is the authorized bounded writer when Claude CLI is unavailable; one
+writer per context, isolated worktrees, independent exact-SHA reviews under
+05 section 9. Subsequent feature PRs are Draft and require a new founder merge
+decision. No general repeat audits. Stacked verified dependencies are permitted
+and must be explicit; they do not imply integration into main.
+
+FE-003 IMPLEMENTATION AUTHORIZED: YES, conditional on all mandatory backend
+prerequisites in the verified dependency chain. This supersedes earlier NO
+implementation flags, not the approved FE-003 product semantics. FE-VIS-001
+remains NOT AUTHORIZED. No new canonical name/authority/business semantics.
+Main protection is authorized: PR plus actual CI checks, no force push/deletion,
+no broad bypass, normal sole-contributor merges without a nonexistent approver.
+
+IBB-001, all debt, BP-5 BARRIER / rollback BLOCKED, BP-10 EXPAND / BB-11 remain.
+Production NOT READY / NOT DEPLOYED; no paid providers or production data.
+
+## 2026-10-16 — D-113 BP-4 name projection clarification
+
+Founder explicitly selected: split full_name on whitespace, normalize excess
+whitespace, preserve Unicode. Use the first word plus the initial of the last
+word; if there is only one word, show that word alone. Empty values use the
+already approved fallback "Użytkownik Homies". This is a display projection
+of unverified free text, not a legal-name parser or a verified identity claim.
+OD-3 data minimization remains binding: no email, phone, full legal identity,
+or verification metadata. Provider authorization remains BP-9. Encode these
+examples and privacy boundaries in the bounded BP-4 contract and tests.
+
+## 2026-10-24 — D-114 founder package integration authorization
+
+The founder explicitly answered: "Так, інтегруй увесь перевірений пакет" to
+integration of prepared PRs #10–18 into main, beginning with DEP-001 #18,
+refreshing dependent branches, requiring successful CI for every current
+candidate, preserving commit ancestry, and completing FE-003 plus the report
+archive. This supersedes the earlier Draft-only/no-main-merge boundary for
+this named package. It does not authorize deployment or paid providers.
+
+Candidate identities and the bounded sequence are recorded in
+[HOMIES-DELIVERY-002 integration contract](tasks/HOMIES-DELIVERY-002-integration.md).
+Use normal protected GitHub merges only; no squash, rebase, force push or
+protection bypass. Current-base CI and original reviewed ancestry must be
+verified. Reuse unchanged independent evidence; assess and review only any
+material integration delta. Record a fully incorporated composition PR by
+ancestry rather than manufacturing an empty merge.
+
+Founder accepts the package's documented limitations for this integration:
+IBB-001 remains the last formal baseline; BARRIER/rollback BLOCKED, technical
+debt, external beta gates and independent nonblocking notes remain; native
+vendor invocation remains NOT VERIFIED. FE-VIS-001 is not authorized.
+Production remains NOT READY and NOT DEPLOYED.

@@ -17,7 +17,17 @@ function Identity(){const session=useSession();return <><output aria-label="iden
 beforeEach(()=>{fetchMock.mockReset();vi.stubGlobal('fetch',fetchMock);frames=[];sessionStorage.clear();localStorage.clear();vi.stubGlobal('requestAnimationFrame',(cb:FrameRequestCallback)=>{frames.push(cb);return frames.length});vi.stubGlobal('cancelAnimationFrame',vi.fn());Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});Object.defineProperty(HTMLDialogElement.prototype,'showModal',{configurable:true,value(){this.open=true}});Object.defineProperty(HTMLDialogElement.prototype,'close',{configurable:true,value(){this.open=false}})});
 afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.restoreAllMocks()});
 async function flushFrames(){await act(async()=>{for(const cb of frames.splice(0))cb(performance.now())})}
-async function login(){const dialog=screen.getByRole('dialog',{name:e.authRequired});fireEvent.change(within(dialog).getByLabelText(e.email),{target:{value:'synthetic@example.com'}});fireEvent.change(within(dialog).getByLabelText(e.password),{target:{value:'Synthetic-password!'}});fireEvent.submit(within(dialog).getByLabelText(e.password).closest('form')!);await waitFor(()=>expect(screen.queryByRole('dialog',{name:e.authRequired})).not.toBeInTheDocument());await flushFrames()}
+async function login() {
+ const dialog=screen.getByRole('dialog',{name:e.authRequired});
+ fireEvent.change(within(dialog).getByLabelText(e.email),{target:{value:'synthetic@example.com'}});
+ fireEvent.change(within(dialog).getByLabelText(e.password),{target:{value:'Synthetic-password!'}});
+ fireEvent.submit(within(dialog).getByLabelText(e.password).closest('form')!);
+ await waitFor(()=>expect(screen.queryByRole('dialog',{name:e.authRequired})).not.toBeInTheDocument());
+ // The dialog can disappear before the passive completion effect queues its frame.
+ // Advance the synthetic scheduler only after that frame actually exists.
+ await waitFor(()=>expect(frames.length).toBeGreaterThan(0));
+ await flushFrames();
+}
 async function confirmPicker(){await waitFor(()=>expect(screen.getByLabelText('identity')).toHaveTextContent('account-a'));fireEvent.click(await screen.findByRole('radio'));fireEvent.click(screen.getByRole('button',{name:e.next}));await screen.findByLabelText(e.note)}
 it('preserves guest selected instant through post-commit authentication and requires deliberate request',async()=>{
  let signedIn=false;const viewingWrites:RequestInit[]=[];fetchMock.mockImplementation(async(path,init)=>{if(path==='/bff/auth/session')return response(signedIn?a:anon);if(path==='/bff/auth/login'){signedIn=true;return response({authenticated:true})}if(init?.method==='POST'){viewingWrites.push(init);return response({status:'REQUESTED',starts_at:slot},201)}return response(slots)});

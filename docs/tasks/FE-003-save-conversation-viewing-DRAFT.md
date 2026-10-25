@@ -4,7 +4,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **FE-003 CONTRACT APPROVED — IMPLEMENTATION NOT AUTHORIZED** (founder/GPT final review 2026-10-04: conditionally approved; the bounded correction pass r3 — OD-7, OD-8, BP-9 rule, OD-1/F6 generation semantics — applied with no new contradiction). **`FE-003 IMPLEMENTATION AUTHORIZED: NO`** |
+| Status | **CONTRACT APPROVED; IMPLEMENTATION AUTHORIZED CONDITIONALLY** by D-112 (2026-10-16), after mandatory backend prerequisites exist in a verified dependency chain. Explicit stacked dependencies permitted; no automatic merge. Earlier contract approval facts and D-104/D-105 semantics retained. |
 | Baseline | `main` = `995b05fe72bc15a86141e214bf1c4fc63b8bc570`; schema head `a3c5e7f9b1d4` (no later revision) |
 | Design input | DESIGN-001C *Homies 001C Dzielnica Product Convergence* (`.dc.html`) — approved by founder/GPT **at design-contract level**; implementation needs the repository handoff of §0.2 (P-0) |
 | Founder decisions | **D-104** (OD-1…OD-6, BP-9 security gate, BP-10, BP-7 required, DEBT-1) and **D-105** (OD-7, OD-8, BP-9 canonical rule, OD-1/F6 generation semantics) — canon 04a §24 |

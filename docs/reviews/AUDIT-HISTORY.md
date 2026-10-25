@@ -277,3 +277,13 @@ context only; they are not part of any acceptance above.
 
 ## BP-5/BP-6 accepted independent review (D-111)
 [Final report](BP56-independent-review-b400bc9-final.md), [original](BP56-independent-review-f7e7280.md), [repair addendum](BP56-independent-review-fec9993-addendum.md): archived byte-for-byte. Final SHA256 fe185b69d0a9238a34422bd4b0a038b0dfeab50fd5ef05e4c25c32b9cf0a9d04. Accepted b400bc9, PR7 merge38db9c1. PASS WITH NONBLOCKING NOTE; BP9/BB10 gate retained. No repeated audit.
+
+## BP-8 accepted independent review (D-112)
+
+[Full immutable report](BP8-independent-review-24a47e8.md), SHA256
+`5e1661a5c7e17607cf3f7b4956cae905836dd7023ae72f6465bfaf6ee6d6e6a5`.
+Reviewed candidate `24a47e81cfd31948e4de642ff7c2cb2fbe5bf521`, tree
+`b29e0ceac644c026ecaa3d3e5dd01cc625b27f27`; PASS, no actionable P0-P3.
+Founder-authorized PR #9 normal merge `4ed8fe8ab334a8d8e344b80e266da2be3b661aee`
+preserves both reviewed ancestry and tree. Candidate CI38548793363 SUCCESS 6/6.
+No re-audit performed; current status belongs to PROJECT-STATUS.

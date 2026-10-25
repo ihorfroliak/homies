@@ -1361,6 +1361,14 @@ New BP-8 PR merge is NOT authorized; no general BP-5/BP-6 re-audit.
 ## 2026-10-14 — BP-8 G-14 phone restriction candidate
 Founder-authorized D-111 implementation: listing FOR SHARE OF lock and refreshed generation, G-14 before repeat fast path, revalidation after rollback fallback. Same current-generation restriction; later generation normal rules. Private phone/refusal/audit and quota tests, real PG blocking observations. Combined focused31passed; Ruff/mypy126/OpenAPI6/type generation+typecheck passed. Contract BP-8-contact-reveal-restriction.md records actual initial failures/corrections. Exact-head CI and independent review pending; Draft PR only, no merge/deploy.
 
+## 2026-10-16 — HOMIES-DELIVERY-002 / BP-8 integration
+
+Merged exact accepted BP-8 PR #9 normally as4ed8fe8; candidate/tree unchanged,
+ancestry verified. Archived independent report byte-for-byte. Recorded D-112
+full founder directive and conditional FE-003 authorization. No product code
+changed in this documentation branch. Product implementations use separate
+branches and Draft PRs; mandatory independent reviews remain separate.
+
 ## 2026-10-16 — BP-9 verified private engagement candidate
 
 Founder HOMIES-DELIVERY-002 / D-105: Codex is sole bounded BP-9 writer from
@@ -1433,3 +1441,23 @@ empty fallback Użytkownik Homies. Bulk queries select only account id/full_name
 no legal identity, email, phone or verification metadata is projected. Tenant
 DTOs unchanged. 24focused/API checks passed; broader126pass2setuperrors with
 4-case rerunpass; Ruff/mypy127/API/typecheckpass. Independent review and CI pending.
+
+## 2026-10-25 — HOMIES-DELIVERY-002 protected integration
+
+Founder D-114 executed through normal ancestry-preserving GitHub merges:
+DEP-001, BP-3, BP-11, BP-9, AGENT-002, BP-4 and FE-003 are integrated. Each
+current-base candidate passed the six required checks. PR16 composition is
+incorporated through PR17 and closed with its ancestry receipt; no empty merge.
+Exact merge/candidate/CI identities and retained limitations are reconciled in
+PROJECT-STATUS. Original review reports remain byte-for-byte; all five newly
+archived report hashes and the unchanged full archive were verified. This
+final documentation reconciliation changes no application or CI source.
+IBB-001 remains the last formal baseline; BARRIER/rollback BLOCKED, existing
+debt and beta gates remain. FE-VIS-001 is not authorized. No deployment or
+paid-provider activation. PR10 and final main retain required CI gates.
+
+PR10's first final candidate hit a test-only authentication frame-queue race
+(CI40174842047, 205/206 units passed). Controlled delayed registration reproduces
+the failure; awaiting the registered frame passes, with all original assertions
+and product code unchanged. R1 helper repair: 206/206 local units, typecheck and
+lint passed; new exact-head Linux CI required. Historical failure is retained.
