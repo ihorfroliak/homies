@@ -266,7 +266,7 @@ jobs:
         working-directory: ops/contracts
         run: npm run validate:asyncapi
 
-  # FE-001/FE-002: the public web app (frontend/web). Exactly pinned toolchain
+  # FE-001/FE-002/FE-003: the public web app (frontend/web). Exactly pinned toolchain
   # (package-lock.json, npm ci); the typed API client is generated from
   # docs/api/openapi.json and must not drift from it. E2E runs the production
   # build against the real Phase-1 API on PostGIS with the fictional E2E seed
@@ -303,6 +303,7 @@ jobs:
       # production build refuses both (next.config.ts, env.ts).
       HOMIES_WEB_ENV: development
       E2E_BACKEND: "1"
+      E2E_ENGAGEMENT: "1"
     defaults:
       run:
         working-directory: frontend/web
@@ -336,14 +337,17 @@ jobs:
           pip install -c constraints.txt ".[dev]"  # the seed drives the API through TestClient (httpx)
           python -m app.scripts.migrate --allow-barrier
           HOMIES_ALLOW_E2E_SEED=1 python -m app.scripts.seed_e2e
-          RATE_LIMIT_ENABLED=false nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > "$RUNNER_TEMP/api.log" 2>&1 &
-          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8000/healthz >/dev/null && exit 0; sleep 1; done
+          export E2E_ENGAGEMENT_MANIFEST="$RUNNER_TEMP/homies-engagement-manifest.json"
+          echo "E2E_ENGAGEMENT_MANIFEST=$E2E_ENGAGEMENT_MANIFEST" >> "$GITHUB_ENV"
+          HOMIES_ALLOW_E2E_SEED=1 HOMIES_ALLOW_ENGAGEMENT_E2E_SEED=1 python -m app.scripts.seed_engagement_e2e --manifest "$E2E_ENGAGEMENT_MANIFEST"
+          RATE_LIMIT_ENABLED=false nohup python -m uvicorn app.main:app --no-proxy-headers --host 127.0.0.1 --port 8000 > "$RUNNER_TEMP/api.log" 2>&1 &
+          for _ in $(seq 1 60); do curl -sf http://127.0.0.1:8000/healthz >/dev/null && exit 0; sleep 1; done
           cat "$RUNNER_TEMP/api.log"; exit 1
       - name: Build
         run: npm run build
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
-      - name: E2E (foundation, seeker slice, accessibility, budget)
+      - name: E2E (foundation, seeker, engagement, accessibility, budget)
         run: npm run e2e
       - name: Keep E2E traces and the API log on failure
         if: failure()

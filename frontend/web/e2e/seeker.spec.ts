@@ -98,7 +98,10 @@ test("listing detail: costs, facts, freshness wording, privacy note", async ({ p
   await link.click();
   await expect(page).toHaveURL(/\/oferta\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(title!);
-  const costs = page.getByRole("complementary");
+  // FE-003 binds the full breakdown above the description on mobile and in the
+  // desktop rail. Assert exactly one visible breakdown, independent of location.
+  const costs = page.locator("section").filter({ has: page.getByRole("heading", { name: "Koszty", exact: true }) }).filter({ visible: true });
+  await expect(costs).toHaveCount(1);
   await expect(costs.getByText("Koszt miesięczny", { exact: true })).toBeVisible();
   await expect(costs.getByText("Czynsz administracyjny")).toBeVisible();
   await expect(costs.getByText("Kaucja (zwrotna)")).toBeVisible();

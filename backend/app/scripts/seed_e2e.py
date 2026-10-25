@@ -87,6 +87,8 @@ class Listing:
     precision: str = "APPROXIMATE"
     photo: tuple[int, int, int] | None = (190, 214, 204)
     description: str = ""
+    contact_mode: str = "message"
+    contact_phone: str = ""
 
 
 LISTINGS = [
@@ -223,7 +225,8 @@ def _publish(api: _Api, owner: str, admin: str, areas: dict[str, str], n: int, i
         "admin_fee": item.admin_fee * 100, "utilities_amount": item.utilities * 100,
         "utilities_included": item.utilities_included, "deposit_amount": item.deposit * 100,
         "min_term_months": item.min_term_months, "open_ended": item.open_ended,
-        "available_from": item.available_from, "contact_mode": "message",
+        "available_from": item.available_from, "contact_mode": item.contact_mode,
+        "contact_phone": item.contact_phone,
     }).json()["id"]
     if item.photo is not None:
         asset = api.call("POST", f"/v1/properties/{prop}/media", owner,

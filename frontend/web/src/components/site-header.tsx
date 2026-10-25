@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { t } from "@/i18n";
+import { EngagementNavigation } from "@/engagement/navigation";
 
 import styles from "./site-header.module.css";
 
@@ -21,6 +22,7 @@ export function SiteHeader() {
             <li>
               <Link href="/wynajem">{t.nav.search}</Link>
             </li>
+            <EngagementNavigation />
           </ul>
         </nav>
       </div>

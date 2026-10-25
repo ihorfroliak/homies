@@ -1,5 +1,7 @@
 # FE-003 — Save → Conversation → Viewing · TASK CONTRACT
 
+> **2026-10-19 authorization supersession:** founder HOMIES-DELIVERY-002 / D-112 explicitly authorizes bounded FE-003a-f implementation once mandatory backend prerequisites are satisfied. The historical implementation-NO labels below record the earlier contract approval and are superseded for this program. Execution and verified stacked dependency identity: [FE-003 execution](FE-003-execution.md). FE-VIS-001, deployment and automatic merge remain unauthorized.
+
 | Field | Value |
 |---|---|
 | Status | **FE-003 CONTRACT APPROVED — IMPLEMENTATION NOT AUTHORIZED** (founder/GPT final review 2026-10-04: conditionally approved; the bounded correction pass r3 — OD-7, OD-8, BP-9 rule, OD-1/F6 generation semantics — applied with no new contradiction). **`FE-003 IMPLEMENTATION AUTHORIZED: NO`** |
