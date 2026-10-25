@@ -1,8 +1,8 @@
 # HOMIES — founder-authorized integration contract, 2026-10-24
 
-Status: AUTHORIZED by direct founder confirmation on 2026-10-24 (D-114). Integration pending execution.
+Status: AUTHORIZED by direct founder confirmation on 2026-10-24 (D-114). Implementation integration executed on 2026-10-24/25; final documentation reconciliation is delivered through PR10. Exact receipts and current status: [PROJECT-STATUS](../PROJECT-STATUS.md#delivery-integration--2026-10-25).
 
-Current main: 4ed8fe8ab334a8d8e344b80e266da2be3b661aee; tree b29e0ceac644c026ecaa3d3e5dd01cc625b27f27.
+Starting main (before authorized integration): 4ed8fe8ab334a8d8e344b80e266da2be3b661aee; tree b29e0ceac644c026ecaa3d3e5dd01cc625b27f27.
 
 Reviewed candidate identities:
 | PR | Context | Candidate |
@@ -26,6 +26,6 @@ Authorized execution:
 
 Scope boundaries: no squash, rebase, force push, branch-protection bypass, production deployment, paid providers, new product semantics or FE-VIS-001. A material conflict/defect or semantic change is reported and resolved within existing bounded authorization or returned to the founder if outside it. Do not treat approval of integration as approval of production or external beta.
 
-Retained limitations: IBB-001 remains the last formal backend baseline; BARRIER/rollback BLOCKED; existing beta gates and technical debt remain; native vendor invocation for AGENT-002 remains NOT VERIFIED; all independent nonblocking notes and unknown-cause fixture errors remain documented. The documentation branch currently retains main's old dependency pins; its CI is not claimed green based on FE-003's separate successful run.
+Retained limitations: IBB-001 remains the last formal backend baseline; BARRIER/rollback BLOCKED; existing beta gates and technical debt remain; native vendor invocation for AGENT-002 remains NOT VERIFIED; all independent nonblocking notes and unknown-cause fixture errors remain documented. The documentation branch originally retained main's old dependency pins. It now includes the integrated DEP-001 repair and FE-003 main, and still requires its own exact-candidate CI; FE-003's result is not substituted for it.
 
 Successful completion means the founder-approved candidates are integrated through normal protected GitHub flow, evidence is durable and current, and no deployment occurred.

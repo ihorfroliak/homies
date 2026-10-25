@@ -2,10 +2,10 @@
 id: PROJECT-STATUS
 type: status_index
 role: single semantic owner of volatile project status (D-106, 05 §14)
-as_of: 2026-10-24
+as_of: 2026-10-25
 reconciled_through:
-  code_and_product: BP-8 merge 4ed8fe8ab334a8d8e344b80e266da2be3b661aee (D-112)
-  documentation: BP-8 integrated; HOMIES-DELIVERY-002 authorized (D-112)
+  code_and_product: FE-003 merge 98ad3cc09b418784500452a62907be2dd46f9e81 (D-114)
+  documentation: HOMIES-DELIVERY-002 integrated package and immutable review archive (D-114)
 last_formal_baseline:
   id: IBB-001
   name: Integrated Backend Baseline 001
@@ -13,16 +13,16 @@ last_formal_baseline:
   tag: backend-baseline-001
   status: ACCEPTED
 latest_code_bearing_main_state:
-  implementation_sha: 24a47e81cfd31948e4de642ff7c2cb2fbe5bf521
-  what: BP-8 INTEGRATED; prior BP-5/BP-6 acceptance retained
-  merge_sha: 4ed8fe8ab334a8d8e344b80e266da2be3b661aee
-  candidate_ci: 38548793363 success 6/6
-  main_ci: 38859368831 success (exact merge SHA verified)
+  implementation_sha: 3f1a3fdbac303edbf09bf5e95678356d96dcc15d
+  what: DEP-001, BP-3, BP-11, BP-9, AGENT-002, BP-4 and FE-003 INTEGRATED
+  merge_sha: 98ad3cc09b418784500452a62907be2dd46f9e81
+  candidate_ci: 40140692791 success 6/6
+  main_ci: 40174564874 (exact merge SHA; post-merge acceptance gate)
 repository_head: resolved from Git (origin/main); intentionally not embedded here
 next_task:
   id: HOMIES-DELIVERY-002
-  status: INTEGRATION AUTHORIZED — D-114, package PRs 10–18; protected merge execution in progress
-fe003_implementation_authorized: true # conditional on verified backend prerequisites; D-112
+  status: IMPLEMENTATION INTEGRATED — D-114; documentation/archive reconciliation effective with PR10 merge
+fe003_implementation_authorized: true # prerequisites satisfied; implementation integrated under D-114
 fe_vis_001_implementation_authorized: false
 production_ready: false
 deployed: false
@@ -72,25 +72,41 @@ conditional FE-003 authorization: [D-112](DECISIONS.md),
 [full directive](tasks/HOMIES-DELIVERY-002.md). Claude CLI is installed but not
 authenticated; Codex is authorized writer. New feature branches remain candidates.
 
-## Delivery checkpoint — 2026-10-24
+## Delivery integration — 2026-10-25
 
-**D-114: founder now authorizes integration of PRs #10–18.** The prior Draft-only
-statements below describe the delivered candidates before this decision. Follow
-[the bounded integration contract](tasks/HOMIES-DELIVERY-002-integration.md);
-no integration is claimed until its actual merge is recorded. No deployment.
+**D-114: the founder-approved implementation package is INTEGRATED.** Normal
+GitHub merge commits preserve every original reviewed candidate. Each refreshed
+candidate passed all six required checks on its current main base. Changes
+during refresh were mechanical composition and complete DEVLOG unions; reviewed
+application semantics were preserved. No protection bypass or deployment.
 
-
-All candidates below are implemented, pushed and **unmerged Draft PRs**.
-No new merge authorization is inferred. BP-4 is stacked on BP-9; the other
-listed candidates start at integrated BP-8 main. FE-003 is implemented on the independently verified dependency chain. Backend CI results below are historical exact-candidate evidence; they do not exempt current dependency scans. FE-003 and its dependency repair now have independent closure and exact combined CI green; founder acceptance and main integration remain separate decisions.
-
-| Task | Exact candidate | Verification and review | CI run | Draft PR |
+| Task | Original reviewed candidate | Refreshed candidate | PR / actual merge | Exact candidate CI |
 |---|---|---|---|---|
-| AGENT-002 | `ff972255587d4737604073993dd88278e1af1c07` | 26 synthetic tests + Ruff; both original P2 findings repaired, independent repair addendum PASS, both P2 closed; native runtime invocation limitations retained | 39029912878 SUCCESS | [#12](https://github.com/ihorfroliak/homies/pull/12) |
-| BP-11 | `e3841a638b4cc54bba10b2caed29569aaffd54e5` | Builder benchmark: all 10 outputs identical; largest fixture SQL 2488 to 8, median 7415 to 126 ms; independent PASS_WITH_NONBLOCKING_NOTES, 135 cases +120 differential comparisons | 39007470216 SUCCESS | [#14](https://github.com/ihorfroliak/homies/pull/14) |
-| BP-9 | `fb5b3e57a6e4881ab14ad378a15e15f49475e682` | Independent PASS_WITH_NONBLOCKING_NOTES; 121 repository tests + 7 independent probes, Ruff/mypy/OpenAPI clean; no P0-P3 findings | 38941516780 SUCCESS | [#13](https://github.com/ihorfroliak/homies/pull/13) |
-| BP-3 | `55c9d43d218b9fa749789348adeccc59306fe9ea` | Original CI direct-handler default regression repaired; 20 focused tests including PostgreSQL regression + API drift; independent repair addendum PASS (19 tests + Ruff) | 39029843865 SUCCESS | [#11](https://github.com/ihorfroliak/homies/pull/11) |
-| BP-4 | `2fc30a28939c7d8b8a5b6f62a71a920ad444d693` | Unicode P3 repaired; independent addendum closes finding, 4 independent probes pass; initial fixture errors retained transparently | 39060137761 SUCCESS | [#15](https://github.com/ihorfroliak/homies/pull/15), base BP-9 |
+| DEP-001 | `289b816d76757ced905bc565e548170bd461d830` | `289b816d76757ced905bc565e548170bd461d830` | [#18](https://github.com/ihorfroliak/homies/pull/18) / `211fd249cda1906d74ca15ceb18d7e25348d76ea` | [40090487615](https://github.com/ihorfroliak/homies/actions/runs/40090487615) SUCCESS 6/6 |
+| BP-3 | `55c9d43d218b9fa749789348adeccc59306fe9ea` | `c158df1d226323b3fb729e0f3154adffe93784e6` | [#11](https://github.com/ihorfroliak/homies/pull/11) / `6bccb427cabefcde5c359c9bd5f9df8bbb5b8b38` | [40127816560](https://github.com/ihorfroliak/homies/actions/runs/40127816560) SUCCESS 6/6 |
+| BP-11 | `e3841a638b4cc54bba10b2caed29569aaffd54e5` | `ffea83d37c91c24dda699997e4be88f23f3f4250` | [#14](https://github.com/ihorfroliak/homies/pull/14) / `51874d521d364bccd8fb6071384e7ed00711f323` | [40129162428](https://github.com/ihorfroliak/homies/actions/runs/40129162428) SUCCESS 6/6 |
+| BP-9 | `fb5b3e57a6e4881ab14ad378a15e15f49475e682` | `566dec6fd3bf1d00a120092515b9888db42b6901` | [#13](https://github.com/ihorfroliak/homies/pull/13) / `485ee1688c8d35cd305da5862fa68074b5ee4f3f` | [40136125477](https://github.com/ihorfroliak/homies/actions/runs/40136125477) SUCCESS 6/6 |
+| AGENT-002 | `ff972255587d4737604073993dd88278e1af1c07` | `be14f95dd9c9da44c07bafebdeeeb874a6ebe7b2` | [#12](https://github.com/ihorfroliak/homies/pull/12) / `4aabbd8f2a33dcee54686d6a9f39e5ac2fcc6dd9` | [40137662406](https://github.com/ihorfroliak/homies/actions/runs/40137662406) SUCCESS 6/6 |
+| BP-4 | `2fc30a28939c7d8b8a5b6f62a71a920ad444d693` | `25406c0e99f1fd4821b794f45738bb178a0c390d` | [#15](https://github.com/ihorfroliak/homies/pull/15) / `6e75c7d68fe9c6119f4d2faeb5d6c410c881a05f` | [40139200433](https://github.com/ihorfroliak/homies/actions/runs/40139200433) SUCCESS 6/6 |
+| FE-003 | `c831ea616a6fe022b08b4fba106761a9d4c6cdd1` | `3f1a3fdbac303edbf09bf5e95678356d96dcc15d` | [#17](https://github.com/ihorfroliak/homies/pull/17) / `98ad3cc09b418784500452a62907be2dd46f9e81` | [40140692791](https://github.com/ihorfroliak/homies/actions/runs/40140692791) SUCCESS 6/6 |
+
+PR16's reviewed composition `ee19b3affc9f33d560c7624ebc6b562276c56000`
+is an ancestor of main through FE-003. Its backend source, tests and generated
+API matched the integrated individual prerequisites. PR16 is closed as incorporated,
+not recorded as a separate merge; no artificial empty merge was created. PR10 contains this final status reconciliation and the byte-exact
+independent report archive. Its merge identity is resolved from Git/GitHub,
+not embedded in a file that would have to name its own containing commit.
+See the [authorized integration contract](tasks/HOMIES-DELIVERY-002-integration.md).
+All independent reviews, focused closures and accepted nonblocking notes remain
+valid for the unchanged sources and are retained below.
+
+The refreshed FE-003 run `40140692791` passed all six CI jobs:
+2099 backend tests, 206 unit tests, 98 desktop/mobile browser scenarios and
+10 restore drills; coverage 90.3%, mypy 128 files, no known dependency
+vulnerabilities. Two explicit backend skips remain: live Stripe and the opt-in
+PostgreSQL benchmark. Post-merge run `40174564874` belongs to exact main
+`98ad3cc09b418784500452a62907be2dd46f9e81`; final documentation integration
+requires that run and the documentation candidate to pass all six checks.
 
 [BP-9 independent report](reviews/2026-10-17-bp9-independent-review-fb5b3e57.md)
 is archived byte-for-byte, SHA256
@@ -107,22 +123,20 @@ Independent evidence archived unchanged (each full SHA256 verified before copy):
 - [BP-11 PASS with notes](reviews/BP11-independent-review-e3841a6.md).
 - [BP-4 original P3](reviews/2026-10-17-bp4-independent-review-d138fadf.md) and [repair closure](reviews/2026-10-17-bp4-repair-addendum-2fc30a28.md).
 
-**Explicit dependency Draft [PR16](https://github.com/ihorfroliak/homies/pull/16):**
+**Incorporated dependency [PR16](https://github.com/ihorfroliak/homies/pull/16) — original composition evidence:**
 `ee19b3affc9f33d560c7624ebc6b562276c56000`, tree
 `18a6c794d3d37c4eca63a57d4cb910c18c7048a8`, base BP-4 PR15; preserves BP-9,
 BP-3 and BP-11 ancestry. No product-code conflicts; combined schema generation
 matches. Combined regressions:200 passed +1 fixture setup error; unchanged
-single-case rerun1 passed7.93s. Ruff/mypy127/API/types pass. [Composition-only independent review](reviews/FE003-composition-review-ee19b3a.md) PASS;36 tests and41 shared definitions verified. Exact composed CI39112216176 SUCCESS6/6. FE-003 implementation entry released after independent feature/composition verification; frontend, conversation and synthetic-fixture writers use separate bounded contexts and isolated worktrees derived from this exact base. This branch is
-not main and does not authorize any merge or deployment.
+single-case rerun1 passed7.93s. Ruff/mypy127/API/types pass. [Composition-only independent review](reviews/FE003-composition-review-ee19b3a.md) PASS;36 tests and41 shared definitions verified. Exact composed CI39112216176 SUCCESS6/6. FE-003 implementation entry released after independent feature/composition verification; frontend, conversation and synthetic-fixture writers use separate bounded contexts and isolated worktrees derived from this exact base. This historical evidence is now incorporated through the D-114 integration above; it does not certify deployment.
 
-**FE-003 implemented, independently reviewed and combined CI green:**
-Draft [PR #17](https://github.com/ihorfroliak/homies/pull/17), branch
-`codex/FE-003-engagement-journey`, base PR #16. Combined candidate
+**FE-003 INTEGRATED — original independent candidate evidence:**
+[PR #17](https://github.com/ihorfroliak/homies/pull/17), branch
+`codex/FE-003-engagement-journey`, originally based on PR #16. Reviewed combined candidate
 `c831ea616a6fe022b08b4fba106761a9d4c6cdd1`, tree
 `9bc245c62028fb9144cc35e88b6f49d3a88a6c09`. Founder reconfirmed bounded
 fixes, tests, commit/push and Draft PR on 2026-10-21, then authorized the
-verified dependency repair's inclusion on 2026-10-23/24. No main merge,
-deployment or paid-provider activation is authorized.
+verified dependency repair's inclusion on 2026-10-23/24. D-114 subsequently authorized its protected main integration. Deployment and paid-provider activation remain unauthorized.
 
 Implemented journeys: authentication and safe intent continuation, saved
 listings/searches, conversations and reporting, contact verification/reveal,
@@ -150,8 +164,7 @@ dependency scan found no known vulnerabilities. Typecheck, lint, generated API
 equality and production build passed.
 The normal merge preserves both reviewed parents (04cab95 and DEP-001
 289b816); only three dependency/contract files changed from 04cab95. All
-frontend source/configuration is unchanged. This is feature-branch integration,
-not a merge to main or final founder acceptance.
+frontend source/configuration is unchanged. That was feature-branch composition evidence; the subsequent founder-authorized main integration is recorded above.
 
 Historical evidence is retained: local final units were 205/206 with one
 unchanged growth-test timeout, followed by an unchanged focused 12/12 pass;
@@ -160,8 +173,8 @@ plus 10 fresh-account save journeys and two restored-report journeys. Earlier
 CI 40019368887 and 40090323202 passed web and four other jobs but failed the
 backend dependency audit. These failures are not erased or reported as green.
 
-**DEP-001 dependency repair — reviewed, CI green:**
-Draft [PR #18](https://github.com/ihorfroliak/homies/pull/18), candidate
+**DEP-001 dependency repair — INTEGRATED, original review evidence:**
+[PR #18](https://github.com/ihorfroliak/homies/pull/18), candidate
 `289b816d76757ced905bc565e548170bd461d830`, tree
 `e832526908e56b9d2060aee90ee8ae527bac17d9`, base integrated main.
 Founder authorized certifi 2026.10.19/Pillow 13.0.0 on 23 October, then
@@ -181,7 +194,7 @@ Retained NOTE: the original media run passed 80 tests with one fixture setup
 error; the unchanged isolated case then passed. Cause remains unknown.
 Predecessor CI 40069367584 passed its tests but failed three filelock advisory
 rows; the final update resolves that audit failure. DEP-001 is now included
-in the FE-003 feature candidate above; no main merge is authorized.
+in the FE-003 feature candidate above and was subsequently integrated under D-114.
 
 The [bounded BFF review](reviews/FE003-bff-review-dbf0668.md) independently
 passed105/105 tests at `dbf06681a78c128c27bfcf3a2ae94f485dec6cb2`, with no
@@ -207,12 +220,12 @@ addendum SHA256:
 The original 12 fixtures remain intact; desktop/mobile engagement data is
 separate. No product authorization defect was found in this narrow seed review.
 
-**Remaining integration and release limits:** all new PRs remain Draft and
-unmerged. The documentation branch retains main's old dependency pins; its
-previous CI 39651483013 failed dependency audit, and its documentation-only
-archive update does not claim to repair those pins. Merge DEP-001 through the
-normal founder-approved flow and refresh affected branches/checks before main
-integration. Do not copy the combined FE-003 CI verdict onto another SHA.
+**Retained release limits and historical CI evidence:** DEP-001 resolved the
+old pinned-dependency blockers. Historical documentation runs 39651483013 and
+40113823558 failed dependency audit before that repair reached the docs branch;
+those failures remain historical failures, not green evidence. Every current
+combined candidate requires its own exact-SHA checks. Integration preserves all
+reviewed limitations and does not create a successor formal baseline.
 External beta still requires the existing refresh/logout, participant address,
 parking-input, authority-correct supply, SMS-provider and analytics-legal gates.
 AGENT-002's native vendor invocation remains NOT VERIFIED. Existing independent
@@ -237,7 +250,7 @@ BP-10 MERGE AUTHORIZED:              YES  (PR #6 only, D-110)
 AGENT-001 MERGE AUTHORIZED:          YES  (PR #5 only, after reconciliation/checks, D-110)
 BP-5 / BP-6:                         INTEGRATED (D-111, PR #7)
 BP-8:                                INTEGRATED (D-112, PR #9)
-FE-003 IMPLEMENTATION AUTHORIZED:     YES, conditional on verified backend prerequisites (D-112)
+FE-003:                              INTEGRATED (D-114); backend prerequisites integrated
 FE-VIS-001 IMPLEMENTATION AUTHORIZED: NO   (D-104 OD-5; DESIGN-001C handoff §26, §31)
 PRODUCTION READY:                     NO   (NOT_READY)
 DEPLOYMENT:                           NO   (NOT_DEPLOYED; no production environment exists)
@@ -251,14 +264,14 @@ DEPLOYMENT:                           NO   (NOT_DEPLOYED; no production environm
 | integration 2 | **AGENT-001** — [PR #5](https://github.com/ihorfroliak/homies/pull/5) | INTEGRATED / ACCEPTED FOR CONTINUED DEVELOPMENT; merge `74a7065e167e6cea8d4251a17138ffe775b02a54`, exact-head CI `38152688469` SUCCESS 6/6. Six Claude/six Codex specialists preserved. Native dispatch NOT VERIFIED where unavailable is an accepted nonblocking limitation; no shared vendor memory/cache or guaranteed routing |
 | integrated | **BP-5 + BP-6** | INTEGRATED / ACCEPTED, D-111, PR #7 merge38db9c1; exact-head CI and independent review accepted |
 | integrated | **BP-8** | INTEGRATED, D-112; PR #9 merge4ed8fe8, independent PASS, candidate CI SUCCESS6/6 |
-| authorized | AGENT-002; BP-11; BP-9 → BP-3 → BP-4 → FE-003 | D-112; isolated bounded branches and Draft PRs, independent reviews where required. FE-003 conditional on verified prerequisites. MARKET-001 remains separate |
+| integrated | DEP-001; AGENT-002; BP-11; BP-9; BP-3; BP-4; FE-003 | D-114; exact reviewed ancestry and current-base CI preserved. MARKET-001 remains separate |
 
-FE-003 is conditionally authorized by D-112; FE-VIS-001 remains unauthorized. Beta blockers BB-1…BB-11
+FE-003 is integrated under D-114; FE-VIS-001 remains unauthorized. Beta blockers BB-1…BB-11
 stay open until their own criteria close them. IBB-001 remains the last formal
 baseline; no IBB-002. BP-10 release restrictions remain **EXPAND /
 rollback_to_previous = BLOCKED / migrate-first / BB-11 all-serving-instances**.
 Integration does not certify deployment or external beta. No completed audit
-is reopened by this integration; new BP-8 work has its own review gate.
+is reopened by this integration; no new product scope is authorized here.
 
 ## Integrated on `main` since IBB-001
 

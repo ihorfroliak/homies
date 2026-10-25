@@ -1441,3 +1441,17 @@ empty fallback Użytkownik Homies. Bulk queries select only account id/full_name
 no legal identity, email, phone or verification metadata is projected. Tenant
 DTOs unchanged. 24focused/API checks passed; broader126pass2setuperrors with
 4-case rerunpass; Ruff/mypy127/API/typecheckpass. Independent review and CI pending.
+
+## 2026-10-25 — HOMIES-DELIVERY-002 protected integration
+
+Founder D-114 executed through normal ancestry-preserving GitHub merges:
+DEP-001, BP-3, BP-11, BP-9, AGENT-002, BP-4 and FE-003 are integrated. Each
+current-base candidate passed the six required checks. PR16 composition is
+incorporated through PR17 and closed with its ancestry receipt; no empty merge.
+Exact merge/candidate/CI identities and retained limitations are reconciled in
+PROJECT-STATUS. Original review reports remain byte-for-byte; all five newly
+archived report hashes and the unchanged full archive were verified. This
+final documentation reconciliation changes no application or CI source.
+IBB-001 remains the last formal baseline; BARRIER/rollback BLOCKED, existing
+debt and beta gates remain. FE-VIS-001 is not authorized. No deployment or
+paid-provider activation. PR10 and final main retain required CI gates.
