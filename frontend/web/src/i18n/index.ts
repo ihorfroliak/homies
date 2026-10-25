@@ -45,12 +45,12 @@ export function formatInteger(n: number): string {
  * Money arrives in integer minor units (grosze). Whole amounts show no
  * decimals ("3 450 zł"); fractional amounts keep two ("3 450,50 zł").
  */
-export function formatMoney(minor: number): string {
+export function formatMoney(minor: number, currency = CURRENCY): string {
   if (!Number.isInteger(minor)) throw new TypeError("money must be integer minor units");
   const major = minor / 100;
   return Number.isInteger(major)
-    ? moneyFormat.format(major)
-    : new Intl.NumberFormat(LOCALE, { style: "currency", currency: CURRENCY, minimumFractionDigits: 2, useGrouping: "always" }).format(major);
+    ? (currency === CURRENCY ? moneyFormat : new Intl.NumberFormat(LOCALE, { style: "currency", currency, minimumFractionDigits: 0, maximumFractionDigits: 2, useGrouping: "always" })).format(major)
+    : new Intl.NumberFormat(LOCALE, { style: "currency", currency, minimumFractionDigits: 2, useGrouping: "always" }).format(major);
 }
 
 const dateFormat = new Intl.DateTimeFormat(LOCALE, { timeZone: TIME_ZONE, day: "numeric", month: "short", year: "numeric" });

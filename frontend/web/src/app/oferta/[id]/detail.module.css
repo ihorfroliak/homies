@@ -1,4 +1,11 @@
 .page { padding-top: var(--sp-4); padding-bottom: var(--sp-6); }
+.mobileCosts { display: none; }
+@media (max-width:1023px) {
+  .mobileCosts { display: block; margin-bottom: var(--sp-4); }
+  .aside > .costs { display: none; }
+  .page { padding-bottom: 200px; }
+  .page :is(button, a, input, textarea) { scroll-margin-bottom: 200px; }
+}
 
 .header { margin-bottom: var(--sp-4); }
 .title { font-size: var(--fs-h1); line-height: var(--lh-h1); color: var(--c-ink-900); margin: 0 0 var(--sp-1); }

@@ -1431,3 +1431,13 @@ acquisition serializes with release, and task/checkpoint/Draft branch identity
 is bound to the active claim and Git checkout. Added focused regression cases.
 Builder verification and independent review remain separate; the new candidate
 requires an exact-SHA addendum. No product code, merge or deployment changes.
+
+## 2026-10-17 — BP-4 requester display projection
+
+Provider conversation and viewing DTOs now include server-projected unverified
+requester_display_name under BP9 authorization. FounderD113: first word and
+last-word initial, one word unchanged, normalized whitespace/Unicode retained,
+empty fallback Użytkownik Homies. Bulk queries select only account id/full_name;
+no legal identity, email, phone or verification metadata is projected. Tenant
+DTOs unchanged. 24focused/API checks passed; broader126pass2setuperrors with
+4-case rerunpass; Ruff/mypy127/API/typecheckpass. Independent review and CI pending.

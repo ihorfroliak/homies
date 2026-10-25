@@ -3858,6 +3858,10 @@
             ],
             "title": "Provider Stage"
           },
+          "requester_display_name": {
+            "title": "Requester Display Name",
+            "type": "string"
+          },
           "requester_user_id": {
             "title": "Requester User Id",
             "type": "string"
@@ -3875,6 +3879,7 @@
           "last_message_at",
           "my_side",
           "requester_user_id",
+          "requester_display_name",
           "provider_stage",
           "assigned_to_user_id"
         ],
@@ -3955,6 +3960,10 @@
             "title": "Listing Id",
             "type": "string"
           },
+          "requester_display_name": {
+            "title": "Requester Display Name",
+            "type": "string"
+          },
           "requester_note": {
             "anyOf": [
               {
@@ -3987,6 +3996,7 @@
           "ends_at",
           "status",
           "attendee_count",
+          "requester_display_name",
           "requester_user_id",
           "requester_note"
         ],

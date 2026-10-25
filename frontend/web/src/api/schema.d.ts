@@ -3289,6 +3289,8 @@ export interface components {
             my_side: "tenant" | "provider";
             /** Provider Stage */
             provider_stage: string | null;
+            /** Requester Display Name */
+            requester_display_name: string;
             /** Requester User Id */
             requester_user_id: string;
             /** Status */
@@ -3336,6 +3338,8 @@ export interface components {
             id: string;
             /** Listing Id */
             listing_id: string;
+            /** Requester Display Name */
+            requester_display_name: string;
             /** Requester Note */
             requester_note: string | null;
             /** Requester User Id */

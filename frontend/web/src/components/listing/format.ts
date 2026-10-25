@@ -8,8 +8,8 @@ type Classified = components["schemas"]["ClassifiedOut"];
  * not stated (the total is a lower bound), "ok." when they are an estimate,
  * plain when included. Nothing is invented for missing costs.
  */
-export function monthlyLabel(l: Pick<Classified, "monthly_total_estimate" | "utilities_basis">): string {
-  const amount = formatMoney(l.monthly_total_estimate);
+export function monthlyLabel(l: Pick<Classified, "monthly_total_estimate" | "utilities_basis"> & { currency?: string }): string {
+  const amount = formatMoney(l.monthly_total_estimate, l.currency);
   const value = l.utilities_basis === "NOT_STATED" ? fmt(t.card.from, { amount }) : l.utilities_basis === "ESTIMATED" ? fmt(t.card.approx, { amount }) : amount;
   return fmt(t.card.monthly, { amount: value });
 }

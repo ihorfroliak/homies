@@ -7,6 +7,8 @@ import "../../../design-system/components.css";
 import "./globals.css";
 
 import { SiteFooter } from "@/components/site-footer";
+import { EngagementProvider } from "@/engagement/session";
+import { SavedProvider } from "@/engagement/saved";
 import { SiteHeader } from "@/components/site-header";
 import { t } from "@/i18n";
 import { pageMetadata } from "@/seo";
@@ -33,11 +35,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <a className="skip-link" href="#tresc">
           {t.a11y.skipToContent}
         </a>
-        <SiteHeader />
+        <EngagementProvider><SavedProvider><SiteHeader />
         <main id="tresc" tabIndex={-1}>
           {children}
         </main>
-        <SiteFooter />
+        <SiteFooter /></SavedProvider></EngagementProvider>
       </body>
     </html>
   );

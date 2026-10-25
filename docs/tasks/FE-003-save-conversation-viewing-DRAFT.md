@@ -1,5 +1,7 @@
 # FE-003 — Save → Conversation → Viewing · TASK CONTRACT
 
+> **2026-10-19 authorization supersession:** founder HOMIES-DELIVERY-002 / D-112 explicitly authorizes bounded FE-003a-f implementation once mandatory backend prerequisites are satisfied. The historical implementation-NO labels below record the earlier contract approval and are superseded for this program. Execution and verified stacked dependency identity: [FE-003 execution](FE-003-execution.md). FE-VIS-001, deployment and automatic merge remain unauthorized.
+
 | Field | Value |
 |---|---|
 | Status | **CONTRACT APPROVED; IMPLEMENTATION AUTHORIZED CONDITIONALLY** by D-112 (2026-10-16), after mandatory backend prerequisites exist in a verified dependency chain. Explicit stacked dependencies permitted; no automatic merge. Earlier contract approval facts and D-104/D-105 semantics retained. |
