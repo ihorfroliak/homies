@@ -104,7 +104,22 @@ The refreshed FE-003 run `40140692791` passed all six CI jobs:
 2099 backend tests, 206 unit tests, 98 desktop/mobile browser scenarios and
 10 restore drills; coverage 90.3%, mypy 128 files, no known dependency
 vulnerabilities. Two explicit backend skips remain: live Stripe and the opt-in
-PostgreSQL benchmark. Post-merge run `40174564874` belongs to exact main
+PostgreSQL benchmark.
+
+The first final documentation candidate `e3dc48b08dac613995d8b033ca2b740eab9c77e6`
+encountered a frontend unit-test synchronization failure in CI `40174842047`
+(205/206 passed). The report401 regression helper advanced its mock frame queue
+before React's passive authentication-completion effect necessarily registered
+that frame. A controlled 200 ms registration delay reproduced the same missing
+send-button failure with the original helper; waiting for the actual frame made
+that probe pass. The R1 repair changes only that helper, retaining every original
+privacy/no-auto-send assertion, timeout and product source. Host unit tests then
+passed 206/206; typecheck and lint passed. Host Node 24.14 retains the previously
+noted transitive engine warnings; supported Linux CI remains the acceptance gate.
+The original failing run remains recorded; this repair requires fresh exact-head
+CI and is not covered by a historical green verdict.
+
+ Post-merge run `40174564874` belongs to exact main
 `98ad3cc09b418784500452a62907be2dd46f9e81`; final documentation integration
 requires that run and the documentation candidate to pass all six checks.
 

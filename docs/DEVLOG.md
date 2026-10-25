@@ -1455,3 +1455,9 @@ final documentation reconciliation changes no application or CI source.
 IBB-001 remains the last formal baseline; BARRIER/rollback BLOCKED, existing
 debt and beta gates remain. FE-VIS-001 is not authorized. No deployment or
 paid-provider activation. PR10 and final main retain required CI gates.
+
+PR10's first final candidate hit a test-only authentication frame-queue race
+(CI40174842047, 205/206 units passed). Controlled delayed registration reproduces
+the failure; awaiting the registered frame passes, with all original assertions
+and product code unchanged. R1 helper repair: 206/206 local units, typecheck and
+lint passed; new exact-head Linux CI required. Historical failure is retained.

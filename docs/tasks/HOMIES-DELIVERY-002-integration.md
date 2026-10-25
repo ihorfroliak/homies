@@ -29,3 +29,18 @@ Scope boundaries: no squash, rebase, force push, branch-protection bypass, produ
 Retained limitations: IBB-001 remains the last formal backend baseline; BARRIER/rollback BLOCKED; existing beta gates and technical debt remain; native vendor invocation for AGENT-002 remains NOT VERIFIED; all independent nonblocking notes and unknown-cause fixture errors remain documented. The documentation branch originally retained main's old dependency pins. It now includes the integrated DEP-001 repair and FE-003 main, and still requires its own exact-candidate CI; FE-003's result is not substituted for it.
 
 Successful completion means the founder-approved candidates are integrated through normal protected GitHub flow, evidence is durable and current, and no deployment occurred.
+
+## Bounded CI evidence repair — 2026-10-25
+
+During final PR10 checks, CI40174842047 exposed one asynchronous test-helper
+race in `frontend/web/src/engagement/closure.test.tsx`. The helper could drain
+its synthetic frame queue before the passive authentication-completion effect
+queued a callback. Original report401 assertions remain unchanged. A controlled
+200 ms queue-registration delay fails the original test with the observed missing
+send button and passes when the helper waits for an actual scheduled frame.
+Only the helper synchronization changes; no product, authority, privacy, API,
+dependency, timeout, CI-suppression or deployment semantics change. This is an
+R1 test/evidence repair within the already authorized completion of FE-003 and
+required package CI; no new general audit or canonical decision. Required checks:
+full units (206 passed locally), typecheck/lint (passed), fresh exact-candidate
+six-job Linux CI and final post-merge CI. The failing predecessor stays visible.
