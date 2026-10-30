@@ -364,3 +364,9 @@ workflow; canonical independent-review evidence and founder authorization remain
 required. Configuration: [main-ruleset.json](engineering/main-ruleset.json).
 Repository visibility remains public. Verified by reading back both the ruleset
 and effective main rules. No deployment occurred.
+
+## 2026-10-30 — DESIGN-001C local presentation candidate
+
+Founder supplied the latest design package and explicitly requested preservation and integration/improvement. Codex owns the bounded web presentation candidate in `codex/design-001c-integration`, based on `4f2fc43457dfc82d07e42ac3418a1b649cbe3fb4`. [Contract](tasks/DESIGN-001C-integration.md), [preserved originals and convergence](design/001c/README.md), [verification](design/001c/VERIFICATION.md).
+
+Archive and neutral presentation integration are locally verified, not merged or accepted as the complete FE-VIS-001 rollout. Source geography/boundaries, district palette and font proposals remain deferred. Candidate CI and founder visual acceptance are pending. Existing main status, IBB-001 and debt remain unchanged; production is NOT READY / NOT DEPLOYED.

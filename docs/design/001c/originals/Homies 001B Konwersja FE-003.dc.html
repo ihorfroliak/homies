@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Homies — DESIGN-001B · Konwersja FE-003 (PROPOSED)</title>
+<link rel="stylesheet" href="homies.css">
+<script src="image-slot.js"></script>
+<style>
+  html, body { margin: 0; background: #E9ECF0; }
+  a { color: #152033; }
+  a:hover { color: #000; }
+  pre { white-space: pre-wrap; }
+</style>
+</helmet>
+
+<div style="min-height: 100vh; color: #152033; font-family: var(--font-body, 'Manrope', system-ui, sans-serif);">
+
+  <div role="note" style="background: #152033; color: #fff; padding: 12px 28px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; font-size: 14px;">
+    <strong style="letter-spacing: .06em;">PROPOSED FE-003 · NIE JEST CZĘŚCIĄ FE-002</strong>
+    <span style="opacity: .85;">Prototyp semantyki konwersji. Wymaga decyzji foundera, GPT-5.6 Sol i backendu (terminy, rozmowy, logowanie kodem).</span>
+    <a href="Homies 001B Kierunki.dc.html" style="color: #fff; margin-left: auto;">← Część A: kierunki artystyczne</a>
+  </div>
+
+  <header style="max-width: 1240px; margin: 0 auto; padding: 36px 28px 18px;">
+    <div style="font-size: 12.5px; font-weight: 700; letter-spacing: .1em; color: #4A5466;">DESIGN-001B · CZĘŚĆ B + D</div>
+    <h1 style="margin: 10px 0 10px; font-size: clamp(30px, 3.4vw, 44px); line-height: 1.08; letter-spacing: -.02em; max-width: 26ch;">Od oferty do umówionego oglądania w dwóch ruchach</h1>
+    <p style="margin: 0; font-size: 17px; line-height: 1.55; color: #3A4456; max-width: 76ch;">Terminy wynajmującego są przyciskami same w sobie — bez pośredniego „Umów oglądanie”. Dotknięcie terminu otwiera potwierdzenie z kontekstem oferty i danymi z profilu. Gość loguje się w tym samym arkuszu, a po kodzie rezerwacja kończy się sama, bez powrotu do oferty. Warstwa wizualna jest neutralna (DS v1), bo kierunek artystyczny wybiera founder.</p>
+  </header>
+
+  <div style="position: sticky; top: 0; z-index: 30; background: rgba(233,236,240,.96); backdrop-filter: blur(8px); border-top: 1px solid #D3D9E1; border-bottom: 1px solid #D3D9E1;">
+    <div style="max-width: 1240px; margin: 0 auto; padding: 12px 28px; display: flex; gap: 18px 22px; flex-wrap: wrap; align-items: center;">
+      <sc-for list="{{ controls }}" as="g" hint-placeholder-count="4">
+        <div role="group" aria-label="{{ g.label }}" style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 12px; font-weight: 700; color: #4A5466;">{{ g.label }}</span>
+          <div style="display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: #fff; box-shadow: inset 0 0 0 1px #D3D9E1;">
+            <sc-for list="{{ g.opts }}" as="o" hint-placeholder-count="2">
+              <button type="button" aria-pressed="{{ o.on }}" style="{{ o.style }}" onClick="{{ o.pick }}">{{ o.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+      <button type="button" onClick="{{ reset }}" style="height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #152033; background: #fff; font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer;">Od nowa</button>
+    </div>
+  </div>
+
+  <div style="max-width: 1240px; margin: 0 auto; padding: 28px 28px 0; display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap;">
+
+    <!-- STAGE -->
+    <div style="{{ stageStyle }}">
+      <div style="{{ gridStyle }}">
+
+        <div style="{{ contentStyle }}">
+          <div style="{{ photoStyle }}"><image-slot id="cv-hero" placeholder="Zdjęcie — salon, Zabłocie" style="width: 100%; height: 100%;"></image-slot></div>
+          <div style="padding: 18px 20px 24px; display: grid; gap: 14px;">
+            <a href="#" style="font-size: 14px; font-weight: 600;">← Wróć do wyników (128)</a>
+            <div>
+              <div style="font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #4A5466;">Zabłocie · okolice ul. Lipowej</div>
+              <h2 style="margin: 6px 0 4px; font-size: 26px; line-height: 1.15; letter-spacing: -.015em;">Dwa pokoje z balkonem, 51 m²</h2>
+              <div style="font-size: 15px; color: #3A4456;">2 pokoje · 51 m² · 3 piętro z 5 · umeblowane</div>
+            </div>
+            <section aria-label="Koszt miesięczny" style="padding: 16px; border-radius: 16px; background: #fff; box-shadow: inset 0 0 0 1px #DCE1E8;">
+              <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;"><span style="font-size: 34px; font-weight: 800; letter-spacing: -.025em;">4 350 zł</span><span style="font-size: 14px; color: #4A5466;">łącznie / mies. · szacunek</span></div>
+              <div style="font-size: 14px; color: #4A5466; margin-top: 4px;">3 500 najem + 600 adm. + ~250 media</div>
+              <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #DCE1E8; font-size: 14.5px;"><span>Na start 7 600 zł</span><span style="color: #4A5466;">w tym kaucja zwrotna 3 500 zł</span></div>
+            </section>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; font-size: 13.5px;">
+              <span style="padding: 6px 10px; border-radius: 999px; background: #fff; box-shadow: inset 0 0 0 1px #DCE1E8;">od 1 listopada</span>
+              <span style="padding: 6px 10px; border-radius: 999px; background: #fff; box-shadow: inset 0 0 0 1px #DCE1E8;">min. 12 mies.</span>
+              <span style="padding: 6px 10px; border-radius: 999px; background: #fff; box-shadow: inset 0 0 0 1px #DCE1E8;">Potwierdzono dziś · 3 paź</span>
+              <span style="padding: 6px 10px; border-radius: 999px; background: #fff; box-shadow: inset 0 0 0 1px #DCE1E8;">okolica ok. 300 m</span>
+            </div>
+            <p style="margin: 0; font-size: 15.5px; line-height: 1.6; color: #2B3446;">Dwa osobne pokoje i kuchnia otwarta na salon. Balkon od strony podwórza, nowe okna, ogrzewanie miejskie. Tramwaj na Lipowej cztery minuty pieszo.</p>
+          </div>
+        </div>
+
+        <sc-if value="{{ showScrim }}" hint-placeholder-val="{{ false }}">
+          <div aria-hidden="true" onClick="{{ closeSheet }}" style="position: absolute; inset: 0; background: rgba(21,32,51,.38); z-index: 4;"></div>
+        </sc-if>
+
+        <div role="{{ railRole }}" aria-label="{{ railLabel }}" style="{{ railStyle }}">
+          <sc-if value="{{ showGrabber }}" hint-placeholder-val="{{ false }}">
+            <div aria-hidden="true" style="width: 40px; height: 5px; border-radius: 3px; background: #C5CCD6; margin: 0 auto 10px;"></div>
+          </sc-if>
+
+          <!-- IDLE -->
+          <sc-if value="{{ isIdle }}" hint-placeholder-val="{{ true }}">
+            <div style="display: grid; gap: 12px;">
+              <sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ false }}">
+                <div style="padding-bottom: 12px; border-bottom: 1px solid #DCE1E8;"><div style="font-size: 30px; font-weight: 800; letter-spacing: -.02em;">4 350 zł <span style="font-size: 14px; font-weight: 500; color: #4A5466; letter-spacing: 0;">łącznie / mies.</span></div><div style="font-size: 13.5px; color: #4A5466;">Na start 7 600 zł · Potwierdzono dziś</div></div>
+              </sc-if>
+              <sc-if value="{{ isWithdrawn }}" hint-placeholder-val="{{ false }}">
+                <div role="status" style="padding: 14px; border-radius: 14px; background: #FFF4E5; box-shadow: inset 0 0 0 1px #F0C98A; font-size: 14.5px; line-height: 1.45;"><strong>Oferta wycofana dziś o 14:20.</strong> Oglądania i wiadomości są wyłączone. <a href="#">Zobacz 5 podobnych na Zabłociu →</a></div>
+              </sc-if>
+              <sc-if value="{{ isAlready }}" hint-placeholder-val="{{ false }}">
+                <div role="status" style="padding: 14px; border-radius: 14px; background: #EAF7F2; box-shadow: inset 0 0 0 1px #9ED9C3; font-size: 14.5px; line-height: 1.45;"><strong>Masz już oglądanie: wt 6 paź, 18:30.</strong> Wybierz inny termin, żeby je przenieść.</div>
+              </sc-if>
+              <sc-if value="{{ showSlots }}" hint-placeholder-val="{{ true }}">
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;"><span style="font-size: 15px; font-weight: 800;">Obejrzyj mieszkanie</span><span style="font-size: 12.5px; color: #4A5466;">terminy wynajmującego</span></div>
+                  <div style="{{ slotsWrap }}">
+                    <sc-for list="{{ slots }}" as="s" hint-placeholder-count="4">
+                      <button type="button" aria-label="{{ s.aria }}" disabled="{{ s.off }}" style="{{ s.style }}" onClick="{{ s.pick }}"><span style="display: block; font-size: 12.5px; font-weight: 600; opacity: .8;">{{ s.day }}</span><span style="font-size: 17px; font-weight: 800;">{{ s.time }}</span></button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ showRequest }}" hint-placeholder-val="{{ false }}">
+                <div style="display: grid; gap: 6px;"><button type="button" onClick="{{ openRequest }}" style="height: 52px; border-radius: 14px; border: 0; background: #152033; color: #fff; font: inherit; font-size: 16px; font-weight: 800; cursor: pointer;">Poproś o termin oglądania</button><span style="font-size: 13px; color: #4A5466;">Ten wynajmujący nie publikuje terminów — zaproponuje je w rozmowie.</span></div>
+              </sc-if>
+              <sc-if value="{{ canContact }}" hint-placeholder-val="{{ true }}">
+                <button type="button" onClick="{{ openChat }}" style="height: 48px; border-radius: 14px; border: 1.5px solid #152033; background: #fff; font: inherit; font-size: 15.5px; font-weight: 700; cursor: pointer;">Napisz do wynajmującego</button>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <!-- CONFIRM -->
+          <sc-if value="{{ isConfirm }}" hint-placeholder-val="{{ false }}">
+            <div style="display: grid; gap: 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;"><h3 id="cv-h" style="margin: 0; font-size: 20px;">Potwierdź oglądanie</h3><button type="button" aria-label="Zamknij" onClick="{{ closeSheet }}" style="width: 44px; height: 44px; border-radius: 50%; border: 0; background: #F0F2F5; font-size: 18px; cursor: pointer;">×</button></div>
+              <sc-if value="{{ takenMsg }}" hint-placeholder-val="{{ false }}">
+                <div role="alert" style="padding: 12px 14px; border-radius: 12px; background: #FFF4E5; box-shadow: inset 0 0 0 1px #F0C98A; font-size: 14px; line-height: 1.45;">Termin <strong>{{ takenLabel }}</strong> właśnie się zajął. Zaznaczyliśmy najbliższy wolny — możesz wybrać inny.</div>
+              </sc-if>
+              <div style="display: grid; grid-template-columns: 64px 1fr; gap: 12px; align-items: center; padding: 12px; border-radius: 14px; background: #F4F6F9;">
+                <div style="width: 64px; height: 64px; border-radius: 10px; overflow: hidden; background: #DCE1E8;"><image-slot id="cv-thumb" placeholder="Zdjęcie" style="width: 100%; height: 100%;"></image-slot></div>
+                <div style="min-width: 0;"><div style="font-size: 14.5px; font-weight: 700;">Dwa pokoje z balkonem, Zabłocie</div><div style="font-size: 13.5px; color: #4A5466;">4 350 zł łącznie / mies. · na start 7 600 zł</div></div>
+              </div>
+              <div><div style="font-size: 12.5px; font-weight: 700; color: #4A5466; margin-bottom: 4px;">Termin</div><div style="font-size: 24px; font-weight: 800; letter-spacing: -.01em;">{{ slotLabel }}</div></div>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <sc-for list="{{ slotsMini }}" as="s" hint-placeholder-count="4">
+                  <button type="button" aria-label="{{ s.aria }}" disabled="{{ s.off }}" style="{{ s.style }}" onClick="{{ s.pick }}">{{ s.short }}</button>
+                </sc-for>
+              </div>
+              <sc-if value="{{ isIn }}" hint-placeholder-val="{{ true }}">
+                <div style="display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid #DCE1E8; border-bottom: 1px solid #DCE1E8; font-size: 14.5px;"><span><span style="color: #4A5466;">Przyjdziesz jako</span><br><strong>Anna Kowalska</strong> · tel. z profilu ••• 412</span><a href="#" style="align-self: center; font-weight: 600;">Zmień</a></div>
+              </sc-if>
+              <sc-if value="{{ isOut }}" hint-placeholder-val="{{ false }}">
+                <div style="display: grid; gap: 10px; padding-top: 12px; border-top: 1px solid #DCE1E8;">
+                  <label style="display: grid; gap: 4px; font-size: 13px; font-weight: 700;">Imię<input value="{{ name }}" onChange="{{ setName }}" autocomplete="given-name" style="height: 48px; padding: 0 12px; border-radius: 10px; border: 1.5px solid #B8C0CC; font: inherit; font-size: 16px; font-weight: 500;" /></label>
+                  <label style="display: grid; gap: 4px; font-size: 13px; font-weight: 700;">E-mail<input value="{{ email }}" onChange="{{ setEmail }}" type="email" inputmode="email" autocomplete="email" style="height: 48px; padding: 0 12px; border-radius: 10px; border: 1.5px solid #B8C0CC; font: inherit; font-size: 16px; font-weight: 500;" /></label>
+                  <span style="font-size: 13px; color: #4A5466;">Wyślemy 6-cyfrowy kod. Bez hasła. Termin trzymamy do końca logowania.</span>
+                </div>
+              </sc-if>
+              <span style="font-size: 13px; color: #4A5466;">Dokładny adres zobaczysz po potwierdzeniu. Odwołać możesz w każdej chwili.</span>
+              <sc-if value="{{ offlineMsg }}" hint-placeholder-val="{{ false }}">
+                <div role="alert" style="padding: 12px 14px; border-radius: 12px; background: #FDECEC; box-shadow: inset 0 0 0 1px #EBA9A9; font-size: 14px;">Brak połączenia. Twój wybór jest zachowany — spróbuj ponownie, gdy wróci sieć.</div>
+              </sc-if>
+              <button type="button" onClick="{{ confirm }}" disabled="{{ confirmDisabled }}" style="{{ primaryStyle }}">{{ confirmLabel }}</button>
+              <sc-if value="{{ isOut }}" hint-placeholder-val="{{ false }}">
+                <button type="button" onClick="{{ google }}" style="height: 48px; border-radius: 14px; border: 1.5px solid #B8C0CC; background: #fff; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;">Kontynuuj z Google</button>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <!-- AUTH (chat/request) -->
+          <sc-if value="{{ isAuth }}" hint-placeholder-val="{{ false }}">
+            <div style="display: grid; gap: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;"><h3 style="margin: 0; font-size: 20px;">Jeszcze tylko kim jesteś</h3><button type="button" aria-label="Zamknij" onClick="{{ closeSheet }}" style="width: 44px; height: 44px; border-radius: 50%; border: 0; background: #F0F2F5; font-size: 18px; cursor: pointer;">×</button></div>
+              <div style="padding: 12px; border-radius: 12px; background: #F4F6F9; font-size: 14px; line-height: 1.45;"><span style="color: #4A5466;">{{ pendingLabel }} czeka:</span><br>{{ pendingPreview }}</div>
+              <label style="display: grid; gap: 4px; font-size: 13px; font-weight: 700;">Imię<input value="{{ name }}" onChange="{{ setName }}" autocomplete="given-name" style="height: 48px; padding: 0 12px; border-radius: 10px; border: 1.5px solid #B8C0CC; font: inherit; font-size: 16px; font-weight: 500;" /></label>
+              <label style="display: grid; gap: 4px; font-size: 13px; font-weight: 700;">E-mail<input value="{{ email }}" onChange="{{ setEmail }}" type="email" inputmode="email" autocomplete="email" style="height: 48px; padding: 0 12px; border-radius: 10px; border: 1.5px solid #B8C0CC; font: inherit; font-size: 16px; font-weight: 500;" /></label>
+              <button type="button" onClick="{{ sendCode }}" disabled="{{ authDisabled }}" style="{{ primaryAuthStyle }}">Wyślij kod</button>
+              <button type="button" onClick="{{ google }}" style="height: 48px; border-radius: 14px; border: 1.5px solid #B8C0CC; background: #fff; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;">Kontynuuj z Google</button>
+            </div>
+          </sc-if>
+
+          <!-- CODE -->
+          <sc-if value="{{ isCode }}" hint-placeholder-val="{{ false }}">
+            <div style="display: grid; gap: 12px;">
+              <h3 style="margin: 0; font-size: 20px;">Wpisz kod z e-maila</h3>
+              <p style="margin: 0; font-size: 14.5px; color: #3A4456;">Wysłaliśmy go na <strong>{{ email }}</strong>. Po wpisaniu {{ pendingFinish }} — nie musisz niczego klikać ponownie.</p>
+              <input aria-label="Kod z e-maila, 6 cyfr" value="{{ code }}" onChange="{{ setCode }}" inputmode="numeric" autocomplete="one-time-code" maxlength="6" style="height: 60px; padding: 0 16px; border-radius: 12px; border: 1.5px solid #152033; font: inherit; font-size: 28px; font-weight: 800; letter-spacing: .4em; text-align: center;" />
+              <sc-if value="{{ codeError }}" hint-placeholder-val="{{ false }}">
+                <div role="alert" style="font-size: 14px; color: #A12A2A;">Kod jest nieprawidłowy albo wygasł. Wysłaliśmy nowy — wpisz go poniżej.</div>
+              </sc-if>
+              <button type="button" onClick="{{ pasteCode }}" style="height: 44px; border-radius: 12px; border: 1px dashed #8792A2; background: #fff; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;">Demo: wklej kod z autouzupełniania (482913)</button>
+              <span style="font-size: 13px; color: #4A5466;">Nie dotarł? Wyślij ponownie za 30 s · Zmień e-mail</span>
+            </div>
+          </sc-if>
+
+          <!-- GOOGLE -->
+          <sc-if value="{{ isGoogle }}" hint-placeholder-val="{{ false }}">
+            <div style="display: grid; gap: 12px;">
+              <div style="font-size: 12px; font-weight: 700; color: #4A5466;">OKNO GOOGLE · przejście 1</div>
+              <h3 style="margin: 0; font-size: 19px;">Wybierz konto, by przejść do Homies</h3>
+              <button type="button" onClick="{{ pickAccount }}" style="display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: center; text-align: left; padding: 12px; border-radius: 12px; border: 1.5px solid #DCE1E8; background: #fff; font: inherit; cursor: pointer;"><span style="width: 40px; height: 40px; border-radius: 50%; background: #152033; color: #fff; display: grid; place-items: center; font-weight: 800;">A</span><span><strong style="font-size: 15px;">Anna Kowalska</strong><br><span style="font-size: 13.5px; color: #4A5466;">anna.k@gmail.com</span></span></button>
+              <span style="font-size: 13px; color: #4A5466;">Homies dostanie tylko imię i e-mail.</span>
+            </div>
+          </sc-if>
+
+          <!-- CHAT -->
+          <sc-if value="{{ isChat }}" hint-placeholder-val="{{ false }}">
+            <div style="display: grid; gap: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;"><h3 style="margin: 0; font-size: 20px;">Wiadomość do wynajmującego</h3><button type="button" aria-label="Zamknij" onClick="{{ closeSheet }}" style="width: 44px; height: 44px; border-radius: 50%; border: 0; background: #F0F2F5; font-size: 18px; cursor: pointer;">×</button></div>
+              <div style="padding: 12px; border-radius: 12px; background: #F4F6F9; font-size: 13.5px; line-height: 1.45;"><strong>Dołączamy automatycznie:</strong> Dwa pokoje z balkonem, Zabłocie · 4 350 zł łącznie · od 1 listopada · potwierdzono dziś</div>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <sc-for list="{{ chatChips }}" as="c" hint-placeholder-count="3">
+                  <button type="button" aria-pressed="{{ c.on }}" style="{{ c.style }}" onClick="{{ c.pick }}">{{ c.label }}</button>
+                </sc-for>
+              </div>
+              <textarea aria-label="Treść wiadomości" value="{{ chat }}" onChange="{{ setChat }}" rows="4" style="padding: 12px; border-radius: 12px; border: 1.5px solid #B8C0CC; font: inherit; font-size: 15.5px; line-height: 1.45; resize: vertical;"></textarea>
+              <button type="button" onClick="{{ sendChat }}" style="height: 52px; border-radius: 14px; border: 0; background: #152033; color: #fff; font: inherit; font-size: 16px; font-weight: 800; cursor: pointer;">Wyślij wiadomość</button>
+            </div>
+          </sc-if>
+
+          <!-- REQUEST -->
+          <sc-if value="{{ isRequest }}" hint-placeholder-val="{{ false }}">
+            <div style="display: grid; gap: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;"><h3 style="margin: 0; font-size: 20px;">Kiedy ci pasuje?</h3><button type="button" aria-label="Zamknij" onClick="{{ closeSheet }}" style="width: 44px; height: 44px; border-radius: 50%; border: 0; background: #F0F2F5; font-size: 18px; cursor: pointer;">×</button></div>
+              <span style="font-size: 14px; color: #3A4456;">Zaznacz jedno lub kilka. Wynajmujący zaproponuje konkretną godzinę w rozmowie.</span>
+              <div style="display: grid; gap: 8px;">
+                <sc-for list="{{ windows }}" as="w" hint-placeholder-count="4">
+                  <button type="button" aria-pressed="{{ w.on }}" style="{{ w.style }}" onClick="{{ w.pick }}">{{ w.label }}</button>
+                </sc-for>
+              </div>
+              <button type="button" onClick="{{ sendRequest }}" disabled="{{ requestDisabled }}" style="{{ primaryReqStyle }}">Wyślij prośbę</button>
+            </div>
+          </sc-if>
+
+          <!-- DONE -->
+          <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+            <div role="status" style="display: grid; gap: 12px;">
+              <div style="width: 48px; height: 48px; border-radius: 50%; background: #CFF5E7; display: grid; place-items: center; font-size: 22px; font-weight: 800;">✓</div>
+              <h3 style="margin: 0; font-size: 22px;">{{ doneTitle }}</h3>
+              <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #2B3446;">{{ doneBody }}</p>
+              <sc-if value="{{ doneAccount }}" hint-placeholder-val="{{ false }}">
+                <p style="margin: 0; font-size: 13.5px; color: #4A5466;">{{ doneAccount }}</p>
+              </sc-if>
+              <div style="display: grid; gap: 8px;">
+                <sc-for list="{{ doneActions }}" as="a" hint-placeholder-count="3">
+                  <button type="button" style="{{ a.style }}">{{ a.label }}</button>
+                </sc-for>
+              </div>
+              <button type="button" onClick="{{ reset }}" style="height: 40px; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 600; text-decoration: underline; cursor: pointer;">Zagraj ścieżkę od nowa</button>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+
+    <!-- COUNTERS -->
+    <aside aria-label="Pomiar ścieżki" style="flex: 1 1 280px; min-width: 260px; max-width: 380px; display: grid; gap: 14px; position: sticky; top: 76px;">
+      <div style="padding: 18px; border-radius: 16px; background: #fff; box-shadow: inset 0 0 0 1px #D3D9E1;">
+        <div style="font-size: 12px; font-weight: 700; letter-spacing: .08em; color: #4A5466; margin-bottom: 12px;">TA ŚCIEŻKA NA ŻYWO</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <sc-for list="{{ meters }}" as="m" hint-placeholder-count="6">
+            <div style="padding: 10px 12px; border-radius: 12px; background: #F4F6F9;"><div style="font-size: 12px; color: #4A5466;">{{ m.k }}</div><div style="font-size: 22px; font-weight: 800;">{{ m.v }}</div></div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="padding: 18px; border-radius: 16px; background: #fff; box-shadow: inset 0 0 0 1px #D3D9E1;">
+        <div style="font-size: 12px; font-weight: 700; letter-spacing: .08em; color: #4A5466; margin-bottom: 10px;">ZDARZENIA ANALITYCZNE</div>
+        <sc-if value="{{ noEvents }}" hint-placeholder-val="{{ true }}"><p style="margin: 0; font-size: 14px; color: #4A5466;">listing_viewed — reszta pojawi się po pierwszym ruchu.</p></sc-if>
+        <ol style="margin: 0; padding-left: 18px; display: grid; gap: 6px; font-family: ui-monospace, Menlo, monospace; font-size: 12.5px;">
+          <sc-for list="{{ events }}" as="e" hint-placeholder-count="2"><li>{{ e }}</li></sc-for>
+        </ol>
+      </div>
+    </aside>
+  </div>
+
+  <!-- PART B TABLES -->
+  <section data-screen-label="Bramka jakości" style="max-width: 1240px; margin: 0 auto; padding: 56px 28px 0;">
+    <h2 style="margin: 0 0 6px; font-size: 28px; letter-spacing: -.015em;">Bramka jakości — każda ścieżka</h2>
+    <p style="margin: 0 0 18px; font-size: 15.5px; color: #3A4456; max-width: 76ch;">Akcja = świadomy ruch użytkownika (dotknięcie, wysłanie). Wpisanie kodu z autouzupełnienia liczymy jako akcję i pole. Bez danych z eksperymentów nie podajemy prognoz konwersji.</p>
+    <div style="overflow-x: auto; border-radius: 16px; background: #fff; box-shadow: inset 0 0 0 1px #D3D9E1;">
+      <table style="width: 100%; min-width: 980px; border-collapse: collapse; font-size: 14px;">
+        <thead><tr style="text-align: left; border-bottom: 2px solid #152033;"><th scope="col" style="padding: 12px 14px;">Ścieżka</th><th scope="col" style="padding: 12px 8px;">Akcje</th><th scope="col" style="padding: 12px 8px;">Pola</th><th scope="col" style="padding: 12px 8px;">Przejścia</th><th scope="col" style="padding: 12px 8px;">Auth</th><th scope="col" style="padding: 12px 8px;">Intencja</th><th scope="col" style="padding: 12px 8px;">Tarcie</th><th scope="col" style="padding: 12px 14px;">Wymagane · opcjonalne</th></tr></thead>
+        <tbody>
+          <sc-for list="{{ gate }}" as="r" hint-placeholder-count="7">
+            <tr style="border-bottom: 1px solid #E3E7ED; vertical-align: top;">
+              <td style="padding: 12px 14px; font-weight: 700;">{{ r.path }}<span style="display: block; font-weight: 500; color: #4A5466;">{{ r.steps }}</span></td>
+              <td style="padding: 12px 8px; font-size: 18px; font-weight: 800;">{{ r.a }}</td>
+              <td style="padding: 12px 8px;">{{ r.i }}</td>
+              <td style="padding: 12px 8px;">{{ r.t }}</td>
+              <td style="padding: 12px 8px;">{{ r.auth }}</td>
+              <td style="padding: 12px 8px;">{{ r.intent }}</td>
+              <td style="padding: 12px 8px;"><span style="{{ r.fStyle }}">{{ r.f }}</span></td>
+              <td style="padding: 12px 14px; color: #3A4456;">{{ r.req }}</td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 20px;">
+      <sc-for list="{{ notes }}" as="n" hint-placeholder-count="3">
+        <div style="padding: 18px; border-radius: 16px; background: #fff; box-shadow: inset 0 0 0 1px #D3D9E1;">
+          <h3 style="margin: 0 0 10px; font-size: 17px;">{{ n.title }}</h3>
+          <ul style="margin: 0; padding-left: 18px; display: grid; gap: 7px; font-size: 14px; line-height: 1.5;">
+            <sc-for list="{{ n.items }}" as="x" hint-placeholder-count="4"><li>{{ x }}</li></sc-for>
+          </ul>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- PART D -->
+  <section data-screen-label="Krytyka i handoff" style="max-width: 1240px; margin: 0 auto; padding: 56px 28px 96px;">
+    <h2 style="margin: 0 0 6px; font-size: 28px; letter-spacing: -.015em;">Część D — krytyka, naprawy, handoff</h2>
+    <p style="margin: 0 0 18px; font-size: 15.5px; color: #3A4456; max-width: 76ch;">Jedna runda krytyki z czterech perspektyw po zbudowaniu kierunków i ścieżki. Naprawy są już naniesione w plikach.</p>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 16px; margin-bottom: 28px;">
+      <sc-for list="{{ critique }}" as="c" hint-placeholder-count="4">
+        <div style="padding: 18px; border-radius: 16px; background: #fff; box-shadow: inset 0 0 0 1px #D3D9E1; display: grid; gap: 8px; align-content: start;">
+          <h3 style="margin: 0; font-size: 16.5px;">{{ c.title }}</h3>
+          <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #3A4456;">{{ c.finding }}</p>
+          <p style="margin: 0; font-size: 14px; line-height: 1.5;"><strong>Naprawa:</strong> {{ c.fix }}</p>
+        </div>
+      </sc-for>
+    </div>
+    <div style="padding: 18px 20px; border-radius: 16px; background: #fff; box-shadow: inset 0 0 0 1px #D3D9E1; margin-bottom: 28px;">
+      <h3 style="margin: 0 0 10px; font-size: 17px;">Wyszukiwanie: zdanie vs pola vs dzielnica-pierwsza</h3>
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; min-width: 760px; border-collapse: collapse; font-size: 14px;">
+          <thead><tr style="text-align: left; border-bottom: 2px solid #152033;"><th scope="col" style="padding: 10px 8px 10px 0;">Kryterium</th><th scope="col" style="padding: 10px 8px;">Zdanie (1a)</th><th scope="col" style="padding: 10px 8px;">Pola (1b)</th><th scope="col" style="padding: 10px 8px;">Dzielnica-pierwsza (1c)</th></tr></thead>
+          <tbody><sc-for list="{{ searchCmp }}" as="r" hint-placeholder-count="5"><tr style="border-bottom: 1px solid #E3E7ED; vertical-align: top;"><td style="padding: 10px 8px 10px 0; font-weight: 700;">{{ r.k }}</td><td style="padding: 10px 8px;">{{ r.a }}</td><td style="padding: 10px 8px;">{{ r.b }}</td><td style="padding: 10px 8px;">{{ r.c }}</td></tr></sc-for></tbody>
+        </table>
+      </div>
+      <p style="margin: 12px 0 0; font-size: 14px; line-height: 1.5;"><strong>Wniosek bez wybierania kierunku:</strong> pod spodem zawsze te same pola (miasto, dzielnice, budżet łączny, pokoje). Zdanie i mozaika to tylko prezentacja na desktopie; na telefonie każdy kierunek otwiera ten sam arkusz pól. Dzięki temu wybór kierunku nie zmienia kontraktu wyszukiwania.</p>
+    </div>
+    <h3 style="margin: 0 0 10px; font-size: 17px;">DESIGN-001B HANDOFF FOR GPT-5.6 SOL / FOUNDER</h3>
+    <pre style="margin: 0; padding: 20px; border-radius: 16px; background: #152033; color: #E8EDF5; font: 13px/1.6 ui-monospace, Menlo, monospace; overflow-x: auto;">{{ handoff }}</pre>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1240}}">
+class Component extends DCLogic {
+  DEF_CHAT = 'Dzień dobry, interesuje mnie to mieszkanie na Zabłociu. Czy mogę je obejrzeć w najbliższych dniach?';
+  state = { device: 'mobile', auth: 'out', provider: 'slots', edge: 'none', step: 'idle', pending: 'viewing', slot: null, taken: [], takenMsg: null, actions: 0, transitions: 0, name: '', email: '', code: '', codeTries: 0, codeError: false, google: false, chat: this.DEF_CHAT, chatChip: 0, chatEdited: false, wins: [], offlineMsg: false, events: [] };
+
+  SLOTS = [['pon 5 paź', '18:00'], ['wt 6 paź', '18:30'], ['czw 8 paź', '17:30'], ['sob 10 paź', '10:00']];
+
+  ev = (s, name) => (s.events.indexOf(name) >= 0 && name === 'contact_started') ? s.events : s.events.concat(name);
+  act = (fn) => this.setState(s => Object.assign({ actions: s.actions + 1 }, fn(s)));
+  reset = () => this.setState({ step: 'idle', pending: 'viewing', slot: null, taken: [], takenMsg: null, actions: 0, transitions: 0, name: '', email: '', code: '', codeTries: 0, codeError: false, google: false, chat: this.DEF_CHAT, chatChip: 0, chatEdited: false, wins: [], offlineMsg: false, events: [] });
+
+  finish = (s, extra) => {
+    const evs = s.pending === 'chat' ? ['conversation_started'] : (s.pending === 'request' ? ['viewing_requested', 'conversation_started'] : ['viewing_requested', 'viewing_confirmed', 'conversation_started']);
+    return Object.assign({ step: 'done', events: s.events.concat(evs) }, extra || {});
+  };
+
+  renderVals() {
+    const s = this.state;
+    const mobile = s.device === 'mobile', out = s.auth === 'out';
+    const withdrawn = s.edge === 'withdrawn';
+    const seg = (on) => 'height:30px;padding:0 11px;border-radius:7px;border:0;font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;' + (on ? 'background:#152033;color:#fff;' : 'background:transparent;color:#3A4456;');
+    const opt = (key, val, label) => ({ label, on: s[key] === val, style: seg(s[key] === val), pick: () => { this.reset(); this.setState({ [key]: val }); } });
+    const controls = [
+      { label: 'Urządzenie', opts: [opt('device', 'mobile', 'Telefon'), opt('device', 'desktop', 'Desktop')] },
+      { label: 'Użytkownik', opts: [opt('auth', 'in', 'Zalogowany'), opt('auth', 'out', 'Gość')] },
+      { label: 'Wynajmujący', opts: [opt('provider', 'slots', 'Publikuje terminy'), opt('provider', 'noslots', 'Bez terminów')] },
+      { label: 'Sytuacja', opts: [opt('edge', 'none', 'Normalnie'), opt('edge', 'taken', 'Termin zajęty'), opt('edge', 'withdrawn', 'Wycofana'), opt('edge', 'offline', 'Offline'), opt('edge', 'codeErr', 'Zły kod'), opt('edge', 'already', 'Już umówione')] }
+    ];
+
+    const sheetOpen = s.step !== 'idle';
+    const stageStyle = mobile
+      ? 'flex:none;width:390px;height:800px;border-radius:44px;overflow:hidden;position:relative;background:#F4F6F9;box-shadow:0 0 0 10px #141414,0 30px 70px rgba(20,20,20,.25);'
+      : 'flex:1 1 820px;min-width:0;max-width:880px;border-radius:18px;overflow:hidden;position:relative;background:#F4F6F9;box-shadow:0 20px 50px rgba(20,20,20,.14);';
+    const gridStyle = mobile ? 'position:relative;height:100%;' : 'display:grid;grid-template-columns:minmax(0,1fr) 360px;align-items:start;';
+    const contentStyle = mobile ? 'height:100%;overflow-y:auto;padding-bottom:230px;box-sizing:border-box;' : 'min-width:0;';
+    const photoStyle = mobile ? 'height:250px;background:#DCE1E8;' : 'height:380px;background:#DCE1E8;';
+    const railStyle = mobile
+      ? 'position:absolute;left:0;right:0;bottom:0;z-index:5;background:#fff;border-radius:22px 22px 0 0;box-shadow:0 -10px 30px rgba(21,32,51,.14);padding:12px 18px 30px;max-height:84%;overflow-y:auto;box-sizing:border-box;'
+      : 'position:sticky;top:0;background:#fff;border-left:1px solid #DCE1E8;padding:22px;min-height:620px;box-sizing:border-box;';
+
+    const slotOn = 'background:#152033;color:#fff;box-shadow:none;';
+    const slotOff = 'background:#fff;color:#152033;box-shadow:inset 0 0 0 1.5px #152033;';
+    const slots = this.SLOTS.map(([day, time], i) => {
+      const off = s.taken.indexOf(i) >= 0;
+      return {
+        day, time, short: day.split(' ')[0] + ' ' + time, off, aria: (off ? 'Zajęty: ' : 'Wybierz termin ') + day + ', ' + time,
+        style: 'flex:none;min-width:92px;min-height:56px;padding:6px 12px;border-radius:14px;border:0;font:inherit;text-align:left;cursor:pointer;' + (off ? 'opacity:.4;text-decoration:line-through;cursor:not-allowed;' + slotOff : (s.slot === i ? slotOn : slotOff)),
+        pick: () => { if (off || withdrawn) return; this.act(st => ({ slot: i, step: 'confirm', pending: 'viewing', takenMsg: st.step === 'confirm' ? st.takenMsg : null, offlineMsg: false, events: this.ev(st, 'contact_started') })); }
+      };
+    });
+    const slotsMini = slots.map(x => Object.assign({}, x, {
+      style: 'height:40px;padding:0 12px;border-radius:999px;border:0;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;' + (x.off ? 'opacity:.4;text-decoration:line-through;' + slotOff : (s.slot === this.SLOTS.findIndex(z => z[0] === x.day) ? slotOn : slotOff))
+    }));
+    const slotLabel = s.slot != null ? this.SLOTS[s.slot][0] + ', ' + this.SLOTS[s.slot][1] : '';
+
+    const nameOk = s.name.trim().length > 0, mailOk = /.+@.+\..+/.test(s.email);
+    const confirmDisabled = out ? !(nameOk && mailOk) : false;
+    const primary = (dis) => 'height:54px;border-radius:14px;border:0;font:inherit;font-size:16px;font-weight:800;cursor:pointer;' + (dis ? 'background:#C5CCD6;color:#4A5466;cursor:not-allowed;' : 'background:#152033;color:#fff;');
+
+    const confirm = () => {
+      if (s.edge === 'offline' && !s.offlineMsg) { this.act(() => ({ offlineMsg: true })); return; }
+      if (s.edge === 'taken' && s.taken.length === 0) {
+        const next = [0, 1, 2, 3].find(i => i !== s.slot);
+        this.act(() => ({ taken: [s.slot], takenMsg: this.SLOTS[s.slot][0] + ', ' + this.SLOTS[s.slot][1], slot: next }));
+        return;
+      }
+      if (out) { this.act(st => ({ step: 'code', events: st.events.concat('auth_started') })); return; }
+      this.act(st => this.finish(st));
+    };
+
+    const google = () => this.act(st => ({ step: 'google', transitions: st.transitions + 1, events: st.events.concat('auth_started') }));
+    const pickAccount = () => this.act(st => this.finish(st, { google: true, name: 'Anna', email: 'anna.k@gmail.com', events: st.events.concat('auth_completed') }));
+
+    const submitCode = (val) => {
+      if (val.length < 6) { this.setState({ code: val }); return; }
+      this.act(st => {
+        if (st.edge === 'codeErr' && st.codeTries === 0) return { code: '', codeTries: 1, codeError: true };
+        const done = this.finish(st);
+        done.events = st.events.concat('auth_completed').concat(done.events.slice(st.events.length));
+        return Object.assign(done, { code: val, codeError: false });
+      });
+    };
+
+    const chatTexts = [
+      ['Chcę obejrzeć', this.DEF_CHAT],
+      ['Zwierzęta', 'Dzień dobry, czy w mieszkaniu na Zabłociu można mieszkać z kotem?'],
+      ['Media', 'Dzień dobry, z czego wynika szacunek mediów ~250 zł? Czy to dla dwóch osób?']
+    ];
+    const chatChips = chatTexts.map(([label, text], i) => ({
+      label, on: s.chatChip === i && !s.chatEdited,
+      style: 'height:40px;padding:0 14px;border-radius:999px;border:0;font:inherit;font-size:14px;font-weight:700;cursor:pointer;' + (s.chatChip === i && !s.chatEdited ? slotOn : slotOff),
+      pick: () => this.setState({ chat: text, chatChip: i, chatEdited: false })
+    }));
+
+    const winDefs = ['Dni robocze po 17:00', 'Dni robocze w ciągu dnia', 'Weekend przed 12:00', 'Weekend po 12:00'];
+    const windows = winDefs.map((label, i) => ({
+      label, on: s.wins.indexOf(i) >= 0,
+      style: 'min-height:48px;padding:0 14px;border-radius:12px;border:0;font:inherit;font-size:15px;font-weight:700;text-align:left;cursor:pointer;' + (s.wins.indexOf(i) >= 0 ? slotOn : slotOff),
+      pick: () => this.act(st => ({ wins: st.wins.indexOf(i) >= 0 ? st.wins.filter(x => x !== i) : st.wins.concat(i) }))
+    }));
+
+    const toAuthOrFinish = (pending) => this.act(st => {
+      const base = { pending };
+      if (out) return Object.assign(base, { step: 'auth' });
+      return Object.assign(base, this.finish(Object.assign({}, st, { pending })));
+    });
+
+    const typed = [s.name && !s.google, s.email && !s.google, s.code].filter(Boolean).length + (s.chatEdited ? 1 : 0);
+    const meters = [
+      { k: 'Akcje', v: String(s.actions) },
+      { k: 'Pola wpisane', v: String(typed) },
+      { k: 'Przejścia stron', v: String(s.transitions) },
+      { k: 'Auth w ścieżce', v: out ? 'tak, w arkuszu' : 'nie' },
+      { k: 'Intencja zachowana', v: 'tak' },
+      { k: 'Krok', v: { idle: 'oferta', confirm: 'potwierdzenie', auth: 'dane', code: 'kod', google: 'Google', chat: 'wiadomość', request: 'prośba', done: 'gotowe' }[s.step] }
+    ];
+
+    const pendingLabel = s.pending === 'chat' ? 'Twoja wiadomość' : (s.pending === 'request' ? 'Twoja prośba o oglądanie' : 'Twój termin');
+    const pendingPreview = s.pending === 'chat' ? '„' + s.chat + '”' : (s.pending === 'request' ? s.wins.map(i => winDefs[i]).join(', ') : slotLabel);
+    const pendingFinish = s.pending === 'chat' ? 'wyślemy wiadomość' : (s.pending === 'request' ? 'wyślemy prośbę' : 'oglądanie zostanie umówione');
+
+    const btnP = 'height:50px;border-radius:14px;border:0;background:#152033;color:#fff;font:inherit;font-size:15.5px;font-weight:800;';
+    const btnS = 'height:48px;border-radius:14px;border:1.5px solid #152033;background:#fff;font:inherit;font-size:15px;font-weight:700;';
+    let doneTitle = '', doneBody = '', doneActions = [];
+    if (s.pending === 'viewing') {
+      doneTitle = 'Oglądanie umówione';
+      doneBody = slotLabel + ' · ul. Lipowa 9, Zabłocie (adres przykładowy). Wynajmujący dostał powiadomienie. Jeśli odwoła, napiszemy i pokażemy inne terminy.';
+      doneActions = [{ label: 'Dodaj do kalendarza', style: btnP }, { label: 'Napisz do wynajmującego', style: btnS }, { label: 'Zmień lub odwołaj termin', style: btnS }];
+    } else if (s.pending === 'chat') {
+      doneTitle = 'Wiadomość wysłana';
+      doneBody = 'Rozmowa zawiera kartę oferty z kosztem i dostępnością. Odpowiedź zobaczysz w Wiadomościach i w mailu.';
+      doneActions = [{ label: 'Otwórz rozmowę', style: btnP }, { label: 'Wróć do oferty', style: btnS }];
+    } else {
+      doneTitle = 'Prośba wysłana';
+      doneBody = 'Wynajmujący widzi, kiedy ci pasuje: ' + s.wins.map(i => winDefs[i].toLowerCase()).join(', ') + '. Zaproponuje godzinę w rozmowie.';
+      doneActions = [{ label: 'Otwórz rozmowę', style: btnP }, { label: 'Wróć do oferty', style: btnS }];
+    }
+    const doneAccount = out ? (s.google ? 'Zalogowano przez Google — Homies zapisał tylko imię i e-mail.' : 'Konto utworzone na ' + s.email + ' — bez hasła. Następnym razem wystarczy kod.') : '';
+
+    const fStyle = k => 'display:inline-block;padding:3px 9px;border-radius:999px;font-size:12.5px;font-weight:800;' + (k === 'L' ? 'background:#CFF5E7;color:#0E4D38;' : (k === 'M' ? 'background:#FFF0D6;color:#7A4A00;' : 'background:#E3E7ED;color:#2B3446;'));
+    const gate = [
+      ['Zalogowany · terminy', 'termin → Potwierdź', '2', '0', '0', 'nie', 'tak', 'NISKIE', 'L', 'Wymagane: termin, potwierdzenie. Opcjonalne: zmiana danych, inny termin.'],
+      ['Gość · e-mail', 'termin + imię + e-mail → Wyślij kod → kod', '3', '3 (kod z autouzupełnienia)', '0', 'tak, w arkuszu', 'tak', 'ŚREDNIE', 'M', 'Wymagane: termin, imię, e-mail, kod. Imię jest potrzebne wynajmującemu; telefon nie.'],
+      ['Gość · Google', 'termin → Google → konto', '3', '0', '1 (okno Google)', 'tak', 'tak', 'NISKIE–ŚREDNIE', 'L', 'Wymagane: termin, wybór konta. Brak drugiego potwierdzenia — termin był wybrany przed logowaniem.'],
+      ['Napisz · zalogowany', 'Napisz → Wyślij', '2', '0 (treść podpowiedziana)', '0', 'nie', 'tak', 'NISKIE', 'L', 'Opcjonalne: podpowiedź, własna treść.'],
+      ['Napisz · gość', 'Napisz → Wyślij → Wyślij kod → kod', '4', '3', '0', 'tak, po napisaniu', 'tak', 'ŚREDNIE', 'M', 'Auth po treści, nie przed — wiadomość czeka.'],
+      ['Bez terminów', 'Poproś → okno czasowe → Wyślij', '3', '0', '0', 'nie', 'tak', 'NISKIE–ŚREDNIE', 'M', 'Wymagane: co najmniej jedno okno. Godzinę ustala wynajmujący.'],
+      ['Termin zajęty w trakcie', '… Potwierdź → (najbliższy zaznaczony) → Potwierdź', '+1', '0', '0', '—', 'tak', 'NISKIE', 'L', 'Bez powrotu do oferty; najbliższy wolny termin zaznaczony.']
+    ].map(([path, steps, a, i, t, auth, intent, f, fk, req]) => ({ path, steps, a, i, t, auth, intent, f, fStyle: fStyle(fk), req }));
+
+    const notes = [
+      { title: 'Czego celowo nie ma', items: ['Pośredniego „Umów oglądanie” — terminy same są przyciskami.', 'Wyboru kanału (telefon / wiadomość) — domyślnie rozmowa w Homies; ujawnienie numeru to decyzja wynajmującego (PROPOSED).', 'Hasła, rejestracji przed akcją, prośby o powiadomienia przed sukcesem.', 'Pola „wiadomość” przy oglądaniu — kontekst oferty dołączamy automatycznie.'] },
+      { title: 'Dlaczego nie 1 akcja', items: ['Jedno dotknięcie = rezerwacja grozi pomyłką na telefonie i udostępnia imię bez świadomej zgody.', 'Potwierdzenie pokazuje termin, koszt i to, co zobaczy wynajmujący — to jedyny krok, który chroni przed błędem.', 'Dla gościa logowanie łączy się z potwierdzeniem: kod kończy rezerwację sam.'] },
+      { title: 'Stany brzegowe w prototypie', items: ['Termin zajęty między wyborem a potwierdzeniem → komunikat + najbliższy wolny.', 'Oferta wycofana → akcje wyłączone, podobne w okolicy.', 'Offline → wybór zachowany, ponowienie bez utraty danych.', 'Zły / wygasły kod → nowy kod, ten sam arkusz.', 'Już umówione → wybór innego terminu przenosi oglądanie.'] }
+    ];
+
+    const critique = [
+      { title: 'Marka: czy wygląda jak generyczne AI?', finding: '1c groziło „kolorowym dashboardem” przez pastelowe karty; 1b przez mono w nadmiarze; 1a było najbezpieczniej odróżnione.', fix: '1c: kolor tylko w etykiecie dzielnicy, pasku kosztu i obszarze mapy — karty białe. 1b: mono tylko dla etykiet i numerów, sumy w Plex Sans.' },
+      { title: 'Rynek: czy da się szybko porównać?', finding: 'Zdanie-wyszukiwarka 1a i duże serify obniżały gęstość wyników; 1c karty-pocztówki pokazują 4 oferty na ekran.', fix: 'Suma zawsze w tej samej pozycji w każdym kierunku; 1b dodało zł/m² i tabelę indeksu; mobile 1b pozostaje najgęstsze.' },
+      { title: 'Konwersja: który krok można usunąć?', finding: 'Pierwsza wersja miała „Umów oglądanie” → lista terminów → potwierdź → logowanie → potwierdź ponownie.', fix: 'Usunięty CTA pośredni i drugie potwierdzenie po logowaniu. Gość: 3 akcje zamiast 5.' },
+      { title: 'Zaufanie: czy coś wprowadza w błąd?', finding: 'Kafelki 1c z „od X zł” mogą sugerować dane rynkowe; kolor dzielnicy może sugerować ocenę; „wynajmujący odpowiada zwykle w…” nie ma danych.', fix: 'Agregaty oznaczone jako PROPOSED backend; legenda „kolor oznacza dzielnicę, nie ocenę”; usunięte obietnice czasu odpowiedzi.' }
+    ];
+
+    const searchCmp = [
+      { k: 'Szybkość', a: 'Średnia — trzy pola w zdaniu, otwierane osobno.', b: 'Najwyższa — znany wzorzec, Tab przez pola.', c: 'Wysoka dla osób, które znają dzielnice; niska dla przyjezdnych.' },
+      { k: 'Zrozumienie', a: 'Bardzo dobre — czyta się jak intencja.', b: 'Dobre — etykiety nad polami.', c: 'Dobre lokalnie; wymaga wiedzy o mieście.' },
+      { k: 'Telefon', a: 'Zdanie łamie się na wiele linii — na mobile arkusz pól.', b: 'Arkusz pól bez zmian.', c: 'Przewijane chipy dzielnic + arkusz pól.' },
+      { k: 'Dostępność', a: 'Wymaga przycisków z pełną etykietą wewnątrz zdania.', b: 'Najprostsza: label + input.', c: 'Chipy jako aria-pressed; kolor nigdy jedynym nośnikiem.' },
+      { k: 'Rozszerzalność', a: 'Słaba — czwarte kryterium psuje zdanie.', b: 'Najlepsza.', c: 'Dobra dla lokalizacji, reszta w filtrach.' }
+    ];
+
+    const handoff = [
+      'art_directions:',
+      '  direction_1:',
+      '    name: 1a Kamienica — redakcyjna użyteczność',
+      '    idea: cost as a headline; serif display + sans UI; rules instead of cards; asymmetric 7/5',
+      '    strength: most distinct from Polish portals; cost becomes the hero; strong photography',
+      '    risk: serif below 20px unreadable (prices <20px sans only); sentence search hard to extend; may read as magazine',
+      '    implementation_complexity: low–medium (Instrument Serif + Instrument Sans, ~110 kB)',
+      '  direction_2:',
+      '    name: 1b Rzut — arkusz techniczny',
+      '    idea: listing as a technical sheet; cost as a dimension string (solid=fixed, hatched=estimate, outline=refundable)',
+      '    strength: best comparison (table, zł/m²); meaning carried by pattern, not colour',
+      '    risk: cold/technical for ordinary renters; density on mobile; mono with long Polish words',
+      '    implementation_complexity: medium (one proportional bar component; index table needs a mobile form)',
+      '  direction_3:',
+      '    name: 1c Dzielnica — atlas miasta',
+      '    idea: place-first; each district has a colour carried through tiles, cards, map and detail',
+      '    strength: most recognisable/brandable; natural district SEO pages; least precise-looking location',
+      '    risk: per-city palette to maintain; colour may imply district rating; needs aggregate endpoint',
+      '    implementation_complexity: medium–high (palette per city, aggregates, mosaic)',
+      '',
+      'conversion:',
+      '  target: listing detail → viewing confirmed in ≤3 meaningful actions incl. auth',
+      '  shortest_flow: tap published slot → Potwierdź (logged in)',
+      '  action_count: 2 logged in · 3 guest (email or Google) · 2 message · 3 no-slot request',
+      '  manual_input_count: 0 logged in · 3 guest email (name, email, OTP autofill) · 0 Google',
+      '  page_transition_count: 0 (sheet on mobile, rail on desktop) · 1 for Google OAuth window',
+      '  auth_strategy: progressive, inside the confirm sheet; passwordless email OTP or Google; completing auth completes the pending action (viewing/message/request) without re-confirm',
+      '  mobile_strategy: slot dock in thumb zone; bottom sheet max 84% height; no full-page navigation; back closes sheet, keeps selection',
+      '  trust_tradeoffs: confirm step kept (prevents mis-tap, consent to share name); exact address only after confirmation; no response-time or scarcity claims',
+      '',
+      'signature_components:',
+      '  - Cost Signature (total first, components in one line, ~ = estimate)',
+      '  - Move-in block with refundable deposit visually separated (dashed outline / "zwrotna")',
+      '  - Freshness line: relative + absolute date; older = neutral wording, never alarm colour',
+      '  - Approximate location: radius/area + district name, never a pin',
+      '  - Housing Truth Summary "W skrócie": monthly, move-in, available, confirmed, area',
+      '  - FE-003 CTA system: slots-as-buttons + secondary "Napisz"',
+      '',
+      'validated_ux_preserved:',
+      '  - Seeker v1 IA, filters, map/list sync, responsive rules, 11 states, a11y behaviours (53/53)',
+      '  - total monthly cost as primary price signal on card, marker and detail',
+      '  - approximate location only; list never depends on map',
+      '',
+      'proposed_product_changes:',
+      '  - provider-published viewing slots with auto-confirm (provider may cancel)',
+      '  - passwordless auth at moment of intent (email OTP + Google)',
+      '  - conversation auto-created with listing context card on viewing/message',
+      '  - exact address revealed to seeker after confirmed viewing',
+      '  - district aggregates (count, min total, last confirmation) — only if 1c chosen',
+      '',
+      'backend_requirements_for_FE003:',
+      '  - ViewingSlot resource (provider-defined, capacity 1, optimistic hold during confirm)',
+      '  - slot conflict response (409) with nearest free alternatives',
+      '  - OTP auth endpoint + intent token that survives auth (pending action id)',
+      '  - Conversation create with listing snapshot (title, total, availability, freshness)',
+      '  - viewing request without slots (time windows) → conversation',
+      '  - listing withdrawn event pushed to open detail pages',
+      '',
+      'analytics_events:',
+      '  - listing_viewed',
+      '  - contact_started (first slot tap or Napisz)',
+      '  - auth_started / auth_completed (main abandonment point for guests)',
+      '  - viewing_requested · viewing_confirmed',
+      '  - conversation_started (first message delivered)',
+      '  - housing_outcome (post-viewing prompt, later)',
+      '  friction_indicators: slot_conflict_shown, auth_abandoned, code_retry',
+      '',
+      'do_not_implement_yet:',
+      '  - any FE-003 screen in this file (slots, chat, OTP) — design semantics only',
+      '  - district colour system and aggregates',
+      '  - final visual direction tokens (until founder decision)',
+      '',
+      'founder_decisions_required:',
+      '  - select final art direction (1a / 1b / 1c or a stated hybrid)',
+      '  - approve future conversion-flow semantics (auto-confirm slots, auth timing)',
+      '  - approve any new backend/product capabilities above',
+      '',
+      'review_questions:',
+      '  - Which visual direction is strongest for Homies?',
+      '  - Does any direction still look generically AI-generated?',
+      '  - Can the conversion journey be reduced further?',
+      '  - Is any friction removal unsafe or misleading?',
+      '  - Does the design support the liquidity/matching strategy?',
+      '  - Is the selected direction ready to become the FE-002 visual source?'
+    ].join('\n');
+
+    return {
+      controls, reset: this.reset,
+      stageStyle, gridStyle, contentStyle, photoStyle, railStyle,
+      isDesktop: !mobile, showScrim: mobile && sheetOpen, showGrabber: mobile,
+      railRole: sheetOpen ? 'dialog' : 'region', railLabel: sheetOpen ? 'Akcja dla oferty' : 'Oglądanie i kontakt',
+      closeSheet: () => this.setState({ step: 'idle', takenMsg: null, offlineMsg: false }),
+      isIdle: s.step === 'idle', isConfirm: s.step === 'confirm', isAuth: s.step === 'auth', isCode: s.step === 'code', isGoogle: s.step === 'google', isChat: s.step === 'chat', isRequest: s.step === 'request', isDone: s.step === 'done',
+      isWithdrawn: withdrawn, isAlready: s.edge === 'already' && !withdrawn,
+      showSlots: s.provider === 'slots' && !withdrawn, showRequest: s.provider === 'noslots' && !withdrawn, canContact: !withdrawn,
+      slotsWrap: mobile ? 'display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;' : 'display:grid;grid-template-columns:1fr 1fr;gap:8px;',
+      slots, slotsMini, slotLabel,
+      takenMsg: !!s.takenMsg, takenLabel: s.takenMsg || '',
+      isIn: !out, isOut: out,
+      name: s.name, email: s.email, code: s.code, chat: s.chat,
+      setName: e => this.setState({ name: e.target.value }),
+      setEmail: e => this.setState({ email: e.target.value }),
+      setCode: e => submitCode(e.target.value.replace(/\D/g, '').slice(0, 6)),
+      pasteCode: () => submitCode('482913'),
+      setChat: e => this.setState({ chat: e.target.value, chatEdited: true }),
+      offlineMsg: s.offlineMsg, codeError: s.codeError,
+      confirm, confirmDisabled, primaryStyle: primary(confirmDisabled),
+      confirmLabel: out ? 'Wyślij kod i umów ' + slotLabel : (s.offlineMsg ? 'Spróbuj ponownie' : 'Potwierdź ' + slotLabel),
+      google, pickAccount,
+      sendCode: () => { if (!(nameOk && mailOk)) return; this.act(st => ({ step: 'code', events: st.events.concat('auth_started') })); },
+      authDisabled: !(nameOk && mailOk), primaryAuthStyle: primary(!(nameOk && mailOk)),
+      openChat: () => this.act(st => ({ step: 'chat', pending: 'chat', events: this.ev(st, 'contact_started') })),
+      chatChips, sendChat: () => toAuthOrFinish('chat'),
+      openRequest: () => this.act(st => ({ step: 'request', pending: 'request', events: this.ev(st, 'contact_started') })),
+      windows, requestDisabled: s.wins.length === 0, primaryReqStyle: primary(s.wins.length === 0),
+      sendRequest: () => { if (s.wins.length) toAuthOrFinish('request'); },
+      pendingLabel, pendingPreview, pendingFinish,
+      doneTitle, doneBody, doneActions, doneAccount,
+      meters, events: s.events, noEvents: s.events.length === 0,
+      gate, notes, critique, searchCmp, handoff
+    };
+  }
+}
+</script>
+</body>
+</html>

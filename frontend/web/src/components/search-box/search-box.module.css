@@ -1,15 +1,5 @@
-.box {
-  display: grid;
-  gap: var(--sp-3);
-  padding: var(--sp-4);
-  background: var(--c-surface);
-  border: var(--bw, 1px) solid var(--c-line);
-  border-radius: var(--r-lg);
-  margin-bottom: var(--sp-5);
-}
-.box :global(.field) { margin: 0; }
-.box button { min-height: 48px; }
-
-@media (min-width: 768px) {
-  .box { grid-template-columns: 2fr 1.4fr auto; align-items: end; }
-}
+.box { display: grid; gap: var(--sp-4); padding: var(--sp-5); background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 20px; margin-bottom: var(--sp-5); box-shadow: 0 8px 24px rgb(18 18 18 / 3%); }
+.box :global(.field) { margin: 0; min-width: 0; }
+.box :global(.input) { min-height: 52px; }
+.box button { min-height: 52px; padding-inline: var(--sp-6); border-radius: var(--r-pill); }
+@media (min-width: 768px) { .box { grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) auto; align-items: end; } }

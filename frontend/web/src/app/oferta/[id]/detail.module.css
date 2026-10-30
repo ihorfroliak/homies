@@ -40,3 +40,17 @@
 .breakdown dt { color: var(--c-ink-700); }
 .breakdown dd { margin: 0; color: var(--c-ink-900); text-align: right; }
 .strong { border-top: var(--bw, 1px) solid var(--c-line); padding-top: var(--sp-2); font-weight: 700; }
+
+/* 001C: hierarchy and surfaces only; every amount still comes from the API. */
+.page { padding-top: var(--sp-6); }
+.header { margin-bottom: var(--sp-5); }
+.title { font-size: clamp(1.75rem, 3.2vw, 2.5rem); font-weight: 800; letter-spacing: -.035em; max-width: 32ch; }
+.place { margin-top: var(--sp-3); font-weight: 600; }
+.section { padding-block: var(--sp-4); border-bottom: 1px solid var(--c-line); }
+.facts { gap: var(--sp-5); }
+.costs, .contact { padding: var(--sp-5); border-radius: 20px; }
+.total { font-size: 1.875rem; font-weight: 800; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+.breakdown { gap: var(--sp-3); }
+.breakdown div { flex-wrap: wrap; }
+.breakdown dd { margin-left: auto; font-variant-numeric: tabular-nums; }
+.strong { padding-top: var(--sp-4); }
