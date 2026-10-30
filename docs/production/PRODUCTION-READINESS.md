@@ -15,6 +15,21 @@ production environment exists.
 > no row became READY through this reconciliation. Current state:
 > [PROJECT-STATUS](../PROJECT-STATUS.md).
 
+> **Fact reconciliation (DEVOPS-FOUNDATION-001 Gate B, 2026-10-30) — source
+> facts at `4f2fc434`, no status changed, nothing re-measured.** The schema
+> now has 30 Alembic revisions with one head `23e89acb98b4`; 7 steps are
+> BARRIER; the release manifest (BP-5) is BARRIER / rollback BLOCKED. The
+> "24 migrations" in row 1 is the PR-001 measurement of its time. CI on
+> `4f2fc434` was observed through the GitHub API: six checks success (run
+> `40177245824`); row 2's "no run observed" was the PR-001 builder's
+> situation. Background workers run inside the API process (lifespan) with
+> notification and saved-search on by default — there is no standalone
+> worker executable. Configuration not listed in §2 (`TRUSTED_PROXY_CIDRS`,
+> `PUBLIC_WEB_BASE_URL`, `SAVED_SEARCH_*`, the `GIT_SHA` build argument and
+> the web variables) is in [ENVIRONMENT-MATRIX](ENVIRONMENT-MATRIX.md).
+> Private-alpha and staging designs (proposals, not provisioned):
+> [STAGING-ARCHITECTURE](STAGING-ARCHITECTURE.md).
+
 *As first written (2026-09-29):* Baseline: accepted Phase-1A SHA
 `879bf56cd7bb497fd77d8140fc1443fe9d61c1fe` (TASK-012). TASK-013 is under
 audit and is not part of this baseline. PR-001 → PR-001A → PR-001R →
@@ -45,7 +60,7 @@ Nothing is READY without evidence named in the row.
 | 13 | Restore drill | **PARTIAL** | Mandatory on every CI build (PR-001R F7: `HOMIES_REQUIRE_RESTORE_DRILL=1` turns missing `pg_dump`/`pg_restore`/database into a red run; skips are listed with `-rs`): legacy drill (`test_dr_restore_pg.py`) and Phase-1A drill (`test_dr_restore_phase1_pg.py`). Disposable databases only — see BACKUP-RESTORE.md for what this does not prove |
 | 14 | RPO / RTO | **MISSING** | **CANONICAL DECISION REQUIRED** (§4) |
 | 15 | Rollback | **PARTIAL** | Explicit per-release rollback declaration and a machine check (PR-002, RELEASE-AND-MIGRATION.md); runbook outline §5. Gap: no image registry, no staging rehearsal; several destructive downgrades |
-| 16 | Staging | **MISSING** | No staging environment |
+| 16 | Staging | **MISSING** | No staging environment. Design only (not provisioned): [STAGING-ARCHITECTURE](STAGING-ARCHITECTURE.md), [STAGING-RUNBOOK](STAGING-RUNBOOK.md) |
 | 17 | Smoke test | **PARTIAL** | Local production-image smoke matrix (PR-001R, §6). Gap: no scripted post-deploy smoke test against an environment |
 | 18 | Load / capacity | **NOT ASSESSED** | Only diagnostic EXPLAIN on ~5 000 synthetic listings (TASK-013 branch) |
 | 19 | Security | **PARTIAL** | Independent audits of the foundation and each slice; rate limiting; privacy tests; pip-audit; gitleaks. Gap: no external penetration test, no TLS/ingress config, no WAF decision |

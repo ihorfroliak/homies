@@ -1461,3 +1461,18 @@ PR10's first final candidate hit a test-only authentication frame-queue race
 the failure; awaiting the registered frame passes, with all original assertions
 and product code unchanged. R1 helper repair: 206/206 local units, typecheck and
 lint passed; new exact-head Linux CI required. Historical failure is retained.
+
+## 2026-10-30 — DEVOPS-FOUNDATION-001 Gate B (документація, без розгортання)
+
+Документаційний пакет для private alpha і майбутнього staging на `main`
+`4f2fc434`: SYSTEM-PASSPORT, STAGING-ARCHITECTURE, ENVIRONMENT-MATRIX,
+STAGING-RUNBOOK, DEPLOYMENT-CHECKLIST, DEVELOPER-ONBOARDING і чотири
+Mermaid-діаграми. PRODUCTION-READINESS отримав лише звірку фактів (30
+міграцій, head `23e89acb98b4`, 7 BARRIER, workers у процесі API); статуси не
+змінено. Ключові факти з коду: workers запускає FastAPI lifespan (окремого
+виконуваного worker немає); backend довіряє `X-Forwarded-For` лише від peer у
+`TRUSTED_PROXY_CIDRS` і на `TRUST_PROXY_HOPS`; seed синтетики потребує dev
+extras і `ENV=test` + БД `*_e2e`; web Dockerfile відсутній. Нічого не
+створено, не куплено й не розгорнуто; RPO ≤ 15 хв / RTO ≤ 4 год — лише
+запропоновані цілі. Наступне: HOMIES PRIVATE ALPHA — FIRST BROWSER ACCESS
+(Gate D, потребує окремого дозволу).

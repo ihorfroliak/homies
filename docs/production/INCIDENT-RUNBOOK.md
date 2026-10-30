@@ -95,3 +95,36 @@ answering; workers back off; nothing needs a restart when the database returns.
   revision. Exit 3 — post-verify failed (lineage or grants); do not roll
   replicas.
 * Policy and commands: [RELEASE-AND-MIGRATION.md](RELEASE-AND-MIGRATION.md).
+
+## Session compromise — stolen or misused account session (DEVOPS-FOUNDATION-001)
+
+Outline for today's mechanism; the durable fix (server-side logout, refresh
+families, reuse detection) is owned by Task Contract SEC-SESSION-001. Facts at
+`4f2fc434`: refresh tokens are opaque, stored only as hashes in
+`refresh_tokens` (`user_id`, `expires_at`, `revoked_at`), rotated on every
+refresh with no family link and no reuse detection; access tokens are JWTs
+valid until expiry (`ACCESS_TOKEN_TTL_SECONDS`, default 30 min); there is no
+logout or revocation endpoint — web logout only clears this device's cookies.
+
+1. **Detect and scope.** Signals: the user's report, a moderation report,
+   unexpected actions in the audit log, an unusual request pattern by
+   `X-Request-ID`. Identify the affected account(s) and the time window.
+2. **Preserve evidence first.** Export the relevant application logs and audit
+   rows before any change. Never copy raw tokens, cookies or message bodies
+   into tickets or chat.
+3. **Revoke.** Mark every non-revoked `refresh_tokens` row of the affected
+   user as revoked. This is a production data mutation: the founder approves
+   it, a DBA runs it as a reviewed, single-user statement, and the change is
+   recorded. Already issued access tokens stay valid until they expire (≤ 30
+   min). If that window is unacceptable, rotating `JWT_SECRET` invalidates
+   **every** user's access token at once (everyone silently refreshes; refresh
+   tokens are unaffected) — a founder decision.
+4. **Check the other devices.** Every session of the user is revoked by
+   step 3; the user signs in again on each device. No other user is affected
+   unless `JWT_SECRET` was rotated.
+5. **Re-authorise.** The user changes the password (if credentials were the
+   cause) and signs in again; review recent conversations, viewings, reveals
+   and authority actions for misuse and reverse them through the normal flows.
+6. **Record.** Incident record: scope, window, actions, evidence location,
+   whether personal data was exposed — a possible personal-data breach needs
+   legal assessment of notification duties (GDPR) without delay.
