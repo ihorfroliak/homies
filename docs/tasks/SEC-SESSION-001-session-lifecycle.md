@@ -1,7 +1,7 @@
 # SEC-SESSION-001 — Backend session security and refresh-token lifecycle
 
 Status: **PROPOSED TASK CONTRACT — implementation NOT authorized.** Prepared
-2026-10-30 at the founder's request (documentation only). Base: `main`
+2026-10-30 at the founder's request (documentation only); refined the same day with the founder-facing FD proposals. Base: `main`
 `4f2fc43457dfc82d07e42ac3418a1b649cbe3fb4`. Priority P0: closes BG-1 and BG-5, the FE-003
 beta blockers BB-1/BB-2 ([FE-003 contract §10](FE-003-save-conversation-viewing-DRAFT.md)). Proposed sole writer: Claude Code (identity
 and BFF session form one bounded context). Risk class R3 — authentication
@@ -84,6 +84,10 @@ One transaction, in this order:
 4. Token **rotated** → §3.4 (retry or reuse).
 5. Any exception rolls the whole transaction back: nothing rotated, the
    presented token stays live, and a retry is an ordinary refresh.
+6. **Revocations persist even though the answer is 401.** A decision to revoke
+   (`REUSE_DETECTED`, `IDLE_EXPIRED`, `ABSOLUTE_EXPIRED`) is committed before
+   the 401 is raised. The request's session dependency must not roll it back
+   (T20 asserts the row state after the 401).
 
 Legacy token (`session_id IS NULL`, issued before this release): lock the
 token row, create a session with `absolute_expires_at = token.expires_at` (no
@@ -106,36 +110,79 @@ plus at most one.
 
 ### 3.4 Replay detection, lost responses and the BFF binding (BG-5)
 
-* **Rotation key.** For every refresh attempt the BFF generates a random
-  128-bit key and sends it as `Idempotency-Key`. The key lives only in that
-  BFF process's memory for the attempt — never in a cookie, the browser or a
-  log. The backend stores only its hash on the rotated token.
-* **Retry path.** The same token arrives with the same key, within
-  `REFRESH_RETRY_WINDOW` (proposed 30 s, ≥ 2 × `API_TIMEOUT_MS`), while the
-  successor has never been used. This is a lost response: revoke the unused
-  successor (`SUPERSEDED_BY_RETRY`), issue a fresh one, and return it. A thief
-  holding only the old token does not know the key, so this is not an
-  unauthenticated grace. The BFF retries a timed-out or network-failed
-  refresh **once, with the same key**.
-* **Reuse path.** Anything else on a rotated token: no key, a different key,
-  an expired window, or a successor already used. Revoke the whole session
-  (`REUSE_DETECTED`), emit the audit event and the metric, answer the generic
-  401. Other sessions of the user are untouched.
-* **Benign concurrency, analysed:**
-  * same-process duplicates share one backend call (BFF single-flight);
-  * a response the browser aborted is answered by the BFF rotation memory;
-  * a backend timeout is answered by the retry path;
-  * two **different** web replicas racing on one token: one wins, and the
-    other presents a rotated token with a different key, so the reuse path
-    logs the user out. This is a safe failure. Multi-replica web therefore
-    still requires sticky sessions (already recorded as a scaling item), and
-    alpha/staging run one web replica.
-* **BFF rotation memory (FD-3).** It already lets the holder of the old token
-  obtain the new pair for 120 s within one process. That is an accepted
-  FE-001 trade-off, but it is in tension with the rule "no unauthenticated
-  grace". Recommended: keep it, shorten it to 15 s, and purge it on logout
-  and on any rejection. Changing an accepted FE-001 decision is a founder
-  decision.
+Two things can be lost, and they are handled differently:
+
+* **A — the backend's answer to the BFF** (timeout, network, BFF crash).
+  The rotation happened, but the BFF never saw the new pair.
+* **B — the BFF's answer to the browser** (the browser aborted the request, so its
+  `Set-Cookie` never arrived). The BFF holds the new pair; the browser still
+  holds the old cookie.
+
+Today's 120 s rotation memory solves B. It is keyed by the old token alone,
+so anyone presenting that token within the window receives the new pair.
+**FD-3: that possession-only behaviour is removed.**
+
+**Mechanism (proposed):**
+
+* **Browser binding cookie.** At login the BFF sets `__Host-hm_bind`: random
+  256 bits, httpOnly, Secure, SameSite=Lax, the refresh cookie's lifetime. It
+  never changes during the session and is never sent to the backend. Legacy
+  sessions without it get one on their next successful refresh; until then
+  they get no memory benefit.
+* **Attempt record (BFF process memory).** Keyed by the old token's hash,
+  holding:
+  * the SHA-256 of the binding cookie that started the attempt;
+  * a random 128-bit **rotation key**;
+  * the start time;
+  * the outcome, once known.
+
+  Entries are bounded, expire after `REFRESH_RETRY_WINDOW` (FD-6: 30 s), and
+  are purged on logout and on any rejection.
+* **Backend.** It receives the rotation key as `Idempotency-Key` and stores
+  only its hash on the rotated token. Its **retry path**: the same token and
+  the same key, within the window, with a successor that has never been used.
+  It revokes that unused successor (`SUPERSEDED_BY_RETRY`) and issues a fresh
+  one. Raw tokens are never stored, so the first successor cannot be
+  re-delivered.
+* **How the BFF uses the record.** It applies only when the presented
+  binding cookie matches the record:
+  * the outcome was a pair → return that pair (case B);
+  * the outcome is unknown or unavailable → call the backend again with the
+    **same** key (case A).
+
+  If the binding does not match, or there is no binding cookie, the BFF makes
+  an ordinary refresh with a new key, and the backend's reuse path decides.
+* **Reuse path (backend).** Applies to a rotated token presented with no key,
+  a different key, after the window, or after its successor was used. The
+  backend revokes the whole session (`REUSE_DETECTED`), commits (§3.2 step 6),
+  and answers the generic 401. The user's other sessions are untouched.
+
+**What the binding buys and what it does not.** A refresh value leaked on its
+own can no longer obtain its successor — for example through a log, a proxy,
+or a client bug. Someone holding the whole cookie jar (refresh, binding and
+access cookies) can act as the browser. No server-side mechanism tells that
+holder apart from the user. Detection then relies on divergence: when the
+two holders rotate independently, the reuse path revokes the family.
+
+**Guarantees and limitations:**
+
+| Situation | Behaviour | Guarantee / limitation |
+|---|---|---|
+| Backend answer lost (A), same BFF process, within 30 s | retry with the same key → fresh successor | recovered; the never-delivered successor is revoked |
+| Retry also fails | `unavailable`; a later caller from the same browser and process within the window retries with the same key | after the window or a restart → reuse path → logout (safe failure) |
+| Browser aborted (B), same process, within 30 s | remembered pair returned only with the matching binding cookie | holder of the old refresh value alone gets nothing |
+| Out-of-order responses | the BFF writes cookies only from the attempt it awaited; an abandoned first response is discarded | at most one live successor (row lock + partial unique index). A stale pair later written by the browser is non-live → reuse path → logout, never a second live session |
+| BFF process restart | memory lost | cases A/B after a restart end in logout. **No recovery guarantee across restarts** |
+| Two BFF replicas | memory is per process; a token rotated on replica 1 and presented to replica 2 hits the reuse path | **no multi-replica guarantee** — safe failure (logout). Multi-replica web needs sticky sessions; alpha and staging run one web replica |
+| Late cookie writes after a revocation | tokens of a revoked session are dead, the access token included (§3.3) | never revives a revoked session; at worst a spurious logout |
+| Logout racing a refresh | logout and refresh serialise on the session row lock; logout purges the attempt record | whatever the order, the final state is a revoked session with no live token (T10) |
+| Logout of A, then login of B, then a late A response writes cookies | the A tokens are revoked | B may be signed out (safe failure); A is never revived and no A data is shown (W3) |
+| Legitimate duplicate refreshes | same process → single-flight shares one call | different processes → logout (above) |
+| Revocation answered with 401 | committed before the answer | it persists (T20) |
+
+Alternative to the binding cookie (FD-3, option B): drop the rotation memory
+entirely. It is simpler. The cost is that every aborted browser request
+during a rotation logs the user out — the SEC-001 defect returns.
 
 ### 3.5 Logout semantics
 
@@ -162,7 +209,7 @@ Never report success that was not confirmed.
 | Policy | Access | Idle (since last successful refresh) | Absolute (from login, never extended) |
 |---|---|---|---|
 | USER (proposed) | 30 min (unchanged) | 7 days | 30 days |
-| ADMIN | 30 min or shorter | stricter — values required (e.g. 8 h) | stricter — values required (e.g. 24 h) |
+| ADMIN (proposed) | 15 min — access TTL is chosen per session policy | 1 hour | 24 hours |
 
 Consequences:
 
@@ -190,10 +237,11 @@ Consequences:
 * Declaration: `schema_transition = EXPAND`. The BP-5 writer inserts tokens
   with `session_id NULL`, which the index ignores; old code ignores the new
   columns.
-* `rollback_to_previous`: technically SAFE — rotation also sets `revoked_at`,
-  so the old code still refuses rotated or revoked tokens. But a rollback
-  re-opens BG-1 and BG-5 while it lasts. Declare SAFE with that rollback note,
-  or BLOCKED, by founder decision (FD-4).
+* `rollback_to_previous`: **BLOCKED** (proposed FD-4). Rotation also sets
+  `revoked_at`, so the old code would still refuse rotated or revoked tokens.
+  But it would keep issuing sessionless tokens and ignore revocations and
+  limits, re-opening BG-1 and BG-5. SAFE may be declared later, only after
+  that compatibility and its security consequences are independently validated.
 * Release manifest updated per RELEASE-AND-MIGRATION; the app and migrator
   roles stay unchanged; `app_grants.sql` gives `homies_app` DML on the new
   table. No BARRIER and no data backfill (legacy rows convert lazily, §3.2).
@@ -213,7 +261,7 @@ In:
 * audit events and bounded metrics (`homies_auth_refresh_total{outcome}`, `homies_auth_sessions_revoked_total{reason}`);
 * the migration and the release manifest;
 * OpenAPI and the generated web types;
-* the BFF (logout call, `Idempotency-Key` and one retry, rotation-memory purge/TTL, cookie Max-Age);
+* the BFF: logout call; binding cookie and attempt record replacing the possession-only rotation memory; `Idempotency-Key` with same-key retry; purge on logout and rejection; cookie Max-Age;
 * the minimal logout copy for the `unconfirmed` case;
 * the INCIDENT-RUNBOOK session-compromise playbook updated to use `revoke_sessions`;
 * tests, the DEVLOG, and this contract's evidence section.
@@ -248,18 +296,21 @@ failing on `4f2fc434` before the fix.
 | T10 | Logout racing a refresh of the same session (both orders, barrier) → final state: session revoked, no live token | PG |
 | T11 | The absolute limit cannot be extended: refresh near the end caps the successor's `expires_at`; after it → 401 and `ABSOLUTE_EXPIRED` | PG, controlled DB time |
 | T12 | Idle: `last_refreshed_at` set 8 days back → refresh 401 and `IDLE_EXPIRED`; 6 days → 200 | PG, controlled DB time |
-| T13 | ADMIN policy applies to an admin user's session (once FD-2 values exist) | API |
+| T13 | ADMIN policy (FD-2 values once approved): access 15 min, idle 1 h, absolute 24 h for an admin's session; a role change takes effect at the next refresh | PG, controlled DB time |
 | T14 | `/v1/auth/logout` with another user's token revokes only that token's session; there is no id-based revocation route | API |
 | T15 | Unknown, expired and revoked tokens get the same 401 or 204 body (no oracle) | API |
 | T16 | Legacy refresh token (`session_id NULL`) converts to a session without gaining lifetime; a legacy `sid`-less access token → 401, then the BFF transparently refreshes | PG + Vitest |
 | T17 | Audit events, logs and metrics contain no raw token, token hash, rotation key or unnecessary PII; labels bounded | API + log capture |
 | T18 | Authenticated request path: at most one extra SQL statement | PG statement counter |
-| T19 | Old-release compatibility: the BP-5 code path against the migrated schema (release check allowed; tokens with `session_id NULL` insert) | PG release test |
+| T19 | Release declaration: the manifest says EXPAND / BLOCKED; the release tests accept the migrated schema for the new build and refuse a SAFE claim (FD-4) | PG release test |
+| T20 | **Red first:** reuse, idle and absolute revocations are still in the database after the 401 response | PG |
 | W1 | BFF logout: backend 204 → cookies cleared, `confirmed`; backend down or timeout → cookies cleared, `unconfirmed`, never `confirmed`; rotation memory purged | Vitest |
 | W2 | BFF refresh sends `Idempotency-Key`; a timeout → one retry with the same key; a different attempt → a new key | Vitest |
 | W3 | Account A → logout during an in-flight A refresh → B login: only B's data, A not revived | Playwright (existing FE-003 isolation pattern) |
 | W4 | Two simulated BFF processes racing one token → user logged out, no second live successor (documents the safe failure) | Vitest + PG |
 | W5 | Refresh cookie Max-Age follows `refresh_expires_in` | Vitest |
+| W6 | Old refresh cookie with a missing or different `__Host-hm_bind` → no remembered pair and no same-key retry; ordinary refresh → reuse path | Vitest |
+| W7 | Aborted browser response with a matching binding within 30 s → the remembered pair; after 30 s, or after a simulated restart (memory cleared) → logout, documented | Vitest |
 
 Plus: OpenAPI drift test, full backend suite on SQLite and PostgreSQL, web
 typecheck, lint, unit and e2e tests, and mutation of the rotation guard,
@@ -271,7 +322,10 @@ the session check and the reuse branch (mutants must be killed by T4, T5, T8).
 * **A missed `get_current_user` path:** every authenticated dependency goes through it; a test enumerates protected routes with a revoked session.
 * **Token hashes in logs:** forbidden (T17).
 * **Clock skew:** DB clock only.
-* **Rotation memory:** see FD-3.
+* **Rotation memory:** the possession-only behaviour is removed (FD-3). A
+  stolen whole cookie jar is not defended by any server mechanism; reuse
+  detection catches divergence.
+* **No recovery across restarts or replicas:** documented safe failure (§3.4).
 * **Rollback window:** re-opens BG-1 (FD-4).
 * **Multi-replica web without sticky sessions:** forced logouts (safe, documented).
 
@@ -279,14 +333,19 @@ the session check and the reuse branch (mutants must be killed by T4, T5, T8).
 
 | # | Decision | Recommendation |
 |---|---|---|
-| FD-1 | USER idle / absolute limits | 7 days / 30 days; access 30 min unchanged |
-| FD-2 | ADMIN limits | values to choose (example 8 h idle / 24 h absolute); MFA separately later |
-| FD-3 | BFF rotation memory (accepted FE-001 SEC-001 trade-off) | keep it, shorten 120 s → 15 s, purge on logout and rejection |
-| FD-4 | Migration `rollback_to_previous` | SAFE, with a rollback note that BG-1/BG-5 re-open |
-| FD-5 | Expose `logout-all` now | yes for the backend endpoint; the UI entry can follow |
-| FD-6 | Retry window | 30 s |
+Founder-facing proposals of 2026-10-30. They stay **PROPOSED** until the
+founder explicitly approves them.
 
-These become a D-entry only when the founder decides them. This contract
+| # | Decision | Proposed |
+|---|---|---|
+| FD-1 | USER limits | access 30 min (unchanged), idle 7 days, absolute 30 days |
+| FD-2 | ADMIN limits | access **15 min**, idle **1 h**, absolute **24 h**; MFA is a separate later task |
+| FD-3 | BFF rotation memory | remove the possession-only behaviour. Option A: an attempt record bound to `__Host-hm_bind` (recommended, §3.4). Option B: drop the memory and accept logout on an aborted rotation |
+| FD-4 | Migration `rollback_to_previous` | **BLOCKED** until operational compatibility and the security consequences of running the BP-5 code on the new schema are independently validated |
+| FD-5 | `logout-all` | include the authenticated endpoint now; the UI entry may follow |
+| FD-6 | Retry window | 30 s, same attempt only: bound to the BFF rotation key and the binding cookie |
+
+They become a D-entry only when the founder decides them. This contract
 changes no canonical decision.
 
 ## 9. Delivery and evidence (for the implementation, once authorized)
