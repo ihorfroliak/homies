@@ -10,7 +10,10 @@ describe("HomeSearch", () => {
     expect(form).toHaveAttribute("method", "get");
     expect(form).toHaveAttribute("action", "/szukaj");
     expect(screen.getByLabelText("Gdzie")).toHaveAttribute("name", "obszar");
-    expect(screen.getByLabelText("Łącznie miesięcznie do (zł)")).toHaveAttribute("name", "koszt_do");
+    const total = screen.getByLabelText("Łącznie miesięcznie do (zł)");
+    expect(total).toHaveAttribute("name", "koszt_do");
+    // Any whole amount must be valid, or the browser silently refuses to submit.
+    expect(total).toHaveAttribute("step", "1");
     expect(screen.getByRole("radio", { name: "2+" })).toHaveAttribute("name", "pokoje_od");
   });
 

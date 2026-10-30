@@ -32,7 +32,7 @@ export function HomeSearch({ cityName, areas }: { cityName: string; areas: Searc
       </div>
       <div className={styles.field}>
         <label htmlFor="hs-total">{t.homeSearch.maxTotal}</label>
-        <input id="hs-total" name="koszt_do" className="input" type="number" inputMode="numeric" min={1} max={10000000} step={50} />
+        <input id="hs-total" name="koszt_do" className="input" type="number" inputMode="numeric" min={1} max={10000000} step={1} />
       </div>
       <fieldset className={styles.rooms}>
         <legend>{t.homeSearch.rooms}</legend>

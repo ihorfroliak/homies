@@ -40,7 +40,7 @@ test("home: newest Kraków rail from the API and the search form", async ({ page
 test("home: the search form carries the area and rooms into the canonical results URL", async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("Gdzie").selectOption({ label: "Kazimierz" });
-  await page.getByText("2+", { exact: true }).click();
+  await page.getByRole("radio", { name: "2+" }).check();
   await page.getByRole("button", { name: "Pokaż mieszkania" }).click();
   await expect(page).toHaveURL(/\/wynajem\/krakow\/kazimierz\?pokoje_od=2$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mieszkania na wynajem — Kazimierz, Kraków");
