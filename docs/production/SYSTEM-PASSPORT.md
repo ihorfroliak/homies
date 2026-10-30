@@ -88,7 +88,8 @@ Detail: [STAGING-ARCHITECTURE](STAGING-ARCHITECTURE.md). Variables:
   httpOnly Secure cookies; CSRF on every mutating BFF route; `/bff/v1/*` is
   an allowlisted proxy ([frontend/web/src/server](../../frontend/web/src/server)).
 * Known session gaps (VERIFIED; Task Contract SEC-SESSION-001 is prepared on
-  its own branch and is not part of this change):
+  its own branch, `docs/tasks/SEC-SESSION-001-session-lifecycle.md`, and is
+  not part of this change):
   no backend logout or revocation; refresh rotation without reuse detection;
   per-process refresh single-flight, so several web replicas need sticky
   sessions or a grace window.

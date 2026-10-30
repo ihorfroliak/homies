@@ -71,6 +71,7 @@ choose a tools image or a throwaway container built from the same SHA.
 | `API_INTERNAL_URL` | PUBLIC (internal address) | RUNTIME (also BUILD only when `MEDIA_VIA_EDGE` ≠ 1) | REQUIRED, e.g. `http://172.30.10.20:8000` | startup error in production when missing | server/env.ts |
 | `PUBLIC_ORIGIN` | PUBLIC | RUNTIME | REQUIRED, `https://<alpha host>` | must be https in production; CSRF compares the request origin against it — scheme, host and port must match exactly what the browser uses; equal to backend `PUBLIC_WEB_BASE_URL` | server/env.ts |
 | `TRUST_PROXY_HOPS` | PUBLIC | RUNTIME | REQUIRED `1` (Caddy) | production refuses `< 1` | server/env.ts, client-ip.ts |
+| `API_TIMEOUT_MS` | PUBLIC | RUNTIME | OPTIONAL | default 8000; BFF → backend deadline (a timeout answers 504) | server/env.ts, backend.ts |
 | `INDEXING_ENABLED` | PUBLIC | RUNTIME (`X-Robots-Tag` in proxy.ts, server env) and wherever page metadata is evaluated | **unset** (anything but `1` = noindex) | set identically at build and runtime: metadata of a prerendered page is evaluated at build time (INFERRED) | proxy.ts, seo/index.ts |
 | `NEXT_PUBLIC_MAP_STYLE_URL` | PUBLIC | BUILD (inlined) | OPTIONAL | unset = plain background map; its origin joins the CSP. Choose a tile provider whose terms allow this use — a decision, not a default | map-canvas.tsx, proxy.ts |
 | `MAP_EXTRA_ORIGINS` | PUBLIC | RUNTIME (CSP in proxy.ts) | OPTIONAL | comma-separated extra tile/glyph origins | proxy.ts |
