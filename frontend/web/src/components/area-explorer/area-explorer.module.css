@@ -1,0 +1,93 @@
+.explorer {
+  padding: var(--sp-5);
+  background: var(--c-surface);
+  border: var(--bw-1) solid var(--c-rule);
+  border-radius: var(--r-xl);
+}
+
+.heading {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--c-ink-900);
+  margin: 0 0 var(--sp-1);
+}
+
+.note {
+  font-size: var(--fs-small);
+  color: var(--c-ink-500);
+  margin: 0 0 var(--sp-4);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+@media (min-width: 1280px) {
+  .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Place identity only (D-103). Hues: area-colour.ts; lightness/chroma: tokens.css. */
+.tile[data-hue="15"] { --h: 15; }
+.tile[data-hue="30"] { --h: 30; }
+.tile[data-hue="330"] { --h: 330; }
+.tile[data-hue="60"] { --h: 60; }
+.tile[data-hue="95"] { --h: 95; }
+.tile[data-hue="120"] { --h: 120; }
+.tile[data-hue="140"] { --h: 140; }
+.tile[data-hue="180"] { --h: 180; }
+.tile[data-hue="205"] { --h: 205; }
+.tile[data-hue="230"] { --h: 230; }
+.tile[data-hue="255"] { --h: 255; }
+.tile[data-hue="275"] { --h: 275; }
+.tile[data-hue="290"] { --h: 290; }
+.tile[data-hue="305"] { --h: 305; }
+.tile[data-hue="345"] { --h: 345; }
+
+.tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--size-control-lg);
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
+  background: oklch(var(--area-tint) var(--h, 0));
+  border-radius: var(--r-md);
+  color: var(--c-ink-900);
+  font-weight: 600;
+  text-decoration: none;
+  overflow: hidden;
+  transition: background-color var(--dur-fast) var(--ease-standard);
+}
+
+.tile::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: oklch(var(--area-solid) var(--h, 0));
+}
+
+.tile:hover { background: oklch(var(--area-hover) var(--h, 0)); }
+
+.name { flex: 1; min-width: 0; }
+
+.arrow { color: var(--c-ink-500); }
+
+/* The whole city: ink, not an area hue — it is not a place among the others. */
+.wholeCity { grid-column: 1 / -1; }
+
+.tile.all {
+  background: var(--c-ink-900);
+  color: #ffffff;
+  justify-content: space-between;
+}
+.tile.all::before { display: none; }
+.tile.all .arrow { color: #ffffff; }
+.tile.all:hover { background: #3a3a3a; }

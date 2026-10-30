@@ -27,15 +27,33 @@ async function axe(page: Page) {
   expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
 }
 
-test("home: newest Kraków rail from the API and the search box", async ({ page }) => {
+test("home: newest Kraków rail from the API and the search form", async ({ page }) => {
   await page.goto("/");
   const rail = page.getByRole("region", { name: "Najnowsze w Krakowie" });
   await expect(rail.getByRole("article")).toHaveCount(6);
-  await page.getByLabel("Miasto").fill("Kraków");
-  await page.getByLabel("Maks. koszt miesięczny (zł)").fill("4000");
-  await page.getByRole("button", { name: "Szukaj" }).click();
+  await page.getByLabel("Łącznie miesięcznie do (zł)").fill("4000");
+  await page.getByRole("button", { name: "Pokaż mieszkania" }).click();
   await expect(page).toHaveURL(/\/wynajem\/krakow\?koszt_do=4000$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mieszkania na wynajem — Kraków");
+});
+
+test("home: the search form carries the area and rooms into the canonical results URL", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Gdzie").selectOption({ label: "Kazimierz" });
+  await page.getByText("2+", { exact: true }).click();
+  await page.getByRole("button", { name: "Pokaż mieszkania" }).click();
+  await expect(page).toHaveURL(/\/wynajem\/krakow\/kazimierz\?pokoje_od=2$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mieszkania na wynajem — Kazimierz, Kraków");
+});
+
+test("home: Kraków area exploration opens that area's results (HM-1)", async ({ page }) => {
+  await page.goto("/");
+  const areas = page.getByRole("region", { name: "Kraków po okolicach" });
+  await expect(areas.getByRole("link")).toHaveCount(5); // the four seeded areas + the whole city
+  await axe(page);
+  await areas.getByRole("link", { name: "Kazimierz" }).click();
+  await expect(page).toHaveURL(/\/wynajem\/krakow\/kazimierz$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mieszkania na wynajem — Kazimierz, Kraków");
 });
 
 test("results: count, cards, canonical sort, and pagination-free small sets", async ({ page }) => {

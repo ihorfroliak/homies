@@ -14,14 +14,14 @@
   --c-brand-600: #0c7d5e;
   --c-brand-700: #095e47;
 
-  --c-ink-900: #14181f; /* headings */
-  --c-ink-700: #333c49; /* body */
-  --c-ink-500: #5b6675; /* secondary text — 4.6:1 on white */
+  --c-ink-900: #121212; /* headings, primary actions on Home (1C ink) */
+  --c-ink-700: #3a3a3a; /* body */
+  --c-ink-500: #4d4d4d; /* secondary text — 8.4:1 on white, 7.6:1 on paper */
   --c-ink-300: #97a1af; /* muted/placeholder */
   --c-line:    #e3e7ec; /* borders */
   --c-line-strong: #c7ced7; /* input borders, secondary buttons (3:1 UI contrast) */
   --c-surface: #ffffff;
-  --c-surface-2: #f6f8fa; /* app background */
+  --c-surface-2: var(--c-paper); /* app background (1C warm paper) */
   --c-surface-3: #eef1f5; /* subtle fills */
 
   /* --- Semantic --- */
@@ -50,12 +50,29 @@
   --c-marker-bg: var(--c-surface); --c-marker-fg: var(--c-ink-900);
   --c-marker-selected-bg: var(--c-ink-900); --c-marker-selected-fg: #ffffff;
 
+  /* --- Area identity (1C Dzielnica, DESIGN-001C "Home Mapa") — applied in
+     FE-VIS-001A on the founder's direction of 2026-10-30; final approval at
+     the slice review. Each area has a hue (frontend/web: area-colour.ts); the
+     colours are fixed lightness/chroma at that hue. Place identity ONLY
+     (D-103, HM-1.6): never on prices, states, freshness, trust, ranking or
+     anything implying one area is better; the name is always shown. Text on
+     the tint and hover is --c-ink-900; text on the solid area colour is white. */
+  --area-tint: 0.935 0.032;   /* oklch L C of the resting background */
+  --area-hover: 0.84 0.065;   /* oklch L C on hover / focus */
+  --area-solid: 0.46 0.085;   /* oklch L C of the band / selected fill */
+  /* --- 1C warm neutrals (DESIGN-001C) --- */
+  --c-paper: #f6f4ef;   /* page background */
+  --c-paper-2: #f1eee7; /* subtle fills */
+  --c-rule: #e4e1da;    /* hairlines on paper */
   --c-focus: #0b5cad; /* visible focus ring, distinct from brand */
   /* two-tone ring: visible on photos and on brand fills (WCAG 2.4.7/2.4.11) */
   --focus-ring: 0 0 0 2px var(--c-surface), 0 0 0 4px var(--c-focus);
 
   /* --- Typography --- */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* 1C typography (FE-VIS-001A): Public Sans for text, Bricolage Grotesque for
+     display; the variables are set by next/font, the system stack is the fallback. */
+  --font-sans: var(--font-public-sans, -apple-system), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display: var(--font-bricolage, var(--font-sans)), var(--font-sans);
   --fs-display: 2rem;    --lh-display: 1.15;
   --fs-h1: 1.5rem;       --lh-h1: 1.2;
   --fs-h2: 1.25rem;      --lh-h2: 1.25;

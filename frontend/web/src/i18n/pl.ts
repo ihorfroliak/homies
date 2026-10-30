@@ -29,8 +29,12 @@ export const pl = {
     signOut: "Wyloguj się",
   },
   home: {
-    heading: "Mieszkania na wynajem z pełnym kosztem miesięcznym",
-    lead: "Widzisz, ile naprawdę zapłacisz co miesiąc i na start — zanim napiszesz do właściciela.",
+    // Launch scope as fact (D-98 G-1 Kraków first, LONG_TERM first), not a claim.
+    // DESIGN-001C Home Mapa copy (FE-VIS-001A); every statement is a product fact.
+    // Launch scope as fact (D-98 G-1 Kraków first, LONG_TERM first), not a claim.
+    eyebrow: "Kraków · wynajem długoterminowy",
+    heading: "Wybierz okolicę. Albo cały Kraków.",
+    lead: "Przy każdej ofercie: łączny koszt miesięczny, kwota na start i data, kiedy dostępność była ostatnio potwierdzona.",
     pillars: {
       fullCost: "Pełny koszt miesięczny i na start",
       fresh: "Oferty potwierdzane jako aktualne",
@@ -38,13 +42,20 @@ export const pl = {
       free: "Bez opłat dla szukających",
     },
   },
-  searchBox: {
-    label: "Wyszukiwarka mieszkań",
-    city: "Miasto",
-    cityPlaceholder: "np. Kraków",
-    cityNoMatch: "Nie znamy takiego miasta. Sprawdź pisownię.",
-    maxCost: "Maks. koszt miesięczny (zł)",
-    submit: "Szukaj",
+  homeSearch: {
+    label: "Wyszukiwarka mieszkań w Krakowie",
+    where: "Gdzie",
+    whereAll: "Cały Kraków",
+    maxTotal: "Łącznie miesięcznie do (zł)",
+    rooms: "Pokoje",
+    roomsAny: "Dowolnie",
+    roomsFrom: "{n}+",
+    submit: "Pokaż mieszkania",
+  },
+  areas: {
+    heading: "Kraków po okolicach",
+    colourNote: "Kolor oznacza obszar, nie ocenę.",
+    all: "Cały Kraków",
   },
   newest: {
     heading: "Najnowsze w Krakowie",
