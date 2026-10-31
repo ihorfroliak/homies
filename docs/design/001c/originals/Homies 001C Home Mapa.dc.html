@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="design_doc_mode" content="canvas">
+<title>Homies 001C — Home: Kraków po okolicach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=Public+Sans:wght@400;500;600;700&amp;display=swap">
+<script src="image-slot.js"></script>
+<style>
+  body { margin: 0; background: #E4E1DA; font-family: 'Public Sans', system-ui, sans-serif; color: #121212; -webkit-font-smoothing: antialiased; }
+  a { color: #121212; }
+  a:hover { color: #3A3A3A; }
+  button, select, input { font-family: inherit; }
+</style>
+</helmet>
+
+<div style="padding: 56px; display: grid; gap: 56px; min-width: 1960px;">
+
+  <header style="display: grid; gap: 14px; max-width: 1100px;">
+    <span style="font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #4D4D4D;">DESIGN-001C · Home convergence · 1C Dzielnica</span>
+    <h1 style="margin: 0; font: 800 54px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.035em;">Home: Kraków po okolicach</h1>
+    <p style="margin: 0; font-size: 17px; line-height: 1.55; color: #3A3A3A; max-width: 78ch;">Prawa połowa hero to teraz mapa obszarów Krakowa, która prowadzi do wyników. Wyszukiwarka zostaje główną akcją, mapa jest drugą drogą wejścia, lista okolic pod mapą daje ten sam wybór z klawiatury. Desktop i mobile poniżej są klikalne i mają wspólny przełącznik danych.</p>
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding-top: 6px;">
+      <span style="font-size: 13px; font-weight: 700;">Dane liczby ofert per obszar:</span>
+      <div role="radiogroup" aria-label="Stan danych mapy" style="display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: #fff; border: 1px solid #D6D2C8;">
+        <sc-for list="{{ modeOpts }}" as="m" hint-placeholder-count="4">
+          <button type="button" role="radio" aria-checked="{{ m.on }}" style="{{ m.style }}" onClick="{{ m.pick }}">{{ m.label }}</button>
+        </sc-for>
+      </div>
+      <span style="{{ modeTagStyle }}">{{ modeTag }}</span>
+    </div>
+  </header>
+
+  <div style="display: flex; gap: 64px; align-items: flex-start;">
+
+    <!-- ===================== DESKTOP 1440 ===================== -->
+    <div style="display: grid; gap: 12px;">
+      <div style="display: flex; gap: 10px; align-items: baseline;">
+        <span style="font: 800 22px/1 'Bricolage Grotesque', sans-serif;">Desktop</span>
+        <span style="font-size: 13px; color: #4D4D4D;">1440 px · siatka 5 / 7 · split od 1024 px</span>
+      </div>
+      <div data-screen-label="Home desktop" style="width: 1440px; background: #FBFAF7; border-radius: 18px; overflow: hidden; box-shadow: 0 30px 80px -40px rgba(18,18,18,.35); position: relative;">
+
+        <div style="height: 72px; padding: 0 56px; display: flex; align-items: center; gap: 36px; border-bottom: 1px solid #E6E3DC;">
+          <a href="#" style="display: flex; align-items: center; gap: 10px; text-decoration: none;">
+            <img src="assets/logo-mark.svg" alt="" style="width: 30px; height: 30px;">
+            <span style="font: 800 24px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Homies</span>
+          </a>
+          <nav aria-label="Główna" style="display: flex; gap: 26px; font-size: 15px; font-weight: 600;">
+            <a href="#" style="text-decoration: none;">Wynajem</a>
+            <a href="#" style="text-decoration: none; color: #4D4D4D;">Jak liczymy koszty</a>
+          </nav>
+          <div style="margin-left: auto; display: flex; gap: 14px; align-items: center;">
+            <a href="#" style="font-size: 15px; font-weight: 600; text-decoration: none; color: #4D4D4D;">Dla wynajmujących</a>
+            <button type="button" style="height: 44px; padding: 0 20px; border-radius: 999px; border: 1.5px solid #121212; background: transparent; font-size: 15px; font-weight: 700; cursor: pointer;">Zaloguj się</button>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 48px; padding: 44px 56px 56px; align-items: stretch;">
+          <div style="display: grid; align-content: start; gap: 22px; padding-top: 8px;">
+            <span style="font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #4D4D4D;">Kraków · wynajem długoterminowy · całe mieszkania</span>
+            <h2 style="margin: 0; font: 800 76px/.94 'Bricolage Grotesque', sans-serif; letter-spacing: -.04em; text-wrap: balance;">Wybierz okolicę. Albo cały Kraków.</h2>
+            <p style="margin: 0; font-size: 17px; line-height: 1.55; color: #4D4D4D; max-width: 44ch;">Przy każdej ofercie: łączny koszt miesięczny, kwota na start i data, kiedy dostępność była ostatnio potwierdzona.</p>
+
+            <form role="search" aria-label="Szukaj mieszkania" onSubmit="{{ dSubmit }}" style="display: grid; gap: 16px; padding: 22px; border-radius: 24px; background: #F1EEE7;">
+              <div>
+                <label for="d-where" style="display: block; font-size: 14px; font-weight: 700; margin-bottom: 7px;">Gdzie</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <select id="d-where" value="{{ dSelValue }}" onChange="{{ dSelectChange }}" style="flex: 1; height: 52px; padding: 0 14px; border-radius: 14px; border: 1.5px solid #CFC9BD; background: #fff; font-size: 16px; font-weight: 600; color: #121212;">
+                    <sc-for list="{{ selectOpts }}" as="o" hint-placeholder-count="14">
+                      <option value="{{ o.k }}">{{ o.label }}</option>
+                    </sc-for>
+                  </select>
+                  <span aria-hidden="true" style="{{ dWhereDot }}"></span>
+                </div>
+                <p style="margin: 7px 0 0; font-size: 13px; color: #4D4D4D;">Albo kliknij okolicę na mapie obok.</p>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: end;">
+                <div>
+                  <div id="d-budget-l" style="font-size: 14px; font-weight: 700; margin-bottom: 7px;">Łącznie miesięcznie do</div>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <button type="button" aria-label="Mniej o 250 zł" onClick="{{ budgetDown }}" style="width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid #CFC9BD; background: #fff; font-size: 20px; cursor: pointer;">−</button>
+                    <output aria-labelledby="d-budget-l" aria-live="polite" style="font: 800 30px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em; min-width: 132px; text-align: center;">{{ budgetLabel }}</output>
+                    <button type="button" aria-label="Więcej o 250 zł" onClick="{{ budgetUp }}" style="width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid #CFC9BD; background: #fff; font-size: 20px; cursor: pointer;">+</button>
+                  </div>
+                </div>
+                <div>
+                  <div style="font-size: 14px; font-weight: 700; margin-bottom: 7px;">Pokoje</div>
+                  <div role="radiogroup" aria-label="Pokoje" style="display: flex; gap: 3px; padding: 3px; border-radius: 999px; background: #fff;">
+                    <sc-for list="{{ roomOpts }}" as="r" hint-placeholder-count="4">
+                      <button type="button" role="radio" aria-checked="{{ r.on }}" style="{{ r.style }}" onClick="{{ r.pick }}">{{ r.label }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+              <button type="submit" style="height: 56px; border-radius: 999px; border: 0; background: #121212; color: #fff; font-size: 17px; font-weight: 700; cursor: pointer;">{{ dSubmitLabel }}</button>
+            </form>
+          </div>
+
+          <section aria-labelledby="d-map-h" style="position: relative; display: grid; grid-template-rows: auto 1fr auto auto; gap: 14px; padding: 20px; border-radius: 28px; background: #EEEDE6; min-height: 640px;">
+            <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;">
+              <h3 id="d-map-h" style="margin: 0; font: 800 22px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em;">Kraków po okolicach</h3>
+              <span style="font-size: 12.5px; color: #4D4D4D;">Kolor oznacza obszar, nie ocenę.</span>
+            </div>
+
+            <div style="position: relative; min-height: 0; display: grid; place-items: center;">
+              <div style="position: relative; width: 100%; max-width: 640px; aspect-ratio: 600 / 520;">
+              <svg viewBox="0 0 600 520" aria-hidden="true" style="width: 100%; height: 100%; display: block;">
+                <sc-for list="{{ dMap.polys }}" as="p" hint-placeholder-count="13">
+                  <polygon points="{{ p.points }}" style="{{ p.style }}" onClick="{{ p.pick }}" onMouseEnter="{{ p.enter }}" onMouseLeave="{{ p.leave }}"></polygon>
+                </sc-for>
+                <path d="M0 330 C 90 336 150 344 180 345 S 240 372 260 370 S 290 356 300 352 S 330 330 340 330 S 400 352 420 358 S 480 368 500 368 S 570 373 600 375" style="fill: none; stroke: #B9CDD6; stroke-width: 9; stroke-linecap: round; pointer-events: none;"></path>
+                <text x="150" y="333" style="font: italic 600 11px 'Public Sans', sans-serif; fill: #5E7F8C; pointer-events: none;">Wisła</text>
+                <sc-for list="{{ dMap.bars }}" as="b" hint-placeholder-count="13">
+                  <rect x="{{ b.x }}" y="{{ b.y }}" width="38" height="7" rx="3.5" style="fill: #CFC9BD; pointer-events: none;"></rect>
+                </sc-for>
+              </svg>
+              <div aria-hidden="true" style="position: absolute; inset: 0; pointer-events: none; font-size: 17px;"><sc-for list="{{ dMap.texts }}" as="t" hint-placeholder-count="20"><span style="{{ t.style }}">{{ t.v }}</span></sc-for></div>
+              </div>
+            </div>
+
+            <div aria-live="polite" style="padding: 16px 18px; border-radius: 20px; background: #FBFAF7; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 18px; align-items: center;">
+              <div style="display: grid; gap: 6px;">
+                <div style="display: flex; align-items: center; gap: 9px;">
+                  <span aria-hidden="true" style="{{ dCard.swatch }}"></span>
+                  <span style="font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #4D4D4D;">{{ dCard.kicker }}</span>
+                </div>
+                <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;"><span style="font: 800 30px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">{{ dCard.title }}</span>
+                <sc-if value="{{ dCard.hasLine }}" hint-placeholder-val="{{ false }}"><span style="{{ dCard.lineStyle }}">{{ dCard.line }}</span></sc-if></div>
+                <p style="margin: 0; font-size: 13.5px; line-height: 1.5; color: #4D4D4D; max-width: 56ch;">{{ dCard.body }}</p>
+              </div>
+                <sc-if value="{{ dCard.hasCta }}" hint-placeholder-val="{{ false }}">
+                  <div style="display: grid; gap: 8px; justify-items: stretch;">
+                    <button type="button" onClick="{{ dGo }}" style="height: 48px; padding: 0 18px; border-radius: 999px; border: 0; background: #121212; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;">{{ dCard.cta }}</button>
+                    <button type="button" onClick="{{ dClear }}" style="height: 44px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #CFC9BD; background: transparent; font-size: 14.5px; font-weight: 700; cursor: pointer;">Cały Kraków</button>
+                  </div>
+                </sc-if>
+            </div>
+
+            <div>
+              <div id="d-areas-l" style="font-size: 12.5px; font-weight: 700; margin-bottom: 8px;">Okolice — wybór bez mapy</div>
+              <div role="group" aria-labelledby="d-areas-l" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                <sc-for list="{{ dChips }}" as="c" hint-placeholder-count="14">
+                  <button type="button" aria-pressed="{{ c.on }}" style="{{ c.style }}" style-focus="outline: 3px solid #121212; outline-offset: 2px;" onClick="{{ c.pick }}" onMouseEnter="{{ c.enter }}" onMouseLeave="{{ c.leave }}" onFocus="{{ c.focus }}" onBlur="{{ c.blur }}">
+                    <span aria-hidden="true" style="{{ c.dot }}"></span>{{ c.label }}<span style="{{ c.countStyle }}">{{ c.count }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section aria-labelledby="d-offers-h" style="padding: 8px 56px 64px; display: grid; gap: 18px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;">
+            <h3 id="d-offers-h" style="margin: 0; font: 800 34px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Aktualne oferty w Krakowie</h3>
+            <button type="button" onClick="{{ dSubmit }}" style="border: 0; background: transparent; font-size: 15px; font-weight: 700; text-decoration: underline; cursor: pointer;">Wszystkie oferty →</button>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px;">
+            <sc-for list="{{ cards }}" as="l" hint-placeholder-count="4">
+              <article style="border: 1px solid #E6E3DC; border-radius: 20px; overflow: hidden; background: #fff;">
+                <div style="position: relative; aspect-ratio: 4/3; background: #ECE9E2;">
+                  <image-slot id="{{ l.slotD }}" placeholder="{{ l.ph }}" style="width: 100%; height: 100%;"></image-slot>
+                  <span style="{{ l.chip }}"><span aria-hidden="true" style="{{ l.dot }}"></span>{{ l.area }}</span>
+                </div>
+                <div style="padding: 14px 16px 16px; display: grid; gap: 4px;">
+                  <div style="display: flex; align-items: baseline; gap: 7px;"><span style="font: 800 28px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em;">{{ l.total }}</span><span style="font-size: 13px; color: #4D4D4D;">łącznie / mies.</span></div>
+                  <div style="font-size: 13px; color: #4D4D4D;">w tym najem {{ l.rent }}</div>
+                  <div style="font-size: 14.5px; font-weight: 600; margin-top: 4px;">{{ l.facts }}</div>
+                  <div style="font-size: 12.5px; color: #4D4D4D;">✓ {{ l.fresh }}</div>
+                </div>
+              </article>
+            </sc-for>
+          </div>
+        </section>
+
+        <sc-if value="{{ dToastOn }}" hint-placeholder-val="{{ false }}">
+          <div role="status" style="position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: 720px; padding: 14px 20px; border-radius: 16px; background: #121212; color: #fff; font-size: 14px; line-height: 1.45;">{{ toastText }}</div>
+        </sc-if>
+      </div>
+    </div>
+
+    <!-- ===================== MOBILE 390 ===================== -->
+    <div style="display: grid; gap: 12px;">
+      <div style="display: flex; gap: 10px; align-items: baseline;">
+        <span style="font: 800 22px/1 'Bricolage Grotesque', sans-serif;">Mobile</span>
+        <span style="font-size: 13px; color: #4D4D4D;">390 × 844 · przewijane</span>
+      </div>
+      <div data-screen-label="Home mobile" style="width: 390px; height: 844px; border-radius: 44px; border: 10px solid #121212; background: #FBFAF7; overflow: hidden; position: relative; box-sizing: content-box;">
+        <div style="height: 100%; overflow-y: auto; position: relative;">
+          <div style="height: 56px; padding: 0 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #E6E3DC; position: sticky; top: 0; background: #FBFAF7; z-index: 3;">
+            <img src="assets/logo-mark.svg" alt="" style="width: 26px; height: 26px;">
+            <span style="font: 800 21px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Homies</span>
+            <button type="button" style="margin-left: auto; height: 44px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #121212; background: transparent; font-size: 14px; font-weight: 700;">Zaloguj</button>
+          </div>
+
+          <div style="padding: 20px 16px 26px; display: grid; gap: 16px;">
+            <span style="font-size: 11.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #4D4D4D;">Kraków · wynajem długoterminowy</span>
+            <h2 style="margin: 0; font: 800 42px/.95 'Bricolage Grotesque', sans-serif; letter-spacing: -.04em; text-wrap: balance;">Wybierz okolicę. Albo cały Kraków.</h2>
+            <p style="margin: 0; font-size: 15.5px; line-height: 1.5; color: #4D4D4D;">Łączny koszt miesięczny, kwota na start i data potwierdzenia przy każdej ofercie.</p>
+            <form role="search" aria-label="Szukaj mieszkania" onSubmit="{{ mSubmit }}" style="display: grid; gap: 14px; padding: 16px; border-radius: 20px; background: #F1EEE7;">
+              <div>
+                <label for="m-where" style="display: block; font-size: 14px; font-weight: 700; margin-bottom: 6px;">Gdzie</label>
+                <select id="m-where" value="{{ mSelValue }}" onChange="{{ mSelectChange }}" style="width: 100%; height: 52px; padding: 0 12px; border-radius: 14px; border: 1.5px solid #CFC9BD; background: #fff; font-size: 16px; font-weight: 600; color: #121212;">
+                  <sc-for list="{{ selectOpts }}" as="o" hint-placeholder-count="14">
+                    <option value="{{ o.k }}">{{ o.label }}</option>
+                  </sc-for>
+                </select>
+              </div>
+              <div>
+                <div id="m-budget-l" style="font-size: 14px; font-weight: 700; margin-bottom: 6px;">Łącznie miesięcznie do</div>
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                  <button type="button" aria-label="Mniej o 250 zł" onClick="{{ budgetDown }}" style="width: 48px; height: 48px; border-radius: 50%; border: 1.5px solid #CFC9BD; background: #fff; font-size: 20px;">−</button>
+                  <output aria-labelledby="m-budget-l" aria-live="polite" style="font: 800 28px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em;">{{ budgetLabel }}</output>
+                  <button type="button" aria-label="Więcej o 250 zł" onClick="{{ budgetUp }}" style="width: 48px; height: 48px; border-radius: 50%; border: 1.5px solid #CFC9BD; background: #fff; font-size: 20px;">+</button>
+                </div>
+              </div>
+              <div role="radiogroup" aria-label="Pokoje" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; padding: 3px; border-radius: 999px; background: #fff;">
+                <sc-for list="{{ roomOptsM }}" as="r" hint-placeholder-count="4">
+                  <button type="button" role="radio" aria-checked="{{ r.on }}" style="{{ r.style }}" onClick="{{ r.pick }}">{{ r.label }}</button>
+                </sc-for>
+              </div>
+              <button type="submit" style="height: 54px; border-radius: 999px; border: 0; background: #121212; color: #fff; font-size: 16.5px; font-weight: 700;">{{ mSubmitLabel }}</button>
+            </form>
+          </div>
+
+          <section aria-labelledby="m-map-h" style="padding: 22px 0 18px; background: #EEEDE6; display: grid; gap: 12px;">
+            <div style="padding: 0 16px; display: grid; gap: 4px;">
+              <h3 id="m-map-h" style="margin: 0; font: 800 24px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em;">Kraków po okolicach</h3>
+              <span style="font-size: 12.5px; color: #4D4D4D;">Kolor oznacza obszar, nie ocenę.</span>
+            </div>
+            <div role="group" aria-label="Okolice" style="display: flex; gap: 6px; overflow-x: auto; padding: 2px 16px 4px; scrollbar-width: none;">
+              <sc-for list="{{ mChips }}" as="c" hint-placeholder-count="14">
+                <button type="button" aria-pressed="{{ c.on }}" style="{{ c.style }}" style-focus="outline: 3px solid #121212; outline-offset: 2px;" onClick="{{ c.pick }}">
+                  <span aria-hidden="true" style="{{ c.dot }}"></span>{{ c.label }}<span style="{{ c.countStyle }}">{{ c.count }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="padding: 0 8px;"><div style="position: relative;">
+              <svg viewBox="0 0 600 520" aria-hidden="true" style="width: 100%; display: block;">
+                <sc-for list="{{ mMap.polys }}" as="p" hint-placeholder-count="13">
+                  <polygon points="{{ p.points }}" style="{{ p.style }}" onClick="{{ p.pick }}"></polygon>
+                </sc-for>
+                <path d="M0 330 C 90 336 150 344 180 345 S 240 372 260 370 S 290 356 300 352 S 330 330 340 330 S 400 352 420 358 S 480 368 500 368 S 570 373 600 375" style="fill: none; stroke: #B9CDD6; stroke-width: 9; stroke-linecap: round; pointer-events: none;"></path>
+                <sc-for list="{{ mMap.bars }}" as="b" hint-placeholder-count="13">
+                  <rect x="{{ b.x }}" y="{{ b.y }}" width="38" height="7" rx="3.5" style="fill: #CFC9BD; pointer-events: none;"></rect>
+                </sc-for>
+              </svg>
+              <div aria-hidden="true" style="position: absolute; inset: 0; pointer-events: none; font-size: 12.5px;"><sc-for list="{{ mMap.texts }}" as="t" hint-placeholder-count="20"><span style="{{ t.style }}">{{ t.v }}</span></sc-for></div>
+            </div></div>
+            <div aria-live="polite" style="margin: 0 16px; padding: 14px 16px; border-radius: 18px; background: #FBFAF7; display: grid; gap: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span aria-hidden="true" style="{{ mCard.swatch }}"></span>
+                <span style="font: 800 22px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em;">{{ mCard.title }}</span>
+              </div>
+              <sc-if value="{{ mCard.hasLine }}" hint-placeholder-val="{{ false }}">
+                <div style="{{ mCard.lineStyle }}">{{ mCard.line }}</div>
+              </sc-if>
+              <p style="margin: 0; font-size: 13.5px; line-height: 1.5; color: #4D4D4D;">{{ mCard.body }}</p>
+            </div>
+          </section>
+
+          <section aria-labelledby="m-offers-h" style="padding: 24px 16px 28px; display: grid; gap: 14px;">
+            <h3 id="m-offers-h" style="margin: 0; font: 800 26px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Aktualne oferty</h3>
+            <sc-for list="{{ cardsM }}" as="l" hint-placeholder-count="2">
+              <article style="border: 1px solid #E6E3DC; border-radius: 18px; overflow: hidden; background: #fff;">
+                <div style="position: relative; aspect-ratio: 16/10; background: #ECE9E2;">
+                  <image-slot id="{{ l.slotM }}" placeholder="{{ l.ph }}" style="width: 100%; height: 100%;"></image-slot>
+                  <span style="{{ l.chip }}"><span aria-hidden="true" style="{{ l.dot }}"></span>{{ l.area }}</span>
+                </div>
+                <div style="padding: 12px 14px 14px; display: grid; gap: 3px;">
+                  <div style="display: flex; align-items: baseline; gap: 6px;"><span style="font: 800 26px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em;">{{ l.total }}</span><span style="font-size: 13px; color: #4D4D4D;">łącznie / mies.</span></div>
+                  <div style="font-size: 13px; color: #4D4D4D;">w tym najem {{ l.rent }}</div>
+                  <div style="font-size: 14px; font-weight: 600; margin-top: 3px;">{{ l.facts }}</div>
+                  <div style="font-size: 12.5px; color: #4D4D4D;">✓ {{ l.fresh }}</div>
+                </div>
+              </article>
+            </sc-for>
+            <button type="button" onClick="{{ mSubmit }}" style="height: 50px; border-radius: 999px; border: 1.5px solid #121212; background: transparent; font-size: 15px; font-weight: 700;">Wszystkie oferty</button>
+          </section>
+
+          <sc-if value="{{ mBarOn }}" hint-placeholder-val="{{ false }}">
+            <div style="position: sticky; bottom: 0; z-index: 4; padding: 12px 16px 16px; background: #FBFAF7; border-top: 1px solid #E6E3DC; display: flex; align-items: center; gap: 12px;">
+              <span aria-hidden="true" style="{{ mCard.swatch }}"></span>
+              <div style="flex: 1; min-width: 0; display: grid;">
+                <span style="font-size: 15px; font-weight: 700;">{{ mCard.title }}</span>
+                <span style="font-size: 12.5px; color: #4D4D4D;">{{ mBarSub }}</span>
+              </div>
+              <button type="button" onClick="{{ mGo }}" style="height: 48px; padding: 0 18px; border-radius: 999px; border: 0; background: #121212; color: #fff; font-size: 15px; font-weight: 700;">Pokaż mieszkania</button>
+            </div>
+          </sc-if>
+        </div>
+        <sc-if value="{{ mToastOn }}" hint-placeholder-val="{{ false }}">
+          <div role="status" style="position: absolute; left: 12px; right: 12px; top: 68px; z-index: 6; padding: 12px 14px; border-radius: 14px; background: #121212; color: #fff; font-size: 13px; line-height: 1.45;">{{ toastText }}</div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MAP STATES ===================== -->
+  <section aria-labelledby="states-h" style="display: grid; gap: 18px;">
+    <h2 id="states-h" style="margin: 0; font: 800 34px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Stany mapy</h2>
+    <div style="display: grid; grid-template-columns: repeat(4, 420px); gap: 20px;">
+      <sc-for list="{{ states }}" as="st" hint-placeholder-count="8">
+        <div style="background: #FBFAF7; border-radius: 20px; padding: 16px; display: grid; gap: 10px; align-content: start;">
+          <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+            <span style="font: 800 18px/1.1 'Bricolage Grotesque', sans-serif;">{{ st.title }}</span>
+            <span style="{{ st.tagStyle }}">{{ st.tag }}</span>
+          </div>
+          <div style="background: #EEEDE6; border-radius: 14px; padding: 8px;"><div style="position: relative;">
+            <svg viewBox="0 0 600 520" aria-hidden="true" style="width: 100%; display: block;">
+              <sc-for list="{{ st.map.polys }}" as="p" hint-placeholder-count="13">
+                <polygon points="{{ p.points }}" style="{{ p.style }}"></polygon>
+              </sc-for>
+              <path d="M0 330 C 90 336 150 344 180 345 S 240 372 260 370 S 290 356 300 352 S 330 330 340 330 S 400 352 420 358 S 480 368 500 368 S 570 373 600 375" style="fill: none; stroke: #B9CDD6; stroke-width: 9; stroke-linecap: round;"></path>
+              <sc-for list="{{ st.map.bars }}" as="b" hint-placeholder-count="13">
+                <rect x="{{ b.x }}" y="{{ b.y }}" width="38" height="7" rx="3.5" style="fill: #CFC9BD;"></rect>
+              </sc-for>
+            </svg>
+            <div aria-hidden="true" style="position: absolute; inset: 0; pointer-events: none; font-size: 13px;"><sc-for list="{{ st.map.texts }}" as="t" hint-placeholder-count="20"><span style="{{ t.style }}">{{ t.v }}</span></sc-for></div>
+          </div></div>
+          <p style="margin: 0; font-size: 13.5px; line-height: 1.5; color: #3A3A3A;">{{ st.body }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- ===================== SPEC ===================== -->
+  <section style="display: grid; grid-template-columns: repeat(3, 560px); gap: 20px; align-items: start;">
+    <sc-for list="{{ specs }}" as="sp" hint-placeholder-count="6">
+      <div style="background: #FBFAF7; border-radius: 20px; padding: 22px; display: grid; gap: 12px; align-content: start;">
+        <h3 style="margin: 0; font: 800 22px/1.05 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em;">{{ sp.title }}</h3>
+        <div style="display: grid; gap: 9px;">
+          <sc-for list="{{ sp.items }}" as="it" hint-placeholder-count="5">
+            <div style="display: flex; gap: 10px; align-items: baseline; font-size: 14px; line-height: 1.5;">
+              <span aria-hidden="true" style="flex: none; font-weight: 800;">{{ sp.mark }}</span>
+              <span>{{ it }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { mode: 'none', dSel: null, dHover: null, dFocus: null, mSel: null, budget: 4500, rooms: '2', toast: null };
+
+  D = [
+    { k: 'bronowice', name: 'Bronowice', h: 140, pts: '10,95 150,70 170,200 60,230 20,200 0,215 0,110', lines: ['Bronowice'], lx: 82, ly: 150, n: 6, low: 0 },
+    { k: 'krowodrza', name: 'Krowodrza', h: 230, pts: '150,70 260,60 270,190 230,250 170,200', lines: ['Krowodrza'], lx: 214, ly: 135, n: 21, low: 2 },
+    { k: 'pradnik-bialy', name: 'Prądnik Biały', h: 30, pts: '260,60 370,40 380,150 330,200 270,190', lines: ['Prądnik', 'Biały'], lx: 320, ly: 108, n: 9, low: 0 },
+    { k: 'pradnik-czerwony', name: 'Prądnik Czerwony', h: 275, pts: '370,40 470,60 470,170 440,168 380,150', lines: ['Prądnik', 'Czerwony'], lx: 424, ly: 92, n: 7, low: 0 },
+    { k: 'nowa-huta', name: 'Nowa Huta', h: 95, pts: '470,60 600,50 600,375 500,368 560,300 540,160 470,170', lines: ['Nowa Huta'], lx: 540, ly: 110, n: 8, low: 0 },
+    { k: 'zwierzyniec', name: 'Zwierzyniec', h: 345, pts: '20,200 60,230 170,200 200,300 180,345 0,330 0,215', lines: ['Zwierzyniec'], lx: 92, ly: 282, n: 4, low: 0 },
+    { k: 'stare-miasto', name: 'Stare Miasto', h: 60, pts: '170,200 230,250 270,190 330,200 345,300 340,330 300,352 260,370 180,345 200,300', lines: ['Stare', 'Miasto'], lx: 262, ly: 280, n: 18, low: 1 },
+    { k: 'grzegorzki', name: 'Grzegórzki', h: 15, pts: '330,200 380,150 440,168 440,310 420,358 340,330 345,300', lines: ['Grzegórzki'], lx: 390, ly: 250, n: 11, low: 0 },
+    { k: 'czyzyny', name: 'Czyżyny', h: 180, pts: '440,168 470,170 540,160 560,300 500,368 420,358 440,310', lines: ['Czyżyny'], lx: 495, ly: 250, n: 5, low: 0 },
+    { k: 'debniki', name: 'Dębniki', h: 205, pts: '0,330 180,345 260,370 240,440 200,500 40,505 0,470', lines: ['Dębniki'], lx: 110, ly: 418, n: 12, low: 0 },
+    { k: 'podgorze', name: 'Podgórze', h: 120, pts: '260,370 300,352 340,330 420,358 500,368 480,430 360,440 280,430 240,440', lines: ['Podgórze'], lx: 372, ly: 396, n: 16, low: 1 },
+    { k: 'podgorze-duchackie', name: 'Podgórze Duchackie', h: 255, pts: '240,440 280,430 360,440 380,515 200,515 200,500', lines: ['Podgórze', 'Duchackie'], lx: 290, ly: 466, n: 6, low: 0 },
+    { k: 'biezanow', name: 'Bieżanów-Prokocim', h: 305, pts: '360,440 480,430 500,368 600,375 600,515 380,515', lines: ['Bieżanów-', 'Prokocim'], lx: 492, ly: 450, n: 3, low: 0 }
+  ];
+
+  ink = h => `oklch(0.46 0.085 ${h})`;
+  tint = h => `oklch(0.935 0.032 ${h})`;
+  hov = h => `oklch(0.84 0.065 ${h})`;
+  byK = k => this.D.find(d => d.k === k);
+  plural = n => n === 1 ? 'oferta' : ((n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? 'oferty' : 'ofert');
+  countOf = (d, mode) => mode === 'counts' ? d.n : (mode === 'low' ? d.low : null);
+  fmt = n => n.toLocaleString('pl-PL').replace(/\u00a0/g, ' ');
+
+  mapFor(cfg, interactive, side) {
+    const { mode, sel, hover, focus } = cfg;
+    const polys = this.D.map(d => {
+      const on = sel === d.k, hv = hover === d.k, fc = focus === d.k;
+      const fill = on ? this.ink(d.h) : (hv || fc ? this.hov(d.h) : this.tint(d.h));
+      const stroke = on || fc ? '#121212' : '#FBFAF7';
+      const sw = on ? 3.5 : (fc ? 3 : 2);
+      const dash = fc && !on ? 'stroke-dasharray:7 5;' : '';
+      return {
+        points: d.pts,
+        style: `fill:${fill};stroke:${stroke};stroke-width:${sw};stroke-linejoin:round;${dash}cursor:${interactive ? 'pointer' : 'default'};transition:fill .15s;`,
+        pick: interactive ? () => this.pick(side, d.k) : () => {},
+        enter: interactive && side === 'd' ? () => this.setState({ dHover: d.k }) : () => {},
+        leave: interactive && side === 'd' ? () => this.setState({ dHover: null }) : () => {}
+      };
+    });
+    // selected polygon drawn last so its outline is not covered
+    if (sel) { const i = this.D.findIndex(d => d.k === sel); polys.push(polys.splice(i, 1)[0]); }
+    const texts = [], bars = [];
+    this.D.forEach(d => {
+      const on = sel === d.k;
+      const col = on ? '#FFFFFF' : '#121212';
+      const at = (x, y) => `position:absolute;left:${(x / 6).toFixed(2)}%;top:${(y / 5.2).toFixed(2)}%;transform:translate(-50%,-78%);white-space:nowrap;line-height:1;font-family:'Public Sans',sans-serif;color:${col};`;
+      const base = '';
+      d.lines.forEach((ln, i) => texts.push({ x: d.lx, y: d.ly + i * 14, v: (on && i === 0 ? '✓ ' : '') + ln, style: at(d.lx, d.ly + i * 14) + `font-size:.78em;font-weight:${on ? 800 : 600};` }));
+      const yC = d.ly + d.lines.length * 14 + 2;
+      const c = this.countOf(d, mode);
+      if (mode === 'loading') bars.push({ x: d.lx - 19, y: yC - 7 });
+      else if (c !== null) texts.push({ x: d.lx, y: yC, v: c === 0 ? 'brak ofert' : `${c} ${this.plural(c)}`, style: at(d.lx, yC) + `font-size:.72em;font-weight:${c === 0 ? 500 : 700};${c === 0 && !on ? 'color:#4D4D4D;' : ''}` });
+    });
+    return { polys, texts, bars };
+  }
+
+  pick(side, k) {
+    if (side === 'd') this.setState(s => ({ dSel: s.dSel === k ? null : k }));
+    else this.setState(s => ({ mSel: s.mSel === k ? null : k }));
+  }
+
+  go(side) {
+    const s = this.state, k = side === 'd' ? s.dSel : s.mSel, d = k ? this.byK(k) : null;
+    const text = `→ Wyniki: Kraków${d ? ' · ' + d.name : ''} · do ${this.fmt(s.budget)} zł łącznie · ${s.rooms === 'all' ? 'dowolna liczba pokoi' : s.rooms + '+ pokoje'}. Obszar przekazuje kodek wyszukiwania FE-002 — bez nowej trasy.`;
+    clearTimeout(this._t);
+    this.setState({ toast: { side, text } });
+    this._t = setTimeout(() => this.setState({ toast: null }), 3600);
+  }
+
+  card(side) {
+    const s = this.state, k = side === 'd' ? s.dSel : s.mSel, d = k ? this.byK(k) : null, mode = s.mode;
+    const total = this.D.reduce((a, x) => a + (this.countOf(x, mode) || 0), 0);
+    const swatch = d
+      ? `width:18px;height:18px;border-radius:5px;flex:none;background:${this.ink(d.h)};box-shadow:inset 0 0 0 1.5px rgba(18,18,18,.35);`
+      : 'width:18px;height:18px;border-radius:5px;flex:none;background:#121212;';
+    let line = '', lineStyle = 'font-size:15px;font-weight:700;', hasLine = false;
+    if (mode === 'loading') { hasLine = true; line = 'Liczba ofert się wczytuje…'; lineStyle = 'font-size:14px;font-weight:600;color:#5E5E5E;'; }
+    else if (mode !== 'none') {
+      hasLine = true;
+      const c = d ? this.countOf(d, mode) : total;
+      line = c === 0 ? 'Teraz brak ofert' : `${c} ${this.plural(c)}`;
+      if (c === 0) lineStyle = 'font-size:15px;font-weight:700;color:#5E5E5E;';
+    }
+    let body;
+    if (!d) body = 'Kliknij okolicę na mapie albo wybierz ją z listy. Nie musisz znać dzielnic — możesz szukać w całym mieście.';
+    else if (hasLine && line === 'Teraz brak ofert') body = 'Wyniki zaproponują sąsiednie okolice albo wyższy budżet. Możesz też szukać w całym Krakowie.';
+    else body = d.name === 'Stare Miasto' || d.name === 'Podgórze' ? 'Dzielnica Krakowa. Wyniki pokażą oferty w tej dzielnicy, w tym w jej mniejszych okolicach.' : 'Dzielnica Krakowa. Wyniki zostaną zawężone do tego obszaru; resztę filtrów ustawisz w wynikach.';
+    return {
+      swatch, hasLine, line, lineStyle, body,
+      kicker: d ? 'Wybrana okolica' : 'Cały Kraków',
+      title: d ? d.name : 'Kraków',
+      hasCta: !!d,
+      cta: d ? `Pokaż mieszkania · ${d.name}` : ''
+    };
+  }
+
+  chips(side) {
+    const s = this.state, sel = side === 'd' ? s.dSel : s.mSel, mode = s.mode, mob = side === 'm';
+    const list = [{ k: null, name: 'Cały Kraków', h: null }].concat(this.D);
+    return list.map(d => {
+      const on = d.k === sel;
+      const hv = side === 'd' && d.k && (s.dHover === d.k);
+      const c = d.k ? this.countOf(d, mode) : null;
+      return {
+        label: d.name, on: String(on),
+        count: c === null ? '' : (c === 0 ? '0' : String(c)),
+        countStyle: c === null ? 'display:none;' : `font-size:12px;font-weight:700;padding:1px 7px;border-radius:999px;background:${on ? 'rgba(255,255,255,.18)' : '#F1EEE7'};`,
+        dot: d.h === null ? `width:10px;height:10px;border-radius:50%;background:${on ? '#fff' : '#121212'};` : `width:10px;height:10px;border-radius:50%;background:${this.ink(d.h)};${on ? 'box-shadow:0 0 0 2px #fff;' : ''}`,
+        style: `display:inline-flex;align-items:center;gap:7px;flex:none;height:${mob ? 44 : 36}px;padding:0 ${mob ? 14 : 12}px;border-radius:999px;font-size:${mob ? 14 : 13.5}px;font-weight:${on ? 700 : 600};cursor:pointer;white-space:nowrap;`
+          + (on ? 'background:#121212;color:#fff;border:1.5px solid #121212;' : `background:#fff;color:#121212;border:1.5px solid ${hv ? '#121212' : '#CFC9BD'};`),
+        pick: () => d.k ? this.pick(side, d.k) : this.setState(side === 'd' ? { dSel: null } : { mSel: null }),
+        enter: () => side === 'd' && this.setState({ dHover: d.k }),
+        leave: () => side === 'd' && this.setState({ dHover: null }),
+        focus: () => side === 'd' && this.setState({ dFocus: d.k }),
+        blur: () => side === 'd' && this.setState({ dFocus: null })
+      };
+    });
+  }
+
+  renderVals() {
+    const s = this.state;
+    const tag = (bg, fg, bd) => `display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.02em;background:${bg};color:${fg};border:1px solid ${bd};white-space:nowrap;`;
+    const tCur = tag('#E7F0E9', '#1E4D33', '#B9D3C1'), tGap = tag('#FFF3D6', '#6B4A00', '#E8CF8F'), tDes = tag('#F1EEE7', '#3A3A3A', '#CFC9BD');
+
+    const modes = [
+      ['none', 'Bez liczb · CURRENT'], ['loading', 'Wczytywanie · FUTURE'], ['counts', 'Liczby · FUTURE'], ['low', 'Niska podaż · FUTURE']
+    ];
+    const modeOpts = modes.map(([k, label]) => ({
+      label, on: String(s.mode === k),
+      style: `height:36px;padding:0 14px;border-radius:999px;border:0;font-size:13.5px;font-weight:700;cursor:pointer;white-space:nowrap;${s.mode === k ? 'background:#121212;color:#fff;' : 'background:transparent;color:#3A3A3A;'}`,
+      pick: () => this.setState({ mode: k })
+    }));
+    const modeTag = s.mode === 'none' ? 'CURRENT · mapa pokazuje same nazwy obszarów' : 'FUTURE DATA-BOUND STATE · tylko referencja; wartości przykładowe';
+    const modeTagStyle = s.mode === 'none' ? tCur : tGap;
+
+    const roomDefs = [['all', 'Każda'], ['1', '1+'], ['2', '2+'], ['3', '3+']];
+    const roomStyle = (on, mob) => `height:${mob ? 44 : 38}px;padding:0 ${mob ? 6 : 12}px;border-radius:999px;border:0;font-size:14px;font-weight:700;cursor:pointer;${on ? 'background:#121212;color:#fff;' : 'background:transparent;color:#121212;'}`;
+    const roomOpts = roomDefs.map(([k, label]) => ({ label, on: String(s.rooms === k), style: roomStyle(s.rooms === k, false), pick: () => this.setState({ rooms: k }) }));
+    const roomOptsM = roomDefs.map(([k, label]) => ({ label, on: String(s.rooms === k), style: roomStyle(s.rooms === k, true), pick: () => this.setState({ rooms: k }) }));
+
+    const selectOpts = [{ k: '', label: 'Cały Kraków' }].concat(this.D.map(d => ({ k: d.k, label: d.name })));
+    const dD = s.dSel ? this.byK(s.dSel) : null, mD = s.mSel ? this.byK(s.mSel) : null;
+
+    const L = [
+      { area: 'krowodrza', total: 4120, rent: 3300, facts: '2 pokoje · 48 m² · 3. piętro', fresh: 'Dostępność potwierdzona 2 dni temu', ph: 'Salon z oknem na zieleń' },
+      { area: 'podgorze', total: 3690, rent: 2950, facts: '2 pokoje · 41 m² · 1. piętro', fresh: 'Dostępność potwierdzona dziś', ph: 'Jasna sypialnia, parkiet' },
+      { area: 'stare-miasto', total: 4850, rent: 3900, facts: '3 pokoje · 62 m² · 2. piętro', fresh: 'Dostępność potwierdzona 4 dni temu', ph: 'Kamienica, wysokie sufity' },
+      { area: 'czyzyny', total: 3350, rent: 2700, facts: '1 pokój · 34 m² · 5. piętro', fresh: 'Dostępność potwierdzona wczoraj', ph: 'Kuchnia z wyspą' }
+    ];
+    const cards = L.map((l, i) => {
+      const d = this.byK(l.area);
+      return {
+        area: d.name, total: this.fmt(l.total) + ' zł', rent: this.fmt(l.rent) + ' zł', facts: l.facts, fresh: l.fresh, ph: l.ph,
+        slotD: 'home-map-d-' + i, slotM: 'home-map-m-' + i,
+        chip: 'position:absolute;left:12px;top:12px;display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:999px;background:#FBFAF7;font-size:13px;font-weight:700;',
+        dot: `width:10px;height:10px;border-radius:50%;background:${this.ink(d.h)};`
+      };
+    });
+
+    const stateDefs = [
+      { title: 'Domyślny', tag: 'CURRENT', ts: tCur, cfg: { mode: 'none' }, body: 'Same nazwy obszarów w jasnych odcieniach o równej jasności. Żaden obszar nie jest wyróżniony.' },
+      { title: 'Hover / podgląd', tag: 'wskaźnik', ts: tDes, cfg: { mode: 'none', hover: 'krowodrza' }, body: 'Obszar pod kursorem lub pod najechaną pozycją listy ciemnieje o jeden stopień. Bez zmiany treści.' },
+      { title: 'Fokus z klawiatury', tag: 'lista okolic', ts: tDes, cfg: { mode: 'none', focus: 'podgorze' }, body: 'Fokus na pozycji listy rysuje przerywany kontur na mapie. Sama lista ma pierścień fokusu 3 px.' },
+      { title: 'Wybrany', tag: 'CURRENT', ts: tCur, cfg: { mode: 'none', sel: 'krowodrza' }, body: 'Pełny kolor, kontur 3,5 px, „✓” przy nazwie, aria-pressed na liście. Wybór czytelny bez koloru.' },
+      { title: 'Wczytywanie liczb', tag: 'FUTURE DATA-BOUND STATE', ts: tGap, cfg: { mode: 'loading' }, body: 'Szare paski tylko tam, gdzie pojawi się liczba. Nazwy i wybór działają od razu, bez czekania na dane.' },
+      { title: 'Liczby dostępne', tag: 'FUTURE DATA-BOUND STATE', ts: tGap, cfg: { mode: 'counts', sel: 'podgorze' }, body: 'Liczba ofert renderuje się tylko z autorytatywnego agregatu. Wartości na makiecie są przykładowe.' },
+      { title: 'Niska / zerowa podaż', tag: 'FUTURE DATA-BOUND STATE', ts: tGap, cfg: { mode: 'low', sel: 'debniki' }, body: '„brak ofert” zamiast liczby 0, obszar dalej wybieralny. Wyniki prowadzą przez odzysk z FE-002.' },
+      { title: 'Agregat niedostępny / błąd', tag: 'CURRENT', ts: tCur, cfg: { mode: 'none', sel: 'stare-miasto' }, body: 'Błąd agregatu wygląda jak stan domyślny: same nazwy. Bez komunikatu o błędzie — mapa działa.' }
+    ];
+    const states = stateDefs.map(x => ({ title: x.title, tag: x.tag, tagStyle: x.ts, body: x.body, map: this.mapFor(Object.assign({ sel: null, hover: null, focus: null }, x.cfg), false) }));
+
+    const specs = [
+      { title: 'Dlaczego ta kompozycja', mark: '→', items: [
+        'Pusta prawa połowa hero była miejscem bez zadania. Mapa wypełnia ją czymś, co prowadzi do wyników — orientacja → wybór → oferty.',
+        'Wyszukiwarka zostaje po lewej i jako pierwsza w kolejności czytania i tabulacji. Mapa jest drugą drogą, nie bramką.',
+        'Mapa obszarów zamiast chmury pinezek: 13 nazw daje orientację, pinezki na Home byłyby szumem i dublowałyby mapę wyników.',
+        'Pod hero od razu oferty, bez drugiej mapy. Kolor obszaru wraca tylko w etykiecie na zdjęciu.',
+        'Atlas z kafelkami z 1C zostaje jako idea, ale w formie geografii, która tłumaczy położenie, a nie siatki prostokątów.'
+      ] },
+      { title: 'Wybór okolicy', mark: '·', items: [
+        'Trzy zsynchronizowane wejścia: wielokąt na mapie, pozycja listy pod mapą, pole „Gdzie” w formularzu. Jeden stan wyboru.',
+        'Pojedynczy wybór. Ponowne kliknięcie albo „Cały Kraków” czyści wybór. Wielokrotny wybór zostaje w filtrach wyników.',
+        'Wybór zmienia etykietę przycisku: „Pokaż mieszkania · Krowodrza”. Przejście niesie obszar, budżet i pokoje.',
+        'Obszar do wyników przekazuje kodek wyszukiwania FE-002. Specyfikacja nie narzuca nowej trasy ani formatu URL.',
+        'Obszar z zerem ofert jest wybieralny — wyniki pokazują odzysk FE-002 (sąsiednie okolice, wyższy budżet).'
+      ] },
+      { title: 'Responsywność', mark: '·', items: [
+        '≥ 1440: kontener 1328 px, hero 5 / 7, mapa min. 640 px wysokości.',
+        '1024–1439: hero 5 / 7, mapa min. 560 px; karta okolicy zwęża się do 300 px.',
+        '768–1023: hero w jednej kolumnie; mapa pod formularzem na pełną szerokość, proporcja 6 : 5, lista okolic pod mapą.',
+        '< 768: formularz → sekcja mapy (lista przewijana poziomo, cele 44 px, mapa, karta pod mapą) → oferty. Po wyborze przyklejony pasek „Pokaż mieszkania”.',
+        'Mapa Home to statyczny SVG z uproszczonymi granicami — bez MapLibre, bez kafelków, bez JS mapy na pierwszym widoku.'
+      ] },
+      { title: 'Dane i stany', mark: '·', items: [
+        'CURRENT: nazwy i granice obszarów, wybór, przejście do wyników. Nic z tego nie wymaga nowego API poza danymi granic.',
+        'PROPOSED BACKEND: liczba ofert per obszar z autorytatywnego agregatu. Nigdy z jednej strony wyników.',
+        'Wczytywanie: paski tylko w miejscu liczb. Błąd agregatu = stan domyślny, bez alarmu.',
+        'Bez „od X zł”, bez trendów, bez „popularne”, bez rankingu. Kolejność listy okolic jest alfabetyczna albo geograficzna, nigdy według liczby ofert.',
+        'Oferty pod hero: te same dane i karta co w wynikach FE-002 — suma miesięczna pierwsza, najem obok, data potwierdzenia.'
+      ] },
+      { title: 'Dostępność', mark: '·', items: [
+        'Mapa jest aria-hidden. Lista okolic (przyciski z aria-pressed) i pole „Gdzie” dają ten sam wynik z klawiatury i czytnika.',
+        'Fokus na liście rysuje kontur na mapie, więc osoby widzące i używające klawiatury widzą związek.',
+        'Wybór niesie trzy sygnały poza kolorem: kontur, „✓”, ciemne tło pozycji listy. Karta okolicy ogłasza zmianę przez aria-live.',
+        'Wszystkie odcienie mają tę samą jasność i nasycenie. Biały tekst na wybranym ≥ 4,5 : 1, czarny na jasnym tle ≥ 12 : 1.',
+        'Mobile: cele dotyku 44 px na liście; dotknięcie mapy działa, ale nie jest jedyną drogą.'
+      ] },
+      { title: 'Status modelu i danych', mark: '!', items: [
+        'HOME GEOGRAPHY MODEL — PRODUCT DECISION PENDING. 13 obszarów to prototypowy model wizualny, nie kanoniczna geografia; Kazimierz / Zabłocie / taksonomia dzielnic do rozstrzygnięcia osobno.',
+        'Production boundaries require an approved geographic source/licence. Mapa na makiecie jest schematyczna.',
+        'Paleta 13 odcieni jest prototypowa, nie produkcyjnym systemem tokenów. Docelowa paleta: FE-VIS-001. D-103: kolor = tożsamość miejsca.',
+        'Stan aktualny: nazwy obszarów bez liczby ofert. Wczytywanie, liczby i niska podaż to FUTURE DATA-BOUND STATE — referencja.',
+        'Home bez MapLibre — mapa interaktywna tylko w wynikach.'
+      ] }
+    ];
+
+    const tostSide = s.toast ? s.toast.side : null;
+    const mCnt = mD ? this.countOf(mD, s.mode) : null;
+
+    return {
+      modeOpts, modeTag, modeTagStyle,
+      roomOpts, roomOptsM, selectOpts,
+      budgetLabel: this.fmt(s.budget) + ' zł',
+      budgetDown: () => this.setState(st => ({ budget: Math.max(1500, st.budget - 250) })),
+      budgetUp: () => this.setState(st => ({ budget: Math.min(15000, st.budget + 250) })),
+
+      dSelValue: s.dSel || '',
+      dSelectChange: e => this.setState({ dSel: e.target.value || null }),
+      dWhereDot: dD ? `width:14px;height:14px;border-radius:50%;flex:none;background:${this.ink(dD.h)};` : 'display:none;',
+      dSubmit: e => { if (e && e.preventDefault) e.preventDefault(); this.go('d'); },
+      dSubmitLabel: dD ? `Pokaż mieszkania · ${dD.name}` : 'Pokaż mieszkania w Krakowie',
+      dMap: this.mapFor({ mode: s.mode, sel: s.dSel, hover: s.dHover, focus: s.dFocus }, true, 'd'),
+      dCard: this.card('d'),
+      dChips: this.chips('d'),
+      dGo: () => this.go('d'),
+      dClear: () => this.setState({ dSel: null }),
+
+      mSelValue: s.mSel || '',
+      mSelectChange: e => this.setState({ mSel: e.target.value || null }),
+      mSubmit: e => { if (e && e.preventDefault) e.preventDefault(); this.go('m'); },
+      mSubmitLabel: mD ? `Pokaż mieszkania · ${mD.name}` : 'Pokaż mieszkania',
+      mMap: this.mapFor({ mode: s.mode, sel: s.mSel, hover: null, focus: null }, true, 'm'),
+      mCard: this.card('m'),
+      mChips: this.chips('m'),
+      mGo: () => this.go('m'),
+      mBarOn: !!mD,
+      mBarSub: s.mode === 'loading' ? 'liczba ofert się wczytuje' : (mCnt === null ? `do ${this.fmt(s.budget)} zł łącznie` : (mCnt === 0 ? 'teraz brak ofert' : `${mCnt} ${this.plural(mCnt)}`)),
+
+      cards, cardsM: cards.slice(0, 2),
+      states, specs,
+      toastText: s.toast ? s.toast.text : '',
+      dToastOn: tostSide === 'd', mToastOn: tostSide === 'm'
+    };
+  }
+}
+</script>
+</body>
+</html>

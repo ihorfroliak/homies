@@ -1,0 +1,1731 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="design_doc_mode" content="canvas">
+<title>Homies 001C — Dzielnica Product Convergence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=Public+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap">
+<script src="image-slot.js"></script>
+<style>
+  body { margin: 0; background: #E9E6DF; }
+  a { color: #121212; }
+  a:hover { color: #5B4A8B; }
+  button { font-family: inherit; }
+  :focus-visible { outline: 3px solid #121212; outline-offset: 2px; box-shadow: 0 0 0 5px #fff; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</helmet>
+
+<div style="font-family: 'Public Sans', system-ui, sans-serif; color: #121212; min-width: 1360px;">
+
+  <!-- REVIEW BAR -->
+  <sc-if value="{{ showChrome }}" hint-placeholder-val="{{ true }}">
+  <div style="position: sticky; top: 0; z-index: 50; background: #121212; color: #fff;">
+    <div style="display: flex; align-items: center; gap: 18px; padding: 10px 28px; flex-wrap: wrap;">
+      <span style="font: 800 20px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">homies</span>
+      <span style="font: 600 11px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; opacity: .75;">DESIGN-001C · DZIELNICA PRODUCT CONVERGENCE</span>
+      <div style="display: flex; gap: 4px; margin-left: 12px;">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+          <button type="button" style="{{ t.style }}" onClick="{{ t.pick }}">{{ t.label }}</button>
+        </sc-for>
+      </div>
+      <span style="margin-left: auto; font: 600 11px/1.3 'IBM Plex Mono', monospace; color: #F2C14E;">IMPLEMENTATION AUTHORIZED: NO · FE-003 wymaga Task Contract</span>
+    </div>
+    <sc-if value="{{ isProto }}" hint-placeholder-val="{{ true }}">
+      <div style="display: flex; align-items: center; gap: 16px; padding: 9px 28px; background: #232323; flex-wrap: wrap; font-size: 12.5px;">
+        <span style="font: 600 10.5px/1 'IBM Plex Mono', monospace; opacity: .7;">EKRAN</span>
+        <div style="display: flex; gap: 3px;">
+          <sc-for list="{{ vpTabs }}" as="v" hint-placeholder-count="4">
+            <button type="button" style="{{ v.style }}" onClick="{{ v.pick }}">{{ v.label }}</button>
+          </sc-for>
+        </div>
+        <span style="font: 600 10.5px/1 'IBM Plex Mono', monospace; opacity: .7; margin-left: 8px;">STAN BRZEGOWY</span>
+        <div style="display: flex; gap: 3px; flex-wrap: wrap;">
+          <sc-for list="{{ edgeTabs }}" as="e" hint-placeholder-count="6">
+            <button type="button" style="{{ e.style }}" onClick="{{ e.pick }}">{{ e.label }}</button>
+          </sc-for>
+        </div>
+        <label style="display: flex; align-items: center; gap: 6px; margin-left: 8px; cursor: pointer;"><input type="checkbox" checked="{{ ann }}" onChange="{{ toggleAnn }}" />Adnotacje</label>
+        <button type="button" style="margin-left: auto; height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid #555; background: transparent; color: #fff; font-size: 12px; cursor: pointer;" onClick="{{ resetAll }}">{{ authLabel }}</button>
+      </div>
+    </sc-if>
+  </div>
+  </sc-if>
+
+  <!-- ===================== PROTOTYPE ===================== -->
+  <sc-if value="{{ isProto }}" hint-placeholder-val="{{ true }}">
+    <div style="display: flex; gap: 36px; padding: 32px 28px 80px; align-items: flex-start;">
+
+      <div ref="{{ frameRef }}" style="{{ frameStyle }}">
+
+        <!-- HEADER (shared) -->
+        <header style="{{ headerStyle }}">
+          <button type="button" onClick="{{ goHome }}" style="display: flex; align-items: center; gap: 9px; border: 0; background: transparent; cursor: pointer; padding: 0;" aria-label="Homies — strona główna">
+            <span aria-hidden="true" style="display: grid; grid-template-columns: repeat(3, 7px); gap: 3px;">
+              <span style="width: 7px; height: 7px; border-radius: 50%; background: #8C2F39;"></span><span style="width: 7px; height: 7px; border-radius: 50%; background: #2F6B4F;"></span><span style="width: 7px; height: 7px; border-radius: 50%; background: #9A5418;"></span>
+              <span style="width: 7px; height: 7px; border-radius: 50%; background: #5B4A8B;"></span><span style="width: 7px; height: 7px; border-radius: 50%; background: #1F5F7A;"></span><span style="width: 7px; height: 7px; border-radius: 50%; background: #121212;"></span>
+            </span>
+            <span style="font: 800 26px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.035em;">homies</span>
+          </button>
+          <sc-if value="{{ showTopNav }}" hint-placeholder-val="{{ true }}">
+            <nav aria-label="Główna" style="{{ navStyle }}">
+              <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+                <button type="button" style="{{ n.style }}" onClick="{{ n.go }}" aria-current="{{ n.cur }}">{{ n.label }}<span style="{{ n.badgeStyle }}">{{ n.badge }}</span></button>
+              </sc-for>
+            </nav>
+          </sc-if>
+          <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+            <sc-if value="{{ showCtx }}" hint-placeholder-val="{{ false }}">
+              <div role="group" aria-label="Kontekst" style="display: flex; padding: 3px; border-radius: 999px; background: #F1EEE7;">
+                <button type="button" style="{{ ctxSeek }}" onClick="{{ toSeeker }}">Szukam</button>
+                <button type="button" style="{{ ctxPanel }}" onClick="{{ toPanel }}">Panel</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ showLogin }}" hint-placeholder-val="{{ true }}">
+              <button type="button" style="height: 40px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #D6D2C8; background: #fff; font-size: 14px; font-weight: 600; cursor: pointer;" onClick="{{ openLogin }}">Zaloguj się</button>
+            </sc-if>
+            <sc-if value="{{ showSupplyCta }}" hint-placeholder-val="{{ true }}">
+              <button type="button" style="height: 40px; padding: 0 16px; border-radius: 999px; border: 0; background: #121212; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer;" onClick="{{ toPanel }}">Dodaj ogłoszenie · 0 zł</button>
+            </sc-if>
+          </div>
+        </header>
+
+        <!-- ========== HOME ========== -->
+        <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <sc-if value="{{ homeSuperseded }}" hint-placeholder-val="{{ false }}">
+              <div role="note" style="margin: 16px 48px 0; padding: 12px 16px; border-radius: 14px; background: #121212; color: #fff; font-size: 14px; font-weight: 600;">SUPERSEDED · ta kompozycja Home jest historyczna. Aktualny Home: MASTER → 02 · Home (Home Mapa).</div>
+            </sc-if>
+            <div style="{{ heroGrid }}">
+              <div style="display: grid; align-content: start; gap: 22px;">
+                <sc-if value="{{ ann }}" hint-placeholder-val="{{ false }}"><span style="{{ tagCur }}">CURRENT · public search (FE-002) · stan w URL</span></sc-if>
+                <h1 style="{{ heroH1 }}">Wybierz okolicę. Albo cały Kraków.</h1>
+                <p style="margin: 0; font-size: 17px; line-height: 1.55; color: #4D4D4D; max-width: 46ch;">Przy każdej ofercie: łączny koszt miesięczny, kwota na start i data, kiedy dostępność była ostatnio potwierdzona.</p>
+                <form role="search" aria-label="Szukaj mieszkania" onSubmit="{{ submitSearch }}" style="display: grid; gap: 16px; padding: 22px; border-radius: 24px; background: #F6F4EF;">
+                  <div>
+                    <label for="q-where" style="display: block; font-size: 14px; font-weight: 700; margin-bottom: 7px;">Gdzie</label>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                      <sc-for list="{{ whereChips }}" as="w" hint-placeholder-count="6">
+                        <button type="button" style="{{ w.style }}" aria-pressed="{{ w.on }}" onClick="{{ w.pick }}">{{ w.label }}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <div style="display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: end;">
+                    <div>
+                      <div style="font-size: 14px; font-weight: 700; margin-bottom: 7px;">Łącznie miesięcznie do</div>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <button type="button" aria-label="Mniej o 250 zł" onClick="{{ budgetDown }}" style="width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid #D6D2C8; background: #fff; font-size: 20px; cursor: pointer;">−</button>
+                        <output aria-live="polite" style="font: 800 30px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em; min-width: 132px; text-align: center;">{{ budgetLabel }}</output>
+                        <button type="button" aria-label="Więcej o 250 zł" onClick="{{ budgetUp }}" style="width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid #D6D2C8; background: #fff; font-size: 20px; cursor: pointer;">+</button>
+                      </div>
+                    </div>
+                    <div>
+                      <div style="font-size: 14px; font-weight: 700; margin-bottom: 7px;">Pokoje</div>
+                      <div role="radiogroup" aria-label="Pokoje" style="display: flex; gap: 3px; padding: 3px; border-radius: 999px; background: #fff;">
+                        <sc-for list="{{ roomOpts }}" as="r" hint-placeholder-count="4">
+                          <button type="button" role="radio" aria-checked="{{ r.on }}" style="{{ r.style }}" onClick="{{ r.pick }}">{{ r.label }}</button>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </div>
+                  <button type="submit" style="height: 56px; border-radius: 999px; border: 0; background: #121212; color: #fff; font-size: 17px; font-weight: 700; cursor: pointer;">{{ submitLabel }}</button>
+                  <p style="margin: 0; font-size: 13px; color: #4D4D4D;">Nie znasz Krakowa? Zostaw „Cały Kraków” i ustaw budżet — okolice zobaczysz na mapie w wynikach.</p>
+                </form>
+              </div>
+              <div>
+                <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px;">
+                  <span style="font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;">Atlas · Kraków</span>
+                  <span style="font-size: 12.5px; color: #4D4D4D;">Kolor oznacza obszar, nie ocenę.</span>
+                </div>
+                <div style="{{ atlasGrid }}">
+                  <sc-for list="{{ atlas }}" as="t" hint-placeholder-count="6">
+                    <button type="button" style="{{ t.style }}" onClick="{{ t.pick }}" aria-label="{{ t.aria }}">
+                      <span style="{{ t.nameStyle }}">{{ t.name }}</span>
+                      <span style="font-size: 13.5px; font-weight: 600; opacity: .95;">{{ t.sub }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+                <sc-if value="{{ ann }}" hint-placeholder-val="{{ false }}"><div style="margin-top: 8px;"><span style="{{ tagGap }}">PROPOSED BACKEND · liczba ofert / „od X zł” na kafelku — brak agregatów, fallback: nazwa + „Zobacz oferty”</span></div></sc-if>
+              </div>
+            </div>
+
+            <section style="{{ homeSection }}">
+              <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap;">
+                <h2 style="margin: 0; font: 800 32px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Oferty w Krakowie</h2>
+                <button type="button" onClick="{{ submitSearch }}" style="border: 0; background: transparent; font-size: 15px; font-weight: 700; text-decoration: underline; cursor: pointer;">Wszystkie oferty →</button>
+              </div>
+              <div style="{{ homeCardsGrid }}">
+                <sc-for list="{{ homeCards }}" as="l" hint-placeholder-count="3">
+                  <article style="display: grid; gap: 0; border: 1px solid #E6E3DC; border-radius: 20px; overflow: hidden; background: #fff; cursor: pointer;" onClick="{{ l.open }}">
+                    <div style="position: relative; aspect-ratio: 16/10; background: #ECE9E2;">
+                      <image-slot id="{{ l.ph }}" placeholder="{{ l.phLabel }}" style="width: 100%; height: 100%;"></image-slot>
+                      <span style="{{ l.areaChip }}">{{ l.areaName }}</span>
+                    </div>
+                    <div style="padding: 14px 16px 16px; display: grid; gap: 4px;">
+                      <div style="display: flex; align-items: baseline; gap: 7px;"><span style="font: 800 28px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em;">{{ l.totalFmt }}</span><span style="font-size: 13px; color: #4D4D4D;">łącznie / mies.</span></div>
+                      <div style="font-size: 13px; color: #4D4D4D;">w tym najem {{ l.rentFmt }} zł</div>
+                      <div style="font-size: 14.5px; font-weight: 600; margin-top: 4px;">{{ l.facts }}</div>
+                      <div style="font-size: 12.5px; color: #4D4D4D; display: flex; gap: 6px; align-items: center;"><span aria-hidden="true">{{ l.freshIcon }}</span>{{ l.freshShort }}</div>
+                    </div>
+                  </article>
+                </sc-for>
+              </div>
+            </section>
+
+            <section style="{{ homeSection }}">
+              <div style="{{ explainGrid }}">
+                <div style="display: grid; gap: 10px; align-content: start;">
+                  <h2 style="margin: 0; font: 800 32px/1.02 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Najpierw suma. Potem szczegóły.</h2>
+                  <p style="margin: 0; font-size: 15.5px; line-height: 1.55; color: #4D4D4D;">Najem, czynsz administracyjny i szacowane media składamy w jedną kwotę miesięczną. Kaucję pokazujemy osobno — wraca do Ciebie, więc nie mieszamy jej z kosztami.</p>
+                </div>
+                <div style="padding: 22px; border-radius: 20px; background: #F6F4EF; display: grid; gap: 12px;">
+                  <div style="display: flex; align-items: baseline; gap: 8px;"><span style="font: 800 44px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">4 000 zł</span><span style="font-size: 14px; color: #4D4D4D;">łącznie / mies. · szacunek</span></div>
+                  <div aria-hidden="true" style="display: flex; height: 12px; gap: 3px;">
+                    <span style="flex: 3200; background: #121212; border-radius: 3px;"></span>
+                    <span style="flex: 520; background: #6B6B6B; border-radius: 3px;"></span>
+                    <span style="flex: 280; border-radius: 3px; background: repeating-linear-gradient(135deg, #121212 0 2px, #fff 2px 6px); border: 1px solid #121212;"></span>
+                  </div>
+                  <div style="display: flex; gap: 18px; flex-wrap: wrap; font-size: 13.5px;">
+                    <span><strong>3 200</strong> najem</span><span><strong>+ 520</strong> administracja</span><span><strong>+ ~280</strong> media (szacunek)</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section style="{{ supplySection }}">
+              <div style="display: grid; gap: 8px;">
+                <span style="font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; opacity: .85;">Dla właścicieli i biur</span>
+                <h2 style="margin: 0; font: 800 34px/1.02 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Masz mieszkanie w Krakowie? Opublikuj je za 0 zł.</h2>
+                <p style="margin: 0; font-size: 15px; line-height: 1.55; max-width: 60ch; opacity: .92;">Dodajesz koszty i terminy oglądań raz. Szukający widzą pełną kwotę, a Ty dostajesz prośby o oglądanie zamiast pytań „ile to razem kosztuje?”.</p>
+              </div>
+              <button type="button" onClick="{{ toPanel }}" style="height: 52px; padding: 0 22px; border-radius: 999px; border: 0; background: #fff; color: #121212; font-size: 15.5px; font-weight: 700; cursor: pointer; white-space: nowrap; align-self: end;">Dodaj mieszkanie</button>
+            </section>
+
+            <footer style="{{ footerStyle }}">
+              <div style="display: grid; gap: 8px; align-content: start;">
+                <span style="font: 800 22px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">homies</span>
+                <span style="font-size: 13px; color: #4D4D4D; max-width: 34ch;">Wynajem długoterminowy w Krakowie. Szukanie jest bezpłatne.</span>
+              </div>
+              <sc-for list="{{ footerCols }}" as="c" hint-placeholder-count="3">
+                <div style="display: grid; gap: 7px; align-content: start;">
+                  <span style="font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;">{{ c.title }}</span>
+                  <sc-for list="{{ c.links }}" as="k" hint-placeholder-count="3"><a href="#" style="font-size: 13.5px; text-decoration: none; color: #3A3A3A;">{{ k }}</a></sc-for>
+                </div>
+              </sc-for>
+            </footer>
+          </div>
+        </sc-if>
+
+        <!-- ========== RESULTS ========== -->
+        <sc-if value="{{ isResults }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ resultsWrap }}">
+            <div style="{{ toolbarStyle }}">
+              <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
+                <h1 style="margin: 0; font: 800 30px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;" aria-live="polite">{{ resultsTitle }}</h1>
+                <span style="font-size: 14px; color: #4D4D4D;">{{ resultsSub }}</span>
+              </div>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+                <sc-for list="{{ activeChips }}" as="c" hint-placeholder-count="3">
+                  <button type="button" style="{{ c.style }}" onClick="{{ c.remove }}" aria-label="{{ c.aria }}">{{ c.label }}<span aria-hidden="true">×</span></button>
+                </sc-for>
+                <button type="button" style="height: 40px; padding: 0 14px; border-radius: 999px; border: 0; background: #121212; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;" onClick="{{ openFilters }}" ref="{{ filterTriggerRef }}">{{ filtersLabel }}</button>
+                <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}"><span style="margin-left: auto; font-size: 13.5px; font-weight: 600;">Sortuj: domyślnie ▾</span></sc-if>
+              </div>
+            </div>
+
+            <div style="{{ splitStyle }}">
+              <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+                <div ref="{{ listRef }}" style="{{ listPaneStyle }}">
+                  <sc-if value="{{ resLoading }}" hint-placeholder-val="{{ false }}">
+                    <div aria-busy="true" aria-label="Wczytywanie ofert" style="display: grid; gap: 10px;">
+                      <sc-for list="{{ skeletons }}" as="k" hint-placeholder-count="4"><div style="{{ k }}"></div></sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ resError }}" hint-placeholder-val="{{ false }}">
+                    <div role="alert" style="padding: 22px; border-radius: 20px; border: 1.5px solid #121212; display: grid; gap: 10px;">
+                      <h2 style="margin: 0; font: 800 24px/1.05 'Bricolage Grotesque', sans-serif;">{{ errTitle }}</h2>
+                      <p style="margin: 0; font-size: 14.5px; line-height: 1.5;">{{ errBody }}</p>
+                      <button type="button" onClick="{{ retryResults }}" style="justify-self: start; height: 44px; padding: 0 18px; border-radius: 999px; border: 0; background: #121212; color: #fff; font-size: 14.5px; font-weight: 700; cursor: pointer;">{{ errCta }}</button>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ true }}">
+                    <div style="{{ listGridStyle }}">
+                      <sc-for list="{{ results }}" as="l" hint-placeholder-count="5">
+                        <article style="{{ l.cardStyle }}" onMouseEnter="{{ l.hover }}" onFocus="{{ l.hover }}">
+                          <div style="{{ l.mediaStyle }}">
+                            <image-slot id="{{ l.ph }}" placeholder="{{ l.phLabel }}" style="width: 100%; height: 100%;"></image-slot>
+                          </div>
+                          <div style="display: grid; gap: 3px; align-content: start; min-width: 0;">
+                            <div style="display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+                              <span style="{{ l.areaText }}"><span aria-hidden="true" style="{{ l.dot }}"></span>{{ l.areaLine }}</span>
+                              <button type="button" style="{{ l.saveStyle }}" onClick="{{ l.save }}" aria-pressed="{{ l.saved }}" aria-label="{{ l.saveAria }}">{{ l.saveIcon }}</button>
+                            </div>
+                            <div style="display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap;"><span style="font: 800 27px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em;">{{ l.totalFmt }}</span><span style="font-size: 12.5px; color: #4D4D4D;">łącznie / mies.</span></div>
+                            <div aria-hidden="true" style="display: flex; height: 6px; gap: 2px; max-width: 220px; margin: 3px 0;">
+                              <span style="{{ l.segRent }}"></span><span style="{{ l.segAdmin }}"></span><span style="{{ l.segUtil }}"></span>
+                            </div>
+                            <div style="font-size: 12.5px; color: #4D4D4D;">w tym najem {{ l.rentFmt }} zł</div>
+                            <a href="#" onClick="{{ l.open }}" style="font-size: 15px; font-weight: 700; text-decoration: none; margin-top: 3px;">{{ l.title }}</a>
+                            <div style="font-size: 13px;">{{ l.facts }}</div>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap; font-size: 12.5px; color: #4D4D4D; margin-top: 2px;">
+                              <span>{{ l.availLine }}</span><span style="display: flex; gap: 5px;"><span aria-hidden="true">{{ l.freshIcon }}</span>{{ l.freshShort }}</span>
+                            </div>
+                            <sc-if value="{{ l.noCoords }}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; color: #4D4D4D;">Brak punktu na mapie — oferta tylko na liście</span></sc-if>
+                          </div>
+                        </article>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding: 28px; border-radius: 20px; background: #F6F4EF; display: grid; gap: 12px;">
+                      <h2 style="margin: 0; font: 800 26px/1.05 'Bricolage Grotesque', sans-serif;">Brak ofert dla tych kryteriów</h2>
+                      <p style="margin: 0; font-size: 14.5px;">Spróbuj poluzować jedno z ograniczeń:</p>
+                      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" onClick="{{ relaxArea }}" style="height: 40px; padding: 0 14px; border-radius: 999px; border: 1.5px solid #121212; background: #fff; font-size: 14px; font-weight: 600; cursor: pointer;">Cały Kraków zamiast okolicy</button>
+                        <button type="button" onClick="{{ relaxBudget }}" style="height: 40px; padding: 0 14px; border-radius: 999px; border: 1.5px solid #121212; background: #fff; font-size: 14px; font-weight: 600; cursor: pointer;">Budżet +500 zł</button>
+                        <button type="button" onClick="{{ relaxRooms }}" style="height: 40px; padding: 0 14px; border-radius: 999px; border: 1.5px solid #121212; background: #fff; font-size: 14px; font-weight: 600; cursor: pointer;">Dowolna liczba pokoi</button>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ showMap }}" hint-placeholder-val="{{ true }}">
+                <div style="{{ mapPaneStyle }}" role="region" aria-label="Mapa wyników — każda oferta jest też na liście">
+                  <sc-for list="{{ mapZones }}" as="z" hint-placeholder-count="5">
+                    <div aria-hidden="true" style="{{ z.style }}"><span style="{{ z.labelStyle }}">{{ z.name }}</span></div>
+                  </sc-for>
+                  <sc-for list="{{ markers }}" as="m" hint-placeholder-count="4">
+                    <button type="button" style="{{ m.style }}" onClick="{{ m.pick }}" onMouseEnter="{{ m.hover }}" aria-label="{{ m.aria }}">{{ m.label }}</button>
+                  </sc-for>
+                  <div style="position: absolute; left: 12px; bottom: 12px; padding: 8px 11px; border-radius: 12px; background: rgba(255,255,255,.95); font-size: 12px; max-width: 260px; line-height: 1.4;">{{ mapNote }}</div>
+                  <sc-if value="{{ ann }}" hint-placeholder-val="{{ false }}"><span style="{{ tagCurAbs }}">CURRENT · MapLibre lazy · public_location APPROXIMATE / DISTRICT</span></sc-if>
+                  <sc-if value="{{ mobPreview }}" hint-placeholder-val="{{ false }}">
+                    <div style="position: absolute; left: 12px; right: 12px; bottom: 84px; display: grid; grid-template-columns: 96px 1fr; gap: 12px; padding: 10px; border-radius: 18px; background: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.18); cursor: pointer;" onClick="{{ previewOpen }}">
+                      <div style="aspect-ratio: 1/1; border-radius: 12px; overflow: hidden; background: #ECE9E2;"><image-slot id="{{ preview.ph }}" placeholder="Zdjęcie" style="width: 100%; height: 100%;"></image-slot></div>
+                      <div style="display: grid; gap: 2px; align-content: center;">
+                        <span style="{{ preview.areaText }}">{{ preview.areaLine }}</span>
+                        <span style="font: 800 22px/1 'Bricolage Grotesque', sans-serif;">{{ preview.totalFmt }}<span style="font: 500 12px 'Public Sans'; color: #4D4D4D;"> łącznie / mies.</span></span>
+                        <span style="font-size: 13px;">{{ preview.facts }}</span>
+                        <span style="font-size: 13px; font-weight: 700; text-decoration: underline;">Zobacz ofertę</span>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+            </div>
+
+            <sc-if value="{{ isMob }}" hint-placeholder-val="{{ false }}">
+              <div style="position: sticky; bottom: 16px; display: flex; justify-content: center; pointer-events: none; margin-top: -60px; padding-bottom: 4px;">
+                <div role="group" aria-label="Widok wyników" style="display: flex; padding: 4px; border-radius: 999px; background: #121212; pointer-events: auto; box-shadow: 0 8px 24px rgba(0,0,0,.25);">
+                  <button type="button" style="{{ mobListBtn }}" onClick="{{ setMobList }}" aria-pressed="{{ mobIsList }}">Lista</button>
+                  <button type="button" style="{{ mobMapBtn }}" onClick="{{ setMobMap }}" aria-pressed="{{ mobIsMap }}">Mapa</button>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <!-- ========== DETAIL ========== -->
+        <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ detailWrap }}">
+            <button type="button" onClick="{{ backToResults }}" style="border: 0; background: transparent; font-size: 14.5px; font-weight: 700; cursor: pointer; padding: 0; margin-bottom: 14px;">← Wróć do wyników</button>
+
+            <sc-if value="{{ edgeUnavailable }}" hint-placeholder-val="{{ false }}">
+              <div role="status" style="padding: 14px 16px; border-radius: 14px; background: #F1EEE7; border: 1.5px solid #121212; margin-bottom: 16px; font-size: 14.5px;"><strong>Ta oferta jest już niedostępna.</strong> Opis zostawiamy do porównania, ale oglądanie i wiadomości są wyłączone.</div>
+            </sc-if>
+
+            <div style="{{ bandGrid }}">
+              <div style="{{ bandColor }}">
+                <span style="font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;">{{ d.areaLine }}</span>
+                <h1 style="{{ detailH1 }}">{{ d.title }}</h1>
+                <div style="font-size: 15px; font-weight: 600;">{{ d.facts }}</div>
+              </div>
+              <div style="position: relative; background: #ECE9E2; min-height: 260px;">
+                <image-slot id="{{ d.ph }}" placeholder="{{ d.phLabel }}" style="width: 100%; height: 100%; position: absolute; inset: 0;"></image-slot>
+                <button type="button" style="{{ d.saveBig }}" onClick="{{ d.save }}" aria-pressed="{{ d.saved }}">{{ d.saveText }}</button>
+              </div>
+            </div>
+
+            <div style="{{ detailGrid }}">
+              <div style="display: grid; gap: 28px; min-width: 0;">
+
+                <section aria-labelledby="cost-h" style="display: grid; gap: 14px;">
+                  <h2 id="cost-h" style="margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;">Ile naprawdę zapłacisz</h2>
+                  <div style="{{ costGrid }}">
+                    <div style="padding: 20px; border-radius: 20px; background: #F6F4EF; display: grid; gap: 12px;">
+                      <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;"><span style="font: 800 46px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">{{ d.totalFmt }}</span><span style="font-size: 14px; color: #4D4D4D;">łącznie / mies. · szacunek</span></div>
+                      <div aria-hidden="true" style="display: flex; height: 12px; gap: 3px;"><span style="{{ d.segRent }}"></span><span style="{{ d.segAdmin }}"></span><span style="{{ d.segUtil }}"></span></div>
+                      <dl style="margin: 0; display: grid; gap: 7px; font-size: 14px;">
+                        <sc-for list="{{ d.monthlyRows }}" as="r" hint-placeholder-count="3">
+                          <div style="display: flex; justify-content: space-between; gap: 10px;"><dt style="display: flex; gap: 8px; align-items: center;"><span aria-hidden="true" style="{{ r.key }}"></span>{{ r.k }}</dt><dd style="margin: 0; font-weight: 700;">{{ r.v }}</dd></div>
+                        </sc-for>
+                      </dl>
+                      <sc-if value="{{ d.hasParking }}" hint-placeholder-val="{{ false }}">
+                        <div style="display: flex; justify-content: space-between; gap: 10px; padding-top: 9px; border-top: 1px dashed #B8B2A6; font-size: 13.5px;"><span>{{ d.parkingLabel }}</span><strong>{{ d.parkingVal }}</strong></div>
+                        <sc-if value="{{ ann }}" hint-placeholder-val="{{ false }}"><span style="{{ tagCanon }}">G4 DECIDED · obowiązkowy parking w sumie, opcjonalny osobno · API nie rozróżnia → każda podana opłata = obowiązkowa · pole opcjonalne = API GAP / BETA BLOCKER</span></sc-if>
+                      </sc-if>
+                      <p style="margin: 0; font-size: 12.5px; color: #4D4D4D;">{{ d.otherCosts }}</p>
+                    </div>
+                    <div style="padding: 20px; border-radius: 20px; border: 1.5px solid #121212; display: grid; gap: 10px; align-content: start;">
+                      <div style="display: flex; align-items: baseline; gap: 8px;"><span style="font: 800 34px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em;">{{ d.moveInFmt }}</span><span style="font-size: 14px; color: #4D4D4D;">na start</span></div>
+                      <div style="display: flex; justify-content: space-between; font-size: 14px;"><span>Pierwszy miesiąc</span><strong>{{ d.totalFmt }}</strong></div>
+                      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; padding: 9px 10px; border-radius: 10px; border: 1.5px dashed #121212;"><span>Kaucja <strong>zwrotna</strong></span><strong>{{ d.depositFmt }}</strong></div>
+                      <p style="margin: 0; font-size: 12.5px; color: #4D4D4D;">Kaucja wraca po zakończeniu najmu zgodnie z umową z wynajmującym. Homies nie przechowuje kaucji.</p>
+                    </div>
+                  </div>
+                  <sc-if value="{{ ann }}" hint-placeholder-val="{{ false }}"><span style="{{ tagCur }}">CURRENT · monthly_total_estimate, move_in_total, deposit z API — klient nie liczy własnych sum</span></sc-if>
+                </section>
+
+                <section aria-labelledby="sum-h" style="display: grid; gap: 10px;">
+                  <h2 id="sum-h" style="margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;">W skrócie</h2>
+                  <dl style="margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0; border-top: 2px solid #121212;">
+                    <sc-for list="{{ d.truth }}" as="t" hint-placeholder-count="6">
+                      <div style="padding: 12px 12px 12px 0; border-bottom: 1px solid #E6E3DC;"><dt style="font-size: 12.5px; color: #4D4D4D;">{{ t.k }}</dt><dd style="margin: 3px 0 0; font-size: 15.5px; font-weight: 700;">{{ t.v }}</dd></div>
+                    </sc-for>
+                  </dl>
+                </section>
+
+                <section style="display: grid; gap: 10px;">
+                  <h2 style="margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;">Opis</h2>
+                  <p style="margin: 0; font-size: 15.5px; line-height: 1.6; max-width: 64ch;">{{ d.desc }}</p>
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <sc-for list="{{ d.features }}" as="f" hint-placeholder-count="4"><span style="padding: 6px 12px; border-radius: 999px; background: #F1EEE7; font-size: 13.5px; font-weight: 600;">{{ f }}</span></sc-for>
+                  </div>
+                </section>
+
+                <section style="display: grid; gap: 10px;">
+                  <h2 style="margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;">Okolica</h2>
+                  <div style="position: relative; height: 200px; border-radius: 20px; overflow: hidden; background: #EEEDE6;">
+                    <div aria-hidden="true" style="{{ d.locZone }}"></div>
+                    <span style="position: absolute; left: 16px; top: 14px; font: 800 26px/1 'Bricolage Grotesque', sans-serif;">{{ d.areaName }}</span>
+                  </div>
+                  <p style="margin: 0; font-size: 14px;">{{ d.locText }}</p>
+                  <sc-if value="{{ ann }}" hint-placeholder-val="{{ false }}"><span style="{{ tagCur }}">CURRENT · bez pinezki i promienia · D-101: piętro publiczne, floors_total nigdy</span></sc-if>
+                </section>
+              </div>
+
+              <!-- ENGAGEMENT RAIL (desktop) / inline (mobile) -->
+              <aside aria-label="Oglądanie i kontakt" style="{{ railStyle }}">
+                <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px;">
+                  <h2 style="margin: 0; font: 800 22px/1.05 'Bricolage Grotesque', sans-serif;">{{ railTitle }}</h2>
+                  <sc-if value="{{ ann }}" hint-placeholder-val="{{ false }}"><span style="{{ tagSmall }}">{{ modeTag }}</span></sc-if>
+                </div>
+
+                <sc-if value="{{ railBlocked }}" hint-placeholder-val="{{ false }}">
+                  <div role="status" style="padding: 14px; border-radius: 14px; background: #F1EEE7; font-size: 14px; line-height: 1.5;">{{ railBlockedText }}</div>
+                  <sc-if value="{{ edgeF6 }}" hint-placeholder-val="{{ false }}"><sc-if value="{{ ann }}" hint-placeholder-val="{{ false }}"><span style="{{ tagCanon }}">F6 DECIDED + IMPLEMENTED · 409 RECONTACT_BLOCKED dla tej generacji publikacji · ponowna publikacja znosi blokadę · OPEN: czy nowa blokada G-14 anuluje istniejące oglądanie</span></sc-if></sc-if>
+                </sc-if>
+
+                <sc-if value="{{ hasViewing }}" hint-placeholder-val="{{ false }}">
+                  <div role="status" aria-live="polite" style="{{ viewingBox }}">
+                    <span style="{{ viewingBadge }}">{{ viewingStatusLabel }}</span>
+                    <div style="font: 800 22px/1.1 'Bricolage Grotesque', sans-serif;">{{ viewingWhen }}</div>
+                    <p style="margin: 0; font-size: 13.5px; line-height: 1.5;">{{ viewingExplain }}</p>
+                    <p style="margin: 0; font-size: 13px; color: #4D4D4D;">{{ meetingNote }}</p>
+                    <sc-if value="{{ showMeetingSlot }}" hint-placeholder-val="{{ false }}">
+                      <div style="padding: 12px; border-radius: 12px; border: 1.5px dashed #121212; background: #fff; display: grid; gap: 5px;">
+                        <span style="font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;">Adres i spotkanie</span>
+                        <span style="font-size: 13.5px;">Widoczne tylko dla Ciebie i wynajmującego tego oglądania.</span>
+                        <span style="{{ tagCanon }}">DOCELOWY UI · FE-003 + participant-only API (G9) · NIE zaimplementowane</span>
+                      </div>
+                    </sc-if>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                      <button type="button" style="height: 40px; padding: 0 14px; border-radius: 999px; border: 1.5px solid #121212; background: #fff; font-size: 14px; font-weight: 600; cursor: pointer;" onClick="{{ cancelViewing }}">Anuluj oglądanie</button>
+                    </div>
+                    <p style="margin: 0; font-size: 12.5px; color: #4D4D4D;">Zmiana terminu: anuluj i wybierz nowy termin.</p>
+                    <sc-if value="{{ ann }}" hint-placeholder-val="{{ false }}"><span style="{{ tagCanon }}">G9 DECIDED · adres tylko po CONFIRMED, tylko uczestnikom · kanał participant-only nie istnieje = BETA BLOCKER · brak reschedule · źródło anulowania niewiarygodne = BETA BLOCKER</span></sc-if>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ showSlots }}" hint-placeholder-val="{{ true }}">
+                  <div style="display: grid; gap: 12px;">
+                    <sc-if value="{{ conflictMsg }}" hint-placeholder-val="{{ false }}">
+                      <div role="alert" style="padding: 11px 13px; border-radius: 12px; border: 1.5px solid #121212; background: #FFF6DA; font-size: 13.5px; line-height: 1.45;"><strong>Ten termin właśnie się zajął.</strong> Odświeżyliśmy listę — wybierz inny.</div>
+                    </sc-if>
+                    <sc-if value="{{ offlineMsg }}" hint-placeholder-val="{{ false }}">
+                      <div role="alert" style="padding: 11px 13px; border-radius: 12px; border: 1.5px solid #121212; background: #F1EEE7; font-size: 13.5px; line-height: 1.45;"><strong>Brak połączenia.</strong> Twój wybór jest zachowany. <button type="button" onClick="{{ retryOffline }}" style="border: 0; background: transparent; font-weight: 700; text-decoration: underline; cursor: pointer; padding: 0; font-size: 13.5px;">Spróbuj ponownie</button></div>
+                    </sc-if>
+                    <sc-for list="{{ slotDays }}" as="day" hint-placeholder-count="2">
+                      <div role="group" aria-label="{{ day.label }}" style="display: grid; gap: 7px;">
+                        <span style="font-size: 13px; font-weight: 700;">{{ day.label }}</span>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                          <sc-for list="{{ day.slots }}" as="s" hint-placeholder-count="3">
+                            <button type="button" aria-pressed="{{ s.on }}" style="{{ s.style }}" onClick="{{ s.pick }}">{{ s.time }}</button>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </sc-for>
+                    <button type="button" style="{{ confirmBtn }}" disabled="{{ confirmDisabled }}" onClick="{{ confirmViewing }}">{{ confirmLabel }}</button>
+                    <p style="margin: 0; font-size: 12.5px; color: #4D4D4D;">{{ modeExplain }}</p>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ noSlots }}" hint-placeholder-val="{{ false }}">
+                  <p style="margin: 0; font-size: 14px; line-height: 1.5;">Wynajmujący nie opublikował terminów oglądania. Napisz, kiedy możesz przyjść.</p>
+                  <sc-if value="{{ ann }}" hint-placeholder-val="{{ false }}"><span style="{{ tagGap }}">PROPOSED · „Poproś o termin” bez slotów wymaga backendu — teraz: wiadomość</span></sc-if>
+                </sc-if>
+
+                <sc-if value="{{ showComposer }}" hint-placeholder-val="{{ false }}">
+                  <div style="display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid #E6E3DC;">
+                    <label for="first-msg" style="font-size: 14px; font-weight: 700;">Pierwsza wiadomość</label>
+                    <textarea id="first-msg" value="{{ draft }}" onChange="{{ setDraft }}" maxlength="4000" style="min-height: 112px; padding: 12px; border-radius: 12px; border: 1.5px solid #B8B2A6; font: 400 14.5px/1.5 'Public Sans', sans-serif; resize: vertical;"></textarea>
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; color: #4D4D4D;"><span>Rozmowa zacznie się po wysłaniu tej wiadomości.</span><span>{{ draftCount }}</span></div>
+                    <button type="button" style="{{ sendBtn }}" disabled="{{ sendDisabled }}" onClick="{{ sendMessage }}">Wyślij wiadomość</button>
+                    <sc-if value="{{ ann }}" hint-placeholder-val="{{ false }}"><span style="{{ tagCur }}">CURRENT · start rozmowy wymaga niepustej treści (≤ 4000 znaków) · bez pustych rozmów</span></sc-if>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ showSecondary }}" hint-placeholder-val="{{ true }}">
+                  <div style="display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid #E6E3DC;">
+                    <button type="button" style="height: 44px; border-radius: 999px; border: 1.5px solid #121212; background: #fff; font-size: 14.5px; font-weight: 700; cursor: pointer;" onClick="{{ msgAction }}">{{ msgLabel }}</button>
+                    <button type="button" style="height: 40px; border-radius: 999px; border: 0; background: transparent; font-size: 13.5px; font-weight: 600; text-decoration: underline; cursor: pointer;" onClick="{{ revealPhone }}">{{ phoneLabel }}</button>
+                    <sc-if value="{{ ann }}" hint-placeholder-val="{{ false }}"><span style="{{ tagCur }}">CURRENT · reveal niezależny od rozmowy i oglądania · zweryfikowany telefon · 20 / dzień · audyt · tryb tylko-wiadomości → brak przycisku · SMS produkcyjny = BETA BLOCKER</span></sc-if>
+                  </div>
+                </sc-if>
+              </aside>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ========== SAVED ========== -->
+        <sc-if value="{{ isSaved }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ pagePad }}">
+            <h1 style="margin: 0 0 6px; font: 800 34px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Zapisane</h1>
+            <p style="margin: 0 0 22px; font-size: 14.5px; color: #4D4D4D;">Oferty i wyszukiwania, do których chcesz wrócić.</p>
+            <h2 style="margin: 0 0 10px; font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;">Oferty</h2>
+            <sc-if value="{{ savedEmpty }}" hint-placeholder-val="{{ false }}"><p style="font-size: 14px; padding: 16px; border-radius: 14px; background: #F6F4EF;">Nie masz jeszcze zapisanych ofert. Użyj ♡ na liście wyników.</p></sc-if>
+            <div style="display: grid; gap: 8px; margin-bottom: 26px;">
+              <sc-for list="{{ savedList }}" as="l" hint-placeholder-count="2">
+                <div style="display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: 16px; border: 1px solid #E6E3DC; flex-wrap: wrap;">
+                  <span aria-hidden="true" style="{{ l.dot }}"></span>
+                  <div style="flex: 1 1 220px; min-width: 0;"><div style="font-size: 15px; font-weight: 700;">{{ l.title }}</div><div style="font-size: 13px; color: #4D4D4D;">{{ l.areaLine }} · {{ l.freshShort }}</div></div>
+                  <span style="font: 800 22px/1 'Bricolage Grotesque', sans-serif;">{{ l.totalFmt }}</span>
+                  <button type="button" style="height: 38px; padding: 0 14px; border-radius: 999px; border: 1.5px solid #121212; background: #fff; font-size: 13.5px; font-weight: 600; cursor: pointer;" onClick="{{ l.open }}">Otwórz</button>
+                </div>
+              </sc-for>
+            </div>
+            <h2 style="margin: 0 0 10px; font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;">Wyszukiwania</h2>
+            <div style="display: grid; gap: 8px;">
+              <sc-for list="{{ savedSearches }}" as="s" hint-placeholder-count="2">
+                <div style="display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 16px; background: #F6F4EF; flex-wrap: wrap;">
+                  <div style="flex: 1 1 240px;"><div style="font-size: 15px; font-weight: 700;">{{ s.label }}</div><div style="font-size: 13px; color: #4D4D4D;">{{ s.sub }}</div></div>
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer;"><input type="checkbox" checked="{{ s.alert }}" onChange="{{ s.toggle }}" style="width: 18px; height: 18px;" />Powiadomienia o nowych ofertach</label>
+                </div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ ann }}" hint-placeholder-val="{{ false }}"><div style="margin-top: 10px;"><span style="{{ tagCur }}">CURRENT · saved listings / saved searches / alerts w API · brak presji powiadomień</span></div></sc-if>
+          </div>
+        </sc-if>
+
+        <!-- ========== MESSAGES / CONVERSATION ========== -->
+        <sc-if value="{{ isMessages }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ pagePad }}">
+            <h1 style="margin: 0 0 18px; font: 800 34px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Wiadomości</h1>
+            <div style="{{ msgGrid }}">
+              <div style="display: grid; gap: 6px; align-content: start;">
+                <sc-for list="{{ threadList }}" as="t" hint-placeholder-count="2">
+                  <button type="button" style="{{ t.style }}" onClick="{{ t.pick }}">
+                    <span aria-hidden="true" style="{{ t.dot }}"></span>
+                    <span style="display: grid; gap: 2px; text-align: left; min-width: 0;"><span style="font-size: 14.5px; font-weight: 700;">{{ t.title }}</span><span style="font-size: 12.5px; color: #4D4D4D;">{{ t.sub }}</span></span>
+                  </button>
+                </sc-for>
+              </div>
+              <div style="border: 1px solid #E6E3DC; border-radius: 20px; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto; min-height: 420px;">
+                <div style="{{ th.headStyle }}">
+                  <span aria-hidden="true" style="{{ th.dot }}"></span>
+                  <div style="flex: 1; min-width: 0;"><div style="font-size: 14.5px; font-weight: 700;">{{ th.title }}</div><div style="font-size: 12.5px; color: #4D4D4D;">{{ th.sub }}</div></div>
+                  <span style="font: 800 18px/1 'Bricolage Grotesque', sans-serif;">{{ th.total }}</span>
+                </div>
+                <div style="padding: 16px; display: grid; gap: 10px; align-content: start; background: #FBFAF7;">
+                  <sc-for list="{{ th.messages }}" as="m" hint-placeholder-count="3">
+                    <div style="{{ m.style }}">{{ m.text }}</div>
+                  </sc-for>
+                </div>
+                <div style="padding: 12px; border-top: 1px solid #E6E3DC;">
+                  <sc-if value="{{ th.closed }}" hint-placeholder-val="{{ false }}"><p role="status" style="margin: 0; font-size: 13.5px; color: #4D4D4D;">Ta rozmowa jest zamknięta. Nie można wysyłać nowych wiadomości.</p></sc-if>
+                  <sc-if value="{{ th.open }}" hint-placeholder-val="{{ true }}">
+                    <div style="display: flex; gap: 8px;"><input aria-label="Odpowiedź" value="{{ reply }}" onChange="{{ setReply }}" placeholder="Napisz odpowiedź" style="flex: 1; height: 44px; padding: 0 14px; border-radius: 999px; border: 1.5px solid #B8B2A6; font-size: 14px;" /><button type="button" onClick="{{ sendReply }}" disabled="{{ replyDisabled }}" style="{{ replyBtn }}">Wyślij</button></div>
+                  </sc-if>
+                </div>
+              </div>
+            </div>
+            <sc-if value="{{ ann }}" hint-placeholder-val="{{ false }}"><div style="margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap;"><span style="{{ tagCur }}">CURRENT · 1 aktywny wątek na parę szukający+oferta · removed → bez treści · CLOSED bez odpowiedzi</span><span style="{{ tagGap }}">BACKEND GAP · kontekst oferty po jej wycofaniu (brak snapshotu) → fallback „Oferta niedostępna”</span></div></sc-if>
+          </div>
+        </sc-if>
+
+        <!-- ========== VIEWINGS (seeker) ========== -->
+        <sc-if value="{{ isViewings }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ pagePad }}">
+            <h1 style="margin: 0 0 18px; font: 800 34px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Oglądania</h1>
+            <sc-if value="{{ myViewingsEmpty }}" hint-placeholder-val="{{ false }}"><p style="font-size: 14px; padding: 16px; border-radius: 14px; background: #F6F4EF;">Nie masz umówionych oglądań. Wybierz termin na stronie oferty.</p></sc-if>
+            <div style="display: grid; gap: 8px;">
+              <sc-for list="{{ myViewings }}" as="v" hint-placeholder-count="1">
+                <div style="display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 16px; border: 1px solid #E6E3DC; flex-wrap: wrap;">
+                  <span style="{{ v.badge }}">{{ v.status }}</span>
+                  <div style="flex: 1 1 220px;"><div style="font-size: 15px; font-weight: 700;">{{ v.when }}</div><div style="font-size: 13px; color: #4D4D4D;">{{ v.title }}</div></div>
+                  <button type="button" style="height: 38px; padding: 0 14px; border-radius: 999px; border: 1.5px solid #121212; background: #fff; font-size: 13.5px; font-weight: 600; cursor: pointer;" onClick="{{ v.open }}">Oferta</button>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ========== PROVIDER PANEL ========== -->
+        <sc-if value="{{ isPanel }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ pagePad }}">
+            <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 6px;">
+              <h1 style="margin: 0; font: 800 34px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Panel</h1>
+              <span style="font-size: 14px; color: #4D4D4D;">Oferty, którymi zarządzasz: 2</span>
+            </div>
+            <p style="margin: 0 0 18px; font-size: 14px; color: #4D4D4D; max-width: 70ch;">To samo konto co przy szukaniu. Panel pokazuje to, do czego masz uprawnienia: własne mieszkania albo mieszkania, którymi zarządzasz w imieniu kogoś.</p>
+            <div style="{{ panelGrid }}">
+              <div style="display: grid; gap: 10px; align-content: start;">
+                <h2 style="margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;">Prośby i oglądania</h2>
+                <sc-for list="{{ providerViewings }}" as="v" hint-placeholder-count="3">
+                  <div style="padding: 14px; border-radius: 16px; border: 1px solid #E6E3DC; display: grid; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                      <span style="{{ v.badge }}">{{ v.statusLabel }}</span>
+                      <span style="font-size: 15px; font-weight: 700;">{{ v.when }}</span>
+                      <span style="margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 13px;"><span aria-hidden="true" style="{{ v.dot }}"></span>{{ v.listing }}</span>
+                    </div>
+                    <div style="font-size: 13.5px; color: #3A3A3A;">{{ v.who }}</div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                      <sc-for list="{{ v.actions }}" as="a" hint-placeholder-count="2">
+                        <button type="button" style="{{ a.style }}" onClick="{{ a.run }}">{{ a.label }}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ ann }}" hint-placeholder-val="{{ false }}"><span style="{{ tagCur }}">CURRENT API · confirm / decline / cancel / outcome · docelowo PropertyAuthority — BETA BLOCKER: trasy supply autoryzują dziś po legacy roli host</span></sc-if>
+              </div>
+              <div style="display: grid; gap: 10px; align-content: start;">
+                <h2 style="margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;">Twoje oferty</h2>
+                <sc-for list="{{ panelListings }}" as="p" hint-placeholder-count="2">
+                  <div style="padding: 14px; border-radius: 16px; background: #F6F4EF; display: grid; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 8px;"><span aria-hidden="true" style="{{ p.dot }}"></span><span style="font-size: 14.5px; font-weight: 700;">{{ p.title }}</span></div>
+                    <div style="font-size: 13px;">{{ p.fresh }}</div>
+                    <div style="font-size: 13px; color: #4D4D4D;">{{ p.mode }}</div>
+                    <button type="button" style="justify-self: start; height: 36px; padding: 0 14px; border-radius: 999px; border: 1.5px solid #121212; background: #fff; font-size: 13px; font-weight: 600; cursor: pointer;" onClick="{{ p.reconfirm }}">{{ p.reconfirmLabel }}</button>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ ann }}" hint-placeholder-val="{{ false }}"><span style="{{ tagFuture }}">FUTURE · wynik najmu (RENTED_VIA_HOMIES / ELSEWHERE / WITHDRAWN / OTHER) przy wycofaniu oferty</span></sc-if>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ========== FILTER PANEL ========== -->
+        <sc-if value="{{ filtersOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ overlayStyle }}" onClick="{{ closeFilters }}">
+            <div role="dialog" aria-modal="true" aria-labelledby="flt-h" style="{{ filterSheet }}" onClick="{{ stop }}">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <h2 id="flt-h" style="margin: 0; font: 800 26px/1 'Bricolage Grotesque', sans-serif;">Filtry</h2>
+                <button type="button" ref="{{ filterFirstRef }}" aria-label="Zamknij filtry" onClick="{{ closeFilters }}" style="width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid #D6D2C8; background: #fff; font-size: 18px; cursor: pointer;">×</button>
+              </div>
+              <fieldset style="border: 0; padding: 0; margin: 0; display: grid; gap: 8px;">
+                <legend style="font-size: 14px; font-weight: 700; margin-bottom: 6px;">Okolica</legend>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  <sc-for list="{{ draftAreas }}" as="a" hint-placeholder-count="6">
+                    <button type="button" aria-pressed="{{ a.on }}" style="{{ a.style }}" onClick="{{ a.pick }}">{{ a.label }}</button>
+                  </sc-for>
+                </div>
+              </fieldset>
+              <div style="display: grid; gap: 7px;">
+                <span style="font-size: 14px; font-weight: 700;">Łącznie miesięcznie do</span>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  <sc-for list="{{ draftBudgets }}" as="b" hint-placeholder-count="4">
+                    <button type="button" aria-pressed="{{ b.on }}" style="{{ b.style }}" onClick="{{ b.pick }}">{{ b.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display: grid; gap: 7px;">
+                <span style="font-size: 14px; font-weight: 700;">Pokoje</span>
+                <div style="display: flex; gap: 6px;">
+                  <sc-for list="{{ draftRooms }}" as="r" hint-placeholder-count="4">
+                    <button type="button" aria-pressed="{{ r.on }}" style="{{ r.style }}" onClick="{{ r.pick }}">{{ r.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display: flex; gap: 10px; margin-top: auto; padding-top: 12px; border-top: 1px solid #E6E3DC;">
+                <button type="button" onClick="{{ clearDraft }}" style="height: 50px; padding: 0 18px; border-radius: 999px; border: 1.5px solid #121212; background: #fff; font-size: 15px; font-weight: 600; cursor: pointer;">Wyczyść</button>
+                <button type="button" onClick="{{ applyFilters }}" style="flex: 1; height: 50px; border-radius: 999px; border: 0; background: #121212; color: #fff; font-size: 15.5px; font-weight: 700; cursor: pointer;" aria-live="polite">{{ applyLabel }}</button>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ========== AUTH INTERRUPTION ========== -->
+        <sc-if value="{{ authOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ overlayStyle }}">
+            <div role="dialog" aria-modal="true" aria-labelledby="auth-h" style="{{ authSheet }}">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="{{ authTag }}">{{ authModeTag }}</span>
+                <button type="button" aria-label="Zamknij logowanie" onClick="{{ closeAuth }}" style="width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid #D6D2C8; background: #fff; cursor: pointer;">×</button>
+              </div>
+              <h2 id="auth-h" style="margin: 0; font: 800 26px/1.05 'Bricolage Grotesque', sans-serif;">{{ authTitle }}</h2>
+              <div style="padding: 12px; border-radius: 14px; background: #F6F4EF; display: flex; gap: 10px; align-items: center;">
+                <span aria-hidden="true" style="{{ intentDot }}"></span>
+                <div style="font-size: 13.5px; line-height: 1.45;"><strong>{{ intentLine }}</strong><br />{{ intentSub }}</div>
+              </div>
+              <sc-if value="{{ authCurrent }}" hint-placeholder-val="{{ true }}">
+                <div style="display: grid; gap: 10px;">
+                  <label style="display: grid; gap: 5px; font-size: 14px; font-weight: 600;">E-mail<input type="email" autocomplete="email" value="{{ email }}" onChange="{{ setEmail }}" style="height: 46px; padding: 0 14px; border-radius: 12px; border: 1.5px solid #B8B2A6; font-size: 15px;" /></label>
+                  <label style="display: grid; gap: 5px; font-size: 14px; font-weight: 600;">Hasło<input type="password" autocomplete="current-password" value="{{ password }}" onChange="{{ setPassword }}" style="height: 46px; padding: 0 14px; border-radius: 12px; border: 1.5px solid #B8B2A6; font-size: 15px;" /></label>
+                  <sc-if value="{{ authError }}" hint-placeholder-val="{{ false }}"><p role="alert" style="margin: 0; font-size: 13.5px; font-weight: 600;">⚠ Podaj e-mail i hasło.</p></sc-if>
+                  <button type="button" onClick="{{ doLogin }}" style="height: 52px; border-radius: 999px; border: 0; background: #121212; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;">{{ loginCta }}</button>
+                  <p style="margin: 0; font-size: 13px;">Nie masz konta? <a href="#" onClick="{{ doLogin }}" style="font-weight: 700;">Załóż je</a> — wrócisz do tej samej oferty.</p>
+                </div>
+              </sc-if>
+              <sc-if value="{{ authProposed }}" hint-placeholder-val="{{ false }}">
+                <div style="display: grid; gap: 10px;">
+                  <label style="display: grid; gap: 5px; font-size: 14px; font-weight: 600;">E-mail<input type="email" value="{{ email }}" onChange="{{ setEmail }}" style="height: 46px; padding: 0 14px; border-radius: 12px; border: 1.5px solid #B8B2A6; font-size: 15px;" /></label>
+                  <button type="button" onClick="{{ doLogin }}" style="height: 52px; border-radius: 999px; border: 0; background: #121212; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;">Wyślij kod na e-mail</button>
+                  <p style="margin: 0; font-size: 12.5px; color: #4D4D4D;">FUTURE: kod jednorazowy zamiast hasła. Nie istnieje w obecnym API.</p>
+                </div>
+              </sc-if>
+              <button type="button" onClick="{{ toggleAuthMode }}" style="justify-self: start; border: 0; background: transparent; font-size: 12.5px; font-weight: 600; text-decoration: underline; cursor: pointer; padding: 0;">{{ authToggleLabel }}</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- MOBILE DOCK (detail) -->
+        <sc-if value="{{ showDock }}" hint-placeholder-val="{{ false }}">
+          <div style="position: sticky; bottom: 0; z-index: 5; background: #fff; border-top: 1px solid #E6E3DC; padding: 10px 14px 14px; display: grid; gap: 8px; box-shadow: 0 -8px 24px rgba(0,0,0,.06);">
+            <div style="display: flex; align-items: baseline; justify-content: space-between;"><span style="font: 800 22px/1 'Bricolage Grotesque', sans-serif;">{{ d.totalFmt }}<span style="font: 500 12px 'Public Sans'; color: #4D4D4D;"> łącznie / mies.</span></span><span style="font-size: 12.5px; font-weight: 700;">{{ dockHint }}</span></div>
+            <div style="display: flex; gap: 6px; overflow-x: auto;">
+              <sc-for list="{{ dockSlots }}" as="s" hint-placeholder-count="3">
+                <button type="button" style="{{ s.style }}" onClick="{{ s.pick }}">{{ s.label }}</button>
+              </sc-for>
+              <sc-if value="{{ dockMsgOnly }}" hint-placeholder-val="{{ false }}"><button type="button" style="flex: 1; height: 48px; border-radius: 999px; border: 0; background: #121212; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;" onClick="{{ msgAction }}">{{ msgLabel }}</button></sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+          <div role="status" aria-live="polite" style="position: sticky; bottom: 20px; margin: 0 auto; width: fit-content; max-width: 90%; padding: 12px 18px; border-radius: 14px; background: #121212; color: #fff; font-size: 14px; z-index: 30;">{{ toast }}</div>
+        </sc-if>
+      </div>
+
+      <!-- side notes -->
+      <sc-if value="{{ showSide }}" hint-placeholder-val="{{ true }}">
+      <aside style="flex: 1 1 0; min-width: 0; display: grid; gap: 14px; position: sticky; top: 120px;">
+        <div style="padding: 18px; border-radius: 18px; background: #fff; display: grid; gap: 8px;">
+          <span style="font: 600 11px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #5A5E66;">ŚCIEŻKA · {{ screenName }}</span>
+          <p style="margin: 0; font-size: 13.5px; line-height: 1.55;">{{ screenNote }}</p>
+        </div>
+        <div style="padding: 18px; border-radius: 18px; background: #fff; display: grid; gap: 8px;">
+          <span style="font: 600 11px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #5A5E66;">LICZNIK KONWERSJI</span>
+          <sc-for list="{{ counters }}" as="c" hint-placeholder-count="4">
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; font-size: 13px; padding: 6px 0; border-bottom: 1px solid #EEE;"><span>{{ c.k }}</span><strong>{{ c.v }}</strong></div>
+          </sc-for>
+        </div>
+        <div style="padding: 18px; border-radius: 18px; background: #fff; display: grid; gap: 6px;">
+          <span style="font: 600 11px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #5A5E66;">JAK TESTOWAĆ</span>
+          <sc-for list="{{ howTo }}" as="h" hint-placeholder-count="5"><p style="margin: 0; font-size: 13px; line-height: 1.5;">{{ h }}</p></sc-for>
+        </div>
+      </aside>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <!-- ===================== FOUNDATIONS ===================== -->
+  <sc-if value="{{ isSystem }}" hint-placeholder-val="{{ false }}">
+    <div style="padding: 40px 48px 80px; background: #fff; display: grid; gap: 44px;">
+      <div style="display: grid; gap: 8px; max-width: 900px;">
+        <span style="font: 600 11px/1 'IBM Plex Mono', monospace; color: #5A5E66;">01 · FOUNDATIONS 1C · PROPOZYCJA EWOLUCJI frontend/design-system/tokens.css · żaden token 1C nie jest produkcyjny przed zatwierdzeniem handoffu</span>
+        <h1 style="margin: 0; font: 800 56px/.98 'Bricolage Grotesque', sans-serif; letter-spacing: -.04em;">Dzielnica jako system</h1>
+        <p style="margin: 0; font-size: 16px; line-height: 1.55; color: #4D4D4D;">D-103: kolor obszaru to wyłącznie tożsamość i nawigacja — nigdy jakość, bezpieczeństwo, zaufanie, prestiż, rekomendacja ani status oferty. Statusy (świeżość, oglądanie, błędy) mają osobną, neutralną paletę z ikoną i tekstem. Prototypowy homies.css nie jest źródłem tokenów produkcyjnych.</p>
+      </div>
+
+      <section style="display: grid; gap: 14px;">
+        <h2 style="margin: 0; font: 800 28px/1 'Bricolage Grotesque', sans-serif;">Paleta obszarów · kontrast z białym tekstem</h2>
+        <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;">
+          <sc-for list="{{ paletteRows }}" as="p" hint-placeholder-count="6">
+            <div style="display: grid; gap: 0; border-radius: 16px; overflow: hidden; border: 1px solid #E6E3DC;">
+              <div style="{{ p.swatch }}"><span style="font: 800 22px/1 'Bricolage Grotesque', sans-serif;">{{ p.name }}</span><span style="font-size: 12px;">Aa · tekst biały</span></div>
+              <div style="padding: 10px 12px; display: grid; gap: 3px; font-size: 12.5px;"><code>{{ p.token }}</code><span>{{ p.hex }}</span><strong>{{ p.ratio }}</strong></div>
+            </div>
+          </sc-for>
+        </div>
+        <p style="margin: 0; font-size: 13.5px; color: #4D4D4D;">Mapowanie obszar→kolor jest stałe i alfabetycznie niezależne od ceny czy popularności. Nowe miasto dostaje własny zestaw, każdy kolor audytowany ≥ 4.5:1 dla pary tekstowej; dla jasnych kolorów para tekstowa to #121212.</p>
+      </section>
+
+      <section style="display: grid; gap: 14px;">
+        <h2 style="margin: 0; font: 800 28px/1 'Bricolage Grotesque', sans-serif;">Statusy — oddzielone od obszarów</h2>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+          <sc-for list="{{ statusRows }}" as="s" hint-placeholder-count="8">
+            <div style="padding: 14px; border-radius: 14px; border: 1px solid #E6E3DC; display: grid; gap: 6px;">
+              <span style="{{ s.badge }}">{{ s.label }}</span>
+              <span style="font-size: 12.5px; color: #4D4D4D;">{{ s.note }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section style="display: grid; gap: 14px;">
+        <h2 style="margin: 0; font: 800 28px/1 'Bricolage Grotesque', sans-serif;">Typografia</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+          <div style="display: grid; gap: 10px;">
+            <sc-for list="{{ typeRows }}" as="t" hint-placeholder-count="6">
+              <div style="display: grid; grid-template-columns: 150px 1fr; gap: 14px; align-items: baseline; padding-bottom: 10px; border-bottom: 1px solid #EEE;">
+                <code style="font-size: 12px;">{{ t.token }}</code>
+                <span style="{{ t.style }}">{{ t.sample }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="padding: 20px; border-radius: 18px; background: #F6F4EF; display: grid; gap: 8px; align-content: start; font-size: 13.5px; line-height: 1.55;">
+            <strong style="font-size: 15px;">PROPOSED DESIGN SYSTEM CHANGE — FOUNDER/GPT REVIEW</strong>
+            <sc-for list="{{ fontNotes }}" as="f" hint-placeholder-count="6"><span>{{ f }}</span></sc-for>
+          </div>
+        </div>
+      </section>
+
+      <section style="display: grid; gap: 14px;">
+        <h2 style="margin: 0; font: 800 28px/1 'Bricolage Grotesque', sans-serif;">Komponenty 1C</h2>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+          <sc-for list="{{ componentRows }}" as="c" hint-placeholder-count="12">
+            <div style="padding: 14px; border-radius: 14px; border: 1px solid #E6E3DC; display: grid; gap: 5px; align-content: start;">
+              <div style="display: flex; justify-content: space-between; gap: 8px; align-items: baseline;"><code style="font-size: 13px; font-weight: 700;">{{ c.name }}</code><span style="{{ c.tagStyle }}">{{ c.tag }}</span></div>
+              <span style="font-size: 12.5px; line-height: 1.5; color: #3A3A3A;">{{ c.note }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section style="display: grid; gap: 14px;">
+        <h2 style="margin: 0; font: 800 28px/1 'Bricolage Grotesque', sans-serif;">Responsywność i ruch</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <sc-for list="{{ rwdRows }}" as="r" hint-placeholder-count="6">
+            <div style="padding: 12px 14px; border-radius: 14px; background: #F6F4EF; font-size: 13.5px; line-height: 1.5;"><strong>{{ r.k }}</strong> — {{ r.v }}</div>
+          </sc-for>
+        </div>
+      </section>
+    </div>
+  </sc-if>
+
+  <!-- ===================== BINDING / MATRIX ===================== -->
+  <sc-if value="{{ isBinding }}" hint-placeholder-val="{{ false }}">
+    <div style="padding: 40px 48px 80px; background: #fff; display: grid; gap: 36px;">
+      <div style="display: grid; gap: 8px;">
+        <span style="font: 600 11px/1 'IBM Plex Mono', monospace; color: #5A5E66;">02 · BACKEND / API BINDING · origin/main 995b05fe (zawiera PROGRAM-001 779b30fe, merge --no-ff + F6) · schema a3c5e7f9b1d4 · CI 37164546195 zielone · bez deploymentu</span>
+        <h1 style="margin: 0; font: 800 48px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.035em;">UI → domena → API</h1>
+      </div>
+      <div style="border: 1px solid #E6E3DC; border-radius: 16px; overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <thead><tr style="background: #121212; color: #fff; text-align: left;"><th style="padding: 10px 12px;">UI</th><th style="padding: 10px 12px;">Domena · pole/stan</th><th style="padding: 10px 12px;">Źródło</th><th style="padding: 10px 12px; width: 150px;">Klasyfikacja</th><th style="padding: 10px 12px;">Fallback / luka</th></tr></thead>
+          <tbody>
+            <sc-for list="{{ bindingRows }}" as="b" hint-placeholder-count="20">
+              <tr style="border-top: 1px solid #E6E3DC; vertical-align: top;">
+                <td style="padding: 9px 12px; font-weight: 700;">{{ b.ui }}</td>
+                <td style="padding: 9px 12px;">{{ b.domain }}</td>
+                <td style="padding: 9px 12px;"><code style="font-size: 11.5px;">{{ b.src }}</code></td>
+                <td style="padding: 9px 12px;"><span style="{{ b.clsStyle }}">{{ b.cls }}</span></td>
+                <td style="padding: 9px 12px; color: #3A3A3A;">{{ b.fb }}</td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display: grid; gap: 14px;">
+        <h2 style="margin: 0; font: 800 30px/1 'Bricolage Grotesque', sans-serif;">Tabela luk</h2>
+        <div style="border: 1px solid #E6E3DC; border-radius: 16px; overflow: hidden;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead><tr style="background: #121212; color: #fff; text-align: left;"><th style="padding: 10px 12px; width: 190px;">Klasa</th><th style="padding: 10px 12px;">Element</th><th style="padding: 10px 12px;">Konsekwencja dla 001C</th></tr></thead>
+            <tbody>
+              <sc-for list="{{ gapRows }}" as="g" hint-placeholder-count="20">
+                <tr style="border-top: 1px solid #E6E3DC; vertical-align: top;"><td style="padding: 9px 12px;"><span style="{{ g.clsStyle }}">{{ g.cls }}</span></td><td style="padding: 9px 12px; font-weight: 700;">{{ g.item }}</td><td style="padding: 9px 12px; color: #3A3A3A;">{{ g.note }}</td></tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="display: grid; gap: 14px;">
+        <h2 style="margin: 0; font: 800 30px/1 'Bricolage Grotesque', sans-serif;">Macierz konwergencji</h2>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+          <sc-for list="{{ matrix }}" as="m" hint-placeholder-count="6">
+            <div style="padding: 16px; border-radius: 16px; border: 1px solid #E6E3DC; display: grid; gap: 8px; align-content: start;">
+              <span style="{{ m.tagStyle }}">{{ m.title }}</span>
+              <sc-for list="{{ m.items }}" as="i" hint-placeholder-count="4"><span style="font-size: 13px; line-height: 1.45;">— {{ i }}</span></sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display: grid; gap: 14px;">
+        <h2 style="margin: 0; font: 800 30px/1 'Bricolage Grotesque', sans-serif;">Krytyka adwersaryjna · naprawione</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <sc-for list="{{ critique }}" as="c" hint-placeholder-count="6">
+            <div style="padding: 14px; border-radius: 14px; background: #F6F4EF; display: grid; gap: 5px; font-size: 13.5px; line-height: 1.5;"><strong>{{ c.q }}</strong><span>{{ c.a }}</span></div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===================== HANDOFF ===================== -->
+  <sc-if value="{{ isHandoff }}" hint-placeholder-val="{{ false }}">
+    <div style="padding: 40px 48px 80px; background: #fff; display: grid; gap: 20px;">
+      <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
+        <h1 style="margin: 0; font: 800 44px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.035em;">HOMIES DESIGN-001C — FINAL HANDOFF</h1>
+        <span style="font: 600 12px/1 'IBM Plex Mono', monospace; padding: 6px 10px; border-radius: 999px; background: #FFF6DA; border: 1.5px solid #121212;">PASS_WITH_REVIEW_ITEMS · implementation_authorized: NO</span>
+      </div>
+      <pre style="margin: 0; padding: 24px; border-radius: 18px; background: #121212; color: #F1EEE7; font: 500 12.5px/1.6 'IBM Plex Mono', monospace; white-space: pre-wrap;">{{ handoffText }}</pre>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.listRef = React.createRef();
+    this.frameRef = React.createRef();
+    this.filterTriggerRef = React.createRef();
+    this.filterFirstRef = React.createRef();
+    this.savedScroll = 0;
+    this.preOverlayScroll = 0;
+  }
+  state = {
+    view: this.props.initView || 'proto', vp: this.props.initVp || 'desktop', screen: this.props.initScreen || 'home', ann: this.props.ann !== undefined ? this.props.ann : true,
+    authed: false, ctx: 'seeker',
+    areas: [], budget: 5000, rooms: 0,
+    draftAreas: [], draftBudget: 5000, draftRooms: 0, filtersOpen: this.props.initFilters === true,
+    selId: '4821', openId: '4821', mobView: this.props.initMobView || 'list',
+    slot: null, taken: [], conflictUsed: false, conflictMsg: false, offlineMsg: false,
+    edge: 'none', retried: false, viewings: {}, auth: null, authMode: 'current', authError: false,
+    email: '', password: '', composer: false, draft: '', threads: {}, activeThread: '4702',
+    reply: '', saved: ['4755'],
+    searches: [{ id: 's1', label: 'Cały Kraków · do 4 500 zł · 2+ pokoje', sub: 'Zapisane 28 wrz 2026', alert: true }, { id: 's2', label: 'Podgórze, Zabłocie · do 4 000 zł', sub: 'Zapisane 1 paź 2026', alert: false }],
+    pv: [
+      { id: 'v1', lid: '4790', who: 'Marta K. · 1 osoba · notatka: „Mogę też w weekend.”', when: 'pt 10 paź, 18:00', status: 'REQUESTED' },
+      { id: 'v2', lid: '4688', who: 'Tomasz W. · 1 osoba', when: 'sob 11 paź, 11:00', status: 'CONFIRMED' },
+      { id: 'v3', lid: '4790', who: 'Ola P. · 1 osoba', when: 'wt 30 wrz, 17:00 · termin minął', status: 'CONFIRMED', past: true }
+    ],
+    reconfirmed: [], toast: null, revealed: false, blocked: false
+  };
+
+  AREAS = {
+    zablocie: { name: 'Zabłocie', parent: 'Podgórze', color: '#5B4A8B', token: '--atlas-krk-zablocie', zone: [62, 64, 26, 22] },
+    podgorze: { name: 'Podgórze', parent: null, color: '#2F6B4F', token: '--atlas-krk-podgorze', zone: [30, 78, 34, 20] },
+    kazimierz: { name: 'Kazimierz', parent: 'Stare Miasto', color: '#9A5418', token: '--atlas-krk-kazimierz', zone: [42, 50, 22, 18] },
+    grzegorzki: { name: 'Grzegórzki', parent: null, color: '#8C2F39', token: '--atlas-krk-grzegorzki', zone: [62, 32, 28, 20] },
+    krowodrza: { name: 'Krowodrza', parent: null, color: '#1F5F7A', token: '--atlas-krk-krowodrza', zone: [10, 20, 32, 28] }
+  };
+
+  L = [
+    { id: '4821', area: 'zablocie', title: 'Dwa pokoje z balkonem przy Zabłociu', rooms: 2, m2: 48, floor: 3, rent: 3200, admin: 520, util: 280, total: 4000, deposit: 3200, moveIn: 7200, parking: null, avail: '1 lis 2026', min: '12 mies.', fresh: 'FRESH', conf: '2 paź 2026', ago: '2 dni temu', loc: 'APPROXIMATE', pos: [72, 70], mode: 'INSTANT_BOOKING', slots: true, other: 'Inne koszty — tekst wynajmującego, poza sumą: „internet ok. 60 zł / mies.”', feats: ['Umeblowane', 'Balkon', 'Winda', 'Bez zwierząt'], desc: 'Jasne mieszkanie w nowszym budynku. Salon z aneksem i wyjściem na balkon od podwórza, osobna sypialnia, łazienka z oknem. Do Wisły spacerem kilka minut.' },
+    { id: '4790', area: 'podgorze', title: 'Trzy pokoje w kamienicy przy Rękawce', rooms: 3, m2: 62, floor: 2, rent: 3900, admin: 650, util: 320, total: 4870, deposit: 3900, moveIn: 8770, parking: null, avail: '15 lis 2026', min: '12 mies.', fresh: 'RECONFIRM_DUE', conf: '18 wrz 2026', ago: '16 dni temu', loc: 'DISTRICT', pos: null, mode: 'REQUEST_APPROVAL', slots: true, other: 'Brak innych stałych kosztów.', feats: ['Częściowo umeblowane', 'Zwierzęta dozwolone'], desc: 'Wysokie stropy, drewniane podłogi, trzy osobne pokoje. Kuchnia z oknem. Dla osób, które chcą zostać na dłużej.' },
+    { id: '4755', area: 'kazimierz', title: 'Mieszkanie przy placu Nowym', rooms: 2, m2: 44, floor: 1, rent: 3500, admin: 480, util: 0, ub: 'INCLUDED', total: 3980, deposit: 3500, moveIn: 7480, parking: null, avail: 'od zaraz', min: '6 mies.', fresh: 'FRESH', conf: '1 paź 2026', ago: '3 dni temu', loc: 'APPROXIMATE', pos: [52, 56], mode: null, slots: false, other: 'Brak innych stałych kosztów.', feats: ['Umeblowane', 'Bez windy'], desc: 'Dwa pokoje w odnowionej kamienicy. Okna na podwórze, więc cicho mimo centrum.' },
+    { id: '4702', area: 'krowodrza', title: 'Kawalerka przy Parku Krakowskim', rooms: 1, m2: 31, floor: 4, rent: 2400, admin: 380, util: 0, ub: 'NOT_STATED', total: 2780, deposit: 2400, moveIn: 5180, parking: null, avail: '1 lis 2026', min: '12 mies.', fresh: 'FRESH', conf: '30 wrz 2026', ago: '4 dni temu', loc: 'APPROXIMATE', pos: null, noCoords: true, mode: 'INSTANT_BOOKING', slots: true, other: 'Brak innych stałych kosztów.', feats: ['Umeblowane', 'Winda'], desc: 'Kompaktowa kawalerka z wnęką sypialnianą. Tramwajem do centrum kilka przystanków.' },
+    { id: '4688', area: 'grzegorzki', title: 'Dwa pokoje blisko ronda Grzegórzeckiego', rooms: 2, m2: 50, floor: 5, rent: 3300, admin: 560, util: 270, total: 4330, deposit: 3300, moveIn: 7630, parking: { fee: 200 }, avail: '1 gru 2026', min: '12 mies.', fresh: 'FRESH', conf: '3 paź 2026', ago: 'wczoraj', loc: 'APPROXIMATE', pos: [74, 40], mode: 'REQUEST_APPROVAL', slots: true, other: 'Brak innych stałych kosztów.', feats: ['Nieumeblowane', 'Winda', 'Miejsce parkingowe'], desc: 'Dwa pokoje i duża kuchnia w budynku z garażem podziemnym. Miejsce postojowe jest częścią umowy.' }
+  ];
+
+  SLOTS = [
+    { day: 'czwartek 9 października', short: 'czw 9 paź', times: ['17:00', '17:30', '18:00'] },
+    { day: 'sobota 11 października', short: 'sob 11 paź', times: ['10:00', '10:30', '11:00'] }
+  ];
+
+  componentDidUpdate() {
+    const s = this.state;
+    const ps = this._prev || { filtersOpen: false, auth: null, screen: 'home', toast: null };
+    this._prev = { filtersOpen: s.filtersOpen, auth: s.auth, screen: s.screen, toast: s.toast };
+    if (ps.screen !== 'results' && s.screen === 'results' && this.listRef.current) this.listRef.current.scrollTop = this.savedScroll;
+    const later = fn => setTimeout(fn, 0);
+    const q = sel => document.querySelector(sel);
+    if (!ps.filtersOpen && s.filtersOpen) {
+      this._filterReturn = document.activeElement;
+      later(() => { const el = q('[role=dialog][aria-labelledby="flt-h"] button[aria-label="Zamknij filtry"]'); if (el) el.focus({ preventScroll: true }); });
+    }
+    if (ps.filtersOpen && !s.filtersOpen) {
+      later(() => { const el = (this._filterReturn && document.contains(this._filterReturn)) ? this._filterReturn : Array.from(document.querySelectorAll('button')).find(b => /^Filtry/.test(b.textContent.trim())); if (el) el.focus({ preventScroll: true }); });
+    }
+    if (!ps.auth && s.auth) {
+      this._authReturn = document.activeElement;
+      later(() => { const el = q('[role=dialog][aria-labelledby="auth-h"] input'); if (el) el.focus({ preventScroll: true }); });
+    }
+    if (ps.auth && !s.auth) {
+      later(() => { const r = this._authReturn; if (r && document.contains(r)) r.focus({ preventScroll: true }); else { const h = q('[aria-live="polite"][role="status"]') || q('main, h1'); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); } } });
+    }
+    const wasOv = ps.filtersOpen || !!ps.auth, isOv = s.filtersOpen || !!s.auth;
+    const f = this.frameRef.current;
+    if (f && s.vp !== 'desktop' && s.vp !== 'wide') {
+      if (!wasOv && isOv) { this.preOverlayScroll = f.scrollTop; f.scrollTop = f.scrollHeight; }
+      if (wasOv && !isOv) f.scrollTop = this.preOverlayScroll;
+    }
+    if (ps.screen !== s.screen && f && !this._restoring) f.scrollTop = 0;
+    if (s.toast && s.toast !== ps.toast) { clearTimeout(this._t); this._t = setTimeout(() => this.setState({ toast: null }), 3200); }
+  }
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  zl(n) { return n.toLocaleString('pl-PL').replace(/\u00a0/g, ' ') + ' zł'; }
+  num(n) { return n.toLocaleString('pl-PL').replace(/\u00a0/g, ' '); }
+  byId(id) { return this.L.find(l => l.id === id); }
+  filtered(s) { return this.L.filter(l => (s.areas.length === 0 || s.areas.indexOf(l.area) >= 0) && l.total <= s.budget && (s.rooms === 0 || l.rooms >= s.rooms)); }
+
+  openListing(id) {
+    if (this.listRef.current) this.savedScroll = this.listRef.current.scrollTop;
+    this.setState({ openId: id, selId: id, screen: 'detail', ctx: 'seeker', slot: null, conflictMsg: false, offlineMsg: false, composer: false, revealed: false, blocked: false });
+  }
+
+  performViewing(id, slotKey) {
+    const s = this.state, l = this.byId(id);
+    if (s.edge === 'f6') { this.setState({ blocked: true, auth: null, slot: null }); return; }
+    if (s.edge === 'conflict' && !s.conflictUsed) {
+      this.setState({ conflictUsed: true, conflictMsg: true, taken: s.taken.concat([id + '|' + slotKey]), slot: null, auth: null });
+      return;
+    }
+    if (s.edge === 'offline' && !s.retried) { this.setState({ offlineMsg: true, auth: null }); return; }
+    const status = l.mode === 'INSTANT_BOOKING' ? 'CONFIRMED' : 'REQUESTED';
+    const v = Object.assign({}, s.viewings); v[id] = { status, slot: slotKey };
+    let pv = s.pv;
+    if (status === 'REQUESTED' && (id === '4790' || id === '4688')) pv = [{ id: 'vn' + Date.now(), lid: id, who: 'Ty (konto testowe) · 1 osoba', when: slotKey.replace('|', ', '), status: 'REQUESTED' }].concat(s.pv);
+    this.setState({ viewings: v, pv, slot: null, auth: null, conflictMsg: false, offlineMsg: false, retried: false,
+      toast: status === 'CONFIRMED' ? 'Oglądanie umówione' : 'Prośba o oglądanie wysłana' });
+  }
+
+  performMessage(id, text) {
+    if (this.state.edge === 'f6') { this.setState({ blocked: true, auth: null, composer: false }); return; }
+    const t = Object.assign({}, this.state.threads);
+    t[id] = [{ me: true, text }];
+    this.setState({ threads: t, composer: false, draft: '', auth: null, activeThread: id, toast: 'Wiadomość wysłana — rozmowa rozpoczęta' });
+  }
+
+  requireAuth(intent, run) {
+    if (this.state.authed) { run(); return; }
+    this.setState({ auth: intent, authError: false });
+  }
+
+  renderVals() {
+    const s = this.state;
+    const W = { mobile: 390, tablet: 768, desktop: 1280, wide: 1440 }[s.vp];
+    const split = W >= 1024, wide = W >= 1440, mob = !split, phone = W < 768;
+    const A = this.AREAS;
+
+    const tag = (bg, fg, bd) => `display:inline-flex;align-items:center;padding:3px 8px;border-radius:6px;font:600 10.5px/1.35 'IBM Plex Mono',monospace;letter-spacing:.02em;background:${bg};color:${fg};border:1px solid ${bd || bg};`;
+    const tagCur = tag('#E7F0EA', '#1F4D36', '#9CC3AB');
+    const tagClient = tag('#E3EDF6', '#1E4366', '#9DBBD6');
+    const tagGap = tag('#FFF3D6', '#6B4A00', '#E3C277');
+    const tagCanon = tag('#FBE4E6', '#7A1F2A', '#E3A3AA');
+    const tagFuture = tag('#ECE9F5', '#3B2F66', '#B9B0D9');
+    const pill = (on, color) => on
+      ? `height:40px;padding:0 14px;border-radius:999px;border:0;background:${color || '#121212'};color:#fff;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;`
+      : `height:40px;padding:0 14px;border-radius:999px;border:1.5px solid #D6D2C8;background:#fff;color:#121212;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;`;
+    const outlinePill = `height:40px;padding:0 14px;border-radius:999px;border:1.5px solid #121212;background:#fff;color:#121212;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;`;
+    const dot = c => `width:10px;height:10px;border-radius:50%;background:${c};flex:none;display:inline-block;`;
+    const freshIcon = f => f === 'FRESH' ? '●' : '◐';
+    const freshShort = l => 'Dostępność potwierdzona ' + l.ago;
+    const areaLine = l => (A[l.area].parent ? A[l.area].parent + ' · ' : '') + A[l.area].name + (l.loc === 'DISTRICT' ? ' · tylko dzielnica' : '');
+    const seg = (l, which) => {
+      const base = `flex:${which === 'admin' ? l.admin + (l.parking ? l.parking.fee : 0) : l[which]};border-radius:2px;`;
+      if (which === 'rent') return base + 'background:#121212;';
+      if (which === 'admin') return base + 'background:#6B6B6B;';
+      return base + 'background:repeating-linear-gradient(135deg,#121212 0 2px,#fff 2px 6px);border:1px solid #121212;';
+    };
+    const toggleSave = id => () => this.requireAuth({ type: 'save', id }, () => this.setState(st => ({ saved: st.saved.indexOf(id) >= 0 ? st.saved.filter(x => x !== id) : st.saved.concat([id]), toast: st.saved.indexOf(id) >= 0 ? 'Usunięto z zapisanych' : 'Zapisano ofertę' })));
+    const decorate = l => ({
+      id: l.id, ph: 'ph-' + l.id, phLabel: 'Zdjęcie — ' + A[l.area].name,
+      title: l.title, areaName: A[l.area].name, areaLine: areaLine(l),
+      totalFmt: this.zl(l.total), rentFmt: this.num(l.rent), feesFmt: this.num(l.admin + l.util + (l.parking ? l.parking.fee : 0)),
+      facts: `${l.rooms === 1 ? 'Kawalerka' : l.rooms + ' pokoje'} · ${l.m2} m² · piętro ${l.floor}`,
+      availLine: l.avail === 'od zaraz' ? 'Dostępne od zaraz' : 'Dostępne od ' + l.avail,
+      freshIcon: freshIcon(l.fresh), freshShort: freshShort(l),
+      noCoords: !!l.noCoords, saved: s.saved.indexOf(l.id) >= 0, dot: dot(A[l.area].color),
+      areaText: 'display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#121212;min-width:0;',
+      areaChip: `position:absolute;left:12px;top:12px;padding:5px 10px;border-radius:999px;background:${A[l.area].color};color:#fff;font-size:12.5px;font-weight:700;`,
+      segRent: seg(l, 'rent'), segAdmin: seg(l, 'admin'), segUtil: seg(l, 'util'),
+      open: (e) => { if (e && e.preventDefault) e.preventDefault(); this.openListing(l.id); }
+    });
+
+    const resLoading = s.edge === 'loading', resErr = s.edge === 'error' || s.edge === 'ratelimit';
+    const results = (resLoading || resErr) ? [] : this.filtered(s);
+    const sel = s.selId;
+
+    // ---------- header / nav ----------
+    const myVKeys = Object.keys(s.viewings).filter(k => ['CANCELLED', 'DECLINED'].indexOf(s.viewings[k].status) < 0);
+    const navDefs = [['results', 'Szukaj'], ['saved', 'Zapisane'], ['messages', 'Wiadomości'], ['viewings', 'Oglądania'], ['account', 'Konto']];
+    const navItems = navDefs.map(([k, label]) => {
+      const cur = s.ctx === 'seeker' && (s.screen === k || (k === 'results' && s.screen === 'detail'));
+      let badge = '';
+      if (k === 'saved' && s.saved.length && s.authed) badge = String(s.saved.length);
+      if (k === 'viewings' && myVKeys.length) badge = String(myVKeys.length);
+      return { label, cur: cur ? 'page' : 'false', badge,
+        badgeStyle: badge ? 'margin-left:6px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#121212;color:#fff;font-size:11px;display:inline-flex;align-items:center;justify-content:center;' : 'display:none;',
+        style: `height:${phone ? 40 : 38}px;padding:0 12px;border-radius:999px;border:0;background:${cur ? '#F1EEE7' : 'transparent'};font-size:14px;font-weight:${cur ? 700 : 600};cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap;flex:none;`,
+        go: () => {
+          if (k === 'account') { this.setState({ toast: 'Konto — poza zakresem 001C (istniejący ekran FE)' }); return; }
+          if (k !== 'results' && !s.authed) { this.setState({ auth: { type: 'nav', target: k } }); return; }
+          this.setState({ screen: k, ctx: 'seeker' });
+        } };
+    });
+
+    // ---------- home ----------
+    const whereKeys = ['all', 'krowodrza', 'grzegorzki', 'kazimierz', 'zablocie', 'podgorze'];
+    const whereChips = whereKeys.map(k => {
+      const on = k === 'all' ? s.areas.length === 0 : s.areas.indexOf(k) >= 0;
+      return { label: k === 'all' ? 'Cały Kraków' : A[k].name, on: String(on), style: pill(on, k === 'all' ? '#121212' : A[k].color),
+        pick: () => this.setState(st => ({ areas: k === 'all' ? [] : (st.areas.indexOf(k) >= 0 ? st.areas.filter(x => x !== k) : st.areas.concat([k])) })) };
+    });
+    const roomOpts = [[0, 'Dowolnie'], [1, '1+'], [2, '2+'], [3, '3+']].map(([v, label]) => ({ label, on: String(s.rooms === v),
+      style: `height:38px;padding:0 ${phone ? 10 : 13}px;border-radius:999px;border:0;background:${s.rooms === v ? '#121212' : 'transparent'};color:${s.rooms === v ? '#fff' : '#121212'};font-size:14px;font-weight:600;cursor:pointer;`,
+      pick: () => this.setState({ rooms: v }) }));
+    const atlasKeys = ['krowodrza', 'grzegorzki', 'kazimierz', 'zablocie', 'podgorze'];
+    const tileName = `font:800 ${split ? 30 : 22}px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;`;
+    const atlas = atlasKeys.map((k, i) => ({
+      name: A[k].name, sub: 'Zobacz oferty →', aria: 'Szukaj w okolicy ' + A[k].name, nameStyle: tileName,
+      style: `display:grid;align-content:space-between;gap:12px;padding:${split ? 18 : 14}px;border-radius:22px;border:0;background:${A[k].color};color:#fff;text-align:left;cursor:pointer;min-height:${split ? (i === 0 ? 212 : 128) : 96}px;${split && i === 0 ? 'grid-row:span 2;' : ''}`,
+      pick: () => this.setState({ areas: [k], screen: 'results', mobView: 'list' })
+    })).concat([{ name: 'Cały Kraków', sub: 'Lista i mapa →', aria: 'Szukaj w całym Krakowie', nameStyle: tileName,
+      style: `display:grid;align-content:space-between;gap:12px;padding:${split ? 18 : 14}px;border-radius:22px;border:2px solid #121212;background:#fff;color:#121212;text-align:left;cursor:pointer;min-height:${split ? 128 : 96}px;`,
+      pick: () => this.setState({ areas: [], screen: 'results', mobView: 'list' }) }]);
+    const homeCount = this.filtered(s).length;
+    const footerCols = [
+      { title: 'Szukaj', links: ['Wynajem w Krakowie', 'Mapa ofert', 'Zapisane wyszukiwania'] },
+      { title: 'Dla wynajmujących', links: ['Dodaj mieszkanie', 'Panel', 'Terminy oglądań'] },
+      { title: 'Homies', links: ['Jak liczymy koszt', 'Prywatność lokalizacji', 'Regulamin', 'Pomoc'] }
+    ];
+
+    // ---------- results ----------
+    const activeChips = [];
+    if (s.areas.length === 0) activeChips.push({ label: 'Cały Kraków', aria: 'Zakres: cały Kraków', style: pill(true), remove: () => this.openFilters() });
+    s.areas.forEach(k => activeChips.push({ label: A[k].name, aria: 'Usuń okolicę ' + A[k].name, style: pill(true, A[k].color), remove: () => this.setState(st => ({ areas: st.areas.filter(x => x !== k) })) }));
+    if (s.budget < 6000) activeChips.push({ label: 'do ' + this.zl(s.budget), aria: 'Usuń limit budżetu', style: outlinePill, remove: () => this.setState({ budget: 6000 }) });
+    if (s.rooms) activeChips.push({ label: s.rooms + '+ pokoje', aria: 'Usuń filtr pokoi', style: outlinePill, remove: () => this.setState({ rooms: 0 }) });
+    const nFilters = s.areas.length + (s.rooms ? 1 : 0) + (s.budget < 6000 ? 1 : 0);
+    const showList = split || s.mobView === 'list';
+    const showMap = split || s.mobView === 'map';
+    const horizCard = W >= 768 && !wide;
+    const resultsDec = results.map(l => {
+      const d = decorate(l), on = sel === l.id;
+      return Object.assign(d, {
+        cardStyle: `display:grid;grid-template-columns:${horizCard ? '168px minmax(0,1fr)' : '1fr'};gap:${horizCard ? 14 : 10}px;padding:10px;border-radius:18px;background:#fff;border:${on && split ? '2px solid #121212' : '1px solid #E6E3DC'};box-shadow:${on && split ? '0 6px 18px rgba(0,0,0,.08)' : 'none'};`,
+        mediaStyle: `position:relative;border-radius:12px;overflow:hidden;background:#ECE9E2;aspect-ratio:${horizCard ? '4/3' : '16/9'};`,
+        hover: () => { if (split && this.state.selId !== l.id) this.setState({ selId: l.id }); },
+        saveIcon: d.saved ? '♥' : '♡', saveAria: d.saved ? 'Usuń z zapisanych' : 'Zapisz ofertę',
+        saveStyle: 'width:44px;height:44px;margin:-8px -6px -8px 0;border-radius:50%;border:0;background:transparent;font-size:20px;cursor:pointer;color:#121212;flex:none;',
+        save: toggleSave(l.id)
+      });
+    });
+    const mapZones = Object.keys(A).map(k => {
+      const z = A[k].zone, active = s.areas.length === 0 || s.areas.indexOf(k) >= 0;
+      return { name: A[k].name,
+        style: `position:absolute;left:${z[0]}%;top:${z[1] - 8}%;width:${z[2]}%;height:${z[3]}%;border-radius:46% 54% 50% 50%;background:${A[k].color}${active ? '24' : '0C'};border:1.5px ${active ? 'solid' : 'dashed'} ${A[k].color}${active ? '99' : '40'};`,
+        labelStyle: `position:absolute;left:10px;top:8px;font:800 14px/1 'Bricolage Grotesque',sans-serif;color:${A[k].color};` };
+    });
+    const markers = results.filter(l => l.pos).map(l => {
+      const on = sel === l.id;
+      return { label: this.num(l.total) + ' zł', aria: `${A[l.area].name}, ${this.zl(l.total)} łącznie miesięcznie, położenie przybliżone`,
+        style: `position:absolute;left:${l.pos[0]}%;top:${l.pos[1]}%;transform:translate(-50%,-50%) scale(${on ? 1.08 : 1});height:${on ? 36 : 32}px;padding:0 12px;border-radius:999px;border:2px solid ${on ? '#fff' : '#121212'};background:${on ? '#121212' : '#fff'};color:${on ? '#fff' : '#121212'};font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:${on ? '0 0 0 3px #121212,0 8px 20px rgba(0,0,0,.25)' : '0 2px 6px rgba(0,0,0,.15)'};z-index:${on ? 3 : 2};transition:transform .15s;white-space:nowrap;`,
+        pick: () => {
+          this.setState({ selId: l.id });
+          if (split) { const el = this.listRef.current; if (el) { const card = el.querySelectorAll('article')[results.findIndex(r => r.id === l.id)]; if (card) el.scrollTop = card.offsetTop - el.offsetTop - 12; } }
+        },
+        hover: () => { if (split) this.setState({ selId: l.id }); } };
+    });
+    const noCoordN = results.filter(l => !l.pos).length;
+    const selL = results.find(r => r.id === sel && r.pos);
+    const preview = selL ? decorate(selL) : { ph: 'ph-none', areaText: '', areaLine: '', totalFmt: '', facts: '' };
+    const skel = 'height:128px;border-radius:18px;background:linear-gradient(90deg,#F1EEE7 0%,#F8F6F1 50%,#F1EEE7 100%);';
+
+    // ---------- detail ----------
+    const ol = this.byId(s.openId);
+    const od = decorate(ol);
+    const vv = s.viewings[ol.id];
+    const edgeAlready = s.edge === 'already';
+    let viewing = vv && ['CANCELLED', 'DECLINED'].indexOf(vv.status) < 0 ? vv : null;
+    if (!viewing && edgeAlready && ol.slots && !(vv && vv.status === 'CANCELLED')) viewing = { status: ol.mode === 'INSTANT_BOOKING' ? 'CONFIRMED' : 'REQUESTED', slot: 'czw 9 paź|17:30', seeded: true };
+    const unavailable = s.edge === 'unavailable';
+    const f6 = s.blocked;
+    const railBlocked = unavailable || f6;
+    const hasThread = !!s.threads[ol.id];
+    const instant = ol.mode === 'INSTANT_BOOKING';
+    const slotDays = this.SLOTS.map(d => ({ label: d.day, slots: d.times.filter(t => s.taken.indexOf(ol.id + '|' + d.short + '|' + t) < 0).map(t => {
+      const key = d.short + '|' + t, on = s.slot === key;
+      return { time: t, on: String(on), style: `min-width:72px;height:44px;padding:0 12px;border-radius:12px;border:${on ? '2px solid #121212' : '1.5px solid #D6D2C8'};background:${on ? '#121212' : '#fff'};color:${on ? '#fff' : '#121212'};font-size:15px;font-weight:700;cursor:pointer;`,
+        pick: () => this.setState({ slot: on ? null : key, conflictMsg: false, offlineMsg: false }) };
+    }) }));
+    const confirmViewing = () => {
+      if (!s.slot) return;
+      const key = s.slot;
+      this.requireAuth({ type: 'viewing', id: ol.id, slot: key }, () => this.performViewing(ol.id, key));
+    };
+    const msgAction = () => {
+      if (hasThread) { this.setState({ screen: 'messages', activeThread: ol.id }); return; }
+      this.setState({ composer: true, draft: s.draft || `Dzień dobry, interesuje mnie to mieszkanie (${A[ol.area].name}, ${this.zl(ol.total)} łącznie miesięcznie). Czy jest dostępne od ${ol.avail}?` });
+    };
+    const sendMessage = () => {
+      const text = (s.draft || '').trim(); if (!text) return;
+      this.requireAuth({ type: 'message', id: ol.id, text }, () => this.performMessage(ol.id, text));
+    };
+    const parkingLabel = ol.parking ? 'Parking jest wliczony w sumę miesięczną' : '';
+    const d = Object.assign(od, {
+      hasParking: !!ol.parking, parkingLabel, parkingVal: ol.parking ? 'w tym ' + this.zl(ol.parking.fee) : '',
+      otherCosts: ol.other, moveInFmt: this.zl(ol.moveIn), depositFmt: this.zl(ol.deposit), desc: ol.desc, features: ol.feats,
+      monthlyRows: [
+        { k: 'Najem', v: this.zl(ol.rent), key: 'width:14px;height:10px;border-radius:2px;background:#121212;display:inline-block;' },
+        { k: 'Czynsz administracyjny', v: this.zl(ol.admin), key: 'width:14px;height:10px;border-radius:2px;background:#6B6B6B;display:inline-block;' },
+        { k: (ol.ub || 'ESTIMATED') === 'ESTIMATED' ? 'Media (szacunek)' : 'Media', v: (ol.ub || 'ESTIMATED') === 'ESTIMATED' ? '~' + this.zl(ol.util) : (ol.ub === 'INCLUDED' ? 'w cenie najmu' : 'nie podano · poza sumą'), key: 'width:14px;height:10px;border-radius:2px;background:repeating-linear-gradient(135deg,#121212 0 2px,#fff 2px 5px);border:1px solid #121212;display:inline-block;' }
+      ].concat(ol.parking ? [{ k: 'Parking (podany = obowiązkowy, G4)', v: this.zl(ol.parking.fee), key: 'width:14px;height:10px;border-radius:2px;background:#6B6B6B;display:inline-block;' }] : []),
+      truth: [
+        { k: 'Miesięcznie (szacunek)', v: this.zl(ol.total) },
+        { k: 'Na start', v: this.zl(ol.moveIn) },
+        { k: 'Dostępne', v: ol.avail === 'od zaraz' ? 'od zaraz' : 'od ' + ol.avail },
+        { k: 'Minimalny okres', v: ol.min },
+        { k: 'Dostępność potwierdzona', v: ol.conf + ' · ' + ol.ago },
+        { k: 'Lokalizacja', v: ol.loc === 'DISTRICT' ? 'tylko dzielnica' : 'przybliżona okolica' }
+      ],
+      locZone: ol.loc === 'DISTRICT'
+        ? `position:absolute;inset:10px;border-radius:18px;background:${A[ol.area].color}1F;border:2px dashed ${A[ol.area].color};`
+        : `position:absolute;left:28%;top:18%;width:46%;height:70%;border-radius:50%;background:radial-gradient(circle,${A[ol.area].color}55 0%,${A[ol.area].color}22 58%,transparent 72%);`,
+      locText: ol.loc === 'DISTRICT' ? `Wynajmujący udostępnił tylko dzielnicę: ${A[ol.area].name}. Dokładny adres jest prywatny.` : `Przybliżona okolica: ${areaLine(ol)}. Strefa na mapie jest celowo nieostra — dokładny adres jest prywatny.`,
+      saveBig: 'position:absolute;right:14px;top:14px;height:44px;padding:0 16px;border-radius:999px;border:0;background:#fff;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.15);',
+      saveText: od.saved ? '♥ Zapisane' : '♡ Zapisz', save: toggleSave(ol.id)
+    });
+    const showSlots = !railBlocked && !viewing && ol.slots;
+    const vStat = viewing ? viewing.status : null;
+    const showDock = mob && s.screen === 'detail' && !railBlocked && !s.filtersOpen && !s.auth;
+    let dockSlots = [];
+    if (showDock && showSlots) {
+      if (s.slot) {
+        dockSlots = [
+          { label: 'Zmień', style: 'flex:none;height:48px;padding:0 14px;border-radius:14px;border:1.5px solid #D6D2C8;background:#fff;font-size:14px;font-weight:700;cursor:pointer;', pick: () => this.setState({ slot: null }) },
+          { label: (instant ? 'Potwierdź · ' : 'Wyślij prośbę · ') + s.slot.replace('|', ', '), style: 'flex:1;height:48px;padding:0 14px;border-radius:999px;border:0;background:#121212;color:#fff;font-size:15px;font-weight:700;cursor:pointer;', pick: confirmViewing }
+        ];
+      } else {
+        const d0 = this.SLOTS[0];
+        dockSlots = d0.times.filter(t => s.taken.indexOf(ol.id + '|' + d0.short + '|' + t) < 0).map(t => ({ label: 'czw ' + t,
+          style: 'flex:none;height:48px;padding:0 16px;border-radius:14px;border:1.5px solid #D6D2C8;background:#fff;color:#121212;font-size:15px;font-weight:700;cursor:pointer;',
+          pick: () => this.setState({ slot: d0.short + '|' + t, conflictMsg: false }) }));
+      }
+    }
+    const dockMsgOnly = showDock && !showSlots && !s.composer;
+    const msgLabel = hasThread ? 'Otwórz rozmowę' : 'Napisz do wynajmującego';
+
+    // ---------- auth ----------
+    const au = s.auth;
+    let intentLine = '', intentSub = '', authTitle = 'Zaloguj się', intentColor = '#121212';
+    if (au) {
+      const al = au.id ? this.byId(au.id) : null;
+      if (al) intentColor = A[al.area].color;
+      if (au.type === 'viewing') { const m = al.mode === 'INSTANT_BOOKING'; authTitle = m ? 'Zaloguj się, aby umówić oglądanie' : 'Zaloguj się, aby wysłać prośbę'; intentLine = (m ? 'Oglądanie: ' : 'Prośba o oglądanie: ') + au.slot.replace('|', ', '); intentSub = A[al.area].name + ' · ' + this.zl(al.total) + ' łącznie / mies. Wykonamy to po zalogowaniu — bez ponownego potwierdzania.'; }
+      else if (au.type === 'message') { authTitle = 'Zaloguj się, aby wysłać wiadomość'; intentLine = 'Twoja wiadomość jest zachowana'; intentSub = A[al.area].name + ' · wyślemy ją od razu po zalogowaniu.'; }
+      else if (au.type === 'save') { authTitle = 'Zaloguj się, aby zapisać ofertę'; intentLine = 'Zapiszemy: ' + al.title; intentSub = 'Wrócisz w to samo miejsce na liście.'; }
+      else if (au.type === 'reveal') { authTitle = 'Zaloguj się, aby zobaczyć numer'; intentLine = 'Numer wynajmującego'; intentSub = 'Wymaga zweryfikowanego telefonu na koncie. Liczba odsłon jest ograniczona dziennie.'; }
+      else { authTitle = 'Zaloguj się'; intentLine = 'Wrócisz dokładnie tutaj'; intentSub = 'Zapisane, wiadomości, oglądania i panel wymagają konta.'; }
+    }
+    const doLogin = (e) => {
+      if (e && e.preventDefault) e.preventDefault();
+      if (s.authMode === 'current' && (!s.email.trim() || !s.password.trim())) { this.setState({ authError: true }); return; }
+      const intent = s.auth;
+      this.setState({ authed: true, authError: false }, () => {
+        if (!intent) return;
+        if (intent.type === 'viewing') this.performViewing(intent.id, intent.slot);
+        else if (intent.type === 'message') this.performMessage(intent.id, intent.text);
+        else if (intent.type === 'save') this.setState(st => ({ auth: null, saved: st.saved.indexOf(intent.id) >= 0 ? st.saved : st.saved.concat([intent.id]), toast: 'Zapisano ofertę' }));
+        else if (intent.type === 'reveal') this.setState({ auth: null, revealed: true });
+        else if (intent.type === 'nav') this.setState({ auth: null, screen: intent.target, ctx: intent.target === 'panel' ? 'provider' : 'seeker' });
+        else this.setState({ auth: null });
+      });
+    };
+
+    // ---------- messages ----------
+    const threadIds = Object.keys(s.threads).filter(id => id !== '4702').concat(['4702']);
+    const seedThread = [{ sys: true, text: 'Homies: rozmowa dotyczy oferty „Kawalerka przy Parku Krakowskim”.' }, { me: true, text: 'Dzień dobry, czy kawalerka jest dostępna od listopada?' }, { removed: true }, { sys: true, text: 'Rozmowa została zamknięta.' }];
+    const threadList = threadIds.map(id => {
+      const l = this.byId(id), on = (s.activeThread === id);
+      return { title: id === '4702' ? 'Oferta niedostępna' : l.title, sub: id === '4702' ? 'Zamknięta' : 'Otwarta · czeka na odpowiedź', dot: dot(id === '4702' ? '#B8B2A6' : A[l.area].color),
+        style: `display:flex;gap:10px;align-items:center;padding:12px;border-radius:14px;border:${on ? '2px solid #121212' : '1px solid #E6E3DC'};background:#fff;cursor:pointer;width:100%;font:inherit;color:inherit;`,
+        pick: () => this.setState({ activeThread: id }) };
+    });
+    const atId = threadIds.indexOf(s.activeThread) >= 0 ? s.activeThread : threadIds[0];
+    const atL = this.byId(atId);
+    const atUnavail = atId === '4702' || (atId === s.openId && unavailable);
+    const rawMsgs = atId === '4702' ? seedThread : (s.threads[atId] || []);
+    const th = {
+      title: atUnavail ? 'Oferta niedostępna' : atL.title, sub: atUnavail ? 'Szczegóły oferty nie są już publiczne' : areaLine(atL), total: atUnavail ? '' : this.zl(atL.total),
+      dot: dot(atUnavail ? '#B8B2A6' : A[atL.area].color),
+      headStyle: 'display:flex;gap:12px;align-items:center;padding:12px 14px;border-bottom:1px solid #E6E3DC;background:#fff;',
+      closed: atId === '4702', open: atId !== '4702',
+      messages: rawMsgs.map(m => ({ text: m.removed ? 'Wiadomość usunięta przez moderację.' : m.text,
+        style: m.sys ? 'justify-self:center;font-size:12.5px;color:#4D4D4D;padding:4px 10px;border-radius:999px;background:#F1EEE7;'
+          : m.removed ? 'justify-self:start;max-width:78%;padding:10px 13px;border-radius:14px;border:1.5px dashed #B8B2A6;font-size:13.5px;font-style:italic;color:#4D4D4D;'
+            : m.me ? 'justify-self:end;max-width:78%;padding:10px 13px;border-radius:14px 14px 4px 14px;background:#121212;color:#fff;font-size:14px;line-height:1.45;'
+              : 'justify-self:start;max-width:78%;padding:10px 13px;border-radius:14px 14px 14px 4px;background:#fff;border:1px solid #E6E3DC;font-size:14px;line-height:1.45;' }))
+    };
+    const replyOk = !!(s.reply || '').trim();
+
+    // ---------- viewings ----------
+    const statusBadge = st => {
+      const m = { REQUESTED: ['◔ Prośba wysłana', '#FFF6DA'], CONFIRMED: ['✓ Potwierdzone', '#E7F0EA'], DECLINED: ['✕ Odrzucone', '#F1EEE7'], CANCELLED: ['— Anulowane', '#F1EEE7'], ATTENDED: ['✓ Odbyło się', '#E7F0EA'], NO_SHOW: ['! Nieobecność', '#F1EEE7'] }[st];
+      return { label: m[0], style: `display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;border:1.5px solid #121212;background:${m[1]};font-size:12.5px;font-weight:700;white-space:nowrap;` };
+    };
+    const myViewings = Object.keys(s.viewings).map(id => { const l = this.byId(id), x = s.viewings[id], b = statusBadge(x.status);
+      return { status: b.label, badge: b.style, when: x.slot.replace('|', ', '), title: l.title, open: () => this.openListing(id) }; });
+    const vb = vStat ? statusBadge(vStat) : null;
+
+    // ---------- provider ----------
+    const setPv = (id, patch, msg) => this.setState(st => ({ pv: st.pv.map(x => x.id === id ? Object.assign({}, x, patch) : x), toast: msg }));
+    const pbtn = primary => `height:40px;padding:0 14px;border-radius:999px;border:${primary ? '0' : '1.5px solid #121212'};background:${primary ? '#121212' : '#fff'};color:${primary ? '#fff' : '#121212'};font-size:13.5px;font-weight:700;cursor:pointer;`;
+    const providerViewings = s.pv.map(x => {
+      const b = statusBadge(x.status), l = this.byId(x.lid);
+      let actions = [];
+      if (x.status === 'REQUESTED') actions = [{ label: 'Potwierdź', style: pbtn(true), run: () => setPv(x.id, { status: 'CONFIRMED' }, 'Potwierdzono — szukający dostanie powiadomienie') }, { label: 'Odrzuć', style: pbtn(false), run: () => setPv(x.id, { status: 'DECLINED' }, 'Odrzucono prośbę') }];
+      else if (x.status === 'CONFIRMED' && x.past) actions = [{ label: 'Odbyło się', style: pbtn(true), run: () => setPv(x.id, { status: 'ATTENDED' }, 'Zapisano wynik oglądania') }, { label: 'Nie przyszedł(-a)', style: pbtn(false), run: () => setPv(x.id, { status: 'NO_SHOW' }, 'Zapisano wynik oglądania') }];
+      else if (x.status === 'CONFIRMED') actions = [{ label: 'Anuluj oglądanie', style: pbtn(false), run: () => setPv(x.id, { status: 'CANCELLED' }, 'Oglądanie anulowane — szukający dostanie powiadomienie') }];
+      return { statusLabel: b.label, badge: b.style, when: x.when, who: x.who, listing: A[l.area].name, dot: dot(A[l.area].color), actions };
+    });
+    const panelListings = ['4790', '4688'].map(id => { const l = this.byId(id), rc = s.reconfirmed.indexOf(id) >= 0;
+      return { title: l.title, dot: dot(A[l.area].color),
+        fresh: rc ? '● Dostępność potwierdzona dziś' : (l.fresh === 'FRESH' ? '● Dostępność potwierdzona ' + l.ago : '◐ Potwierdzona ' + l.ago + ' — czas ją potwierdzić'),
+        mode: l.mode === 'INSTANT_BOOKING' ? 'Oglądania: rezerwacja natychmiastowa' : 'Oglądania: wymagają Twojej zgody',
+        reconfirmLabel: rc ? 'Potwierdzone ✓' : 'Potwierdź dostępność',
+        reconfirm: () => { if (!rc) this.setState(st => ({ reconfirmed: st.reconfirmed.concat([id]), toast: 'Dostępność potwierdzona' })); } }; });
+
+    // ---------- filters ----------
+    const draftAreas = [['all', 'Cały Kraków', '#121212']].concat(Object.keys(A).map(k => [k, A[k].name, A[k].color])).map(([k, label, c]) => {
+      const on = k === 'all' ? s.draftAreas.length === 0 : s.draftAreas.indexOf(k) >= 0;
+      return { label, on: String(on), style: pill(on, c), pick: () => this.setState(st => ({ draftAreas: k === 'all' ? [] : (st.draftAreas.indexOf(k) >= 0 ? st.draftAreas.filter(x => x !== k) : st.draftAreas.concat([k])) })) };
+    });
+    const draftBudgets = [3500, 4000, 4500, 5000, 6000].map(b => ({ label: b === 6000 ? 'bez limitu' : 'do ' + this.num(b) + ' zł', on: String(s.draftBudget === b), style: pill(s.draftBudget === b), pick: () => this.setState({ draftBudget: b }) }));
+    const draftRooms = [[0, 'Dowolnie'], [1, '1+'], [2, '2+'], [3, '3+']].map(([r, label]) => ({ label, on: String(s.draftRooms === r), style: pill(s.draftRooms === r), pick: () => this.setState({ draftRooms: r }) }));
+    const draftCount = this.filtered({ areas: s.draftAreas, budget: s.draftBudget, rooms: s.draftRooms }).length;
+
+    // ---------- frame / layout ----------
+    const frameStyle = !mob
+      ? `width:${W}px;flex:none;background:#fff;box-shadow:0 30px 70px rgba(20,20,20,.16);position:relative;overflow:hidden;`
+      : `width:${W}px;flex:none;height:820px;overflow-y:auto;background:#fff;box-shadow:0 30px 70px rgba(20,20,20,.16);border-radius:${phone ? 36 : 24}px;border:10px solid #121212;position:relative;`;
+    const overlayStyle = !mob
+      ? 'position:absolute;inset:0;z-index:40;background:rgba(18,18,18,.42);display:flex;align-items:flex-start;justify-content:center;padding-top:90px;'
+      : 'position:sticky;bottom:0;height:800px;margin-top:-800px;z-index:40;background:rgba(18,18,18,.42);display:flex;align-items:flex-end;';
+    const sheetBase = !mob ? 'width:460px;max-width:92%;border-radius:24px;' : 'width:100%;border-radius:24px 24px 0 0;max-height:86%;overflow-y:auto;';
+    const padX = phone ? 16 : (mob ? 28 : 48);
+
+    const screenNames = { home: 'Strona główna', results: 'Wyniki + mapa', detail: 'Oferta', saved: 'Zapisane', messages: 'Wiadomości', viewings: 'Oglądania', panel: 'Panel dostawcy' };
+    const notes = {
+      home: 'Atlas jest wejściem dla osób, które znają Kraków. „Cały Kraków” z budżetem to ścieżka dla nowych. Kafelki nie pokazują liczb, bo agregaty to PROPOSED BACKEND. Wejście dla podaży („0 zł”) jest drugim celem strony.',
+      results: 'Od 1024 px lista i mapa obok siebie; od 1440 px lista w dwóch kolumnach. Poniżej 1024: najpierw lista i przełącznik Lista / Mapa. Suma miesięczna jest zawsze w tym samym miejscu karty. Kolor obszaru pojawia się tylko w kropce i strefie mapy.',
+      detail: 'Pas tożsamości w kolorze obszaru, potem koszt: suma, składniki, kwota na start z kaucją osobno. Dalej „W skrócie”, opis i okolica. W panelu bocznym sam termin jest akcją, z jednym potwierdzeniem. Rezerwacja natychmiastowa daje CONFIRMED, tryb ze zgodą daje REQUESTED.',
+      saved: 'Zapisane oferty i wyszukiwania z przełącznikiem powiadomień. Bez przypomnień typu „wróć!”.',
+      messages: 'Rozmowa zaczyna się dopiero po wysłaniu pierwszej wiadomości. Przykład: rozmowa zamknięta, z wiadomością usuniętą przez moderację, dla oferty, która nie jest już publiczna.',
+      viewings: 'Oglądania szukającego z prawdziwymi stanami. Oglądanie nie tworzy rozmowy automatycznie.',
+      panel: 'To samo konto, kontekst „Panel”. Prośby REQUESTED: potwierdź albo odrzuć. Po terminie: wynik oglądania. Potwierdzenie dostępności jednym kliknięciem.'
+    };
+    const counters = [
+      { k: 'Zalogowany · rezerwacja natychmiastowa', v: 'termin → potwierdź = 2 · CONFIRMED' },
+      { k: 'Zalogowany · ze zgodą wynajmującego', v: 'termin → wyślij = 2 · REQUESTED' },
+      { k: 'Gość · obecne auth', v: '2 → przerwanie → logowanie / rejestracja → sesja → wznowienie' },
+      { k: 'Gość · FUTURE kod e-mail', v: '2 + e-mail + kod (nie istnieje)' },
+      { k: 'Pierwsza wiadomość', v: 'Napisz → (edytuj) → Wyślij = 2' },
+      { k: 'Przejścia stron w konwersji', v: '0 (panel boczny / sheet)' }
+    ];
+    const howTo = [
+      '1. Ustaw „Cały Kraków” albo kliknij kafelek obszaru → wyniki.',
+      '2. Najedź na kartę (desktop) — pinezka się podświetla; kliknij pinezkę — lista przewija się do karty.',
+      '3. Otwórz „Dwa pokoje… Zabłocie” (natychmiastowa) albo „Grzegórzki” (ze zgodą), wybierz termin, potwierdź.',
+      '4. Jako gość pojawi się logowanie z zachowanym zamiarem — po zalogowaniu akcja wykona się bez ponownego klikania.',
+      '5. Pasek STAN BRZEGOWY: wczytywanie, błąd API, limit 429, konflikt terminu, istniejące oglądanie, oferta niedostępna / LISTING_HELD, 409 RECONTACT_BLOCKED (pojawia się przy próbie wysłania), offline.',
+      '6. Po zalogowaniu przełącz „Szukam / Panel”, aby zobaczyć stronę dostawcy.'
+    ];
+
+    // ---------- reference data ----------
+    const lum = hex => { const c = [1, 3, 5].map(i => parseInt(hex.substr(i, 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+    const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+    const paletteRows = Object.keys(A).map(k => ({ name: A[k].name, token: A[k].token, hex: A[k].color, ratio: ratio(A[k].color, '#FFFFFF').toFixed(2) + ' : 1 · ' + (ratio(A[k].color, '#FFFFFF') >= 4.5 ? 'AA tekst' : 'tylko duży tekst'),
+      swatch: `display:grid;gap:6px;padding:16px;min-height:96px;align-content:end;background:${A[k].color};color:#fff;` }))
+      .concat([{ name: 'Ink', token: '--color-ink', hex: '#121212', ratio: ratio('#121212', '#FFFFFF').toFixed(2) + ' : 1 · tekst / akcja', swatch: 'display:grid;gap:6px;padding:16px;min-height:96px;align-content:end;background:#121212;color:#fff;' }]);
+    const sb = (bg) => `display:inline-flex;align-items:center;justify-self:start;height:26px;padding:0 10px;border-radius:999px;border:1.5px solid #121212;background:${bg};font-size:12.5px;font-weight:700;`;
+    const statusRows = [
+      { label: '● Potwierdzona 2 dni temu', badge: sb('#fff'), note: 'FRESH — ikona pełna, tekst z datą. Bez zieleni.' },
+      { label: '◐ Potwierdzona 16 dni temu', badge: sb('#fff'), note: 'RECONFIRM_DUE — ikona połowiczna. Bez czerwieni i odliczania.' },
+      { label: 'Oferta niedostępna', badge: sb('#F1EEE7'), note: 'STALE / held / wycofana — jeden neutralny stan, bez powodu.' },
+      { label: '◔ Prośba wysłana', badge: sb('#FFF6DA'), note: 'Viewing REQUESTED — nigdy jako „umówione”.' },
+      { label: '✓ Potwierdzone', badge: sb('#E7F0EA'), note: 'Viewing CONFIRMED.' },
+      { label: '✕ Odrzucone', badge: sb('#F1EEE7'), note: 'Viewing DECLINED.' },
+      { label: '— Anulowane', badge: sb('#F1EEE7'), note: 'Viewing CANCELLED — bez „kto anulował”: źródło dziś niewiarygodne (BETA BLOCKER).' },
+      { label: '⚠ Błąd / konflikt', badge: sb('#FFF6DA'), note: 'Alert: ikona + tekst + rola alert. Kolor tylko wspiera.' }
+    ];
+    const typeRows = [
+      { token: '--font-display', sample: 'Zabłocie', style: "font:800 56px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.04em;" },
+      { token: '--type-h1', sample: 'Wybierz okolicę', style: "font:800 36px/1.02 'Bricolage Grotesque',sans-serif;letter-spacing:-.03em;" },
+      { token: '--type-price-lg', sample: '4 000 zł', style: "font:800 44px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.03em;font-variant-numeric:tabular-nums;" },
+      { token: '--type-price-card', sample: '4 130 zł', style: "font:800 27px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;" },
+      { token: '--type-body', sample: 'Najem, administracja i szacowane media.', style: "font:400 16px/1.55 'Public Sans',sans-serif;" },
+      { token: '--type-label', sample: 'PODGÓRZE · ZABŁOCIE', style: "font:700 12px/1.3 'Public Sans',sans-serif;letter-spacing:.14em;" },
+      { token: '--type-caption', sample: 'Dostępność potwierdzona 2 paź 2026', style: "font:400 12.5px/1.45 'Public Sans',sans-serif;color:#4D4D4D;" }
+    ];
+    const fontNotes = [
+      'Bricolage Grotesque (SIL OFL 1.1) — tylko display: nazwy obszarów, H1/H2, ceny. Nigdy w kontrolkach, tabelach i tekście ciągłym.',
+      'Public Sans (SIL OFL 1.1) — cały UI i treść. Oba kroje zawierają polskie znaki (ą ć ę ł ń ó ś ź ż) w podzbiorze latin-ext.',
+      'Dostarczanie: self-host WOFF2 przez next/font, podzbiory latin + latin-ext, font-display: swap, preload tylko Public Sans 400/600.',
+      'Budżet: Bricolage 1 plik (800, opsz) ~30–40 kB, Public Sans 2 wagi ~45 kB łącznie — szacunek, do zmierzenia w CI. Ceny bez Bricolage nadal czytelne (fallback system-ui 800).',
+      'Fallback: system-ui z dopasowanymi metrykami (size-adjust), żeby swap nie przesuwał układu (CLS).',
+      'Natywnie (Expo): oba kroje dostępne jako pliki TTF przez expo-font — ta sama para na web i w aplikacji.',
+      'Obecny tokens.css używa systemowego kroju. Zmiana wymaga zgody founder/GPT — do tego czasu FE-002 zostaje na system-ui.'
+    ];
+    const ct = (k) => ({ CUR: tagCur, CLIENT: tagClient, NEW: tagGap, FUT: tagFuture }[k]);
+    const comp = (name, t, note) => ({ name, tag: { CUR: 'restyle FE-002', CLIENT: 'nowy · klient', NEW: 'FE-003 · kontrakt', FUT: 'future' }[t], tagStyle: ct(t), note });
+    const componentRows = [
+      comp('AreaTile', 'CLIENT', 'Kafelek Atlasu: nazwa + kolor + „Zobacz oferty”. Bez agregatów. Klik = filtr obszaru w URL.'),
+      comp('AreaLabel', 'CLIENT', 'Kropka koloru + nazwa wersalikami. Kolor nigdy bez nazwy.'),
+      comp('ListingCard', 'CUR', 'Poziomy od 768 px, pionowy w siatce 2 kolumn od 1440 px. Kolejność stała: obszar → suma → pasek kosztu → najem+opłaty → tytuł → fakty → dostępność/świeżość.'),
+      comp('CostSignature', 'CUR', 'Suma (display) + pasek segmentów: najem pełny, administracja szara, media kreskowane = szacunek. Znaczenie przez wzór, nie kolor obszaru.'),
+      comp('MoveInCost', 'CUR', 'Ramka z obramowaniem; kaucja w przerywanej ramce z „zwrotna”, poza paskiem miesięcznym.'),
+      comp('ParkingRow', 'CUR', 'Wiersz pod sumą „poza sumą”. Po decyzji G4 może wejść do sumy bez zmiany layoutu.'),
+      comp('FreshnessLine', 'CUR', '● / ◐ + data + „X dni temu”. Brak koloru alarmowego.'),
+      comp('ApproximateLocation', 'CUR', 'Rozmyta strefa (APPROXIMATE) albo przerywana dzielnica (DISTRICT). Bez pinezki i bez promienia.'),
+      comp('MapMarker / MapArea', 'CUR', 'Marker = cena łączna, czarny/biały; wybrany odwrócony z obwódką. Strefy obszarów w 14% koloru, nieklikalne.'),
+      comp('FilterPanel', 'CUR', 'Dialog (desktop) / sheet (mobile), licznik na żywo, fokus na zamknięciu, powrót fokusu na trigger.'),
+      comp('SaveButton', 'CUR', '♡/♥ 44×44, aria-pressed. Gość → logowanie z zachowanym zamiarem.'),
+      comp('EngagementRail', 'NEW', 'Desktop: sticky panel boczny. Kolejność: stan oglądania → terminy → potwierdź → wiadomość → telefon.'),
+      comp('MobileActionDock', 'NEW', 'Sticky na dole: suma + najbliższe terminy jako akcje; po wyborze „Potwierdź · termin”.'),
+      comp('ViewingSlot (UI)', 'NEW', 'Przycisk terminu 44 px, aria-pressed. Nie jest encją backendu — terminy oblicza serwer.'),
+      comp('ViewingState', 'NEW', 'Odznaka stanu + termin + wyjaśnienie + „Anuluj”. REQUESTED i CONFIRMED mają różny tekst.'),
+      comp('ConversationComposer', 'NEW', 'Wstępnie wypełniona, edytowalna pierwsza wiadomość; „Rozmowa zacznie się po wysłaniu”.'),
+      comp('ConversationItem / Bubble', 'NEW', 'Ja / druga strona / systemowa neutralna / usunięta przez moderację.'),
+      comp('AuthInterrupt', 'NEW', 'Dialog/sheet z kartą zamiaru. Obecnie: e-mail + hasło. Po sukcesie wykonuje zamiar.'),
+      comp('ContextSwitch', 'NEW', '„Szukam / Panel” — widoczny tylko przy PropertyAuthority / mandacie. Design-ready; implementacja supply zablokowana dla beta do autoryzacji po PropertyAuthority (nie legacy host).'),
+      comp('ProviderViewingRow', 'NEW', 'REQUESTED: potwierdź / odrzuć; CONFIRMED: anuluj; po terminie: wynik. Design-ready; beta zablokowana do PropertyAuthority na trasach supply.'),
+      comp('Skeleton / Alert / EmptyState', 'CUR', 'Szkielet kart, alert z ponowieniem, puste wyniki z trzema poluzowaniami.'),
+      comp('OutcomePrompt', 'FUT', 'Lekki wybór wyniku najmu przy wycofaniu oferty. Poza 001C.')
+    ];
+    const rwdRows = [
+      { k: '< 480', v: 'jedna kolumna, karty pionowe, dock na dole, filtry jako pełny sheet, nawigacja jako przewijany pasek pod nagłówkiem' },
+      { k: '480–767', v: 'jak wyżej, większe marginesy; Atlas 2 kolumny' },
+      { k: '768–1023', v: 'karty poziome, lista najpierw + przełącznik Lista/Mapa, dock nadal aktywny (dotyk)' },
+      { k: '1024–1439', v: 'split lista/mapa (FE-002), lista 1 kolumna, rail boczny w ofercie' },
+      { k: '≥ 1440', v: 'split, lista 2 kolumny kart pionowych' },
+      { k: 'Ruch', v: '3 motywy: wybór obszaru → chip w wynikach (kolor przechodzi), karta ↔ marker (skala 1.08), dock → sheet. 150–200 ms, wyłączone przy prefers-reduced-motion. Bez biblioteki animacji.' }
+    ];
+
+    const tagDesign = tag('#F1EEE7', '#3A3A3A', '#CFC9BD');
+    const ORDER = ['CURRENT', 'CLIENT COMPOSITION', 'DESIGN-DEPENDENT', 'BACKEND/API GAP', 'BETA BLOCKER', 'FUTURE'];
+    const C = { 'CURRENT': tagCur, 'CLIENT COMPOSITION': tagClient, 'DESIGN-DEPENDENT': tagDesign, 'BACKEND/API GAP': tagGap, 'BETA BLOCKER': tagCanon, 'FUTURE': tagFuture };
+    const b = (ui, domain, src, cls, fb) => ({ ui, domain, src, cls, clsStyle: C[cls], fb });
+    const bindingRows = [
+      b('ListingCard', 'Listing (public DTO)', 'public search → items[]', 'CURRENT', 'Brak zdjęcia → neutralne tło z nazwą obszaru'),
+      b('Nazwa obszaru', 'geography: locality / district / place', 'listing.location', 'CURRENT', 'Brak dzielnicy → nazwa miejscowości'),
+      b('Kolor obszaru', 'stałe mapowanie obszar → kolor (D-103)', 'klient', 'CLIENT COMPOSITION', 'Nieznany obszar → ink; nigdy ocena ani status'),
+      b('Liczby w Atlasie („X ofert”, „od X zł”)', 'agregat per obszar', '— brak endpointu', 'BACKEND/API GAP', 'Kafelek bez liczb: „Zobacz oferty”'),
+      b('Suma miesięczna', 'monthly_total_estimate', 'listing.pricing', 'CURRENT', 'Brak → sam najem + „bez szacunku opłat”'),
+      b('Składniki: najem, administracja, media', 'ClassifiedOut.rent_amount, admin_fee, utilities_amount, utilities_basis', 'public classified (lista i oferta)', 'CURRENT', 'Segmenty tylko z tych pól. ESTIMATED → kreskowane „szacunek”; INCLUDED → „w cenie najmu”, bez segmentu; NOT_STATED → „nie podano · poza sumą”, bez segmentu'),
+      b('Karta: „w tym najem”', 'rent_amount obok monthly_total_estimate', 'public classified', 'CURRENT', 'Karta nie sumuje opłat po stronie klienta'),
+      b('Parking w sumie', 'parking_fee — G4: obowiązkowy w sumie', 'public classified', 'CURRENT', 'Każda podana opłata = obowiązkowa; do potwierdzenia w FE-003: monthly_total_estimate zawiera parking_fee'),
+      b('Parking opcjonalny osobno', 'brak pola obowiązkowy / opcjonalny', '—', 'BETA BLOCKER', 'Do czasu pola: brak wiersza „opcjonalny”'),
+      b('Inne koszty', 'other_costs (tekst ≤ 500)', 'public classified', 'CURRENT', 'Pokazany dosłownie jako tekst; nigdy segment, liczba ani część sumy'),
+      b('Na start / kaucja', 'move_in_total, deposit_amount', 'listing.pricing', 'CURRENT', 'Kaucja osobno, „zwrotna”; Homies jej nie trzyma'),
+      b('Świeżość', 'FRESH / RECONFIRM_DUE + data potwierdzenia', 'listing.freshness', 'CURRENT', 'STALE nie jest publiczne → „Oferta niedostępna”'),
+      b('Piętro', 'floor (D-101: publiczne)', 'listing.facts', 'CURRENT', 'Brak → pomiń'),
+      b('Liczba pięter budynku', 'floors_total (D-101: niepubliczne)', 'nieobecne w DTO', 'CURRENT', 'Nie istnieje w żadnym publicznym UI'),
+      b('Okolica / mapa', 'public_location APPROXIMATE | DISTRICT', 'listing.location', 'CURRENT', 'DISTRICT → przerywana strefa bez markera; brak współrzędnych → tylko lista'),
+      b('Promień przybliżenia w metrach', '—', 'brak w kontrakcie', 'BACKEND/API GAP', 'Niepotrzebny: tekst „przybliżona okolica”'),
+      b('Zapisz ofertę', 'SavedListing', 'saved-listings API', 'CURRENT', 'Gość → logowanie z zachowanym zamiarem'),
+      b('Stan „czy zapisane” na karcie', 'zbiór ID zapisanych', 'BFF allowlist + odczyt listy', 'CLIENT COMPOSITION', 'Do czasu odczytu: pusty ♡'),
+      b('Wygląd zapisu ♡ / ♥ i licznik', '—', 'design', 'DESIGN-DEPENDENT', 'Do zatwierdzenia z 1C'),
+      b('Zapisane wyszukiwanie + alert', 'SavedSearch + matches / alerts', 'saved-searches API', 'CURRENT', 'Przełącznik powiadomień bez presji'),
+      b('Start rozmowy', 'Conversation + pierwsza niepusta Message', 'create conversation', 'CURRENT', 'Istniejący aktywny wątek → otwórz go'),
+      b('Limity wiadomości', 'rate limit / dzienny limit', 'conversation API', 'CURRENT', 'Komunikat z treścią zachowaną w polu'),
+      b('409 RECONTACT_BLOCKED', 'G-14 + F6, ta generacja publikacji', 'conversation + viewing create', 'CURRENT', 'Neutralny stan bez powodu; nowa publikacja znosi blokadę'),
+      b('G-14 po istniejącym oglądaniu — obecnie', 'restrykcja nie anuluje istniejącego oglądania', 'viewing / restriction', 'CURRENT', 'UI pokazuje istniejące oglądanie bez zmian; nie wynika z tego prawo do wiadomości ani zmiany terminu'),
+      b('G-14 po istniejącym oglądaniu — decyzja', 'anulować / zamrozić?', '—', 'DESIGN-DEPENDENT', 'OPEN PRODUCT DECISION — bramka decyzyjna FE-003'),
+      b('can_send / closed_by', '—', 'brak', 'BACKEND/API GAP', 'Opcjonalne; dziś wnioskowane ze stanu CLOSED'),
+      b('Karta oferty w rozmowie', 'żywy odczyt publicznej oferty', 'public listing by id', 'CLIENT COMPOSITION', 'Niepubliczna → „Oferta niedostępna”'),
+      b('Wiadomość usunięta / rozmowa zamknięta', 'redakcja moderacji, CLOSED', 'conversation API', 'CURRENT', 'Tekst neutralny, bez powodu'),
+      b('Terminy oglądań', 'pochodne z settings / windows / blackouts — brak encji slotu', 'offered slots query', 'CURRENT', 'Brak ustawień → tylko „Napisz do wynajmującego”'),
+      b('Prośba / rezerwacja', 'Viewing(starts_at, attendee_count = 1, note?)', 'create viewing', 'CURRENT', 'INSTANT_BOOKING → CONFIRMED; REQUEST_APPROVAL → REQUESTED'),
+      b('Konflikt terminu / pojemność', '409 termin zajęty / nieoferowany (lock)', 'create viewing', 'CURRENT', 'Odśwież terminy, zachowaj kontekst'),
+      b('Masz już oglądanie', 'jedno trzymane oglądanie na parę', 'create viewing', 'CURRENT', 'Pokaż istniejące + „Anuluj”'),
+      b('LISTING_HELD', 'oferta wstrzymana', 'viewing / listing', 'CURRENT', '„Oferta niedostępna”, akcje wyłączone'),
+      b('Anulowanie oglądania', 'CANCELLED', 'viewing API', 'CURRENT', 'Bez przypisywania „kto anulował”'),
+      b('Źródło anulowania (REQUESTER / PROVIDER / HOMIES)', 'dziś wnioskowane z równości timestampów', '—', 'BETA BLOCKER', 'Potrzebne niezmienne pole przed UI sporów'),
+      b('Zmiana terminu', '—', 'brak reschedule', 'FUTURE', '„Anuluj i wybierz nowy termin”'),
+      b('Adres / spotkanie po CONFIRMED', 'G9: tylko uczestnicy, kanał participant-safe', '— nie istnieje', 'BETA BLOCKER', 'Dziś: „ustal w wiadomości”; docelowy blok tylko z adnotacją'),
+      b('Powiązanie oglądanie ↔ rozmowa', '—', 'propozycja', 'FUTURE', 'Brak automatycznej rozmowy'),
+      b('Pokaż numer', 'contact reveal: zweryfikowany telefon, 20 / dzień, audyt', 'reveal API', 'CURRENT', 'Tryb tylko-wiadomości → brak przycisku'),
+      b('Weryfikacja telefonu (SMS)', 'dostawca SMS', '—', 'BETA BLOCKER', 'Produkcyjny dostawca SMS'),
+      b('Logowanie', 'e-mail + hasło, sesja BFF httpOnly, CSRF', '/bff/auth/login, /session', 'CURRENT', 'Bez tokenów w JS i URL'),
+      b('Rejestracja + kontynuacja zamiaru', 'BFF register → ustanowienie sesji → wznowienie zamiaru', '/bff/auth/register, /bff/auth/login, /session', 'CLIENT COMPOSITION', 'Wznowienie dopiero po potwierdzonej sesji; jeśli rejestracja nie loguje, następuje logowanie, potem wznowienie. Brak gwarancji backendu „rejestracja = wykonanie”'),
+      b('Kod e-mail / Google', '—', 'nie istnieje', 'FUTURE', 'Pokazane tylko jako kierunek'),
+      b('Wylogowanie', 'BG-1: unieważnienie sesji w backendzie', '—', 'BETA BLOCKER', 'Dziś czyszczenie sesji BFF'),
+      b('Odświeżenie sesji', 'BG-5: tolerancja ponownego użycia refresh', '—', 'BETA BLOCKER', '120 s pamięci rotacji w FE = łagodzenie'),
+      b('Panel: prośby i oglądania', 'provider confirm / decline / cancel / outcome', 'provider viewing API', 'CURRENT', 'ProviderViewingRow design-ready; implementacja supply nie jest beta-ready do autoryzacji po PropertyAuthority'),
+      b('Autoryzacja tras supply', 'PropertyAuthority (dziś legacy host)', 'supply routes', 'BETA BLOCKER', 'Agencja / concierge / import nie są beta-ready'),
+      b('Przełącznik Szukam / Panel', 'PropertyAuthority / mandate scopes (np. MANAGE_VIEWINGS, MANAGE_MESSAGES)', 'session + authority', 'CLIENT COMPOSITION', 'Nigdy z legacy roli host; brak uprawnień → ukryty; beta zablokowana do PropertyAuthority na trasach'),
+      b('Analityka lejka', 'first-party, zgoda, retencja', 'seams w FE', 'BETA BLOCKER', 'Ingest / dowód zgody / retencja — bramka prawna'),
+      b('Typografia Bricolage + Public Sans', '—', 'design', 'DESIGN-DEPENDENT', 'FE-002 zostaje na system-ui do zatwierdzenia'),
+      b('Tokeny 1C', '—', 'propozycja', 'DESIGN-DEPENDENT', 'Nie są produkcyjne przed zatwierdzeniem'),
+      b('Wynik najmu', 'outcome (RENTED_VIA_HOMIES …)', '—', 'FUTURE', 'Nie wnioskujemy z wycofania oferty')
+    ];
+    const gapRows = ORDER.reduce((acc, k) => acc.concat(bindingRows.filter(r => r.cls === k).map(r => ({ cls: r.cls, clsStyle: r.clsStyle, item: r.ui, note: r.fb }))), []);
+    const mt = (title, style, items) => ({ title, tagStyle: style, items });
+    const matrix = [
+      mt('PRESERVE · Seeker v1 / FE-002', tagCur, ['trasy /, /wynajem/[[...miejsce]], /oferta/[id], /szukaj', 'stan wyszukiwania w URL, SSR listy', 'synchronizacja karta ↔ marker, podgląd na mapie mobile', 'fokus filtrów: wejście i powrót na trigger', 'przywracanie przewinięcia po „Wróć do wyników”', 'stany: wczytywanie, błąd, puste, niedostępne']),
+      mt('ADAPT · z 1C', tagClient, ['karty pocztówkowe → karty porównawcze', 'Atlas bez agregatów', 'kolor tylko w momentach tożsamości (D-103)', 'breakpointy 480 / 768 / 1024 / 1440 zamiast 1100']),
+      mt('REMOVE · z 001B', tagCanon, ['„R ≈ 300 m”, „ok. 300 m”', '„3 piętro z 5” (floors_total)', 'adres po potwierdzeniu jako działająca funkcja', 'automatyczna rozmowa po oglądaniu', 'OTP / Google jako obecne', 'prośba bez slotów jako działająca funkcja', 'atomowa zmiana terminu', '„anulowane przez wynajmującego”']),
+      mt('CANON · DECIDED (main 995b05fe)', tagCur, ['D-101: floor publiczne, floors_total nigdy', 'G4: obowiązkowy parking w sumie, opcjonalny osobno', 'G9: adres tylko po CONFIRMED, tylko uczestnikom, kanał participant-safe', 'F6: 409 RECONTACT_BLOCKED dla tej generacji publikacji', 'D-103: kolor obszaru ≠ ocena / status']),
+      mt('G-14 PO ISTNIEJĄCYM OGLĄDANIU', tagDesign, ['CURRENT: restrykcja nie anuluje automatycznie istniejącego oglądania.', 'OPEN PRODUCT DECISION: anulować czy zamrozić? — bramka FE-003.', 'Z obecnego zachowania nie wynikają prawa do wiadomości ani zmiany terminu.']),
+      mt('BETA BLOCKERS', tagCanon, ['BG-1 unieważnienie sesji przy wylogowaniu', 'BG-5 tolerancja ponownego użycia refresh', 'G9 kanał adresu tylko dla uczestników', 'G4 pole obowiązkowy / opcjonalny parking', 'niezmienne źródło anulowania', 'trasy supply po PropertyAuthority', 'produkcyjny dostawca SMS', 'analityka first-party: ingest, dowód zgody, retencja (bramka prawna)']),
+      mt('UX ponad obecny backend', tagGap, ['liczby w kafelkach Atlasu', 'logowanie kodem zamiast e-mail + hasło', 'prośba o termin bez opublikowanych slotów', 'zmiana terminu bez anulowania', 'adres w panelu oglądania po CONFIRMED', 'historyczna karta oferty po wycofaniu', 'natychmiastowe wyłączenie akcji, gdy oferta znika w trakcie (dziś: przy następnym żądaniu / 409)'])
+    ];
+    const critique = [
+      { q: 'Czy 1C nie zamienia wyników w kolorową galerię?', a: 'Było ryzyko. Naprawione: karty w wynikach są białe, kolor tylko w kropce i strefie mapy. 4–5 ofert na ekran 1280 × 820.' },
+      { q: 'Czy kolor obszaru może czytać się jak ocena (D-103)?', a: 'Kolor nigdy nie występuje bez nazwy, mapowanie jest stałe, „Kolor oznacza obszar, nie ocenę.” stoi przy Atlasie i mapie. Statusy mają osobną neutralną paletę z ikoną.' },
+      { q: 'Czy nowa osoba w Krakowie musi znać dzielnice?', a: 'Nie. „Cały Kraków” jest domyślny, budżet i pokoje wystarczą, Atlas jest skrótem, a nie bramką.' },
+      { q: 'Czy REQUESTED i CONFIRMED są nie do pomylenia?', a: 'Różnią się przycisk, toast, odznaka i opis. „Prośba wysłana” nigdy nie mówi „umówione”.' },
+      { q: 'Czy RECONTACT_BLOCKED nie ujawnia powodu ani drugiej strony?', a: 'Stan jest neutralny: „Nie możesz umówić oglądania ani napisać w sprawie tej oferty.” Pojawia się dopiero po odpowiedzi 409, bez wzmianki o zgłoszeniu.' },
+      { q: 'Czy UI obiecuje adres po potwierdzeniu?', a: 'Nie. Dziś: „Dokładny adres nie jest publiczny. Szczegóły ustal w wiadomości.” Docelowy blok G9 widać tylko w adnotacjach jako niezaimplementowany.' },
+      { q: 'Czy anulowanie przypisuje komuś winę?', a: 'Nie. Stan „Anulowane” bez źródła, bo pole źródła jest dziś niewiarygodne.' },
+      { q: 'Czy po zalogowaniu trzeba potwierdzać drugi raz?', a: 'Nie. Zamiar wykonuje się sam; wyjątek to konflikt terminu albo 409, bo stan się zmienił.' },
+      { q: 'Czy wstępnie wypełniona wiadomość to ciemny wzorzec?', a: 'Nie: jest widoczna i edytowalna, a wysyła ją użytkownik. Nic nie wysyłamy automatycznie i nie tworzymy pustej rozmowy.' },
+      { q: 'Co nadal słabe?', a: 'Mapa w prototypie to schemat, nie MapLibre. Atlas bez agregatów jest mniej informacyjny. Hasło przy pierwszej akcji gościa pozostaje największym tarciem.' }
+    ];
+    const handoffText = [
+      '# HOMIES DESIGN-001C — FINAL HANDOFF',
+      'project: { name: Homies, selected_direction: 1C Dzielnica, design_status: PASS_WITH_REQUIRED_REVIEW_ITEMS → corrected, implementation_authorized: NO }',
+      '',
+      'repository_grounding:',
+      '  main_sha: 995b05fe72bc15a86141e214bf1c4fc63b8bc570',
+      '  contains: PROGRAM-001 779b30fe2ecc5d4542a50efc8494eb6220409327 (merge --no-ff) + bounded F6 follow-up + canonical updates',
+      '  schema_head: a3c5e7f9b1d4',
+      '  main_ci: 37164546195 — 6/6 green',
+      '  deployed: NO · production_ready: NO',
+      '  superseded_reference: 03268432… (old main, not used)',
+      '',
+      'source_artifacts: Seeker v1, DS v1, 001B Kierunki (1C), 001B Konwersja FE-003 — unchanged',
+      'design_001c: Homies 001C Dzielnica Product Convergence.dc.html · tabs: Prototyp / Foundations + komponenty / Backend binding + krytyka / Handoff',
+      '',
+      'canon_used (decided, not reopened):',
+      '  D-101: floor public; floors_total never public',
+      '  G4: mandatory parking in monthly total; optional shown separately; API has no flag → every stated fee treated as mandatory',
+      '  G9: address / meeting details only after CONFIRMED, only to that viewing\'s parties, participant-safe surface only; not implemented',
+      '  F6: 409 RECONTACT_BLOCKED for same publication generation; republish lifts it',
+      '  D-103: area colour = identity / navigation only',
+      'g14_after_existing_viewing:',
+      '  CURRENT: restriction does not auto-cancel an existing viewing',
+      '  OPEN PRODUCT DECISION (FE-003 gate): cancel or freeze it?',
+      '  no communication / reschedule rights are inferred from current behaviour',
+      '',
+      'visual_system:',
+      '  identity: place-first; colour at Atlas tile, area label, map zone, detail band, supply band; comparison surfaces white',
+      '  typography: Bricolage Grotesque (display / places / prices) + Public Sans (UI) — DESIGN-DEPENDENT, founder/GPT review; FE-002 stays system-ui until approved',
+      '  tokens: 1C tokens are a proposal for frontend/design-system/tokens.css; none production-approved before this handoff is approved',
+      '  cost_signature: total = monthly_total_estimate; segments only from structured ClassifiedOut fields (rent_amount, admin_fee, parking_fee, utilities_amount by utilities_basis: ESTIMATED hatched / INCLUDED none / NOT_STATED none + label); other_costs free text only; deposit outside total; G4 applied (verify total includes parking_fee in FE-003)',
+      '  listing_card: total + "w tym najem"; no client-summed fees',
+      '  status_palette: neutral + icon + text, separate from area colours',
+      '',
+      'responsive: 480 / 768 / 1024 / 1440 · split list/map ≥1024 · two-column list ≥1440 · <1024 list-first + Lista/Mapa toggle · dock on touch widths · map lazy',
+      '',
+      'conversion (current backend):',
+      '  logged_in_instant: slot → confirm → CONFIRMED (2 actions, 0 inputs, 0 page transitions)',
+      '  logged_in_approval: slot → send → REQUESTED (2 actions); provider confirms later',
+      '  guest: slot → confirm → auth interruption → login or registration → session established → pending action resumed (CLIENT COMPOSITION; no backend guarantee that registration alone executes the action)',
+      '  first_message: Napisz → (edit prefilled) → Wyślij (2 actions); conversation exists only after send',
+      '  future_auth: email code / Google — FUTURE',
+      '',
+      'states_designed: loading skeleton, API error, 429, zero results with 3 relaxations, slot conflict 409, already-held viewing, LISTING_HELD / unavailable, 409 RECONTACT_BLOCKED, offline with preserved choice, auth interruption, closed conversation, moderated message, no published slots',
+      '',
+      'beta_blockers:',
+      '  - BG-1 backend logout / session revocation',
+      '  - BG-5 refresh reuse / grace semantics (120 s FE memory = mitigation only)',
+      '  - G9 participant-only address / meeting delivery',
+      '  - G4 mandatory vs optional parking input / field',
+      '  - immutable cancellation source REQUESTER / PROVIDER / HOMIES',
+      '  - authority-correct supply routes (PropertyAuthority, not legacy host)',
+      '  - production SMS provider (phone verification)',
+      '  - legal-gated first-party analytics ingestion, consent evidence, retention',
+      '',
+      'implementation:',
+      '  reuse_FE002: routes, URL state, SSR, BFF session, MapLibre lazy, filter focus, scroll restore, E2E',
+      '  restyle_after_approval: ListingCard, CostSignature, MoveInCost, Freshness, ApproximateLocation, MapMarker, FilterPanel, SaveButton, Skeleton / Alert / Empty, AreaTile, AreaLabel',
+      '  fe003_components (task contract required): EngagementRail, MobileActionDock, ViewingSlot (UI only), ViewingState, ConversationComposer, ConversationItem, AuthInterrupt, ContextSwitch, ProviderViewingRow',
+      '  supply_boundary: ContextSwitch + ProviderViewingRow design-ready; supply implementation NOT beta-ready until routes authorize via PropertyAuthority (not legacy host); capabilities keyed to authority / mandate scopes',
+      '  do_not_implement_yet: anything under FE-003; G9 address block; optional-parking row; cancellation attribution; OTP / Google',
+      '',
+      'fe003_readiness: { design_ready: YES, task_contract_required: YES, implementation_authorized: NO }',
+      'next_phase: Finalize FE-003 Task Contract for Founder/GPT approval',
+      '',
+      'review_for_GPT: 1C identity preserved? Seeker v1 behaviour intact? REQUESTED ≠ CONFIRMED? no auto-conversation? RECONTACT_BLOCKED neutral? no floors_total / radius / address? G4 rendering correct? D-103 respected? density sufficient? blockers complete?'
+    ].join('\n');
+
+    const vpDefs = [['mobile', 'Mobile 390'], ['tablet', 'Tablet 768'], ['desktop', 'Desktop 1280'], ['wide', 'Wide 1440']];
+    const tabStyle = on => `height:30px;padding:0 12px;border-radius:999px;border:0;background:${on ? '#fff' : 'transparent'};color:${on ? '#121212' : '#fff'};font-size:12.5px;font-weight:600;cursor:pointer;`;
+    const edgeDefs = [['none', 'Normalny'], ['loading', 'Wczytywanie'], ['error', 'Błąd API'], ['ratelimit', 'Limit 429'], ['conflict', 'Konflikt terminu'], ['already', 'Masz już oglądanie'], ['unavailable', 'Oferta niedostępna'], ['f6', '409 RECONTACT_BLOCKED'], ['offline', 'Offline']];
+
+    return {
+      tabs: [['proto', 'Prototyp'], ['system', 'Foundations + komponenty'], ['binding', 'Backend binding + krytyka'], ['handoff', 'Handoff']].map(([k, label]) => ({ label, style: tabStyle(s.view === k), pick: () => this.setState({ view: k }) })),
+      showChrome: this.props.chrome !== false, homeSuperseded: this.props.masterMode === true, showSide: this.props.masterMode !== true,
+      isProto: s.view === 'proto', isSystem: s.view === 'system', isBinding: s.view === 'binding', isHandoff: s.view === 'handoff',
+      vpTabs: vpDefs.map(([k, label]) => ({ label, style: tabStyle(s.vp === k), pick: () => this.setState({ vp: k, mobView: 'list' }) })),
+      edgeTabs: edgeDefs.map(([k, label]) => ({ label, style: tabStyle(s.edge === k).replace('height:30px', 'height:28px'), pick: () => this.setState({ edge: k, conflictUsed: false, conflictMsg: false, offlineMsg: false, retried: false, taken: [], blocked: false }) })),
+      ann: s.ann, toggleAnn: () => this.setState({ ann: !s.ann }),
+      authLabel: s.authed ? 'Zalogowany · wyloguj (reset)' : 'Gość',
+      resetAll: () => this.setState({ authed: false, ctx: 'seeker', viewings: {}, threads: {}, auth: null, email: '', password: '', screen: s.screen === 'panel' ? 'home' : s.screen }),
+      frameRef: this.frameRef, frameStyle, isDesk: split, isMob: mob,
+      headerStyle: `display:flex;align-items:center;gap:${phone ? 10 : 16}px;padding:${phone ? '12px 16px' : (split ? '18px 48px' : '16px 28px')};flex-wrap:wrap;border-bottom:1px solid #EFECE5;background:#fff;${mob ? 'position:sticky;top:0;z-index:20;' : ''}`,
+      goHome: () => this.setState({ screen: 'home', ctx: 'seeker' }),
+      showTopNav: true, navItems,
+      navStyle: split ? 'display:flex;gap:2px;margin-left:18px;' : 'display:flex;gap:2px;order:3;width:100%;overflow-x:auto;margin:0 -4px;',
+      showCtx: s.authed, ctxSeek: tabStyle(s.ctx === 'seeker').replace('#fff;color:#121212', '#121212;color:#fff').replace('transparent;color:#fff', 'transparent;color:#121212'),
+      ctxPanel: tabStyle(s.ctx === 'provider').replace('#fff;color:#121212', '#121212;color:#fff').replace('transparent;color:#fff', 'transparent;color:#121212'),
+      toSeeker: () => this.setState({ ctx: 'seeker', screen: 'results' }),
+      toPanel: () => { if (!s.authed) { this.setState({ auth: { type: 'nav', target: 'panel' } }); return; } this.setState({ ctx: 'provider', screen: 'panel' }); },
+      showLogin: !s.authed, openLogin: () => this.setState({ auth: { type: 'nav', target: s.screen === 'home' ? 'results' : s.screen } }),
+      showSupplyCta: split && s.ctx === 'seeker',
+
+      isHome: s.screen === 'home',
+      heroGrid: `display:grid;grid-template-columns:${split ? 'minmax(0,5fr) minmax(0,7fr)' : '1fr'};gap:${split ? 40 : 24}px;padding:${phone ? '20px 16px 32px' : `32px ${padX}px 48px`};`,
+      tagCur, tagGap, tagCanon, tagFuture, tagSmall: tagClient,
+      tagCurAbs: tagCur + 'position:absolute;right:12px;top:12px;',
+      heroH1: `margin:0;font:800 ${split ? 76 : (phone ? 44 : 60)}px/.94 'Bricolage Grotesque',sans-serif;letter-spacing:-.04em;text-wrap:balance;`,
+      submitSearch: (e) => { if (e && e.preventDefault) e.preventDefault(); this.setState({ screen: 'results', mobView: 'list' }); },
+      whereChips, roomOpts,
+      budgetDown: () => this.setState(st => ({ budget: Math.max(2500, st.budget - 250) })),
+      budgetUp: () => this.setState(st => ({ budget: Math.min(6000, st.budget + 250) })),
+      budgetLabel: s.budget >= 6000 ? 'bez limitu' : this.zl(s.budget),
+      submitLabel: `Pokaż ${homeCount} ${homeCount === 1 ? 'mieszkanie' : (homeCount < 5 ? 'mieszkania' : 'mieszkań')}`,
+      atlasGrid: `display:grid;grid-template-columns:repeat(${split ? 3 : 2},1fr);gap:${split ? 12 : 8}px;`,
+      atlas,
+      homeSection: `padding:${phone ? '28px 16px' : `40px ${padX}px`};border-top:1px solid #EFECE5;`,
+      homeCardsGrid: `display:grid;grid-template-columns:repeat(${split ? 3 : (phone ? 1 : 2)},1fr);gap:16px;`,
+      homeCards: ['4821', '4688', '4755'].map(id => decorate(this.byId(id))),
+      explainGrid: `display:grid;grid-template-columns:${split ? '1fr 1fr' : '1fr'};gap:24px;align-items:center;`,
+      supplySection: `margin:${phone ? '0 16px 32px' : `0 ${padX}px 48px`};padding:${phone ? 22 : 32}px;border-radius:28px;background:#2F6B4F;color:#fff;display:grid;grid-template-columns:${split ? '1fr auto' : '1fr'};gap:20px;`,
+      footerStyle: `padding:${phone ? '28px 16px' : `36px ${padX}px`};border-top:1px solid #E6E3DC;background:#F6F4EF;display:grid;grid-template-columns:${split ? '1.4fr 1fr 1fr 1fr' : '1fr 1fr'};gap:24px;`,
+      footerCols,
+
+      isResults: s.screen === 'results',
+      resultsWrap: split ? 'display:grid;grid-template-rows:auto 1fr;height:820px;' : 'display:grid;',
+      toolbarStyle: `padding:${phone ? '14px 16px' : `16px ${split ? 32 : 28}px`};display:grid;gap:10px;border-bottom:1px solid #E6E3DC;`,
+      resultsTitle: resLoading ? 'Szukamy…' : (resErr ? 'Wyniki' : `${results.length} ${results.length === 1 ? 'mieszkanie' : (results.length > 1 && results.length < 5 ? 'mieszkania' : 'mieszkań')}`),
+      resultsSub: s.areas.length ? s.areas.map(k => A[k].name).join(', ') + ' · Kraków' : 'Kraków · wynajem długoterminowy',
+      activeChips,
+      openFilters: () => this.setState({ filtersOpen: true, draftAreas: s.areas, draftBudget: s.budget, draftRooms: s.rooms }),
+      filterTriggerRef: this.filterTriggerRef, filterFirstRef: this.filterFirstRef,
+      filtersLabel: nFilters ? `Filtry · ${nFilters}` : 'Filtry',
+      splitStyle: split ? `display:grid;grid-template-columns:${wide ? 'minmax(0,7fr) minmax(0,5fr)' : 'minmax(0,6fr) minmax(0,5fr)'};min-height:0;` : 'display:block;',
+      showList, showMap, listRef: this.listRef,
+      listPaneStyle: split ? 'overflow-y:auto;padding:14px 16px 24px 32px;min-height:0;' : `padding:${phone ? '12px 12px 90px' : '16px 28px 90px'};`,
+      listGridStyle: `display:grid;grid-template-columns:${wide ? '1fr 1fr' : '1fr'};gap:10px;`,
+      resLoading, skeletons: [skel, skel, skel, skel],
+      resError: resErr,
+      errTitle: s.edge === 'ratelimit' ? 'Za dużo zapytań w krótkim czasie' : 'Nie udało się wczytać ofert',
+      errBody: s.edge === 'ratelimit' ? 'Odczekaj chwilę i spróbuj ponownie. Twoje filtry są zachowane w adresie strony.' : 'To problem po naszej stronie albo z połączeniem. Filtry są zachowane — możesz spróbować ponownie.',
+      errCta: 'Spróbuj ponownie', retryResults: () => this.setState({ edge: 'none' }),
+      hasResults: results.length > 0, results: resultsDec, noResults: !resLoading && !resErr && results.length === 0,
+      relaxArea: () => this.setState({ areas: [] }), relaxBudget: () => this.setState(st => ({ budget: Math.min(6000, st.budget + 500) })), relaxRooms: () => this.setState({ rooms: 0 }),
+      mapPaneStyle: `position:relative;background:#EEEDE6;overflow:hidden;${split ? 'border-left:1px solid #E6E3DC;' : `height:${phone ? 640 : 700}px;`}`,
+      mapZones: resLoading || resErr ? [] : mapZones, markers,
+      mapNote: resLoading ? 'Wczytywanie mapy…' : (noCoordN ? `${noCoordN} ${noCoordN === 1 ? 'oferta nie ma' : 'oferty nie mają'} punktu na mapie — są na liście. Położenie na mapie jest przybliżone.` : 'Położenie na mapie jest przybliżone. Kolor oznacza obszar, nie ocenę.'),
+      mobPreview: mob && s.mobView === 'map' && !!selL,
+      preview, previewOpen: () => selL && this.openListing(selL.id),
+      mobListBtn: `height:40px;padding:0 18px;border-radius:999px;border:0;background:${s.mobView === 'list' ? '#fff' : 'transparent'};color:${s.mobView === 'list' ? '#121212' : '#fff'};font-size:14.5px;font-weight:700;cursor:pointer;`,
+      mobMapBtn: `height:40px;padding:0 18px;border-radius:999px;border:0;background:${s.mobView === 'map' ? '#fff' : 'transparent'};color:${s.mobView === 'map' ? '#121212' : '#fff'};font-size:14.5px;font-weight:700;cursor:pointer;`,
+      mobIsList: String(s.mobView === 'list'), mobIsMap: String(s.mobView === 'map'),
+      setMobList: () => this.setState({ mobView: 'list' }), setMobMap: () => this.setState({ mobView: 'map' }),
+
+      isDetail: s.screen === 'detail',
+      detailWrap: `padding:${phone ? '14px 16px 24px' : `22px ${padX}px 48px`};`,
+      backToResults: () => this.setState({ screen: 'results' }),
+      edgeUnavailable: unavailable,
+      bandGrid: `display:grid;grid-template-columns:${split ? 'minmax(0,5fr) minmax(0,7fr)' : '1fr'};border-radius:${phone ? 22 : 28}px;overflow:hidden;margin-bottom:28px;${unavailable ? 'filter:grayscale(.85);' : ''}`,
+      bandColor: `background:${A[ol.area].color};color:#fff;padding:${phone ? 20 : 32}px;display:grid;gap:14px;align-content:end;min-height:${phone ? 200 : 300}px;`,
+      detailH1: `margin:0;font:800 ${split ? 50 : (phone ? 32 : 42)}px/.98 'Bricolage Grotesque',sans-serif;letter-spacing:-.03em;text-wrap:balance;`,
+      d,
+      detailGrid: `display:grid;grid-template-columns:${split ? 'minmax(0,1fr) 380px' : '1fr'};gap:${split ? 40 : 28}px;align-items:start;`,
+      costGrid: `display:grid;grid-template-columns:${W >= 768 ? '1.3fr 1fr' : '1fr'};gap:12px;`,
+      railStyle: `display:grid;gap:14px;padding:20px;border-radius:24px;border:1.5px solid #121212;background:#fff;${split ? 'position:sticky;top:20px;' : ''}${railBlocked ? 'opacity:.92;' : ''}`,
+      railTitle: viewing ? 'Twoje oglądanie' : (ol.slots ? 'Obejrzyj mieszkanie' : 'Zapytaj o oglądanie'),
+      modeTag: ol.slots ? (instant ? 'INSTANT_BOOKING' : 'REQUEST_APPROVAL') : 'brak terminów',
+      railBlocked, edgeF6: f6,
+      railBlockedText: unavailable ? 'Oferta jest niedostępna. Oglądanie i wiadomości są wyłączone.' : 'Nie możesz umówić oglądania ani napisać w sprawie tej oferty. Możesz przeglądać i zapisywać inne mieszkania.',
+      hasViewing: !!viewing && !railBlocked,
+      viewingBox: `display:grid;gap:8px;padding:14px;border-radius:16px;background:${vStat === 'CONFIRMED' ? '#E7F0EA' : '#FFF6DA'};`,
+      viewingBadge: vb ? vb.style.replace('justify-self:start;', '') + 'justify-self:start;' : '',
+      viewingStatusLabel: vb ? vb.label : '',
+      viewingWhen: viewing ? viewing.slot.replace('|', ', ') : '',
+      viewingExplain: vStat === 'CONFIRMED' ? 'Oglądanie jest umówione. Dostaniesz przypomnienie dzień wcześniej.' : 'Wynajmujący musi potwierdzić termin. Damy znać, gdy odpowie — do tego czasu termin nie jest pewny.',
+      meetingNote: vStat === 'CONFIRMED' ? 'Dokładny adres nie jest publiczny. Szczegóły spotkania ustal z wynajmującym w wiadomości.' : 'Dokładny adres nie jest publiczny.',
+      showMeetingSlot: s.ann && vStat === 'CONFIRMED',
+      cancelViewing: () => { const v2 = Object.assign({}, s.viewings); v2[ol.id] = { status: 'CANCELLED', slot: viewing ? viewing.slot : '' }; this.setState({ viewings: v2, edge: s.edge === 'already' ? 'none' : s.edge, toast: 'Oglądanie anulowane — możesz wybrać nowy termin' }); },
+      showSlots, conflictMsg: s.conflictMsg, offlineMsg: s.offlineMsg,
+      retryOffline: () => this.setState({ retried: true, offlineMsg: false }, () => { if (s.slot) this.performViewing(ol.id, s.slot); }),
+      slotDays,
+      confirmBtn: `height:52px;border-radius:999px;border:0;background:${s.slot ? '#121212' : '#D6D2C8'};color:${s.slot ? '#fff' : '#4D4D4D'};font-size:15.5px;font-weight:700;cursor:${s.slot ? 'pointer' : 'not-allowed'};`,
+      confirmDisabled: !s.slot, confirmViewing,
+      confirmLabel: s.slot ? (instant ? 'Potwierdź oglądanie · ' : 'Wyślij prośbę · ') + slotLabelOf(s.slot) : 'Wybierz termin',
+      modeExplain: instant ? 'Ten wynajmujący przyjmuje rezerwacje od razu — termin będzie potwierdzony.' : 'Ten wynajmujący zatwierdza terminy. Wyślesz prośbę, a potwierdzenie przyjdzie później.',
+      noSlots: !railBlocked && !viewing && !ol.slots,
+      showComposer: s.composer && !railBlocked,
+      draft: s.draft, setDraft: (e) => this.setState({ draft: e.target.value }),
+      draftCount: (s.draft || '').length + ' / 4000',
+      sendBtn: `height:48px;border-radius:999px;border:0;background:${(s.draft || '').trim() ? '#121212' : '#D6D2C8'};color:${(s.draft || '').trim() ? '#fff' : '#4D4D4D'};font-size:15px;font-weight:700;cursor:pointer;`,
+      sendDisabled: !(s.draft || '').trim(), sendMessage,
+      showSecondary: !railBlocked && !s.composer,
+      msgAction, msgLabel,
+      revealPhone: () => this.requireAuth({ type: 'reveal' }, () => this.setState({ revealed: true })),
+      phoneLabel: s.revealed ? 'Numer: +48 ••• ••• 214 (widoczny dla Ciebie · limit dzienny)' : 'Pokaż numer telefonu',
+
+      isSaved: s.screen === 'saved', pagePad: `padding:${phone ? '20px 16px 40px' : `28px ${padX}px 48px`};`,
+      savedEmpty: s.saved.length === 0,
+      savedList: s.saved.map(id => decorate(this.byId(id))),
+      savedSearches: s.searches.map(x => ({ label: x.label, sub: x.sub, alert: x.alert, toggle: () => this.setState(st => ({ searches: st.searches.map(y => y.id === x.id ? Object.assign({}, y, { alert: !y.alert }) : y) })) })),
+
+      isMessages: s.screen === 'messages',
+      msgGrid: `display:grid;grid-template-columns:${split ? '320px minmax(0,1fr)' : '1fr'};gap:16px;`,
+      threadList, th, reply: s.reply, setReply: (e) => this.setState({ reply: e.target.value }),
+      replyDisabled: !replyOk,
+      replyBtn: `height:44px;padding:0 18px;border-radius:999px;border:0;background:${replyOk ? '#121212' : '#D6D2C8'};color:${replyOk ? '#fff' : '#4D4D4D'};font-size:14px;font-weight:700;cursor:pointer;`,
+      sendReply: () => { if (!replyOk) return; const t = Object.assign({}, s.threads); t[atId] = (t[atId] || []).concat([{ me: true, text: s.reply.trim() }]); this.setState({ threads: t, reply: '' }); },
+
+      isViewings: s.screen === 'viewings', myViewingsEmpty: myViewings.length === 0, myViewings,
+      isPanel: s.screen === 'panel',
+      panelGrid: `display:grid;grid-template-columns:${split ? 'minmax(0,1.4fr) minmax(0,1fr)' : '1fr'};gap:24px;`,
+      providerViewings, panelListings,
+
+      filtersOpen: s.filtersOpen, overlayStyle,
+      closeFilters: () => this.setState({ filtersOpen: false }), stop: (e) => e.stopPropagation(),
+      filterSheet: `${sheetBase}background:#fff;padding:22px;display:grid;gap:18px;${mob ? '' : 'margin-top:0;'}`,
+      draftAreas, draftBudgets, draftRooms,
+      clearDraft: () => this.setState({ draftAreas: [], draftBudget: 6000, draftRooms: 0 }),
+      applyFilters: () => this.setState({ filtersOpen: false, areas: s.draftAreas, budget: s.draftBudget, rooms: s.draftRooms }),
+      applyLabel: `Pokaż ${draftCount} ${draftCount === 1 ? 'ofertę' : (draftCount > 1 && draftCount < 5 ? 'oferty' : 'ofert')}`,
+
+      authOpen: !!s.auth, authSheet: `${sheetBase}background:#fff;padding:22px;display:grid;gap:14px;`,
+      authTag: s.authMode === 'current' ? tagCur : tagGap,
+      authModeTag: s.authMode === 'current' ? 'CURRENT · e-mail + hasło · sesja BFF · rejestracja przez BFF' : 'FUTURE · kod e-mail — nie istnieje w API',
+      closeAuth: () => this.setState({ auth: null, authError: false }),
+      authTitle, intentDot: dot(intentColor), intentLine, intentSub,
+      authCurrent: s.authMode === 'current', authProposed: s.authMode === 'proposed',
+      email: s.email, setEmail: (e) => this.setState({ email: e.target.value, authError: false }),
+      password: s.password, setPassword: (e) => this.setState({ password: e.target.value, authError: false }),
+      authError: s.authError, doLogin,
+      loginCta: au && au.type === 'viewing' ? (this.byId(au.id).mode === 'INSTANT_BOOKING' ? 'Zaloguj się i umów' : 'Zaloguj się i wyślij prośbę') : (au && au.type === 'message' ? 'Zaloguj się i wyślij' : 'Zaloguj się'),
+      toggleAuthMode: () => this.setState({ authMode: s.authMode === 'current' ? 'proposed' : 'current', authError: false }),
+      authToggleLabel: s.authMode === 'current' ? 'Pokaż kierunek: logowanie kodem e-mail (FUTURE)' : 'Wróć do obecnego logowania (CURRENT)',
+
+      showDock, dockHint: s.slot ? (instant ? 'Rezerwacja od razu' : 'Wymaga zgody') : (showSlots ? 'Najbliższe terminy' : ''),
+      dockSlots, dockMsgOnly,
+      toast: s.toast,
+      screenName: (screenNames[s.screen] || '') + ' · ' + W + ' px', screenNote: notes[s.screen] || '',
+      counters, howTo,
+
+      paletteRows, statusRows, typeRows, fontNotes, componentRows, rwdRows,
+      bindingRows, gapRows, matrix, critique, handoffText
+    };
+    function slotLabelOf(k) { return k.replace('|', ', '); }
+  }
+}
+</script>
+</body>
+</html>

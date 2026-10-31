@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="design_doc_mode" content="canvas">
+<title>Homies 001C MASTER — Launch Core</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=Public+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+  body { margin: 0; background: #D9D5CC; font-family: 'Public Sans', system-ui, sans-serif; color: #121212; }
+  a { color: #121212; }
+  a:hover { color: #3A3A3A; }
+</style>
+</helmet>
+
+<div style="padding: 64px; display: grid; gap: 72px; min-width: 2000px;">
+
+  <header style="display: grid; gap: 16px; max-width: 1200px;">
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <span style="display: inline-flex; padding: 5px 12px; border-radius: 999px; background: #121212; color: #fff; font-size: 12px; font-weight: 700; letter-spacing: .04em;">DESIGN-001C MASTER v1 — CANDIDATE FOR FOUNDER/GPT REVIEW</span>
+      <span style="display: inline-flex; padding: 5px 12px; border-radius: 999px; background: #FFF3D6; color: #6B4A00; border: 1px solid #E8CF8F; font-size: 12px; font-weight: 700;">IMPLEMENTATION AUTHORIZED: NO</span>
+    </div>
+    <h1 style="margin: 0; font: 800 72px/.95 'Bricolage Grotesque', sans-serif; letter-spacing: -.04em;">Homies 001C MASTER — Launch Core</h1>
+    <p style="margin: 0; font-size: 18px; line-height: 1.55; color: #3A3A3A; max-width: 80ch;">Aktualny projekt Launch Core: Poland → Kraków → LONG_TERM → całe mieszkania → RENT. Ramki poniżej są osadzonymi, klikalnymi źródłami 001C — jedna kopia prawdy, bez duplikatów. Kolejne zatwierdzone obszary (FE-003, Panel) dochodzą do tego pliku jako nowe sekcje.</p>
+    <nav aria-label="Sekcje MASTER" style="display: flex; gap: 8px; flex-wrap: wrap; padding-top: 6px;">
+      <a href="#s01" style="padding: 8px 14px; border-radius: 999px; background: #FBFAF7; font-size: 14px; font-weight: 700; text-decoration: none;">01 Foundations</a>
+      <a href="#s02" style="padding: 8px 14px; border-radius: 999px; background: #FBFAF7; font-size: 14px; font-weight: 700; text-decoration: none;">02 Home</a>
+      <a href="#s03" style="padding: 8px 14px; border-radius: 999px; background: #FBFAF7; font-size: 14px; font-weight: 700; text-decoration: none;">03 Search</a>
+      <a href="#s04" style="padding: 8px 14px; border-radius: 999px; background: #FBFAF7; font-size: 14px; font-weight: 700; text-decoration: none;">04 Results</a>
+      <a href="#s05" style="padding: 8px 14px; border-radius: 999px; background: #FBFAF7; font-size: 14px; font-weight: 700; text-decoration: none;">05 Listing Detail</a>
+      <a href="#s07" style="padding: 8px 14px; border-radius: 999px; background: #FBFAF7; font-size: 14px; font-weight: 700; text-decoration: none;">07 Navigation</a>
+      <a href="#s90" style="padding: 8px 14px; border-radius: 999px; background: #FBFAF7; font-size: 14px; font-weight: 700; text-decoration: none;">90 Open Decisions</a>
+      <a href="#s99" style="padding: 8px 14px; border-radius: 999px; background: #FBFAF7; font-size: 14px; font-weight: 700; text-decoration: none;">99 Historical</a>
+    </nav>
+  </header>
+
+  <!-- 01 -->
+  <section id="s01" data-screen-label="01 Foundations" style="display: grid; gap: 18px;">
+    <div style="display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap;">
+      <span style="font: 800 64px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.04em; color: #8A8478;">01</span>
+      <h2 style="margin: 0; font: 800 44px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Foundations i kluczowe komponenty</h2>
+    </div>
+    <p style="margin: 0; font-size: 15.5px; line-height: 1.55; color: #3A3A3A; max-width: 90ch;">Reuse: widok „Foundations + komponenty” z 001C bez zmian. Tokeny 1C to propozycja ewolucji tokens.css — nie są produkcyjne. Typografia Bricolage Grotesque + Public Sans czeka na zatwierdzenie. Komponenty FE-003 w tym widoku są referencją, nie zakresem Launch Core.</p>
+    <div style="width: 1440px; border-radius: 20px; overflow: hidden; background: #E9E6DF;">
+      <dc-import name="Homies 001C Dzielnica Product Convergence" init-view="system" chrome="{{ false }}" master-mode="{{ true }}" hint-size="1440px,2400px"></dc-import>
+    </div>
+  </section>
+
+  <!-- 02 -->
+  <section id="s02" data-screen-label="02 Home" style="display: grid; gap: 18px;">
+    <div style="display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap;">
+      <span style="font: 800 64px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.04em; color: #8A8478;">02</span>
+      <h2 style="margin: 0; font: 800 44px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Home</h2>
+      <span style="display: inline-flex; padding: 4px 10px; border-radius: 999px; background: #E7F0E9; color: #1E4D33; border: 1px solid #B9D3C1; font-size: 12px; font-weight: 700;">AKTUALNY · zastępuje poprzedni Home</span>
+    </div>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <span style="display: inline-flex; padding: 6px 12px; border-radius: 10px; background: #121212; color: #fff; font-size: 13px; font-weight: 700;">HOME GEOGRAPHY MODEL — PRODUCT DECISION PENDING</span>
+      <span style="display: inline-flex; padding: 6px 12px; border-radius: 10px; background: #FBFAF7; font-size: 13px; font-weight: 600;">Production boundaries require an approved geographic source/licence.</span>
+      <span style="display: inline-flex; padding: 6px 12px; border-radius: 10px; background: #FBFAF7; font-size: 13px; font-weight: 600;">Paleta 13 obszarów: prototyp · produkcyjna paleta w FE-VIS-001 · D-103</span>
+      <span style="display: inline-flex; padding: 6px 12px; border-radius: 10px; background: #FBFAF7; font-size: 13px; font-weight: 600;">Stan aktualny: nazwy bez liczb · stany z liczbami = FUTURE DATA-BOUND STATE</span>
+    </div>
+    <div style="border-radius: 20px; overflow: hidden; background: #E4E1DA;">
+      <dc-import name="Homies 001C Home Mapa" hint-size="2100px,2600px"></dc-import>
+    </div>
+  </section>
+
+  <!-- 03 -->
+  <section id="s03" data-screen-label="03 Search" style="display: grid; gap: 18px;">
+    <div style="display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap;">
+      <span style="font: 800 64px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.04em; color: #8A8478;">03</span>
+      <h2 style="margin: 0; font: 800 44px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Search</h2>
+    </div>
+    <p style="margin: 0; font-size: 15.5px; line-height: 1.55; color: #3A3A3A; max-width: 90ch;">Wejście do wyszukiwania to formularz Home (02): obszar albo „Cały Kraków”, suma miesięczna do, pokoje. W wynikach to samo zapytanie żyje w URL i edytuje się w panelu filtrów — desktop: dialog z fokusem na „Zamknij filtry” i powrotem fokusu na „Filtry”; mobile: pełnoekranowy arkusz z licznikiem wyników na żywo.</p>
+    <div style="display: flex; gap: 40px; align-items: flex-start;">
+      <div style="display: grid; gap: 8px;">
+        <span style="font-size: 13px; font-weight: 700; color: #4D4D4D;">Desktop 1280 · panel filtrów otwarty</span>
+        <div style="width: 1360px; border-radius: 20px; overflow: hidden; background: #E9E6DF;">
+          <dc-import name="Homies 001C Dzielnica Product Convergence" init-screen="results" init-vp="desktop" init-filters="{{ true }}" ann="{{ false }}" chrome="{{ false }}" master-mode="{{ true }}" hint-size="1360px,960px"></dc-import>
+        </div>
+      </div>
+      <div style="display: grid; gap: 8px;">
+        <span style="font-size: 13px; font-weight: 700; color: #4D4D4D;">Mobile 390 · arkusz filtrów</span>
+        <div style="width: 470px; border-radius: 20px; overflow: hidden; background: #E9E6DF;">
+          <dc-import name="Homies 001C Dzielnica Product Convergence" init-screen="results" init-vp="mobile" init-filters="{{ true }}" ann="{{ false }}" chrome="{{ false }}" master-mode="{{ true }}" hint-size="470px,920px"></dc-import>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 -->
+  <section id="s04" data-screen-label="04 Results" style="display: grid; gap: 18px;">
+    <div style="display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap;">
+      <span style="font: 800 64px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.04em; color: #8A8478;">04</span>
+      <h2 style="margin: 0; font: 800 44px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Results — lista i mapa</h2>
+    </div>
+    <p style="margin: 0; font-size: 15.5px; line-height: 1.55; color: #3A3A3A; max-width: 90ch;">Breakpointy 480 / 768 / 1024 / 1440. Od 1024 split lista + mapa, od 1440 lista w dwóch kolumnach; poniżej 1024 lista najpierw i przełącznik Lista / Mapa. Synchronizacja karta ↔ marker, podgląd na mapie mobile, powrót do wyników z przywróconym przewinięciem. Stany wczytywania, błędu, 429 i zera wyników — w notach komponentów i w pasku stanów źródła 001C, bez osobnych ramek.</p>
+    <div style="display: flex; gap: 40px; align-items: flex-start;">
+      <div style="display: grid; gap: 8px;">
+        <span style="font-size: 13px; font-weight: 700; color: #4D4D4D;">Desktop 1280 · split lista + mapa</span>
+        <div style="width: 1360px; border-radius: 20px; overflow: hidden; background: #E9E6DF;">
+          <dc-import name="Homies 001C Dzielnica Product Convergence" init-screen="results" init-vp="desktop" ann="{{ false }}" chrome="{{ false }}" master-mode="{{ true }}" hint-size="1360px,960px"></dc-import>
+        </div>
+      </div>
+      <div style="display: grid; gap: 8px;">
+        <span style="font-size: 13px; font-weight: 700; color: #4D4D4D;">Mobile 390 · lista</span>
+        <div style="width: 470px; border-radius: 20px; overflow: hidden; background: #E9E6DF;">
+          <dc-import name="Homies 001C Dzielnica Product Convergence" init-screen="results" init-vp="mobile" init-mob-view="list" ann="{{ false }}" chrome="{{ false }}" master-mode="{{ true }}" hint-size="470px,920px"></dc-import>
+        </div>
+      </div>
+      <div style="display: grid; gap: 8px;">
+        <span style="font-size: 13px; font-weight: 700; color: #4D4D4D;">Mobile 390 · mapa (inna kompozycja)</span>
+        <div style="width: 470px; border-radius: 20px; overflow: hidden; background: #E9E6DF;">
+          <dc-import name="Homies 001C Dzielnica Product Convergence" init-screen="results" init-vp="mobile" init-mob-view="map" ann="{{ false }}" chrome="{{ false }}" master-mode="{{ true }}" hint-size="470px,920px"></dc-import>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 -->
+  <section id="s05" data-screen-label="05 Listing Detail" style="display: grid; gap: 18px;">
+    <div style="display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap;">
+      <span style="font: 800 64px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.04em; color: #8A8478;">05</span>
+      <h2 style="margin: 0; font: 800 44px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Listing Detail</h2>
+    </div>
+    <p style="margin: 0; font-size: 15.5px; line-height: 1.55; color: #3A3A3A; max-width: 90ch;">Launch Core = pasmo tożsamości obszaru, galeria, Cost Signature (suma miesięczna z API, najem obok, kaucja osobno), kwota na start, świeżość, piętro bez floors_total, przybliżona okolica bez promienia. Panel oglądań i rozmowy w tych ramkach to projekt FE-003 — referencja, nie zakres Launch Core; adnotacje są włączone, żeby to było widać.</p>
+    <div style="display: flex; gap: 40px; align-items: flex-start;">
+      <div style="display: grid; gap: 8px;">
+        <span style="font-size: 13px; font-weight: 700; color: #4D4D4D;">Desktop 1280</span>
+        <div style="width: 1360px; border-radius: 20px; overflow: hidden; background: #E9E6DF;">
+          <dc-import name="Homies 001C Dzielnica Product Convergence" init-screen="detail" init-vp="desktop" ann="{{ true }}" chrome="{{ false }}" master-mode="{{ true }}" hint-size="1360px,1600px"></dc-import>
+        </div>
+      </div>
+      <div style="display: grid; gap: 8px;">
+        <span style="font-size: 13px; font-weight: 700; color: #4D4D4D;">Mobile 390</span>
+        <div style="width: 470px; border-radius: 20px; overflow: hidden; background: #E9E6DF;">
+          <dc-import name="Homies 001C Dzielnica Product Convergence" init-screen="detail" init-vp="mobile" ann="{{ true }}" chrome="{{ false }}" master-mode="{{ true }}" hint-size="470px,920px"></dc-import>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 -->
+  <section id="s07" data-screen-label="07 Navigation" style="display: grid; gap: 18px; max-width: 1360px;">
+    <div style="display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap;">
+      <span style="font: 800 64px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.04em; color: #8A8478;">07</span>
+      <h2 style="margin: 0; font: 800 44px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Nawigacja rdzenia</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px;">
+      <div style="background: #FBFAF7; border-radius: 20px; padding: 22px; display: grid; gap: 10px; align-content: start;">
+        <h3 style="margin: 0; font: 800 22px/1.05 'Bricolage Grotesque', sans-serif;">Desktop</h3>
+        <p style="margin: 0; font-size: 14px; line-height: 1.55;">Logo → Home. Wynajem, Jak liczymy koszty. Po prawej „Dla wynajmujących” i „Zaloguj się”. Widoczne w ramkach 02–05 (Home Mapa i źródło 001C mają ten sam układ).</p>
+      </div>
+      <div style="background: #FBFAF7; border-radius: 20px; padding: 22px; display: grid; gap: 10px; align-content: start;">
+        <h3 style="margin: 0; font: 800 22px/1.05 'Bricolage Grotesque', sans-serif;">Mobile web</h3>
+        <p style="margin: 0; font-size: 14px; line-height: 1.55;">Przyklejony nagłówek 56 px: logo + „Zaloguj”. Wyniki: przełącznik Lista / Mapa w strefie kciuka. Szczegóły: „← Wyniki” z przywróceniem przewinięcia. Bez imitacji natywnego paska kart.</p>
+      </div>
+      <div style="background: #FBFAF7; border-radius: 20px; padding: 22px; display: grid; gap: 10px; align-content: start;">
+        <h3 style="margin: 0; font: 800 22px/1.05 'Bricolage Grotesque', sans-serif;">Po zalogowaniu (referencja)</h3>
+        <p style="margin: 0; font-size: 14px; line-height: 1.55;">Zapisane, Wiadomości, Oglądania i przełącznik Szukam / Panel istnieją w źródle 001C, ale należą do FE-003 i Panelu. Dojdą do MASTER razem z ich implementacją.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 90 -->
+  <section id="s90" data-screen-label="90 Open Decisions" style="display: grid; gap: 18px; max-width: 1360px;">
+    <div style="display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap;">
+      <span style="font: 800 64px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.04em; color: #8A8478;">90</span>
+      <h2 style="margin: 0; font: 800 44px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Open Decisions</h2>
+    </div>
+    <div style="background: #FBFAF7; border-radius: 20px; overflow: hidden;">
+      <sc-for list="{{ decisions }}" as="d" hint-placeholder-count="5">
+        <div style="display: grid; grid-template-columns: 56px 260px minmax(0, 1fr); gap: 16px; padding: 16px 22px; border-top: 1px solid #E6E3DC; align-items: baseline;">
+          <span style="font: 800 20px/1 'Bricolage Grotesque', sans-serif; color: #8A8478;">{{ d.n }}</span>
+          <span style="font-size: 15px; font-weight: 700;">{{ d.title }}</span>
+          <span style="font-size: 14px; line-height: 1.5; color: #3A3A3A;">{{ d.body }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- 99 -->
+  <section id="s99" data-screen-label="99 Historical" style="display: grid; gap: 18px;">
+    <div style="display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap;">
+      <span style="font: 800 64px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.04em; color: #8A8478;">99</span>
+      <h2 style="margin: 0; font: 800 44px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Historical / Superseded</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, 440px); gap: 14px;">
+      <sc-for list="{{ history }}" as="x" hint-placeholder-count="6">
+        <a href="{{ x.href }}" style="display: grid; gap: 6px; padding: 16px 18px; border-radius: 16px; background: #FBFAF7; text-decoration: none;">
+          <span style="font-size: 15px; font-weight: 700;">{{ x.title }}</span>
+          <span style="font-size: 13px; line-height: 1.45; color: #4D4D4D;">{{ x.role }}</span>
+        </a>
+      </sc-for>
+    </div>
+    <div style="display: grid; gap: 8px;">
+      <span style="font-size: 13px; font-weight: 700; color: #4D4D4D;">Poprzedni Home (Atlas z kafelkami) · SUPERSEDED przez 02</span>
+      <div style="width: 1360px; border-radius: 20px; overflow: hidden; background: #E9E6DF; opacity: .9;">
+        <dc-import name="Homies 001C Dzielnica Product Convergence" init-screen="home" init-vp="desktop" ann="{{ false }}" chrome="{{ false }}" master-mode="{{ true }}" hint-size="1360px,1500px"></dc-import>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      decisions: [
+        { n: '1', title: 'Home geography model', body: 'HOME GEOGRAPHY MODEL — PRODUCT DECISION PENDING. Poziom obszarów na Home oraz miejsce Kazimierza i Zabłocia względem dzielnic administracyjnych. Blokuje produkcyjne dane mapy Home.' },
+        { n: '2', title: 'Źródło granic', body: 'Production boundaries require an approved geographic source/licence.' },
+        { n: '3', title: 'Paleta obszarów', body: 'Prototypowa paleta 13 odcieni nie jest systemem tokenów. Produkcyjna paleta: FE-VIS-001, w granicach D-103.' },
+        { n: '4', title: 'Typografia 1C', body: 'Bricolage Grotesque + Public Sans — PROPOSED DESIGN SYSTEM CHANGE. Do zatwierdzenia FE-002 zostaje na system-ui.' },
+        { n: '5', title: 'Tokeny 1C', body: 'Foundations 1C to propozycja ewolucji tokens.css; nic nie jest produkcyjne przed zatwierdzeniem tego MASTER.' }
+      ],
+      history: [
+        { href: 'Homies 001C Dzielnica Product Convergence.dc.html', title: 'Homies 001C — Dzielnica Product Convergence', role: 'Źródło: pełny prototyp, binding backendu, krytyka i handoff, w tym projekt FE-003. Ramki MASTER osadzają go bezpośrednio.' },
+        { href: 'Homies 001C Home Mapa.dc.html', title: 'Homies 001C — Home Mapa', role: 'Źródło sekcji 02. Edycje Home robimy tam.' },
+        { href: 'Homies 001B Kierunki.dc.html', title: 'Homies 001B — Kierunki', role: 'Eksploracja 1A / 1B / 1C. Wybrany 1C Dzielnica. Zamknięte.' },
+        { href: 'Homies 001B Konwersja FE-003.dc.html', title: 'Homies 001B — Konwersja FE-003', role: 'Studium konwersji. Uzgodnione z backendem w 001C.' },
+        { href: 'Homies Seeker v1.dc.html', title: 'Homies Seeker v1', role: 'Zwalidowane zachowanie wyszukiwania — bazowa mechanika zachowana w 001C.' },
+        { href: 'Homies DS v1.dc.html', title: 'Homies DS v1', role: 'Poprzedni system komponentów. homies.css = tylko prototyp.' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
