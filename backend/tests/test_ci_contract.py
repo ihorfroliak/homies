@@ -123,7 +123,26 @@ def test_ci_declares_the_restore_drill_mandatory_and_shows_skips():
     assert job["env"]["HOMIES_REQUIRE_RESTORE_DRILL"] == "1"
     assert "pytest -q -rs" in _runs("backend")
     assert "restore drills will skip" not in _runs("backend")
-    assert "\npg_dump --version\npg_restore --version\n" in _runs("backend")
+    assert '\n"$PG_BIN/pg_dump" --version\n"$PG_BIN/pg_restore" --version\n' in _runs("backend")
+
+
+def test_ci_restore_drills_use_the_service_major_version_client():
+    """CI-PG16-CLIENT: pg_dump/pg_restore come from the service's own pinned
+    image and must report 16, not from whatever the runner OS ships — a newer
+    runner client broke the drills with no code change (October 2026)."""
+    job = WORKFLOW["jobs"]["backend"]
+    steps = _steps("backend")
+    client_at = next(i for i, step in enumerate(steps) if "PG_IMAGE" in step.get("env", {}))
+    client = steps[client_at]
+    assert client["env"]["PG_IMAGE"] == job["services"]["postgres"]["image"]
+    assert "@sha256:" in client["env"]["PG_IMAGE"]
+    assert "for tool in pg_dump pg_restore" in client["run"]
+    assert "--entrypoint %s" in client["run"]
+    assert r"\(PostgreSQL\) 16\." in client["run"]
+    assert 'echo "PG_BIN=$bin" >> "$GITHUB_ENV"' in client["run"]
+    assert "apt-get install" not in _runs("backend")
+    test_at = next(i for i, step in enumerate(steps) if "--junitxml=junit.xml" in step.get("run", ""))
+    assert client_at < test_at
 
 
 def test_ci_counts_the_restore_drill_test_cases_it_ran():
