@@ -21,3 +21,6 @@ Home district geography/boundaries and licensing; 13 district palette / D-103; f
 Presentation-only / R1; not a renewed security or foundation audit. If implementation touches high-risk semantics, stop that expansion and follow the relevant independent-review gate.
 Required: original hash verification; frontend lint, typecheck, existing unit suite, build; actual desktop/mobile browser inspection, real search/detail and guest protected-action smoke. Record evidence and limitations. No new tests that merely duplicate CSS.
 Preserve sources and convergence notes in repository docs, outside public assets. Freeze a local candidate commit after verification; do not merge or deploy.
+
+## 2026-10-31 continuation
+Founder requested continued development. Complete delivery of this same bounded candidate through a feature-branch push, Draft PR and exact-candidate CI. Preserve the reviewed implementation; repair any concrete regressions within this scope. No merge, deployment, broader geography decisions or production rollout. The R1 frontend specialist source review is recorded in `docs/reviews/DESIGN-001C-frontend-e9b367c.md`; it is not a substitute for runtime evidence or a high-risk independent audit.

@@ -15,7 +15,7 @@ Preserved from the founder's 2026-10-30 handoff. These are non-normative design 
 | 001C Dzielnica | 206-byte empty canvas; do not mistake this for missing content in the full convergence export |
 | Warm canvas, dark primary controls, white cards, location and price hierarchy | Implemented as web-local candidate presentation |
 | Bricolage Grotesque / Public Sans | Proposed; not bundled; system fonts retained, no remote font dependency |
-| 13 district colors | Proposed; not implemented as production geographic semantics; D-103 remains open |
+| 13 district colors | Direction accepted under D-103; complete palette rollout and geography binding are deferred from this bounded candidate |
 | Prototype cost signature | Preserve visual idea; current server monthly/start totals remain authoritative, no fabricated segments |
 | Prototype slots, messages, logins and provider actions | Reference only; existing integrated FE-003 and BP-11 remain the implementation |
 | Old claims FE-003 is unimplemented | Superseded by integrated baseline; no removal of working features |
