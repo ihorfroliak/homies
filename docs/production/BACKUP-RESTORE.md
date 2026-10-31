@@ -41,7 +41,11 @@ Run locally (disposable database only):
       python -m pytest tests/test_dr_restore_phase1_pg.py -q
 
 The client (`pg_dump`/`pg_restore`) must be PostgreSQL 16: the test image
-`ops/test/Dockerfile.py312` carries it; `PG_BIN` can point at another.
+`ops/test/Dockerfile.py312` carries it; `PG_BIN` can point at another. CI does
+not use the runner's own client (a newer one broke the drills when
+`ubuntu-latest` changed OS in October 2026): it runs both tools from the
+service's digest-pinned `postgis/postgis:16-3.4` image and checks they report
+16 (CI-PG16-CLIENT).
 
 ## What this proves
 

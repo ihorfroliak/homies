@@ -73,14 +73,33 @@ jobs:
           grep -vE '^\s*(#|$)' constraints.txt | sort -f > /tmp/pinned.txt
           pip freeze --exclude-editable | grep -viE '^homies-backend([ =@]|$)' | sort -f > /tmp/installed.txt
           diff -u /tmp/pinned.txt /tmp/installed.txt
+      - name: PostgreSQL 16 client tools for the restore drills (pinned)
+        # CI-PG16-CLIENT: the drills used whatever pg_dump/pg_restore the runner
+        # image shipped. When ubuntu-latest moved to a newer OS (October 2026) that
+        # client became newer than the 16 server, and pg_restore of its dump into
+        # 16 failed — red builds with no code change. The client now comes from
+        # the service's own image, pinned by the same digest, so it is always
+        # the server's major version. The drills stream through stdin/stdout,
+        # so a client inside a container needs no shared files; PG_BIN is how
+        # the tests find it (backend/tests/test_dr_restore_pg.py).
+        env:
+          PG_IMAGE: postgis/postgis:16-3.4@sha256:44126d872ac91993766c341e369c539e8196614321765d36a6f1bab0419a5fa5
+        run: |
+          bin="$RUNNER_TEMP/pg16/bin"
+          mkdir -p "$bin"
+          for tool in pg_dump pg_restore; do
+            printf '#!/bin/sh\nexec docker run --rm -i --network host --entrypoint %s %s "$@"\n' "$tool" "$PG_IMAGE" > "$bin/$tool"
+            chmod +x "$bin/$tool"
+            "$bin/$tool" --version | tee /dev/stderr | grep -qE '\(PostgreSQL\) 16\.'
+          done
+          echo "PG_BIN=$bin" >> "$GITHUB_ENV"
       - name: Runtime versions (evidence)
         working-directory: backend
         run: |
           python -VV
           python -c "import sys; assert sys.version_info[:2] == (3, 12), sys.version"
-          command -v pg_dump || sudo apt-get install -y --no-install-recommends postgresql-client-16
-          pg_dump --version
-          pg_restore --version
+          "$PG_BIN/pg_dump" --version
+          "$PG_BIN/pg_restore" --version
           pip freeze | grep -iE '^(fastapi|sqlalchemy|alembic|psycopg|pydantic|pytest)=='
       - name: Alembic has exactly one head
         working-directory: backend
