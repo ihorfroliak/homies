@@ -4,7 +4,7 @@ Historical handoff snapshot, not a replacement for PROJECT-STATUS or live GitHub
 
 ## Integration state
 
-Remote main verified by ls-remote:4f2fc43457dfc82d07e42ac3418a1b649cbe3fb4. IBB-001 remains5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98. Main contains the accepted delivery002 package. Local branch inventory:85 total;45 tips already ancestors of main;40 tips not ancestors. These counts are not a count of missing features or approval to merge historical branches. Classify/reconcile them before cleanup; delete none on inference.
+Remote main verified by ls-remote:4f2fc43457dfc82d07e42ac3418a1b649cbe3fb4. IBB-001 remains5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98. Main contains the accepted delivery002 package. Local branch inventory against that exact remote SHA:85 total;73 tips already ancestors;12 tips not ancestors. Local refs/heads/main is stale at be150da11b9838409fcf8ee2d8ca4bd8b0311307; an initial45/40count against that obsolete pointer was incorrect for current integration and is superseded. These counts are not a count of missing features or approval to merge historical branches. Classify/reconcile them before cleanup; delete none on inference.
 
 | Candidate | Exact snapshot | Disposition |
 |---|---|---|
@@ -18,7 +18,7 @@ PR23 ancestry is already incorporated into PR20's feature branch. API repair als
 
 ## Known immediate gates
 
-1. Security dependency findings: dnspython2.8.0 GHSA-45c3-73f7-pv4m (fixed2.9.0), msgpack1.2.2 GHSA-j586-36cw-2gc2 (fixed1.2.3), from actual CI. Prepare a minimal compatible repair with tests, not an audit suppression.
+1. Security dependency findings: dnspython2.8.0 GHSA-45c3-73f7-pv4m (fixed2.9.0), msgpack1.2.2 GHSA-j586-36cw-2gc2 (fixed1.2.3), from actual CI. Existing local branch claude/CI-PG16-CLIENT already holds exactly these two pin updates at5b410c13708ac987676f71e6dba16a12d75b2eb2 (2026-10-31), plus two antecedent CI/tool-contract commits. Inspect and reuse its verified work rather than duplicating it. It is not in remote main; runtime/independent evidence still needs reconciliation. Do not suppress the dependency audit.
 2. Investigate PR20's map cutoff failure at test_search_validation_pg.py:173 (expected2/2/0, got1/1/0); same backend passed in PR23. Evidence is insufficient to label it a product defect or flake.
 3. Finish API candidate review/CI; combine only verified commits and obtain a concrete integration decision. Preserve ancestry and branch protection; merge is separate from deployment.
 4. Design remains partial: source Home Mapa composition and logo integrated, real four-area synthetic data used. Licensed geometry/geography decision, final fonts/palette, synchronized controls and mobile navigation refinement remain. Do not claim1:1parity.
