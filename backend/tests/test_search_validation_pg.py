@@ -12,12 +12,15 @@ as a 500, and the map partition under a concurrent publication.
   the counts, not only for the rows.
 """
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from sqlalchemy import event, text
 
 from app.modules.properties import search
 from tests.conftest import TEST_DATABASE_URL
 from tests.test_search_pg import _listing, owner  # noqa: F401 — fixture
+from tests.test_listing_freshness_tz_pg import _pin, zone  # noqa: F401 — fixture
 
 pytestmark = pytest.mark.skipif(
     not TEST_DATABASE_URL, reason="TEST_DATABASE_URL not set — Postgres tests skipped"
@@ -159,16 +162,26 @@ def test_the_map_cap_at_499_500_501(pg_client, pg_migrated_engine, owner, marker
 # --- eligibility and privacy still hold for the counts -----------------------------------
 
 
-def test_the_21_day_cutoff_applies_to_the_map_counts(pg_client, pg_migrated_engine, owner):  # noqa: F811
+@pytest.mark.parametrize("decision", [
+    datetime(2026, 11, 2, 12, tzinfo=timezone.utc),  # Warsaw autumn fallback
+    datetime(2026, 4, 1, 12, tzinfo=timezone.utc),   # Warsaw spring jump
+])
+def test_the_21_day_cutoff_applies_to_the_map_counts(
+        pg_client, pg_migrated_engine, owner, monkeypatch, zone, decision):  # noqa: F811
     fresh = _listing(pg_client, owner, prop=POINT)
     edge = _listing(pg_client, owner, prop=POINT)
     expired = _listing(pg_client, owner)
+    _pin(monkeypatch, decision)
+    # D-67 uses elapsed time. Binding UTC instants avoids PostgreSQL calendar
+    # interval arithmetic changing the fixture at DST transitions. Pinning the
+    # decision clock makes the exact boundary and its inside neighbour stable.
+    cutoff = decision - timedelta(days=21)
     with pg_migrated_engine.begin() as conn:
-        conn.execute(text("UPDATE classified_offers SET last_confirmed_available_at = "
-                          "now() - interval '21 days' + interval '1 minute' WHERE id = :id"),
-                     {"id": edge})
-        conn.execute(text("UPDATE classified_offers SET last_confirmed_available_at = "
-                          "now() - interval '21 days' WHERE id = :id"), {"id": expired})
+        for offer, confirmed in ((fresh, decision),
+                                 (edge, cutoff + timedelta(microseconds=1)),
+                                 (expired, cutoff)):
+            conn.execute(text("UPDATE classified_offers SET last_confirmed_available_at = "
+                              ":confirmed WHERE id = :id"), {"id": offer, "confirmed": confirmed})
     body = pg_client.get("/v1/classifieds/map").json()
     assert _partition(body) == (2, 2, 0)
     assert {p["id"] for p in body["points"]} == {fresh, edge}
