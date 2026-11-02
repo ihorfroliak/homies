@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="design_doc_mode" content="canvas">
+<title>Homies — DESIGN-001B · Kierunki artystyczne</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Instrument+Sans:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Public+Sans:wght@400;500;600;700&amp;display=swap">
+<script src="image-slot.js"></script>
+<style>
+  html, body { margin: 0; background: #E4E3DF; }
+  a { color: inherit; }
+  a:hover { color: inherit; opacity: .8; }
+</style>
+</helmet>
+
+<section data-screen-label="Wstęp" style="padding: 72px 80px 32px; max-width: 1560px;">
+  <div style="font: 600 12px/1 'IBM Plex Mono', monospace; letter-spacing: .08em; color: #5A5E66;">DESIGN-001B · CZĘŚĆ A + C · KIERUNKI ARTYSTYCZNE I SYGNATURY</div>
+  <h1 style="margin: 16px 0 16px; font: 600 46px/1.08 'IBM Plex Sans', sans-serif; color: #16181D; max-width: 24ch;">Trzy kierunki dla Homies na tych samych danych</h1>
+  <p style="margin: 0 0 12px; font: 400 18px/1.55 'IBM Plex Sans', sans-serif; color: #3D424B; max-width: 82ch;">Każdy kierunek pokazuje stronę główną, wyniki, stronę oferty, widok mobilny i tablicę sygnatur: koszt miesięczny, kwotę na start, świeżość, przybliżoną lokalizację, „w skrócie” oraz system CTA dla FE-003. Funkcjonalny UX z Seeker v1 zostaje bez zmian — hierarchia kosztu, świeżość, mapa/lista, stany. Zmienia się tylko warstwa wizualna i kompozycja.</p>
+  <p style="margin: 0 0 26px; font: 400 15px/1.55 'IBM Plex Sans', sans-serif; color: #5A5E66; max-width: 82ch;">Oferty, liczby i daty są fikcyjne (Kraków, 3 października 2026). Pola zdjęć są puste celowo — przeciągnij własne zdjęcia mieszkań, żeby ocenić kierunki z prawdziwą fotografią. Wyboru kierunku dokonuje founder z GPT-5.6 Sol.</p>
+  <div style="display: flex; gap: 10px; flex-wrap: wrap; font: 500 15px/1 'IBM Plex Sans', sans-serif;">
+    <a href="#1a" style="padding: 12px 16px; background: #16181D; color: #fff; text-decoration: none;">1a Kamienica</a>
+    <a href="#1b" style="padding: 12px 16px; background: #16181D; color: #fff; text-decoration: none;">1b Rzut</a>
+    <a href="#1c" style="padding: 12px 16px; background: #16181D; color: #fff; text-decoration: none;">1c Dzielnica</a>
+    <a href="Homies 001B Konwersja FE-003.dc.html" style="padding: 12px 16px; border: 1px solid #16181D; color: #16181D; text-decoration: none;">Część B + D — konwersja FE-003 i handoff →</a>
+  </div>
+</section>
+
+<section data-screen-label="Kierunki" style="display: flex; flex-wrap: wrap; gap: 140px; padding: 40px 80px 160px;">
+
+  <!-- ================= 1a KAMIENICA ================= -->
+  <div id="1a" style="display: grid; gap: 30px;">
+    <div style="display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap;">
+      <span style="font: 700 15px/1 'IBM Plex Mono', monospace; background: #16181D; color: #fff; padding: 8px 11px;">1a</span>
+      <h2 style="margin: 0; font: 600 38px/1.1 'IBM Plex Sans', sans-serif; color: #16181D;">Kamienica — redakcyjna użyteczność</h2>
+      <span style="font: 400 18px/1.4 'IBM Plex Sans', sans-serif; color: #4A505B; max-width: 70ch;">Koszt podany jak nagłówek. Serif w tytułach i cenach, linie zamiast kart, asymetria jak w dobrym magazynie o mieście.</span>
+    </div>
+    <div style="display: flex; gap: 64px; align-items: flex-start;">
+
+      <!-- 1a HOME -->
+      <div>
+        <div style="font: 600 12px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #5A5E66; margin-bottom: 12px;">1a · STRONA GŁÓWNA · DESKTOP 1280</div>
+        <div style="width: 1280px; background: #F4F0E8; color: #1B1915; font-family: 'Instrument Sans', sans-serif; box-shadow: 0 30px 70px rgba(20,20,20,.16);">
+          <header style="display: flex; align-items: center; gap: 28px; padding: 22px 56px; border-bottom: 1px solid #D8D0C2;">
+            <span style="font: 400 34px/1 'Instrument Serif', serif; letter-spacing: -.01em;">homies<span style="color: #A63D26;">.</span></span>
+            <span style="font-size: 13.5px; color: #57514A; padding-left: 18px; border-left: 1px solid #D8D0C2;">Kraków · wynajem długoterminowy</span>
+            <nav style="display: flex; gap: 30px; margin-left: auto; font-size: 15px; font-weight: 500;">
+              <a href="#" style="text-decoration: none;">Mieszkania</a>
+              <a href="#" style="text-decoration: none;">Jak liczymy koszt</a>
+              <a href="#" style="text-decoration: none; color: #57514A;">Dla wynajmujących</a>
+            </nav>
+          </header>
+          <div style="display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 64px; padding: 72px 56px 64px; align-items: end;">
+            <div>
+              <div style="font-size: 13px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #A63D26; margin-bottom: 24px;">214 mieszkań w Krakowie</div>
+              <h1 style="margin: 0 0 26px; font: 400 94px/.95 'Instrument Serif', serif; letter-spacing: -.025em;">Ile <em>naprawdę</em> kosztuje to mieszkanie?</h1>
+              <p style="margin: 0 0 40px; font-size: 19px; line-height: 1.5; color: #3E3933; max-width: 46ch;">Przy każdej ofercie liczymy łączny koszt miesięczny i kwotę na start. I pokazujemy, kiedy wynajmujący ostatnio potwierdził, że mieszkanie jest wolne.</p>
+              <form role="search" aria-label="Szukaj mieszkania" style="border-top: 2px solid #1B1915; padding-top: 26px;">
+                <p style="margin: 0 0 28px; font: 400 38px/1.4 'Instrument Serif', serif;">Szukam mieszkania w <button type="button" aria-label="Miasto: Kraków. Zmień" style="font: 600 31px 'Instrument Sans', sans-serif; color: #1B1915; background: none; border: 0; border-bottom: 2px solid #A63D26; padding: 0 4px 1px; cursor: pointer; letter-spacing: -.01em;">Krakowie</button>, do <button type="button" aria-label="Budżet łącznie: do 4500 zł miesięcznie. Zmień" style="font: 600 31px 'Instrument Sans', sans-serif; color: #1B1915; background: none; border: 0; border-bottom: 2px solid #A63D26; padding: 0 4px 1px; cursor: pointer; letter-spacing: -.01em;">4 500 zł</button> łącznie miesięcznie, od <button type="button" aria-label="Pokoje: od 2. Zmień" style="font: 600 31px 'Instrument Sans', sans-serif; color: #1B1915; background: none; border: 0; border-bottom: 2px solid #A63D26; padding: 0 4px 1px; cursor: pointer; letter-spacing: -.01em;">2 pokoi</button>.</p>
+                <div style="display: flex; align-items: center; gap: 24px;">
+                  <button type="submit" style="display: inline-flex; align-items: center; gap: 12px; height: 56px; padding: 0 28px; background: #1B1915; color: #F4F0E8; border: 0; font: 600 17px 'Instrument Sans', sans-serif; cursor: pointer;">Pokaż 128 mieszkań <span aria-hidden="true">→</span></button>
+                  <a href="#" style="font-size: 15.5px;">Więcej kryteriów</a>
+                </div>
+              </form>
+            </div>
+            <figure style="margin: 0;">
+              <div style="aspect-ratio: 4/5; background: #DDD5C7;"><image-slot id="a-hero" placeholder="Zdjęcie — salon, Zabłocie" style="width: 100%; height: 100%;"></image-slot></div>
+              <figcaption style="display: grid; grid-template-columns: 1fr auto; gap: 8px 18px; padding-top: 16px; margin-top: 16px; border-top: 1px solid #1B1915;">
+                <span style="font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #A63D26;">{{ ft.d }} · {{ ft.place }}</span>
+                <span style="font-size: 13.5px; color: #57514A; text-align: right;">{{ ft.fresh }}</span>
+                <span style="font: 400 56px/1 'Instrument Serif', serif; letter-spacing: -.015em;">{{ ft.total }} zł</span>
+                <span style="font-size: 14px; color: #57514A; align-self: end; text-align: right; line-height: 1.4;">łącznie / mies.<br>{{ ft.arith }}</span>
+              </figcaption>
+            </figure>
+          </div>
+          <section style="padding: 0 56px 72px;">
+            <div style="display: flex; align-items: baseline; justify-content: space-between; border-top: 2px solid #1B1915; padding-top: 22px; margin-bottom: 6px;">
+              <h2 style="margin: 0; font: 400 46px/1 'Instrument Serif', serif;">Ostatnio potwierdzone</h2>
+              <a href="#" style="font-size: 15.5px;">Wszystkie oferty w Krakowie →</a>
+            </div>
+            <div role="table" aria-label="Ostatnio potwierdzone oferty">
+              <div role="row" style="display: grid; grid-template-columns: 2.2fr 1.5fr 1.3fr 1fr 1fr 1.2fr; gap: 20px; padding: 14px 0; border-bottom: 1px solid #D8D0C2; font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #57514A;">
+                <span role="columnheader">Okolica</span><span role="columnheader">Mieszkanie</span><span role="columnheader" style="text-align: right;">Łącznie / mies.</span><span role="columnheader" style="text-align: right;">W tym najem</span><span role="columnheader" style="text-align: right;">Na start</span><span role="columnheader" style="text-align: right;">Potwierdzono</span>
+              </div>
+              <sc-for list="{{ byFresh }}" as="l" hint-placeholder-count="6">
+                <a href="#" role="row" style="display: grid; grid-template-columns: 2.2fr 1.5fr 1.3fr 1fr 1fr 1.2fr; gap: 20px; align-items: baseline; padding: 18px 0; border-bottom: 1px solid #D8D0C2; text-decoration: none;">
+                  <span role="cell"><span style="display: block; font: 400 31px/1.05 'Instrument Serif', serif;">{{ l.d }}</span><span style="font-size: 13.5px; color: #57514A;">{{ l.place }}</span></span>
+                  <span role="cell" style="font-size: 15.5px;">{{ l.roomsL }} · {{ l.area }} m²</span>
+                  <span role="cell" style="text-align: right; font: 400 34px/1 'Instrument Serif', serif;">{{ l.total }} zł</span>
+                  <span role="cell" style="text-align: right; font-size: 15.5px; font-variant-numeric: tabular-nums;">{{ l.rent }} zł</span>
+                  <span role="cell" style="text-align: right; font-size: 15.5px; font-variant-numeric: tabular-nums;">{{ l.moveIn }} zł</span>
+                  <span role="cell" style="text-align: right; font-size: 15px;">{{ l.freshRel }}<span style="display: block; font-size: 13px; color: #57514A;">{{ l.freshDate }}</span></span>
+                </a>
+              </sc-for>
+            </div>
+          </section>
+          <section style="display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 64px; padding: 56px; background: #EBE4D8;">
+            <div>
+              <div style="font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #A63D26; margin-bottom: 14px;">Jak liczymy</div>
+              <h2 style="margin: 0 0 14px; font: 400 46px/1.02 'Instrument Serif', serif;">Jedna liczba, którą da się sprawdzić.</h2>
+              <p style="margin: 0; font-size: 17px; line-height: 1.55; color: #3E3933; max-width: 42ch;">Łączny koszt to najem, administracja i szacowane media. Kaucję pokazujemy osobno, bo wraca do ciebie po zakończeniu najmu.</p>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1.3fr; align-items: end; border-top: 1px solid #1B1915; padding-top: 20px; gap: 0 20px;">
+              <div><div style="font: 400 44px/1 'Instrument Serif', serif;">3 500</div><div style="font-size: 14px; color: #57514A; margin-top: 6px;">najem</div></div>
+              <div><div style="font: 400 44px/1 'Instrument Serif', serif;">+ 600</div><div style="font-size: 14px; color: #57514A; margin-top: 6px;">administracja</div></div>
+              <div><div style="font: 400 44px/1 'Instrument Serif', serif;">+ ~250</div><div style="font-size: 14px; color: #57514A; margin-top: 6px;">media, szacunek</div></div>
+              <div><div style="font: 400 58px/1 'Instrument Serif', serif; color: #A63D26;">= 4 350 zł</div><div style="font-size: 14px; color: #57514A; margin-top: 6px;">łącznie co miesiąc</div></div>
+              <div style="grid-column: 1 / -1; margin-top: 26px; padding: 14px 16px; border: 1px dashed #A63D26; display: flex; justify-content: space-between; gap: 20px; font-size: 15.5px;"><span>Kaucja 3 500 zł — zwrotna, nie wliczamy jej do kosztu miesięcznego</span><span style="color: #57514A;">pokazujemy w „Na start”</span></div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- 1a RESULTS -->
+      <div>
+        <div style="font: 600 12px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #5A5E66; margin-bottom: 12px;">1a · WYNIKI + MAPA · DESKTOP 1280</div>
+        <div style="width: 1280px; height: 1000px; overflow: hidden; background: #F4F0E8; color: #1B1915; font-family: 'Instrument Sans', sans-serif; box-shadow: 0 30px 70px rgba(20,20,20,.16); display: grid; grid-template-rows: auto auto minmax(0, 1fr);">
+          <header style="display: flex; align-items: center; gap: 28px; padding: 18px 56px; border-bottom: 1px solid #D8D0C2;">
+            <span style="font: 400 30px/1 'Instrument Serif', serif;">homies<span style="color: #A63D26;">.</span></span>
+            <nav style="display: flex; gap: 30px; margin-left: auto; font-size: 15px; font-weight: 500;"><a href="#" style="text-decoration: none;">Mieszkania</a><a href="#" style="text-decoration: none;">Jak liczymy koszt</a><a href="#" style="text-decoration: none; color: #57514A;">Dla wynajmujących</a></nav>
+          </header>
+          <div style="padding: 26px 56px 20px; border-bottom: 1px solid #D8D0C2; display: flex; align-items: flex-end; gap: 28px;">
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #57514A;">128 mieszkań</div>
+              <p style="margin: 6px 0 12px; font: 400 36px/1.2 'Instrument Serif', serif;">Mieszkania w <button type="button" aria-label="Miasto: Kraków. Zmień" style="font: 600 28px 'Instrument Sans', sans-serif; color: #1B1915; background: none; border: 0; border-bottom: 2px solid #A63D26; padding: 0 3px; cursor: pointer;">Krakowie</button> do <button type="button" aria-label="Budżet: do 4500 zł. Zmień" style="font: 600 28px 'Instrument Sans', sans-serif; color: #1B1915; background: none; border: 0; border-bottom: 2px solid #A63D26; padding: 0 3px; cursor: pointer;">4 500 zł</button> łącznie, od <button type="button" aria-label="Pokoje: od 2. Zmień" style="font: 600 28px 'Instrument Sans', sans-serif; color: #1B1915; background: none; border: 0; border-bottom: 2px solid #A63D26; padding: 0 3px; cursor: pointer;">2 pokoi</button></p>
+              <div style="display: flex; gap: 18px; font-size: 14.5px;"><button type="button" style="background: none; border: 0; padding: 0; font: inherit; color: #1B1915; text-decoration: underline; cursor: pointer;">Umeblowane ×</button><button type="button" style="background: none; border: 0; padding: 0; font: inherit; color: #1B1915; text-decoration: underline; cursor: pointer;">Zwierzęta dozwolone ×</button><button type="button" style="background: none; border: 0; padding: 0; font: inherit; color: #57514A; cursor: pointer;">Wyczyść</button></div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button type="button" style="height: 44px; padding: 0 18px; border: 1px solid #1B1915; background: none; font: 600 15px 'Instrument Sans', sans-serif; color: #1B1915; cursor: pointer;">Filtry · 2</button>
+              <button type="button" style="height: 44px; padding: 0 18px; border: 1px solid #D8D0C2; background: none; font: 500 15px 'Instrument Sans', sans-serif; color: #1B1915; cursor: pointer;">Sortuj: domyślnie ▾</button>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); min-height: 0;">
+            <div style="padding: 0 40px 0 56px; overflow: hidden;">
+              <sc-for list="{{ res }}" as="l" hint-placeholder-count="3">
+                <article style="{{ l.aRow }}">
+                  <div style="aspect-ratio: 4/3; background: #DDD5C7;"><image-slot id="{{ l.sa }}" placeholder="Zdjęcie" style="width: 100%; height: 100%;"></image-slot></div>
+                  <div style="display: grid; align-content: start; gap: 6px; min-width: 0;">
+                    <div style="font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #A63D26;">{{ l.d }} · {{ l.place }}</div>
+                    <h3 style="margin: 0; font: 400 30px/1.1 'Instrument Serif', serif;"><a href="#" style="text-decoration: none;">{{ l.title }}</a></h3>
+                    <div style="font-size: 15px; color: #3E3933;">{{ l.roomsL }} · {{ l.area }} m² · {{ l.floor }}</div>
+                    <div style="display: flex; align-items: flex-end; gap: 14px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #D8D0C2;">
+                      <span style="font: 400 48px/1 'Instrument Serif', serif; letter-spacing: -.01em; white-space: nowrap;">{{ l.total }} zł</span>
+                      <span style="font-size: 14px; color: #57514A; line-height: 1.35;">łącznie / mies.<br>{{ l.arith }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 14px; margin-top: 6px;"><span>{{ l.avail }} · {{ l.min }}</span><span style="color: #57514A;">{{ l.fresh }}</span></div>
+                  </div>
+                </article>
+              </sc-for>
+            </div>
+            <div style="position: relative; overflow: hidden; background-color: #E8E1D4; background-image: linear-gradient(#DDD5C6 1px, transparent 1px), linear-gradient(90deg, #DDD5C6 1px, transparent 1px); background-size: 64px 64px; border-left: 1px solid #D8D0C2;">
+              <div aria-hidden="true" style="position: absolute; left: -20%; top: 64%; width: 140%; height: 46px; background: #D2D8D2; transform: rotate(-16deg);"></div>
+              <sc-for list="{{ res }}" as="l" hint-placeholder-count="3">
+                <div aria-hidden="true" style="{{ l.aArea }}"></div>
+                <span style="{{ l.aTag }}">{{ l.total }} zł</span>
+              </sc-for>
+              <label style="position: absolute; left: 20px; top: 20px; display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #F4F0E8; border: 1px solid #1B1915; font-size: 14px; font-weight: 500;"><input type="checkbox" checked="{{ true }}" style="width: 18px; height: 18px; accent-color: #1B1915;" /> Szukaj przy przesuwaniu mapy</label>
+              <p style="position: absolute; left: 20px; right: 20px; bottom: 20px; margin: 0; padding: 12px 14px; background: #F4F0E8; font-size: 13.5px; line-height: 1.45;">Kręgi to przybliżona okolica (ok. 300 m), nie adres. 3 oferty bez lokalizacji są widoczne tylko na liście.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1a DETAIL -->
+      <div>
+        <div style="font: 600 12px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #5A5E66; margin-bottom: 12px;">1a · STRONA OFERTY · DESKTOP 1280</div>
+        <div style="width: 1280px; background: #F4F0E8; color: #1B1915; font-family: 'Instrument Sans', sans-serif; box-shadow: 0 30px 70px rgba(20,20,20,.16);">
+          <header style="display: flex; align-items: center; gap: 28px; padding: 18px 56px; border-bottom: 1px solid #D8D0C2;">
+            <span style="font: 400 30px/1 'Instrument Serif', serif;">homies<span style="color: #A63D26;">.</span></span>
+            <a href="#" style="font-size: 15px; margin-left: 12px;">← Wróć do wyników (128)</a>
+            <nav style="display: flex; gap: 30px; margin-left: auto; font-size: 15px; font-weight: 500;"><a href="#" style="text-decoration: none;">Mieszkania</a><a href="#" style="text-decoration: none; color: #57514A;">Dla wynajmujących</a></nav>
+          </header>
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 8px; height: 560px; padding: 0;">
+            <div style="position: relative; background: #DDD5C7;"><image-slot id="a-d1" placeholder="Zdjęcie główne — salon" style="width: 100%; height: 100%;"></image-slot><button type="button" style="position: absolute; right: 18px; bottom: 18px; height: 44px; padding: 0 16px; background: #F4F0E8; border: 1px solid #1B1915; font: 600 14.5px 'Instrument Sans', sans-serif; color: #1B1915; cursor: pointer;">Wszystkie zdjęcia · 14</button></div>
+            <div style="display: grid; grid-template-rows: 1fr 1fr; gap: 8px;">
+              <div style="background: #DDD5C7;"><image-slot id="a-d2" placeholder="Kuchnia" style="width: 100%; height: 100%;"></image-slot></div>
+              <div style="background: #DDD5C7;"><image-slot id="a-d3" placeholder="Sypialnia" style="width: 100%; height: 100%;"></image-slot></div>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 72px; padding: 48px 56px 72px;">
+            <div>
+              <div style="font-size: 12.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #A63D26; margin-bottom: 14px;">{{ ft.d }} · {{ ft.place }}</div>
+              <h1 style="margin: 0 0 16px; font: 400 68px/1 'Instrument Serif', serif; letter-spacing: -.02em;">{{ ft.title }}, {{ ft.area }} m²</h1>
+              <p style="margin: 0 0 36px; font-size: 17.5px; color: #3E3933;">{{ ft.roomsL }} · {{ ft.area }} m² · {{ ft.floor }} · apartamentowiec · umeblowane · {{ ft.min }}</p>
+              <section aria-labelledby="a-skrot" style="border-top: 2px solid #1B1915; border-bottom: 1px solid #D8D0C2; margin-bottom: 40px;">
+                <h2 id="a-skrot" style="margin: 0; padding: 12px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #57514A;">W skrócie</h2>
+                <dl style="margin: 0; display: grid; grid-template-columns: repeat(5, 1fr);">
+                  <div style="padding: 14px 16px 18px 0;"><dt style="font-size: 13px; color: #57514A;">Co miesiąc</dt><dd style="margin: 4px 0 0; font: 400 32px/1 'Instrument Serif', serif;">{{ ft.total }} zł</dd></div>
+                  <div style="padding: 14px 16px 18px; border-left: 1px solid #D8D0C2;"><dt style="font-size: 13px; color: #57514A;">Na start</dt><dd style="margin: 4px 0 0; font: 400 32px/1 'Instrument Serif', serif;">{{ ft.moveIn }} zł</dd></div>
+                  <div style="padding: 14px 16px 18px; border-left: 1px solid #D8D0C2;"><dt style="font-size: 13px; color: #57514A;">Wolne</dt><dd style="margin: 4px 0 0; font: 400 32px/1 'Instrument Serif', serif;">{{ ft.avail }}</dd></div>
+                  <div style="padding: 14px 16px 18px; border-left: 1px solid #D8D0C2;"><dt style="font-size: 13px; color: #57514A;">Potwierdzono</dt><dd style="margin: 4px 0 0; font: 400 32px/1 'Instrument Serif', serif;">{{ ft.freshRel }}</dd><dd style="margin: 4px 0 0; font-size: 13px; color: #57514A;">{{ ft.freshDate }} 2026</dd></div>
+                  <div style="padding: 14px 0 18px 16px; border-left: 1px solid #D8D0C2;"><dt style="font-size: 13px; color: #57514A;">Okolica</dt><dd style="margin: 4px 0 0; font: 400 32px/1 'Instrument Serif', serif;">{{ ft.d }}</dd><dd style="margin: 4px 0 0; font-size: 13px; color: #57514A;">ok. 300 m, bez adresu</dd></div>
+                </dl>
+              </section>
+              <h2 style="margin: 0 0 14px; font: 400 36px/1.1 'Instrument Serif', serif;">O mieszkaniu</h2>
+              <p style="margin: 0 0 14px; font-size: 17.5px; line-height: 1.65; color: #2E2A25; max-width: 62ch;">Dwa osobne pokoje i kuchnia otwarta na salon. Balkon od strony podwórza, więc w sypialni jest cicho. Mieszkanie ma nowe okna i ogrzewanie miejskie, a do tramwaju na Lipowej idzie się cztery minuty.</p>
+              <p style="margin: 0 0 36px; font-size: 17.5px; line-height: 1.65; color: #2E2A25; max-width: 62ch;">Media rozliczane według zużycia — kwota ~250 zł to szacunek dla dwóch osób na podstawie rachunków z ostatniego roku.</p>
+              <h2 style="margin: 0 0 10px; font: 400 36px/1.1 'Instrument Serif', serif;">Okolica</h2>
+              <div style="position: relative; height: 300px; overflow: hidden; background-color: #E8E1D4; background-image: linear-gradient(#DDD5C6 1px, transparent 1px), linear-gradient(90deg, #DDD5C6 1px, transparent 1px); background-size: 48px 48px;">
+                <div aria-hidden="true" style="position: absolute; left: -10%; top: 70%; width: 120%; height: 40px; background: #D2D8D2; transform: rotate(-10deg);"></div>
+                <div aria-hidden="true" style="position: absolute; left: 50%; top: 46%; width: 200px; height: 200px; margin: -100px 0 0 -100px; border-radius: 50%; background: rgba(166,61,38,.12); border: 1.5px dashed #A63D26;"></div>
+                <span style="position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); font: 400 28px/1 'Instrument Serif', serif;">Zabłocie</span>
+              </div>
+              <p style="margin: 10px 0 0; font-size: 14.5px; color: #57514A;">Pokazujemy okolicę w promieniu ok. 300 m. Dokładny adres przekazuje wynajmujący.</p>
+            </div>
+            <aside style="display: grid; gap: 34px; align-content: start;">
+              <section aria-labelledby="a-cost">
+                <div style="display: flex; justify-content: space-between; border-top: 2px solid #1B1915; padding-top: 12px; font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #57514A;"><span id="a-cost">Koszt miesięczny</span><span>szacunek</span></div>
+                <div style="font: 400 88px/1 'Instrument Serif', serif; letter-spacing: -.02em; margin: 18px 0 6px;">{{ ft.total }} zł</div>
+                <div style="font-size: 15.5px; color: #57514A; margin-bottom: 18px;">łącznie co miesiąc</div>
+                <dl style="margin: 0; display: grid; grid-template-columns: 1fr auto; font-size: 16px; font-variant-numeric: tabular-nums;">
+                  <dt style="padding: 11px 0; border-top: 1px solid #D8D0C2;">Najem</dt><dd style="margin: 0; padding: 11px 0; border-top: 1px solid #D8D0C2; text-align: right;">{{ ft.rent }} zł</dd>
+                  <dt style="padding: 11px 0; border-top: 1px solid #D8D0C2;">Administracja</dt><dd style="margin: 0; padding: 11px 0; border-top: 1px solid #D8D0C2; text-align: right;">+ {{ ft.adm }} zł</dd>
+                  <dt style="padding: 11px 0; border-top: 1px solid #D8D0C2;">Media <span style="color: #57514A;">· szacunek wg zużycia</span></dt><dd style="margin: 0; padding: 11px 0; border-top: 1px solid #D8D0C2; text-align: right;">+ {{ ft.media }} zł</dd>
+                  <dt style="padding: 12px 0; border-top: 1px solid #1B1915; font-weight: 600;">Łącznie</dt><dd style="margin: 0; padding: 12px 0; border-top: 1px solid #1B1915; text-align: right; font-weight: 600;">{{ ft.total }} zł</dd>
+                </dl>
+              </section>
+              <section aria-labelledby="a-start">
+                <div style="display: flex; justify-content: space-between; border-top: 2px solid #1B1915; padding-top: 12px; font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #57514A;"><span id="a-start">Na start</span><span>{{ ft.moveIn }} zł</span></div>
+                <dl style="margin: 12px 0 0; display: grid; grid-template-columns: 1fr auto; font-size: 16px; font-variant-numeric: tabular-nums;">
+                  <dt style="padding: 11px 0;">Pierwszy miesiąc <span style="color: #57514A;">· najem + adm.</span></dt><dd style="margin: 0; padding: 11px 0; text-align: right;">{{ ft.first }} zł</dd>
+                  <dt style="padding: 11px 0; border-top: 1px solid #D8D0C2;">Prowizja</dt><dd style="margin: 0; padding: 11px 0; border-top: 1px solid #D8D0C2; text-align: right;">{{ ft.feeL }}</dd>
+                </dl>
+                <div style="margin-top: 8px; padding: 14px 16px; border: 1px dashed #A63D26; display: grid; grid-template-columns: 1fr auto; gap: 2px 16px;">
+                  <span style="font-size: 16px; font-weight: 600;">Kaucja · zwrotna</span><span style="font-size: 16px; font-weight: 600; text-align: right;">{{ ft.dep }} zł</span>
+                  <span style="grid-column: 1 / -1; font-size: 14px; color: #57514A;">Wraca po zakończeniu najmu. Nie jest kosztem — to zabezpieczenie.</span>
+                </div>
+                <p style="margin: 12px 0 0; font-size: 14.5px; color: #57514A;">Bezzwrotnie na start: {{ ft.nonRef }} zł</p>
+              </section>
+              <section style="display: grid; gap: 6px; font-size: 14.5px; padding-top: 14px; border-top: 1px solid #D8D0C2;">
+                <span>Tożsamość wynajmującego zweryfikowana</span>
+                <span>Prawo do wynajmu tego lokalu zweryfikowane</span>
+                <span style="color: #57514A;">Świeżość to osobna informacja: {{ ft.fresh }}, {{ ft.freshDate }}.</span>
+              </section>
+              <div style="padding: 18px; border: 1.5px dashed #8A8276; font-size: 14px; color: #57514A; line-height: 1.5;"><strong style="color: #1B1915; font-weight: 600;">Strefa akcji · PROPOSED FE-003</strong><br>Tu w FE-003 pojawią się terminy oglądania i „Napisz”. W FE-002 brak przycisków kontaktu.</div>
+            </aside>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1a MOBILE -->
+      <div>
+        <div style="font: 600 12px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #5A5E66; margin-bottom: 12px;">1a · WYNIKI · MOBILE 390</div>
+        <div style="width: 390px; height: 844px; overflow: hidden; position: relative; border-radius: 46px; box-shadow: 0 0 0 10px #141414, 0 30px 70px rgba(20,20,20,.25); background: #F4F0E8; color: #1B1915; font-family: 'Instrument Sans', sans-serif;">
+          <div style="height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; font-size: 15px; font-weight: 600;"><span>9:41</span><span style="font-size: 12px;">● ● ●</span></div>
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 20px 12px; border-bottom: 1px solid #D8D0C2;">
+            <span style="font: 400 28px/1 'Instrument Serif', serif;">homies<span style="color: #A63D26;">.</span></span>
+            <button type="button" style="height: 44px; padding: 0 16px; border: 1px solid #1B1915; background: none; font: 600 15px 'Instrument Sans', sans-serif; color: #1B1915;">Filtry · 2</button>
+          </div>
+          <button type="button" style="display: block; width: 100%; text-align: left; padding: 14px 20px; background: none; border: 0; border-bottom: 1px solid #D8D0C2; font: 400 23px/1.25 'Instrument Serif', serif; color: #1B1915;">Kraków, do <span style="border-bottom: 2px solid #A63D26;">4 500 zł</span>, od 2 pokoi <span style="display: block; font: 500 13px 'Instrument Sans', sans-serif; color: #57514A; margin-top: 4px;">128 mieszkań · dotknij, by zmienić</span></button>
+          <sc-for list="{{ resM }}" as="l" hint-placeholder-count="2">
+            <article style="border-bottom: 1px solid #D8D0C2;">
+              <div style="height: 236px; background: #DDD5C7;"><image-slot id="{{ l.sam }}" placeholder="Zdjęcie" style="width: 100%; height: 100%;"></image-slot></div>
+              <div style="padding: 14px 20px 18px; display: grid; gap: 4px;">
+                <div style="font-size: 11.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #A63D26;">{{ l.d }} · {{ l.place }}</div>
+                <div style="display: flex; align-items: baseline; gap: 10px;"><span style="font: 400 40px/1 'Instrument Serif', serif;">{{ l.total }} zł</span><span style="font-size: 13.5px; color: #57514A;">łącznie / mies.</span></div>
+                <div style="font-size: 13.5px; color: #57514A;">{{ l.arith }}</div>
+                <div style="font-size: 16px; font-weight: 600; margin-top: 4px;">{{ l.title }}</div>
+                <div style="display: flex; justify-content: space-between; font-size: 13.5px;"><span>{{ l.roomsL }} · {{ l.area }} m² · {{ l.avail }}</span><span style="color: #57514A;">{{ l.freshRel }}</span></div>
+              </div>
+            </article>
+          </sc-for>
+          <button type="button" style="position: absolute; left: 50%; bottom: 30px; transform: translateX(-50%); height: 52px; padding: 0 24px; background: #1B1915; color: #F4F0E8; border: 0; font: 600 16px 'Instrument Sans', sans-serif; box-shadow: 0 10px 24px rgba(0,0,0,.25);">Mapa</button>
+        </div>
+      </div>
+
+      <!-- 1a SIGNATURES -->
+      <div>
+        <div style="font: 600 12px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #5A5E66; margin-bottom: 12px;">1a · SYGNATURY + KARTA KIERUNKU</div>
+        <div style="width: 940px; background: #F4F0E8; color: #1B1915; font-family: 'Instrument Sans', sans-serif; box-shadow: 0 30px 70px rgba(20,20,20,.16); padding: 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 44px 48px;">
+          <div>
+            <div style="font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #57514A; border-top: 2px solid #1B1915; padding-top: 10px; margin-bottom: 16px;">Koszt — sygnatura</div>
+            <div style="font: 400 64px/1 'Instrument Serif', serif;">4 350 zł</div>
+            <div style="font-size: 14.5px; color: #57514A; margin: 6px 0 14px;">łącznie / mies. · 3 500 najem + 600 adm. + ~250 media</div>
+            <p style="margin: 0; font-size: 14px; line-height: 1.5;">Suma zawsze pierwsza i serifem ≥ 32 px. Składniki w jednej linii sans. Tylda przy mediach = szacunek. Ten sam układ na karcie, w ofercie i w FE-003 (rozmowa, oglądanie).</p>
+          </div>
+          <div>
+            <div style="font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #57514A; border-top: 2px solid #1B1915; padding-top: 10px; margin-bottom: 16px;">Na start</div>
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; font-size: 15px;"><span>Pierwszy miesiąc</span><span>4 100 zł</span><span>Prowizja</span><span>bez prowizji</span></div>
+            <div style="margin-top: 10px; padding: 12px 14px; border: 1px dashed #A63D26; display: flex; justify-content: space-between; font-size: 15px;"><span>Kaucja · zwrotna</span><span>3 500 zł</span></div>
+            <p style="margin: 10px 0 0; font-size: 14px; line-height: 1.5;">Kaucja nigdy w tej samej linii co koszty. Przerywana ramka = pieniądze, które wracają.</p>
+          </div>
+          <div>
+            <div style="font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #57514A; border-top: 2px solid #1B1915; padding-top: 10px; margin-bottom: 16px;">Świeżość</div>
+            <div style="display: grid; gap: 10px; font-size: 15px;">
+              <span>Potwierdzono dziś <span style="color: #57514A;">· 3 paź</span></span>
+              <span>Potwierdzono 4 dni temu <span style="color: #57514A;">· 29 wrz</span></span>
+              <span style="color: #57514A;">Ostatnie potwierdzenie 16 dni temu · 17 wrz</span>
+            </div>
+            <p style="margin: 10px 0 0; font-size: 14px; line-height: 1.5;">Zwykły tekst z datą, bez koloru alarmowego i bez ikon ognia. Starsze potwierdzenie zmienia tylko słowo „Potwierdzono” na „Ostatnie potwierdzenie” i ton na szary.</p>
+          </div>
+          <div>
+            <div style="font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #57514A; border-top: 2px solid #1B1915; padding-top: 10px; margin-bottom: 16px;">Przybliżona lokalizacja</div>
+            <div style="position: relative; height: 128px; background: #E8E1D4; overflow: hidden;"><div aria-hidden="true" style="position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 1.5px dashed #A63D26; background: rgba(166,61,38,.1);"></div><span style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font: 400 24px 'Instrument Serif', serif;">Zabłocie</span></div>
+            <p style="margin: 10px 0 0; font-size: 14px; line-height: 1.5;">Krąg z nazwą okolicy zamiast pinezki. Na liście wyników: tekst „okolice ul. Lipowej”, nigdy numer budynku.</p>
+          </div>
+          <div style="grid-column: 1 / -1;">
+            <div style="font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #57514A; border-top: 2px solid #1B1915; padding-top: 10px; margin-bottom: 16px;">Karta oferty — anatomia</div>
+            <div style="display: grid; grid-template-columns: 300px 1fr; gap: 28px; align-items: start;">
+              <div style="display: grid; gap: 5px;">
+                <div style="aspect-ratio: 4/3; background: #DDD5C7;"><image-slot id="a-card" placeholder="Zdjęcie" style="width: 100%; height: 100%;"></image-slot></div>
+                <div style="font-size: 11.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #A63D26; margin-top: 8px;">① Podgórze · okolice Rynku</div>
+                <div style="font: 400 24px/1.1 'Instrument Serif', serif;">② Jasne mieszkanie w kamienicy</div>
+                <div style="font: 400 38px/1 'Instrument Serif', serif; margin-top: 6px;">③ 3 970 zł</div>
+                <div style="font-size: 13px; color: #57514A;">łącznie / mies. · 3 200 najem + 520 adm. + ~250 media</div>
+                <div style="font-size: 13.5px;">④ 2 pokoje · 48 m² · od 1 listopada</div>
+                <div style="font-size: 13.5px; color: #57514A;">⑤ Potwierdzono dziś</div>
+              </div>
+              <ol style="margin: 0; padding-left: 20px; font-size: 14.5px; line-height: 1.6; display: grid; gap: 6px;">
+                <li>Okolica — kapitaliki w kolorze akcentu, jedyny element w kolorze.</li>
+                <li>Tytuł z API, serif 24–30 px, jest linkiem (cała karta klikalna przez rozszerzony obszar linku).</li>
+                <li>Sygnatura kosztu: suma serifem, składniki sans w jednej linii.</li>
+                <li>Fakty: pokoje, metraż, dostępność — w tej kolejności, zawsze tekstem.</li>
+                <li>Świeżość: osobna linia po prawej, szara, bez ikony.</li>
+                <li style="color: #57514A;">Stany: najechanie = tło #EBE3D6 i podkreślenie tytułu; fokus = obrys 3 px #1B1915 z odstępem 3 px; zaznaczenie z mapy = to samo tło + krąg na mapie w kolorze akcentu.</li>
+              </ol>
+            </div>
+          </div>
+          <div style="grid-column: 1 / -1; padding: 18px; border: 1.5px dashed #8A8276;">
+            <div style="font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #57514A; margin-bottom: 12px;">CTA · PROPOSED FE-003 · nie w FE-002</div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+              <span style="font-size: 14.5px; margin-right: 6px;">Oglądanie:</span>
+              <span style="height: 44px; display: inline-flex; align-items: center; padding: 0 14px; border: 1px solid #1B1915; font-size: 15px; font-weight: 600;">sob 10:00</span>
+              <span style="height: 44px; display: inline-flex; align-items: center; padding: 0 14px; border: 1px solid #1B1915; font-size: 15px; font-weight: 600;">sob 11:30</span>
+              <span style="height: 44px; display: inline-flex; align-items: center; padding: 0 14px; border: 1px solid #1B1915; font-size: 15px; font-weight: 600;">pon 18:30</span>
+              <span style="font-size: 15px; text-decoration: underline; margin-left: 10px;">Napisz do wynajmującego</span>
+            </div>
+            <p style="margin: 10px 0 0; font-size: 14px; color: #57514A;">Terminy są przyciskami same w sobie — brak pośredniego „Umów oglądanie”. Kolor tylko na wybranym terminie.</p>
+          </div>
+          <div style="grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px 28px; border-top: 2px solid #1B1915; padding-top: 18px;">
+            <sc-for list="{{ specA }}" as="s" hint-placeholder-count="9">
+              <div><div style="font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #A63D26; margin-bottom: 6px;">{{ s.k }}</div><p style="margin: 0; font-size: 14.5px; line-height: 1.5;">{{ s.v }}</p></div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 1b RZUT ================= -->
+  <div id="1b" style="display: grid; gap: 30px;">
+    <div style="display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap;">
+      <span style="font: 700 15px/1 'IBM Plex Mono', monospace; background: #16181D; color: #fff; padding: 8px 11px;">1b</span>
+      <h2 style="margin: 0; font: 600 38px/1.1 'IBM Plex Sans', sans-serif; color: #16181D;">Rzut — arkusz techniczny</h2>
+      <span style="font: 400 18px/1.4 'IBM Plex Sans', sans-serif; color: #4A505B; max-width: 70ch;">Mieszkanie jako arkusz z kosztorysem. Koszt wymiarowany jak na rysunku architekta: pełne = stałe, kreskowane = szacunek, kontur = zwrotne.</span>
+    </div>
+    <div style="display: flex; gap: 64px; align-items: flex-start;">
+
+      <!-- 1b HOME -->
+      <div>
+        <div style="font: 600 12px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #5A5E66; margin-bottom: 12px;">1b · STRONA GŁÓWNA · DESKTOP 1280</div>
+        <div style="width: 1280px; background: #fff; color: #15171C; font-family: 'IBM Plex Sans', sans-serif; box-shadow: 0 30px 70px rgba(20,20,20,.16);">
+          <header style="display: flex; align-items: center; gap: 14px; padding: 18px 48px; border-bottom: 1px solid #15171C;">
+            <span style="font: 600 17px/1 'IBM Plex Sans', sans-serif; letter-spacing: .18em;">HOMIES</span>
+            <span style="font: 500 12px/1 'IBM Plex Mono', monospace; color: #1E4BD2;">/ KRK</span>
+            <nav style="display: flex; gap: 30px; margin-left: auto; font: 500 12.5px/1 'IBM Plex Mono', monospace; letter-spacing: .06em;"><a href="#" style="text-decoration: none;">MIESZKANIA</a><a href="#" style="text-decoration: none;">JAK LICZYMY</a><a href="#" style="text-decoration: none; color: #4A505B;">DLA WYNAJMUJĄCYCH</a></nav>
+          </header>
+          <div style="padding: 56px 48px 48px; background-color: #fff; background-image: linear-gradient(#EEF0F3 1px, transparent 1px), linear-gradient(90deg, #EEF0F3 1px, transparent 1px); background-size: 24px 24px;">
+            <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; align-items: center; margin-bottom: 40px;">
+              <div>
+                <div style="font: 500 12px/1 'IBM Plex Mono', monospace; letter-spacing: .08em; color: #1E4BD2; margin-bottom: 20px;">INDEKS NAJMU · KRAKÓW · 214 OFERT · 03.10.2026</div>
+                <h1 style="margin: 0 0 20px; font: 600 64px/1.02 'IBM Plex Sans', sans-serif; letter-spacing: -.025em;">Mieszkania w Krakowie.<br>Z policzonym kosztem.</h1>
+                <p style="margin: 0; font-size: 18px; line-height: 1.55; color: #4A505B; max-width: 46ch;">Każda oferta ma kosztorys: najem, administracja, szacowane media — i osobno kwotę na start. Plus data ostatniego potwierdzenia dostępności.</p>
+              </div>
+              <div style="background: #fff; border: 1px solid #15171C;">
+                <div style="display: flex; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #15171C; font: 500 11.5px/1 'IBM Plex Mono', monospace; letter-spacing: .06em;"><span>ARKUSZ 01 · {{ ft.dUp }} · {{ ft.area }} M²</span><span style="color: #1E4BD2;">POTW. {{ ft.freshUp }} · 03.10</span></div>
+                <div style="position: relative; aspect-ratio: 16/9; background: #E9ECF0; margin: 14px;">
+                  <image-slot id="b-hero" placeholder="Zdjęcie — salon" style="width: 100%; height: 100%;"></image-slot>
+                  <span aria-hidden="true" style="position: absolute; left: -6px; top: -6px; width: 18px; height: 18px; border-left: 1px solid #15171C; border-top: 1px solid #15171C;"></span>
+                  <span aria-hidden="true" style="position: absolute; right: -6px; bottom: -6px; width: 18px; height: 18px; border-right: 1px solid #15171C; border-bottom: 1px solid #15171C;"></span>
+                </div>
+                <div style="padding: 4px 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: end;">
+                  <div>
+                    <div style="display: flex;"><sc-for list="{{ ft.bSegs }}" as="g" hint-placeholder-count="3"><span style="{{ g.lab }}">{{ g.k }} {{ g.v }}</span></sc-for></div>
+                    <div style="display: flex;"><sc-for list="{{ ft.bSegs }}" as="g" hint-placeholder-count="3"><span style="{{ g.tick }}"></span></sc-for></div>
+                    <div style="display: flex; height: 18px; gap: 2px; margin-top: 6px;"><sc-for list="{{ ft.bSegs }}" as="g" hint-placeholder-count="3"><span style="{{ g.bar }}"></span></sc-for></div>
+                  </div>
+                  <div style="text-align: right;"><div style="font: 600 34px/1 'IBM Plex Sans', sans-serif; letter-spacing: -.02em; font-variant-numeric: tabular-nums;">{{ ft.total }} zł</div><div style="font: 500 11px/1.4 'IBM Plex Mono', monospace; color: #4A505B; margin-top: 4px;">ŁĄCZNIE / MIES.</div></div>
+                </div>
+              </div>
+            </div>
+            <form role="search" aria-label="Szukaj mieszkania" style="display: grid; grid-template-columns: 1.1fr 1.2fr 1.3fr .9fr 1.1fr auto; background: #fff; border: 1px solid #15171C;">
+              <label style="display: grid; gap: 6px; padding: 12px 16px; border-right: 1px solid #D5D9DF;"><span style="font: 500 11px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #4A505B;">MIASTO</span><span style="font-size: 17px; font-weight: 500;">Kraków ▾</span></label>
+              <label style="display: grid; gap: 6px; padding: 12px 16px; border-right: 1px solid #D5D9DF;"><span style="font: 500 11px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #4A505B;">DZIELNICA</span><span style="font-size: 17px; color: #4A505B;">Dowolna ▾</span></label>
+              <label style="display: grid; gap: 6px; padding: 12px 16px; border-right: 1px solid #D5D9DF;"><span style="font: 500 11px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #4A505B;">ŁĄCZNIE DO / MIES.</span><span style="font-size: 17px; font-weight: 500;">4 500 zł</span></label>
+              <label style="display: grid; gap: 6px; padding: 12px 16px; border-right: 1px solid #D5D9DF;"><span style="font: 500 11px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #4A505B;">POKOJE</span><span style="font-size: 17px; font-weight: 500;">2+ ▾</span></label>
+              <label style="display: grid; gap: 6px; padding: 12px 16px; border-right: 1px solid #D5D9DF;"><span style="font: 500 11px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #4A505B;">DOSTĘPNE OD</span><span style="font-size: 17px; color: #4A505B;">Dowolnie ▾</span></label>
+              <button type="submit" style="padding: 0 28px; background: #1E4BD2; color: #fff; border: 0; font: 600 16px 'IBM Plex Sans', sans-serif; cursor: pointer;">Szukaj · 128 →</button>
+            </form>
+          </div>
+          <section style="padding: 40px 48px 56px;">
+            <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px;"><h2 style="margin: 0; font: 600 26px/1.1 'IBM Plex Sans', sans-serif;">Ostatnio potwierdzone</h2><span style="font: 500 12px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #4A505B;">6 Z 214 · KOLUMNY SORTOWALNE</span></div>
+            <table style="width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums;">
+              <thead><tr style="border-bottom: 2px solid #15171C; font: 500 11px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #4A505B;">
+                <th scope="col" style="text-align: left; padding: 10px 8px 10px 0; font-weight: 500;">NR</th><th scope="col" style="text-align: left; padding: 10px 8px; font-weight: 500;">OKOLICA</th><th scope="col" style="text-align: right; padding: 10px 8px; font-weight: 500;">POK.</th><th scope="col" style="text-align: right; padding: 10px 8px; font-weight: 500;">M²</th><th scope="col" style="text-align: right; padding: 10px 8px; font-weight: 500;">ŁĄCZNIE / MIES.</th><th scope="col" style="text-align: right; padding: 10px 8px; font-weight: 500;">ZŁ / M²</th><th scope="col" style="text-align: right; padding: 10px 8px; font-weight: 500;">NA START</th><th scope="col" style="text-align: right; padding: 10px 0 10px 8px; font-weight: 500;">POTWIERDZONO</th>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{ byFresh }}" as="l" hint-placeholder-count="6">
+                  <tr style="border-bottom: 1px solid #D5D9DF;">
+                    <td style="padding: 14px 8px 14px 0; font: 500 13px 'IBM Plex Mono', monospace; color: #1E4BD2;">{{ l.nr }}</td>
+                    <td style="padding: 14px 8px;"><a href="#" style="font-size: 16px; font-weight: 600; text-decoration: none;">{{ l.d }}</a><span style="display: block; font-size: 13px; color: #4A505B;">{{ l.place }}</span></td>
+                    <td style="padding: 14px 8px; text-align: right; font-size: 15px;">{{ l.roomsShort }}</td>
+                    <td style="padding: 14px 8px; text-align: right; font-size: 15px;">{{ l.area }}</td>
+                    <td style="padding: 14px 8px; text-align: right; font-size: 18px; font-weight: 600;">{{ l.total }} zł</td>
+                    <td style="padding: 14px 8px; text-align: right; font-size: 15px;">{{ l.perM2 }}</td>
+                    <td style="padding: 14px 8px; text-align: right; font-size: 15px;">{{ l.moveIn }} zł</td>
+                    <td style="padding: 14px 0 14px 8px; text-align: right; font: 500 12.5px 'IBM Plex Mono', monospace;">{{ l.freshUp }}<span style="display: block; color: #4A505B;">{{ l.freshDate }}</span></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </section>
+          <section style="display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid #15171C;">
+            <div style="padding: 26px 48px; border-right: 1px solid #D5D9DF; display: flex; gap: 16px; align-items: center;"><span aria-hidden="true" style="width: 44px; height: 18px; background: #15171C; flex: none;"></span><span style="font-size: 15px;"><strong style="font-weight: 600;">Pełne</strong> — koszt stały: najem, administracja</span></div>
+            <div style="padding: 26px 32px; border-right: 1px solid #D5D9DF; display: flex; gap: 16px; align-items: center;"><span aria-hidden="true" style="width: 44px; height: 18px; background: repeating-linear-gradient(135deg, #1E4BD2 0 2px, transparent 2px 6px); box-shadow: inset 0 0 0 1px #1E4BD2; flex: none;"></span><span style="font-size: 15px;"><strong style="font-weight: 600;">Kreskowane</strong> — szacunek: media wg zużycia</span></div>
+            <div style="padding: 26px 32px; display: flex; gap: 16px; align-items: center;"><span aria-hidden="true" style="width: 44px; height: 18px; border: 1.5px dashed #15171C; flex: none;"></span><span style="font-size: 15px;"><strong style="font-weight: 600;">Kontur</strong> — zwrotne: kaucja, osobno od kosztu</span></div>
+          </section>
+        </div>
+      </div>
+
+      <!-- 1b RESULTS -->
+      <div>
+        <div style="font: 600 12px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #5A5E66; margin-bottom: 12px;">1b · WYNIKI + FILTRY + MAPA · DESKTOP 1280</div>
+        <div style="width: 1280px; height: 1000px; overflow: hidden; background: #fff; color: #15171C; font-family: 'IBM Plex Sans', sans-serif; box-shadow: 0 30px 70px rgba(20,20,20,.16); display: grid; grid-template-rows: auto auto minmax(0, 1fr);">
+          <header style="display: flex; align-items: center; gap: 14px; padding: 16px 32px; border-bottom: 1px solid #15171C;"><span style="font: 600 16px/1 'IBM Plex Sans', sans-serif; letter-spacing: .18em;">HOMIES</span><span style="font: 500 12px/1 'IBM Plex Mono', monospace; color: #1E4BD2;">/ KRK</span>
+            <div style="display: grid; grid-template-columns: repeat(4, auto); margin-left: 40px; border: 1px solid #15171C;">
+              <span style="padding: 8px 14px; border-right: 1px solid #D5D9DF; font-size: 14.5px;"><span style="font: 500 10.5px 'IBM Plex Mono', monospace; color: #4A505B; display: block;">MIASTO</span>Kraków</span>
+              <span style="padding: 8px 14px; border-right: 1px solid #D5D9DF; font-size: 14.5px;"><span style="font: 500 10.5px 'IBM Plex Mono', monospace; color: #4A505B; display: block;">ŁĄCZNIE DO</span>4 500 zł</span>
+              <span style="padding: 8px 14px; border-right: 1px solid #D5D9DF; font-size: 14.5px;"><span style="font: 500 10.5px 'IBM Plex Mono', monospace; color: #4A505B; display: block;">POKOJE</span>2+</span>
+              <span style="padding: 8px 14px; font-size: 14.5px;"><span style="font: 500 10.5px 'IBM Plex Mono', monospace; color: #4A505B; display: block;">OD</span>dowolnie</span>
+            </div>
+          </header>
+          <div style="display: flex; align-items: center; gap: 16px; padding: 12px 32px; border-bottom: 1px solid #D5D9DF; background: #F6F7F8;"><span style="font-size: 20px; font-weight: 600;">128 mieszkań</span><span style="font: 500 12px 'IBM Plex Mono', monospace; color: #4A505B;">3 BEZ LOKALIZACJI — TYLKO NA LIŚCIE</span><span style="margin-left: auto; font: 500 12.5px 'IBM Plex Mono', monospace;">SORT.: DOMYŚLNIE ▾</span></div>
+          <div style="display: grid; grid-template-columns: 248px minmax(0, 1fr) 430px; min-height: 0;">
+            <aside aria-label="Filtry" style="padding: 20px 22px; border-right: 1px solid #D5D9DF; background: #F6F7F8; display: grid; gap: 22px; align-content: start; overflow: hidden;">
+              <div style="display: flex; justify-content: space-between;"><span style="font: 600 12px 'IBM Plex Mono', monospace; letter-spacing: .06em;">FILTRY · 2</span><button type="button" style="background: none; border: 0; padding: 0; font: 500 12px 'IBM Plex Mono', monospace; color: #1E4BD2; text-decoration: underline; cursor: pointer;">WYCZYŚĆ</button></div>
+              <fieldset style="border: 0; padding: 0; margin: 0; display: grid; gap: 8px;"><legend style="font: 500 11px 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #4A505B; margin-bottom: 8px;">ŁĄCZNIE / MIES.</legend><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;"><span style="height: 40px; display: flex; align-items: center; padding: 0 10px; border: 1px solid #A6ADB8; background: #fff; font-size: 14.5px; color: #4A505B;">od</span><span style="height: 40px; display: flex; align-items: center; padding: 0 10px; border: 1px solid #15171C; background: #fff; font-size: 14.5px;">4 500</span></div></fieldset>
+              <fieldset style="border: 0; padding: 0; margin: 0;"><legend style="font: 500 11px 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #4A505B; margin-bottom: 8px;">POKOJE</legend><div style="display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #15171C;"><span style="height: 40px; display: grid; place-items: center; font-size: 15px; border-right: 1px solid #D5D9DF; background: #fff;">1</span><span style="height: 40px; display: grid; place-items: center; font-size: 15px; background: #15171C; color: #fff;">2</span><span style="height: 40px; display: grid; place-items: center; font-size: 15px; background: #15171C; color: #fff; border-left: 1px solid #4A505B;">3</span><span style="height: 40px; display: grid; place-items: center; font-size: 15px; background: #15171C; color: #fff; border-left: 1px solid #4A505B;">4+</span></div></fieldset>
+              <fieldset style="border: 0; padding: 0; margin: 0; display: grid; gap: 10px;"><legend style="font: 500 11px 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #4A505B; margin-bottom: 8px;">WYPOSAŻENIE I ZASADY</legend>
+                <label style="display: flex; gap: 10px; align-items: center; font-size: 14.5px;"><input type="checkbox" checked="{{ true }}" style="width: 18px; height: 18px; accent-color: #1E4BD2;" /> Umeblowane</label>
+                <label style="display: flex; gap: 10px; align-items: center; font-size: 14.5px;"><input type="checkbox" checked="{{ true }}" style="width: 18px; height: 18px; accent-color: #1E4BD2;" /> Zwierzęta dozwolone</label>
+                <label style="display: flex; gap: 10px; align-items: center; font-size: 14.5px;"><input type="checkbox" style="width: 18px; height: 18px; accent-color: #1E4BD2;" /> Miejsce parkingowe</label>
+                <label style="display: flex; gap: 10px; align-items: center; font-size: 14.5px;"><input type="checkbox" style="width: 18px; height: 18px; accent-color: #1E4BD2;" /> Winda</label>
+              </fieldset>
+              <fieldset style="border: 0; padding: 0; margin: 0;"><legend style="font: 500 11px 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #4A505B; margin-bottom: 8px;">NA START MAKS.</legend><span style="height: 40px; display: flex; align-items: center; padding: 0 10px; border: 1px solid #A6ADB8; background: #fff; font-size: 14.5px; color: #4A505B;">dowolnie</span></fieldset>
+              <fieldset style="border: 0; padding: 0; margin: 0;"><legend style="font: 500 11px 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #4A505B; margin-bottom: 8px;">DOSTĘPNE NAJPÓŹNIEJ</legend><span style="height: 40px; display: flex; align-items: center; padding: 0 10px; border: 1px solid #A6ADB8; background: #fff; font-size: 14.5px; color: #4A505B;">dd.mm.rrrr</span></fieldset>
+            </aside>
+            <div style="overflow: hidden;">
+              <sc-for list="{{ res }}" as="l" hint-placeholder-count="3">
+                <article style="{{ l.bRow }}">
+                  <div style="aspect-ratio: 1; background: #E9ECF0;"><image-slot id="{{ l.sb }}" placeholder="Zdjęcie" style="width: 100%; height: 100%;"></image-slot></div>
+                  <div style="display: grid; gap: 8px; min-width: 0; align-content: start;">
+                    <div style="display: flex; justify-content: space-between; font: 500 11.5px/1 'IBM Plex Mono', monospace; letter-spacing: .05em;"><span style="color: #1E4BD2;">{{ l.nr }} · {{ l.dUp }}</span><span style="color: #4A505B;">POTW. {{ l.freshUp }}</span></div>
+                    <h3 style="margin: 0; font: 600 18px/1.25 'IBM Plex Sans', sans-serif;"><a href="#" style="text-decoration: none;">{{ l.title }}</a></h3>
+                    <dl style="margin: 0; display: grid; grid-template-columns: repeat(4, auto); justify-content: start; gap: 2px 22px;">
+                      <dt style="font: 500 10.5px 'IBM Plex Mono', monospace; color: #4A505B;">POK.</dt><dt style="font: 500 10.5px 'IBM Plex Mono', monospace; color: #4A505B;">M²</dt><dt style="font: 500 10.5px 'IBM Plex Mono', monospace; color: #4A505B;">OD</dt><dt style="font: 500 10.5px 'IBM Plex Mono', monospace; color: #4A505B;">MIN.</dt>
+                      <dd style="margin: 0; font-size: 15px;">{{ l.roomsShort }}</dd><dd style="margin: 0; font-size: 15px;">{{ l.area }}</dd><dd style="margin: 0; font-size: 15px;">{{ l.availShort }}</dd><dd style="margin: 0; font-size: 15px;">{{ l.minN }} mies.</dd>
+                    </dl>
+                    <div style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: end; margin-top: 4px;">
+                      <div><div style="display: flex; height: 12px; gap: 2px;"><sc-for list="{{ l.bSegs }}" as="g" hint-placeholder-count="3"><span style="{{ g.bar }}"></span></sc-for></div><div style="font: 500 11.5px/1 'IBM Plex Mono', monospace; color: #4A505B; margin-top: 6px;">{{ l.arithShort }}</div></div>
+                      <div style="text-align: right;"><span style="font: 600 26px/1 'IBM Plex Sans', sans-serif; letter-spacing: -.02em; font-variant-numeric: tabular-nums;">{{ l.total }} zł</span><span style="display: block; font: 500 10.5px 'IBM Plex Mono', monospace; color: #4A505B; margin-top: 3px;">ŁĄCZNIE / MIES.</span></div>
+                    </div>
+                  </div>
+                </article>
+              </sc-for>
+            </div>
+            <div style="position: relative; overflow: hidden; border-left: 1px solid #D5D9DF; background-color: #F6F7F8; background-image: linear-gradient(#E3E6EA 1px, transparent 1px), linear-gradient(90deg, #E3E6EA 1px, transparent 1px); background-size: 32px 32px;">
+              <div aria-hidden="true" style="position: absolute; left: -20%; top: 64%; width: 140%; height: 40px; background: #E1E8F6; transform: rotate(-16deg);"></div>
+              <sc-for list="{{ res }}" as="l" hint-placeholder-count="3">
+                <div aria-hidden="true" style="{{ l.bArea }}"></div>
+                <span style="{{ l.bTag }}">{{ l.total }}</span>
+              </sc-for>
+              <div style="position: absolute; left: 14px; top: 14px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: #fff; border: 1px solid #15171C; font: 500 11.5px 'IBM Plex Mono', monospace;"><input type="checkbox" checked="{{ true }}" style="width: 16px; height: 16px; accent-color: #1E4BD2;" /> SZUKAJ PRZY PRZESUWANIU</div>
+              <div style="position: absolute; left: 14px; bottom: 14px; padding: 8px 10px; background: #fff; border: 1px solid #15171C; font: 500 11px/1.5 'IBM Plex Mono', monospace;">○ OBSZAR ±300 M = LOKALIZACJA PRZYBLIŻONA</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1b DETAIL -->
+      <div>
+        <div style="font: 600 12px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #5A5E66; margin-bottom: 12px;">1b · STRONA OFERTY · DESKTOP 1280</div>
+        <div style="width: 1280px; background: #fff; color: #15171C; font-family: 'IBM Plex Sans', sans-serif; box-shadow: 0 30px 70px rgba(20,20,20,.16);">
+          <header style="display: flex; align-items: center; gap: 14px; padding: 16px 48px; border-bottom: 1px solid #15171C;"><span style="font: 600 16px/1 'IBM Plex Sans', sans-serif; letter-spacing: .18em;">HOMIES</span><span style="font: 500 12px/1 'IBM Plex Mono', monospace; color: #1E4BD2;">/ KRK</span><a href="#" style="margin-left: 32px; font: 500 12.5px 'IBM Plex Mono', monospace; letter-spacing: .04em;">← WYNIKI (128)</a><span style="font: 500 12.5px 'IBM Plex Mono', monospace; color: #4A505B;">/ KRAKÓW / {{ ft.dUp }} / OFERTA {{ ft.offer }}</span></header>
+          <div style="padding: 32px 48px 0; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px;">
+            <div><h1 style="margin: 0 0 8px; font: 600 46px/1.08 'IBM Plex Sans', sans-serif; letter-spacing: -.02em;">{{ ft.title }}, {{ ft.area }} m²</h1><div style="font: 500 12.5px 'IBM Plex Mono', monospace; letter-spacing: .04em; color: #4A505B;">{{ ft.dUp }} · {{ ft.placeUp }} · {{ ft.floor }}</div></div>
+            <div style="font: 500 12.5px/1.6 'IBM Plex Mono', monospace; text-align: right; color: #1E4BD2;">POTWIERDZONO {{ ft.freshUp }}<br><span style="color: #4A505B;">03.10.2026</span></div>
+          </div>
+          <div style="display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); gap: 32px; padding: 24px 48px 0;">
+            <div style="display: grid; gap: 8px;">
+              <div style="aspect-ratio: 16/10; background: #E9ECF0;"><image-slot id="b-d1" placeholder="Zdjęcie główne" style="width: 100%; height: 100%;"></image-slot></div>
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;"><div style="aspect-ratio: 4/3; background: #E9ECF0;"><image-slot id="b-d2" placeholder="Kuchnia" style="width: 100%; height: 100%;"></image-slot></div><div style="aspect-ratio: 4/3; background: #E9ECF0;"><image-slot id="b-d3" placeholder="Sypialnia" style="width: 100%; height: 100%;"></image-slot></div><div style="aspect-ratio: 4/3; background: #E9ECF0;"><image-slot id="b-d4" placeholder="Łazienka" style="width: 100%; height: 100%;"></image-slot></div><div style="aspect-ratio: 4/3; background: #15171C; color: #fff; display: grid; place-items: center; font: 500 13px 'IBM Plex Mono', monospace;">+10 ZDJĘĆ</div></div>
+            </div>
+            <aside aria-labelledby="b-karta" style="border: 1px solid #15171C; align-self: start;">
+              <h2 id="b-karta" style="margin: 0; padding: 12px 16px; border-bottom: 1px solid #15171C; font: 600 12px 'IBM Plex Mono', monospace; letter-spacing: .08em;">KARTA LOKALU · W SKRÓCIE</h2>
+              <dl style="margin: 0; display: grid; grid-template-columns: auto 1fr; font-variant-numeric: tabular-nums;">
+                <dt style="padding: 12px 16px; font: 500 11px 'IBM Plex Mono', monospace; color: #4A505B; border-bottom: 1px solid #D5D9DF;">ŁĄCZNIE / MIES.</dt><dd style="margin: 0; padding: 10px 16px; text-align: right; font-size: 22px; font-weight: 600; border-bottom: 1px solid #D5D9DF;">{{ ft.total }} zł</dd>
+                <dt style="padding: 12px 16px; font: 500 11px 'IBM Plex Mono', monospace; color: #4A505B; border-bottom: 1px solid #D5D9DF;">NA START</dt><dd style="margin: 0; padding: 10px 16px; text-align: right; font-size: 18px; font-weight: 600; border-bottom: 1px solid #D5D9DF;">{{ ft.moveIn }} zł</dd>
+                <dt style="padding: 12px 16px; font: 500 11px 'IBM Plex Mono', monospace; color: #4A505B; border-bottom: 1px solid #D5D9DF;">DOSTĘPNE</dt><dd style="margin: 0; padding: 10px 16px; text-align: right; font-size: 16px; border-bottom: 1px solid #D5D9DF;">{{ ft.avail }} 2026</dd>
+                <dt style="padding: 12px 16px; font: 500 11px 'IBM Plex Mono', monospace; color: #4A505B; border-bottom: 1px solid #D5D9DF;">POTWIERDZONO</dt><dd style="margin: 0; padding: 10px 16px; text-align: right; font-size: 16px; border-bottom: 1px solid #D5D9DF;">{{ ft.freshRel }}, {{ ft.freshDate }}</dd>
+                <dt style="padding: 12px 16px; font: 500 11px 'IBM Plex Mono', monospace; color: #4A505B; border-bottom: 2px solid #15171C;">OKOLICA</dt><dd style="margin: 0; padding: 10px 16px; text-align: right; font-size: 16px; border-bottom: 2px solid #15171C;">{{ ft.d }} ±300 m</dd>
+                <dt style="padding: 10px 16px; font: 500 11px 'IBM Plex Mono', monospace; color: #4A505B; border-bottom: 1px solid #D5D9DF;">POKOJE · M²</dt><dd style="margin: 0; padding: 10px 16px; text-align: right; font-size: 15px; border-bottom: 1px solid #D5D9DF;">{{ ft.roomsShort }} · {{ ft.area }}</dd>
+                <dt style="padding: 10px 16px; font: 500 11px 'IBM Plex Mono', monospace; color: #4A505B; border-bottom: 1px solid #D5D9DF;">MIN. OKRES</dt><dd style="margin: 0; padding: 10px 16px; text-align: right; font-size: 15px; border-bottom: 1px solid #D5D9DF;">{{ ft.minN }} mies.</dd>
+                <dt style="padding: 10px 16px; font: 500 11px 'IBM Plex Mono', monospace; color: #4A505B; border-bottom: 1px solid #D5D9DF;">UMEBLOWANE</dt><dd style="margin: 0; padding: 10px 16px; text-align: right; font-size: 15px; border-bottom: 1px solid #D5D9DF;">tak</dd>
+                <dt style="padding: 10px 16px; font: 500 11px 'IBM Plex Mono', monospace; color: #4A505B;">WINDA · ZWIERZĘTA</dt><dd style="margin: 0; padding: 10px 16px; text-align: right; font-size: 15px;">tak · tak</dd>
+              </dl>
+              <div style="margin: 14px; padding: 12px; border: 1.5px dashed #1E4BD2; font: 500 11.5px/1.55 'IBM Plex Mono', monospace; color: #1E4BD2;">STREFA AKCJI · PROPOSED FE-003<br><span style="color: #4A505B;">TERMINY OGLĄDANIA + NAPISZ. NIE W FE-002.</span></div>
+            </aside>
+          </div>
+          <section aria-labelledby="b-kosztorys" style="margin: 40px 48px 0; padding-top: 18px; border-top: 2px solid #15171C;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 22px;"><h2 id="b-kosztorys" style="margin: 0; font: 600 12px 'IBM Plex Mono', monospace; letter-spacing: .08em;">KOSZTORYS MIESIĘCZNY</h2><span style="font: 500 11.5px 'IBM Plex Mono', monospace; color: #4A505B;">MEDIA = SZACUNEK WG ZUŻYCIA DLA 2 OSÓB</span></div>
+            <div style="display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 40px; align-items: end;">
+              <div>
+                <div style="display: flex;"><sc-for list="{{ ft.bSegs }}" as="g" hint-placeholder-count="3"><span style="{{ g.lab }}">{{ g.k }} {{ g.v }} ZŁ</span></sc-for></div>
+                <div style="display: flex;"><sc-for list="{{ ft.bSegs }}" as="g" hint-placeholder-count="3"><span style="{{ g.tick }}"></span></sc-for></div>
+                <div style="display: flex; height: 34px; gap: 3px; margin-top: 8px;"><sc-for list="{{ ft.bSegs }}" as="g" hint-placeholder-count="3"><span style="{{ g.bar }}"></span></sc-for></div>
+              </div>
+              <div style="text-align: right; border-left: 1px solid #15171C; padding-left: 24px;"><div style="font: 600 56px/1 'IBM Plex Sans', sans-serif; letter-spacing: -.03em;">{{ ft.total }} zł</div><div style="font: 500 11.5px 'IBM Plex Mono', monospace; color: #4A505B; margin-top: 8px;">ŁĄCZNIE / MIES. · SZACUNEK</div></div>
+            </div>
+          </section>
+          <section aria-labelledby="b-start" style="margin: 36px 48px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px;">
+            <div>
+              <h2 id="b-start" style="margin: 0 0 12px; font: 600 12px 'IBM Plex Mono', monospace; letter-spacing: .08em;">NA START</h2>
+              <table style="width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 15.5px;">
+                <tr style="border-bottom: 1px solid #D5D9DF;"><td style="padding: 11px 0;"><span aria-hidden="true" style="display: inline-block; width: 22px; height: 10px; background: #15171C; margin-right: 10px;"></span>Pierwszy miesiąc (najem + adm.)</td><td style="padding: 11px 0; text-align: right;">{{ ft.first }} zł</td></tr>
+                <tr style="border-bottom: 1px solid #D5D9DF;"><td style="padding: 11px 0;"><span aria-hidden="true" style="display: inline-block; width: 22px; height: 10px; background: #15171C; margin-right: 10px;"></span>Prowizja</td><td style="padding: 11px 0; text-align: right;">{{ ft.feeL }}</td></tr>
+                <tr style="border-bottom: 1px solid #D5D9DF;"><td style="padding: 11px 0;"><span aria-hidden="true" style="display: inline-block; width: 22px; height: 10px; border: 1.5px dashed #15171C; box-sizing: border-box; margin-right: 10px;"></span>Kaucja — <strong style="font-weight: 600;">zwrotna</strong><span style="display: block; padding-left: 32px; font-size: 13.5px; color: #4A505B;">wraca po zakończeniu najmu</span></td><td style="padding: 11px 0; text-align: right;">{{ ft.dep }} zł</td></tr>
+                <tr style="border-bottom: 2px solid #15171C;"><td style="padding: 12px 0; font-weight: 600;">Razem na start</td><td style="padding: 12px 0; text-align: right; font-weight: 600; font-size: 20px;">{{ ft.moveIn }} zł</td></tr>
+                <tr><td style="padding: 8px 0; font: 500 11.5px 'IBM Plex Mono', monospace; color: #4A505B;">W TYM BEZZWROTNIE</td><td style="padding: 8px 0; text-align: right; font: 500 13px 'IBM Plex Mono', monospace; color: #4A505B;">{{ ft.nonRef }} ZŁ</td></tr>
+              </table>
+            </div>
+            <div>
+              <h2 style="margin: 0 0 12px; font: 600 12px 'IBM Plex Mono', monospace; letter-spacing: .08em;">LOKALIZACJA · PRZYBLIŻONA</h2>
+              <div style="position: relative; height: 236px; overflow: hidden; border: 1px solid #15171C; background-color: #F6F7F8; background-image: linear-gradient(#E3E6EA 1px, transparent 1px), linear-gradient(90deg, #E3E6EA 1px, transparent 1px); background-size: 24px 24px;">
+                <div aria-hidden="true" style="position: absolute; left: 50%; top: 50%; width: 170px; height: 170px; margin: -85px 0 0 -85px; border-radius: 50%; border: 1.5px dashed #1E4BD2; background: rgba(30,75,210,.07);"></div>
+                <span aria-hidden="true" style="position: absolute; left: 50%; top: 50%; width: 170px; height: 1px; margin-left: 0; background: #1E4BD2;"></span>
+                <span style="position: absolute; left: calc(50% + 34px); top: calc(50% - 18px); font: 500 11px 'IBM Plex Mono', monospace; color: #1E4BD2;">R ≈ 300 M</span>
+                <span style="position: absolute; left: 50%; top: calc(50% + 22px); transform: translateX(-50%); font: 600 14px 'IBM Plex Sans', sans-serif;">{{ ft.d }}</span>
+              </div>
+              <p style="margin: 8px 0 0; font-size: 14px; color: #4A505B;">Promień zamiast punktu. Dokładny adres przekazuje wynajmujący.</p>
+            </div>
+          </section>
+          <section style="margin: 36px 48px 0; padding: 18px 0 56px; border-top: 1px solid #D5D9DF; display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 24px;">
+            <h2 style="margin: 0; font: 600 12px 'IBM Plex Mono', monospace; letter-spacing: .08em;">OPIS</h2>
+            <p style="margin: 0; font-size: 17px; line-height: 1.65; max-width: 66ch;">Dwa osobne pokoje i kuchnia otwarta na salon. Balkon od strony podwórza, nowe okna, ogrzewanie miejskie. Do tramwaju na Lipowej cztery minuty. Media wg zużycia — szacunek dla dwóch osób z rachunków z ostatniego roku.</p>
+          </section>
+        </div>
+      </div>
+
+      <!-- 1b MOBILE -->
+      <div>
+        <div style="font: 600 12px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #5A5E66; margin-bottom: 12px;">1b · WYNIKI · MOBILE 390</div>
+        <div style="width: 390px; height: 844px; overflow: hidden; position: relative; border-radius: 46px; box-shadow: 0 0 0 10px #141414, 0 30px 70px rgba(20,20,20,.25); background: #fff; color: #15171C; font-family: 'IBM Plex Sans', sans-serif;">
+          <div style="height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; font-size: 15px; font-weight: 600;"><span>9:41</span><span style="font-size: 12px;">● ● ●</span></div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 4px 16px 12px; border-bottom: 1px solid #15171C;"><span style="font: 600 15px/1 'IBM Plex Sans', sans-serif; letter-spacing: .18em;">HOMIES</span><span style="font: 500 11px 'IBM Plex Mono', monospace; color: #1E4BD2;">/ KRK</span></div>
+          <div style="display: grid; grid-template-columns: 1fr auto; border-bottom: 1px solid #15171C;">
+            <button type="button" style="text-align: left; padding: 10px 16px; background: #fff; border: 0; border-right: 1px solid #D5D9DF; font: 500 15px 'IBM Plex Sans', sans-serif; color: #15171C;"><span style="display: block; font: 500 10.5px 'IBM Plex Mono', monospace; color: #4A505B;">KRAKÓW · 128 OFERT</span>≤ 4 500 zł · 2+ pok.</button>
+            <button type="button" style="padding: 0 18px; min-height: 52px; background: #15171C; color: #fff; border: 0; font: 600 12.5px 'IBM Plex Mono', monospace;">FILTRY 2</button>
+          </div>
+          <sc-for list="{{ res }}" as="l" hint-placeholder-count="3">
+            <article style="display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 12px; padding: 14px 16px; border-bottom: 1px solid #D5D9DF;">
+              <div style="aspect-ratio: 1; background: #E9ECF0;"><image-slot id="{{ l.sbm }}" placeholder="Zdjęcie" style="width: 100%; height: 100%;"></image-slot></div>
+              <div style="display: grid; gap: 5px; min-width: 0; align-content: start;">
+                <div style="display: flex; justify-content: space-between; font: 500 10.5px 'IBM Plex Mono', monospace;"><span style="color: #1E4BD2;">{{ l.dUp }}</span><span style="color: #4A505B;">{{ l.freshUp }}</span></div>
+                <div style="font: 600 24px/1 'IBM Plex Sans', sans-serif; letter-spacing: -.02em;">{{ l.total }} zł <span style="font: 500 10.5px 'IBM Plex Mono', monospace; color: #4A505B; letter-spacing: 0;">/ MIES.</span></div>
+                <div style="display: flex; height: 8px; gap: 2px;"><sc-for list="{{ l.bSegs }}" as="g" hint-placeholder-count="3"><span style="{{ g.bar }}"></span></sc-for></div>
+                <div style="font: 500 11px 'IBM Plex Mono', monospace; color: #4A505B;">{{ l.arithShort }}</div>
+                <div style="font-size: 14px;">{{ l.roomsShort }} pok. · {{ l.area }} m² · {{ l.avail }}</div>
+              </div>
+            </article>
+          </sc-for>
+          <div role="group" aria-label="Widok" style="position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #15171C; background: #fff; box-shadow: 0 10px 24px rgba(0,0,0,.18);">
+            <button type="button" aria-pressed="true" style="height: 52px; padding: 0 26px; background: #15171C; color: #fff; border: 0; font: 600 13px 'IBM Plex Mono', monospace;">LISTA</button>
+            <button type="button" aria-pressed="false" style="height: 52px; padding: 0 26px; background: #fff; color: #15171C; border: 0; font: 600 13px 'IBM Plex Mono', monospace;">MAPA</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1b SIGNATURES -->
+      <div>
+        <div style="font: 600 12px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #5A5E66; margin-bottom: 12px;">1b · SYGNATURY + KARTA KIERUNKU</div>
+        <div style="width: 940px; background: #fff; color: #15171C; font-family: 'IBM Plex Sans', sans-serif; box-shadow: 0 30px 70px rgba(20,20,20,.16); padding: 44px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px 44px;">
+          <div style="grid-column: 1 / -1;">
+            <div style="font: 600 12px 'IBM Plex Mono', monospace; letter-spacing: .08em; border-top: 2px solid #15171C; padding-top: 10px; margin-bottom: 18px;">KOSZT — SYGNATURA: PASEK WYMIAROWY</div>
+            <div style="display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 28px; align-items: end;">
+              <div>
+                <div style="display: flex;"><sc-for list="{{ ft.bSegs }}" as="g" hint-placeholder-count="3"><span style="{{ g.lab }}">{{ g.k }} {{ g.v }}</span></sc-for></div>
+                <div style="display: flex;"><sc-for list="{{ ft.bSegs }}" as="g" hint-placeholder-count="3"><span style="{{ g.tick }}"></span></sc-for></div>
+                <div style="display: flex; height: 22px; gap: 2px; margin-top: 6px;"><sc-for list="{{ ft.bSegs }}" as="g" hint-placeholder-count="3"><span style="{{ g.bar }}"></span></sc-for></div>
+              </div>
+              <div style="text-align: right;"><div style="font: 600 42px/1 'IBM Plex Sans', sans-serif; letter-spacing: -.03em;">{{ ft.total }} zł</div><div style="font: 500 11px 'IBM Plex Mono', monospace; color: #4A505B; margin-top: 6px;">ŁĄCZNIE / MIES.</div></div>
+            </div>
+            <p style="margin: 14px 0 0; font-size: 14px; line-height: 1.55; color: #4A505B;">Proporcje paska = proporcje kosztu. Ten sam komponent w trzech skalach: 8 px (karta mobile), 12 px (karta desktop), 34 px (oferta). Wzór niesie znaczenie bez koloru. Czytnik ekranu dostaje tekst: „Łącznie 4350 zł miesięcznie: najem 3500, administracja 600, media około 250, szacunek”.</p>
+          </div>
+          <div>
+            <div style="font: 600 12px 'IBM Plex Mono', monospace; letter-spacing: .08em; border-top: 2px solid #15171C; padding-top: 10px; margin-bottom: 14px;">NA START</div>
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; font-size: 15px;"><span>▬ Pierwszy miesiąc</span><span>4 100 zł</span><span>▬ Prowizja</span><span>0 zł</span><span style="padding: 8px; border: 1.5px dashed #15171C;">Kaucja · zwrotna</span><span style="padding: 8px 0;">3 500 zł</span></div>
+            <p style="margin: 10px 0 0; font-size: 14px; color: #4A505B; line-height: 1.5;">Kontur = zwrotne. Ten sam znak w legendzie, kosztorysie i FE-003.</p>
+          </div>
+          <div>
+            <div style="font: 600 12px 'IBM Plex Mono', monospace; letter-spacing: .08em; border-top: 2px solid #15171C; padding-top: 10px; margin-bottom: 14px;">ŚWIEŻOŚĆ</div>
+            <div style="display: grid; gap: 8px; font: 500 13px 'IBM Plex Mono', monospace;"><span style="color: #1E4BD2;">POTW. DZIŚ · 03.10</span><span>POTW. 4 DNI TEMU · 29.09</span><span style="color: #4A505B;">OSTATNIE POTW. 16 DNI TEMU · 17.09</span></div>
+            <p style="margin: 10px 0 0; font-size: 14px; color: #4A505B; line-height: 1.5;">Stempel jak na rysunku: data zawsze widoczna. Niebieski tylko dla „dziś”; starsze bez ostrzeżeń.</p>
+          </div>
+          <div>
+            <div style="font: 600 12px 'IBM Plex Mono', monospace; letter-spacing: .08em; border-top: 2px solid #15171C; padding-top: 10px; margin-bottom: 14px;">LOKALIZACJA PRZYBLIŻONA</div>
+            <div style="position: relative; height: 120px; border: 1px solid #15171C; background: #F6F7F8;"><div aria-hidden="true" style="position: absolute; left: 50%; top: 50%; width: 100px; height: 100px; margin: -50px 0 0 -50px; border-radius: 50%; border: 1.5px dashed #1E4BD2;"></div><span aria-hidden="true" style="position: absolute; left: 50%; top: 50%; width: 50px; height: 1px; background: #1E4BD2;"></span><span style="position: absolute; left: calc(50% + 6px); top: calc(50% - 16px); font: 500 10.5px 'IBM Plex Mono', monospace; color: #1E4BD2;">R≈300 M</span></div>
+            <p style="margin: 10px 0 0; font-size: 14px; color: #4A505B; line-height: 1.5;">Promień zwymiarowany wprost. Bez pinezki, bez punktu środkowego.</p>
+          </div>
+          <div>
+            <div style="font: 600 12px 'IBM Plex Mono', monospace; letter-spacing: .08em; border-top: 2px solid #15171C; padding-top: 10px; margin-bottom: 14px;">CTA · PROPOSED FE-003</div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid #15171C;"><span style="padding: 10px; border-right: 1px solid #D5D9DF; font: 500 12.5px 'IBM Plex Mono', monospace;">SOB<br><strong style="font: 600 16px 'IBM Plex Sans', sans-serif;">10:00</strong></span><span style="padding: 10px; border-right: 1px solid #D5D9DF; background: #1E4BD2; color: #fff; font: 500 12.5px 'IBM Plex Mono', monospace;">SOB<br><strong style="font: 600 16px 'IBM Plex Sans', sans-serif;">11:30</strong></span><span style="padding: 10px; font: 500 12.5px 'IBM Plex Mono', monospace;">PON<br><strong style="font: 600 16px 'IBM Plex Sans', sans-serif;">18:30</strong></span></div>
+            <div style="margin-top: 8px; height: 48px; display: grid; place-items: center; background: #15171C; color: #fff; font-weight: 600; font-size: 15px;">Potwierdź sob 11:30</div>
+            <p style="margin: 10px 0 0; font-size: 14px; color: #4A505B; line-height: 1.5;">Siatka terminów = tabela. Potwierdzenie w tym samym miejscu, bez nowego ekranu.</p>
+          </div>
+          <div style="grid-column: 1 / -1;">
+            <div style="font: 600 12px 'IBM Plex Mono', monospace; letter-spacing: .08em; border-top: 2px solid #15171C; padding-top: 10px; margin-bottom: 14px;">KARTA OFERTY — ANATOMIA</div>
+            <ol style="margin: 0; padding-left: 20px; font-size: 14.5px; line-height: 1.6; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 32px;">
+              <li>Numer i dzielnica — mono, niebieski numer to kotwica do znacznika na mapie.</li>
+              <li>Świeżość — stempel po prawej w tej samej linii.</li>
+              <li>Tytuł z API, Plex Sans 18/600, link.</li>
+              <li>Siatka faktów: POK. / M² / OD / MIN. — stałe kolumny, łatwo porównać wiersze.</li>
+              <li>Pasek wymiarowy + składniki mono pod nim.</li>
+              <li>Suma 26/600 wyrównana do prawej — ta sama kolumna we wszystkich wierszach.</li>
+            </ol>
+          </div>
+          <div style="grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px 26px; border-top: 2px solid #15171C; padding-top: 16px;">
+            <sc-for list="{{ specB }}" as="s" hint-placeholder-count="9">
+              <div><div style="font: 600 11.5px 'IBM Plex Mono', monospace; letter-spacing: .08em; color: #1E4BD2; margin-bottom: 6px;">{{ s.k }}</div><p style="margin: 0; font-size: 14.5px; line-height: 1.5;">{{ s.v }}</p></div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 1c DZIELNICA ================= -->
+  <div id="1c" style="display: grid; gap: 30px;">
+    <div style="display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap;">
+      <span style="font: 700 15px/1 'IBM Plex Mono', monospace; background: #16181D; color: #fff; padding: 8px 11px;">1c</span>
+      <h2 style="margin: 0; font: 600 38px/1.1 'IBM Plex Sans', sans-serif; color: #16181D;">Dzielnica — atlas miasta</h2>
+      <span style="font: 400 18px/1.4 'IBM Plex Sans', sans-serif; color: #4A505B; max-width: 70ch;">Zaczynasz od miejsca. Każda dzielnica ma kolor, który niesie się przez kafelki, karty, mapę i stronę oferty.</span>
+    </div>
+    <div style="display: flex; gap: 64px; align-items: flex-start;">
+
+      <!-- 1c HOME -->
+      <div>
+        <div style="font: 600 12px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #5A5E66; margin-bottom: 12px;">1c · STRONA GŁÓWNA · DESKTOP 1280</div>
+        <div style="width: 1280px; background: #fff; color: #121212; font-family: 'Public Sans', sans-serif; box-shadow: 0 30px 70px rgba(20,20,20,.16);">
+          <header style="display: flex; align-items: center; gap: 18px; padding: 20px 48px;">
+            <span aria-hidden="true" style="display: grid; grid-template-columns: repeat(3, 8px); gap: 3px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #8C2F39;"></span><span style="width: 8px; height: 8px; border-radius: 50%; background: #9A5418;"></span><span style="width: 8px; height: 8px; border-radius: 50%; background: #2F6B4F;"></span><span style="width: 8px; height: 8px; border-radius: 50%; background: #5B4A8B;"></span><span style="width: 8px; height: 8px; border-radius: 50%; background: #2B5C8A;"></span><span style="width: 8px; height: 8px; border-radius: 50%; background: #6B5E2E;"></span></span>
+            <span style="font: 800 28px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">homies</span>
+            <button type="button" style="height: 40px; padding: 0 14px; border-radius: 999px; border: 1.5px solid #D6D2C8; background: #fff; font: 600 14.5px 'Public Sans', sans-serif; margin-left: 10px;">Kraków ▾</button>
+            <nav style="display: flex; gap: 28px; margin-left: auto; font-size: 15px; font-weight: 600;"><a href="#" style="text-decoration: none;">Dzielnice</a><a href="#" style="text-decoration: none;">Jak liczymy koszt</a><a href="#" style="text-decoration: none; color: #4D4D4D;">Dla wynajmujących</a></nav>
+          </header>
+          <div style="display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 40px; padding: 32px 48px 56px;">
+            <div style="display: grid; align-content: start; gap: 26px;">
+              <h1 style="margin: 0; font: 800 82px/.94 'Bricolage Grotesque', sans-serif; letter-spacing: -.04em;">Wybierz okolicę. Resztę policzymy.</h1>
+              <p style="margin: 0; font-size: 18px; line-height: 1.55; color: #4D4D4D;">Przy każdej ofercie: łączny koszt miesięczny, kwota na start i data ostatniego potwierdzenia.</p>
+              <form role="search" aria-label="Szukaj mieszkania" style="display: grid; gap: 18px; padding: 24px; border-radius: 24px; background: #F6F4EF;">
+                <fieldset style="border: 0; padding: 0; margin: 0;"><legend style="font-size: 14px; font-weight: 700; margin-bottom: 10px;">Gdzie? <span style="font-weight: 500; color: #4D4D4D;">· wybrane 3</span></legend>
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px;"><sc-for list="{{ chips }}" as="c" hint-placeholder-count="6"><button type="button" aria-pressed="{{ c.on }}" style="{{ c.style }}">{{ c.name }}</button></sc-for></div>
+                </fieldset>
+                <div style="display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: end;">
+                  <div><div style="font-size: 14px; font-weight: 700; margin-bottom: 8px;">Łącznie miesięcznie do</div><div style="display: flex; align-items: center; gap: 10px;"><button type="button" aria-label="Zmniejsz budżet o 100 zł" style="width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid #D6D2C8; background: #fff; font-size: 20px;">−</button><span style="font: 700 30px/1 'Bricolage Grotesque', sans-serif; min-width: 128px; text-align: center;">4 500 zł</span><button type="button" aria-label="Zwiększ budżet o 100 zł" style="width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid #D6D2C8; background: #fff; font-size: 20px;">+</button></div></div>
+                  <div><div style="font-size: 14px; font-weight: 700; margin-bottom: 8px;">Pokoje</div><div style="display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: #fff;"><span style="width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 600;">1</span><span style="width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: #121212; color: #fff;">2+</span><span style="width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 600;">3+</span><span style="width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 600;">4+</span></div></div>
+                </div>
+                <button type="submit" style="height: 58px; border-radius: 999px; border: 0; background: #121212; color: #fff; font: 700 17px 'Public Sans', sans-serif; cursor: pointer;">Pokaż 64 mieszkania →</button>
+              </form>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 158px; gap: 10px;">
+              <sc-for list="{{ atlas }}" as="t" hint-placeholder-count="6">
+                <button type="button" aria-pressed="{{ t.on }}" style="{{ t.style }}">
+                  <span style="display: flex; justify-content: space-between; gap: 8px; align-items: baseline;"><span style="font: 700 30px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em;">{{ t.name }}</span><span style="font-size: 12.5px; font-weight: 700;">{{ t.mark }}</span></span>
+                  <span style="display: grid; gap: 2px; font-size: 14px;"><strong style="font-weight: 700; font-size: 15px;">{{ t.count }}</strong><span>{{ t.from }}</span><span style="opacity: .9;">{{ t.fresh }}</span></span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+          <section style="padding: 0 48px 56px;">
+            <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 18px;"><h2 style="margin: 0; font: 800 38px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">Świeżo potwierdzone</h2><a href="#" style="font-weight: 600;">Wszystkie w Krakowie →</a></div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+              <sc-for list="{{ res }}" as="l" hint-placeholder-count="3">
+                <article style="border-radius: 20px; overflow: hidden; box-shadow: 0 0 0 1px #E6E3DC;">
+                  <div style="position: relative; aspect-ratio: 16/10; background: #ECE9E2;"><image-slot id="{{ l.sc }}" placeholder="Zdjęcie" style="width: 100%; height: 100%;"></image-slot><span style="{{ l.tagC }}">{{ l.d }}</span></div>
+                  <div style="padding: 16px 18px 18px; display: grid; gap: 4px;">
+                    <div style="display: flex; align-items: baseline; gap: 8px;"><span style="font: 700 32px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em;">{{ l.total }} zł</span><span style="font-size: 14px; color: #4D4D4D;">łącznie / mies.</span></div>
+                    <div style="font-size: 14px; color: #4D4D4D;">najem {{ l.rent }} + opłaty {{ l.fees }}</div>
+                    <div style="font-size: 15.5px; font-weight: 600; margin-top: 6px;">{{ l.title }}</div>
+                    <div style="font-size: 14px; color: #4D4D4D;">{{ l.roomsL }} · {{ l.area }} m² · {{ l.avail }} · <span style="color: #121212; font-weight: 600;">✓ {{ l.fresh }}</span></div>
+                  </div>
+                </article>
+              </sc-for>
+            </div>
+            <p style="margin: 18px 0 0; font-size: 13.5px; color: #4D4D4D;">Liczby w kafelkach dzielnic („31 mieszkań, od 3 380 zł”) wymagają agregatów z backendu — PROPOSED.</p>
+          </section>
+        </div>
+      </div>
+
+      <!-- 1c RESULTS -->
+      <div>
+        <div style="font: 600 12px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #5A5E66; margin-bottom: 12px;">1c · WYNIKI + MAPA · DESKTOP 1280</div>
+        <div style="width: 1280px; height: 1000px; overflow: hidden; background: #fff; color: #121212; font-family: 'Public Sans', sans-serif; box-shadow: 0 30px 70px rgba(20,20,20,.16); display: grid; grid-template-rows: auto auto minmax(0, 1fr);">
+          <header style="display: flex; align-items: center; gap: 16px; padding: 16px 32px; border-bottom: 1px solid #E6E3DC;"><span style="font: 800 26px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">homies</span><button type="button" style="height: 38px; padding: 0 14px; border-radius: 999px; border: 1.5px solid #D6D2C8; background: #fff; font: 600 14px 'Public Sans', sans-serif;">Kraków ▾</button><nav style="display: flex; gap: 26px; margin-left: auto; font-size: 15px; font-weight: 600;"><a href="#" style="text-decoration: none;">Dzielnice</a><a href="#" style="text-decoration: none; color: #4D4D4D;">Dla wynajmujących</a></nav></header>
+          <div style="padding: 18px 32px; display: grid; gap: 12px; border-bottom: 1px solid #E6E3DC;">
+            <div style="display: flex; align-items: baseline; gap: 14px;"><h1 style="margin: 0; font: 800 34px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">64 mieszkania</h1><span style="font-size: 16px; color: #4D4D4D;">na Zabłociu, w Podgórzu i na Kazimierzu, do 4 500 zł łącznie</span></div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+              <button type="button" style="height: 40px; padding: 0 14px; border-radius: 999px; border: 0; background: #5B4A8B; color: #fff; font: 600 14.5px 'Public Sans', sans-serif;">Zabłocie ×</button>
+              <button type="button" style="height: 40px; padding: 0 14px; border-radius: 999px; border: 0; background: #2F6B4F; color: #fff; font: 600 14.5px 'Public Sans', sans-serif;">Podgórze ×</button>
+              <button type="button" style="height: 40px; padding: 0 14px; border-radius: 999px; border: 0; background: #9A5418; color: #fff; font: 600 14.5px 'Public Sans', sans-serif;">Kazimierz ×</button>
+              <button type="button" style="height: 40px; padding: 0 14px; border-radius: 999px; border: 1.5px solid #D6D2C8; background: #fff; font: 600 14.5px 'Public Sans', sans-serif;">+ Dzielnica</button>
+              <span style="width: 1px; height: 26px; background: #E6E3DC; margin: 0 6px;"></span>
+              <button type="button" style="height: 40px; padding: 0 14px; border-radius: 999px; border: 1.5px solid #121212; background: #fff; font: 600 14.5px 'Public Sans', sans-serif;">do 4 500 zł ▾</button>
+              <button type="button" style="height: 40px; padding: 0 14px; border-radius: 999px; border: 1.5px solid #121212; background: #fff; font: 600 14.5px 'Public Sans', sans-serif;">2+ pokoje ▾</button>
+              <button type="button" style="height: 40px; padding: 0 14px; border-radius: 999px; border: 0; background: #121212; color: #fff; font: 600 14.5px 'Public Sans', sans-serif;">Filtry · 2</button>
+              <span style="margin-left: auto; font-size: 14.5px; font-weight: 600;">Sortuj: domyślnie ▾</span>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: minmax(0, 1fr) 500px; min-height: 0;">
+            <div style="padding: 22px 24px 0 32px; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: max-content; gap: 20px; align-content: start; overflow: hidden;">
+              <sc-for list="{{ res }}" as="l" hint-placeholder-count="3">
+                <article style="{{ l.cCard }}">
+                  <div style="position: relative; aspect-ratio: 16/10; background: #ECE9E2;"><image-slot id="{{ l.sc }}r" placeholder="Zdjęcie" style="width: 100%; height: 100%;"></image-slot><span style="{{ l.tagC }}">{{ l.d }}</span></div>
+                  <div style="padding: 14px 16px 16px; display: grid; gap: 4px;">
+                    <div style="display: flex; align-items: baseline; gap: 8px;"><span style="font: 700 32px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em;">{{ l.total }} zł</span><span style="font-size: 13.5px; color: #4D4D4D;">łącznie / mies.</span></div>
+                    <div style="display: flex; height: 8px; gap: 3px; margin: 4px 0 2px;"><sc-for list="{{ l.cSegs }}" as="g" hint-placeholder-count="3"><span style="{{ g.bar }}"></span></sc-for></div>
+                    <div style="font-size: 13.5px; color: #4D4D4D;">najem {{ l.rent }} + opłaty {{ l.fees }}</div>
+                    <h3 style="margin: 6px 0 0; font-size: 16px; font-weight: 600; line-height: 1.3;"><a href="#" style="text-decoration: none;">{{ l.title }}</a></h3>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;"><span style="padding: 4px 10px; border-radius: 999px; background: #F6F4EF; font-size: 13px;">{{ l.roomsL }}</span><span style="padding: 4px 10px; border-radius: 999px; background: #F6F4EF; font-size: 13px;">{{ l.area }} m²</span><span style="padding: 4px 10px; border-radius: 999px; background: #F6F4EF; font-size: 13px;">{{ l.avail }}</span></div>
+                    <div style="font-size: 13.5px; font-weight: 600; margin-top: 6px;">✓ {{ l.fresh }} <span style="font-weight: 400; color: #4D4D4D;">· {{ l.freshDate }}</span></div>
+                  </div>
+                </article>
+              </sc-for>
+            </div>
+            <div style="position: relative; overflow: hidden; background: #EFF1EC; border-left: 1px solid #E6E3DC;">
+              <div aria-hidden="true" style="position: absolute; left: -20%; top: 62%; width: 140%; height: 54px; background: #D9E3E6; transform: rotate(-16deg);"></div>
+              <sc-for list="{{ res }}" as="l" hint-placeholder-count="3">
+                <div aria-hidden="true" style="{{ l.cArea }}"></div>
+                <span aria-hidden="true" style="{{ l.cName }}">{{ l.d }}</span>
+                <span style="{{ l.cTag }}">{{ l.total }} zł</span>
+              </sc-for>
+              <div style="position: absolute; left: 16px; top: 16px; display: flex; gap: 8px; align-items: center; padding: 10px 14px; border-radius: 999px; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.12); font-size: 14px; font-weight: 600;"><input type="checkbox" checked="{{ true }}" style="width: 18px; height: 18px; accent-color: #121212;" /> Szukaj przy przesuwaniu mapy</div>
+              <p style="position: absolute; left: 16px; right: 16px; bottom: 16px; margin: 0; padding: 12px 14px; border-radius: 14px; background: #fff; font-size: 13.5px; line-height: 1.45;">Plamy koloru to okolica oferty, nie adres. Kolor oznacza dzielnicę, nie ocenę.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1c DETAIL -->
+      <div>
+        <div style="font: 600 12px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #5A5E66; margin-bottom: 12px;">1c · STRONA OFERTY · DESKTOP 1280</div>
+        <div style="width: 1280px; background: #fff; color: #121212; font-family: 'Public Sans', sans-serif; box-shadow: 0 30px 70px rgba(20,20,20,.16);">
+          <header style="display: flex; align-items: center; gap: 16px; padding: 16px 48px;"><span style="font: 800 26px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">homies</span><a href="#" style="margin-left: 18px; font-weight: 600;">← Wróć do wyników (64)</a></header>
+          <div style="display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); min-height: 560px; margin: 0 48px; border-radius: 28px; overflow: hidden;">
+            <div style="background: #5B4A8B; color: #fff; padding: 40px; display: grid; align-content: space-between; gap: 24px;">
+              <div><div style="font: 800 100px/.9 'Bricolage Grotesque', sans-serif; letter-spacing: -.045em;">{{ ft.d }}</div><div style="font-size: 16px; margin-top: 12px; opacity: .92;">{{ ft.place }} · okolica ok. 300 m</div></div>
+              <div><h1 style="margin: 0 0 10px; font: 700 34px/1.1 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em;">{{ ft.title }}, {{ ft.area }} m²</h1><div style="font-size: 16px;">{{ ft.roomsL }} · {{ ft.floor }} · umeblowane</div><div style="margin-top: 16px; display: inline-flex; padding: 8px 14px; border-radius: 999px; background: rgba(255,255,255,.18); font-weight: 700; font-size: 14.5px;">✓ {{ ft.fresh }}, {{ ft.freshDate }}</div></div>
+            </div>
+            <div style="display: grid; grid-template-rows: 2fr 1fr; gap: 6px; background: #fff;">
+              <div style="background: #ECE9E2;"><image-slot id="c-d1" placeholder="Zdjęcie główne" style="width: 100%; height: 100%;"></image-slot></div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;"><div style="background: #ECE9E2;"><image-slot id="c-d2" placeholder="Kuchnia" style="width: 100%; height: 100%;"></image-slot></div><div style="background: #ECE9E2;"><image-slot id="c-d3" placeholder="Sypialnia" style="width: 100%; height: 100%;"></image-slot></div><div style="background: #ECE9E2; display: grid; place-items: center; font-weight: 700;">Wszystkie · 14</div></div>
+            </div>
+          </div>
+          <dl aria-label="W skrócie" style="margin: 24px 48px 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;">
+            <div style="padding: 16px 18px; border-radius: 18px; background: #F6F4EF;"><dt style="font-size: 13.5px; color: #4D4D4D;">Co miesiąc</dt><dd style="margin: 4px 0 0; font: 700 28px/1 'Bricolage Grotesque', sans-serif;">{{ ft.total }} zł</dd></div>
+            <div style="padding: 16px 18px; border-radius: 18px; background: #F6F4EF;"><dt style="font-size: 13.5px; color: #4D4D4D;">Na start</dt><dd style="margin: 4px 0 0; font: 700 28px/1 'Bricolage Grotesque', sans-serif;">{{ ft.moveIn }} zł</dd></div>
+            <div style="padding: 16px 18px; border-radius: 18px; background: #F6F4EF;"><dt style="font-size: 13.5px; color: #4D4D4D;">Wolne</dt><dd style="margin: 4px 0 0; font: 700 28px/1 'Bricolage Grotesque', sans-serif;">{{ ft.avail }}</dd></div>
+            <div style="padding: 16px 18px; border-radius: 18px; background: #F6F4EF;"><dt style="font-size: 13.5px; color: #4D4D4D;">Minimalny najem</dt><dd style="margin: 4px 0 0; font: 700 28px/1 'Bricolage Grotesque', sans-serif;">{{ ft.minN }} mies.</dd></div>
+            <div style="padding: 16px 18px; border-radius: 18px; background: #F6F4EF;"><dt style="font-size: 13.5px; color: #4D4D4D;">Okolica</dt><dd style="margin: 4px 0 0; font: 700 28px/1 'Bricolage Grotesque', sans-serif;">{{ ft.d }}</dd></div>
+          </dl>
+          <div style="display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 56px; padding: 44px 48px 64px;">
+            <div>
+              <h2 style="margin: 0 0 12px; font: 800 32px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em;">O mieszkaniu</h2>
+              <p style="margin: 0 0 28px; font-size: 17px; line-height: 1.65; color: #2A2A2A; max-width: 60ch;">Dwa osobne pokoje i kuchnia otwarta na salon. Balkon od strony podwórza, nowe okna, ogrzewanie miejskie. Tramwaj na Lipowej cztery minuty pieszo.</p>
+              <h2 style="margin: 0 0 12px; font: 800 32px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em;">Okolica</h2>
+              <div style="position: relative; height: 280px; border-radius: 22px; overflow: hidden; background: #EFF1EC;">
+                <div aria-hidden="true" style="position: absolute; left: -10%; top: 68%; width: 120%; height: 46px; background: #D9E3E6; transform: rotate(-10deg);"></div>
+                <div aria-hidden="true" style="position: absolute; left: 50%; top: 45%; width: 230px; height: 230px; margin: -115px 0 0 -115px; border-radius: 50%; background: #5B4A8B; opacity: .22;"></div>
+                <span style="position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); font: 800 30px 'Bricolage Grotesque', sans-serif; color: #5B4A8B;">Zabłocie</span>
+              </div>
+              <p style="margin: 10px 0 0; font-size: 14.5px; color: #4D4D4D;">Pokazujemy okolicę, nie adres. Dokładny adres przekazuje wynajmujący.</p>
+            </div>
+            <aside style="display: grid; gap: 18px; align-content: start;">
+              <section aria-labelledby="c-cost" style="padding: 24px; border-radius: 24px; box-shadow: 0 0 0 1px #E6E3DC;">
+                <h2 id="c-cost" style="margin: 0; font-size: 14px; font-weight: 700; color: #4D4D4D;">Koszt miesięczny · szacunek</h2>
+                <div style="font: 800 72px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.04em; margin: 10px 0 14px;">{{ ft.total }} zł</div>
+                <div style="display: flex; height: 16px; gap: 4px; margin-bottom: 14px;"><sc-for list="{{ ft.cSegs }}" as="g" hint-placeholder-count="3"><span style="{{ g.bar }}"></span></sc-for></div>
+                <dl style="margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 10px 16px; font-size: 16px; font-variant-numeric: tabular-nums;"><dt>Najem</dt><dd style="margin: 0; text-align: right;">{{ ft.rent }} zł</dd><dt>Administracja</dt><dd style="margin: 0; text-align: right;">{{ ft.adm }} zł</dd><dt>Media <span style="color: #4D4D4D;">· szacunek</span></dt><dd style="margin: 0; text-align: right;">{{ ft.media }} zł</dd></dl>
+              </section>
+              <section aria-labelledby="c-start" style="padding: 24px; border-radius: 24px; background: #F6F4EF;">
+                <h2 id="c-start" style="margin: 0 0 12px; font-size: 14px; font-weight: 700; color: #4D4D4D;">Na start · {{ ft.moveIn }} zł</h2>
+                <dl style="margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 10px 16px; font-size: 16px;"><dt>Pierwszy miesiąc</dt><dd style="margin: 0; text-align: right;">{{ ft.first }} zł</dd><dt>Prowizja</dt><dd style="margin: 0; text-align: right;">{{ ft.feeL }}</dd></dl>
+                <div style="margin-top: 12px; padding: 14px 16px; border-radius: 16px; border: 2px dashed #5B4A8B; background: #fff; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px;"><span style="font-weight: 700;">Kaucja wraca</span><span style="font-weight: 700;">{{ ft.dep }} zł</span><span style="grid-column: 1 / -1; font-size: 14px; color: #4D4D4D;">Zwrotna po zakończeniu najmu — nie liczymy jej jako kosztu.</span></div>
+              </section>
+              <div style="padding: 18px; border-radius: 20px; border: 2px dashed #B9B4A8; font-size: 14px; color: #4D4D4D; line-height: 1.5;"><strong style="color: #121212;">Strefa akcji · PROPOSED FE-003</strong><br>Terminy oglądania i „Napisz” pojawią się tutaj. W FE-002 brak.</div>
+            </aside>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1c MOBILE -->
+      <div>
+        <div style="font: 600 12px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #5A5E66; margin-bottom: 12px;">1c · WYNIKI · MOBILE 390</div>
+        <div style="width: 390px; height: 844px; overflow: hidden; position: relative; border-radius: 46px; box-shadow: 0 0 0 10px #141414, 0 30px 70px rgba(20,20,20,.25); background: #fff; color: #121212; font-family: 'Public Sans', sans-serif;">
+          <div style="height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; font-size: 15px; font-weight: 600;"><span>9:41</span><span style="font-size: 12px;">● ● ●</span></div>
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 18px 10px;"><span style="font: 800 24px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.03em;">homies</span><button type="button" style="height: 44px; padding: 0 16px; border-radius: 999px; border: 0; background: #121212; color: #fff; font: 700 14.5px 'Public Sans', sans-serif;">Filtry · 2</button></div>
+          <div style="display: flex; gap: 8px; padding: 0 18px 12px; overflow: hidden;">
+            <span style="flex: none; height: 40px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 999px; background: #5B4A8B; color: #fff; font-weight: 600; font-size: 14px;">Zabłocie</span>
+            <span style="flex: none; height: 40px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 999px; background: #2F6B4F; color: #fff; font-weight: 600; font-size: 14px;">Podgórze</span>
+            <span style="flex: none; height: 40px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 999px; background: #9A5418; color: #fff; font-weight: 600; font-size: 14px;">Kazimierz</span>
+            <span style="flex: none; height: 40px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 999px; border: 1.5px solid #D6D2C8; font-weight: 600; font-size: 14px;">+ Dzielnica</span>
+          </div>
+          <div style="padding: 0 18px 12px; font: 800 24px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.02em;">64 mieszkania <span style="font: 500 14px 'Public Sans', sans-serif; color: #4D4D4D; letter-spacing: 0;">do 4 500 zł łącznie</span></div>
+          <div style="display: grid; gap: 14px; padding: 0 14px;">
+            <sc-for list="{{ resM }}" as="l" hint-placeholder-count="2">
+              <article style="border-radius: 20px; overflow: hidden; box-shadow: 0 0 0 1px #E6E3DC;">
+                <div style="position: relative; height: 196px; background: #ECE9E2;"><image-slot id="{{ l.scm }}" placeholder="Zdjęcie" style="width: 100%; height: 100%;"></image-slot><span style="{{ l.tagC }}">{{ l.d }}</span></div>
+                <div style="padding: 12px 14px 14px; display: grid; gap: 3px;">
+                  <div style="display: flex; align-items: baseline; gap: 8px;"><span style="font: 700 30px/1 'Bricolage Grotesque', sans-serif;">{{ l.total }} zł</span><span style="font-size: 13px; color: #4D4D4D;">łącznie / mies.</span></div>
+                  <div style="font-size: 13.5px; color: #4D4D4D;">najem {{ l.rent }} + opłaty {{ l.fees }}</div>
+                  <div style="font-size: 14px; margin-top: 4px;">{{ l.roomsL }} · {{ l.area }} m² · <strong style="font-weight: 600;">✓ {{ l.freshRel }}</strong></div>
+                </div>
+              </article>
+            </sc-for>
+          </div>
+          <button type="button" style="position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); height: 52px; padding: 0 26px; border-radius: 999px; border: 0; background: #121212; color: #fff; font: 700 16px 'Public Sans', sans-serif; box-shadow: 0 10px 24px rgba(0,0,0,.25);">Mapa</button>
+        </div>
+      </div>
+
+      <!-- 1c SIGNATURES -->
+      <div>
+        <div style="font: 600 12px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; color: #5A5E66; margin-bottom: 12px;">1c · SYGNATURY + KARTA KIERUNKU</div>
+        <div style="width: 940px; background: #fff; color: #121212; font-family: 'Public Sans', sans-serif; box-shadow: 0 30px 70px rgba(20,20,20,.16); padding: 44px; display: grid; grid-template-columns: 1fr 1fr; gap: 36px 40px;">
+          <div style="padding: 22px; border-radius: 22px; box-shadow: 0 0 0 1px #E6E3DC;">
+            <div style="font-size: 13px; font-weight: 700; color: #4D4D4D; margin-bottom: 10px;">Koszt — sygnatura</div>
+            <div style="font: 800 54px/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.04em;">4 350 zł</div>
+            <div style="display: flex; height: 12px; gap: 4px; margin: 12px 0;"><sc-for list="{{ ft.cSegs }}" as="g" hint-placeholder-count="3"><span style="{{ g.bar }}"></span></sc-for></div>
+            <div style="font-size: 14px; color: #4D4D4D;">najem 3 500 + opłaty 850 · paski w kolorze dzielnicy</div>
+            <p style="margin: 10px 0 0; font-size: 14px; line-height: 1.5;">Pełne = stałe, jaśniejsze = administracja, kreskowane = szacunek. Kolor dzielnicy, ale znaczenie niesie wzór.</p>
+          </div>
+          <div style="padding: 22px; border-radius: 22px; background: #F6F4EF;">
+            <div style="font-size: 13px; font-weight: 700; color: #4D4D4D; margin-bottom: 10px;">Na start</div>
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; font-size: 15px;"><span>Pierwszy miesiąc</span><span>4 100 zł</span><span>Prowizja</span><span>bez prowizji</span></div>
+            <div style="margin-top: 10px; padding: 12px 14px; border-radius: 14px; border: 2px dashed #5B4A8B; background: #fff; display: flex; justify-content: space-between; font-size: 15px; font-weight: 700;"><span>Kaucja wraca</span><span>3 500 zł</span></div>
+          </div>
+          <div>
+            <div style="font-size: 13px; font-weight: 700; color: #4D4D4D; margin-bottom: 10px;">Świeżość</div>
+            <div style="display: grid; gap: 8px;"><span style="justify-self: start; padding: 6px 12px; border-radius: 999px; background: #121212; color: #fff; font-size: 14px; font-weight: 700;">✓ Potwierdzono dziś · 3 paź</span><span style="justify-self: start; padding: 6px 12px; border-radius: 999px; background: #F6F4EF; font-size: 14px; font-weight: 600;">✓ Potwierdzono 4 dni temu · 29 wrz</span><span style="justify-self: start; padding: 6px 12px; border-radius: 999px; border: 1.5px solid #D6D2C8; font-size: 14px; color: #4D4D4D;">Ostatnie potwierdzenie 16 dni temu · 17 wrz</span></div>
+            <p style="margin: 10px 0 0; font-size: 14px; color: #4D4D4D; line-height: 1.5;">Pigułka słabnie z wiekiem potwierdzenia — bez czerwieni i bez liczników.</p>
+          </div>
+          <div>
+            <div style="font-size: 13px; font-weight: 700; color: #4D4D4D; margin-bottom: 10px;">Przybliżona lokalizacja</div>
+            <div style="position: relative; height: 120px; border-radius: 18px; overflow: hidden; background: #EFF1EC;"><div aria-hidden="true" style="position: absolute; left: 50%; top: 50%; width: 150px; height: 150px; margin: -75px 0 0 -75px; border-radius: 50%; background: #5B4A8B; opacity: .22;"></div><span style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font: 800 24px 'Bricolage Grotesque', sans-serif; color: #5B4A8B;">Zabłocie</span></div>
+            <p style="margin: 10px 0 0; font-size: 14px; color: #4D4D4D; line-height: 1.5;">Rozmyta plama bez krawędzi — najmniej sugeruje precyzję ze wszystkich trzech kierunków.</p>
+          </div>
+          <div style="grid-column: 1 / -1; padding: 20px; border-radius: 22px; border: 2px dashed #B9B4A8;">
+            <div style="font-size: 13px; font-weight: 700; color: #4D4D4D; margin-bottom: 12px;">CTA · PROPOSED FE-003 · nie w FE-002</div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;"><span style="height: 48px; display: inline-flex; align-items: center; padding: 0 18px; border-radius: 999px; border: 1.5px solid #121212; font-weight: 700;">sob 10:00</span><span style="height: 48px; display: inline-flex; align-items: center; padding: 0 18px; border-radius: 999px; background: #5B4A8B; color: #fff; font-weight: 700;">sob 11:30 ✓</span><span style="height: 48px; display: inline-flex; align-items: center; padding: 0 18px; border-radius: 999px; border: 1.5px solid #121212; font-weight: 700;">pon 18:30</span><span style="height: 48px; display: inline-flex; align-items: center; padding: 0 22px; border-radius: 999px; background: #121212; color: #fff; font-weight: 700; margin-left: 8px;">Potwierdź oglądanie</span></div>
+          </div>
+          <div style="grid-column: 1 / -1;">
+            <div style="font-size: 13px; font-weight: 700; color: #4D4D4D; margin-bottom: 10px;">Karta oferty — anatomia</div>
+            <ol style="margin: 0; padding-left: 20px; font-size: 14.5px; line-height: 1.6; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 32px;"><li>Etykieta dzielnicy na zdjęciu — kolor + nazwa tekstem.</li><li>Suma Bricolage 30–32, „łącznie / mies.” obok.</li><li>Pasek kosztu 8 px w kolorze dzielnicy.</li><li>„najem X + opłaty Y” — dwie liczby zamiast trzech.</li><li>Fakty jako pigułki: pokoje, m², dostępność.</li><li>Świeżość z ✓ i datą. Zaznaczenie z mapy = obrys 3 px w kolorze dzielnicy.</li></ol>
+          </div>
+          <div style="grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px 26px; border-top: 1px solid #E6E3DC; padding-top: 18px;">
+            <sc-for list="{{ specC }}" as="s" hint-placeholder-count="9">
+              <div><div style="font: 700 15px 'Bricolage Grotesque', sans-serif; margin-bottom: 6px;">{{ s.k }}</div><p style="margin: 0; font-size: 14.5px; line-height: 1.5;">{{ s.v }}</p></div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const n = v => String(v).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+    const raw = [
+      ['zab', '4821', 'Zabłocie', 'okolice ul. Lipowej', 2, 51, '3 piętro z 5', 3500, 600, 250, 3500, 0, '1 listopada', '01.11', 12, 'dziś', '3 paź', 0, 'Dwa pokoje z balkonem', '#5B4A8B', 66, 58],
+      ['pod', '4790', 'Podgórze', 'okolice Rynku Podgórskiego', 2, 48, '2 piętro z 4', 3200, 520, 250, 3200, 0, '1 listopada', '01.11', 12, 'dziś', '3 paź', 0, 'Jasne mieszkanie w kamienicy', '#2F6B4F', 44, 76],
+      ['kaz', '4702', 'Kazimierz', 'okolice placu Nowego', 2, 44, '1 piętro z 3', 3300, 410, 230, 6600, 0, '15 listopada', '15.11', 12, '4 dni temu', '29 wrz', 4, 'Dwa pokoje przy placu Nowym', '#9A5418', 34, 46],
+      ['grz', '4815', 'Grzegórzki', 'okolice Ronda Grzegórzeckiego', 1, 31, '5 piętro z 9', 2400, 380, 170, 2400, 0, 'zaraz', 'zaraz', 6, 'wczoraj', '2 paź', 1, 'Kawalerka z widokiem na Wisłę', '#6B5E2E', 62, 34],
+      ['kro', '4766', 'Krowodrza', 'okolice Parku Krakowskiego', 3, 62, '4 piętro z 6', 3900, 600, 300, 3900, 1950, 'zaraz', 'zaraz', 12, '2 dni temu', '1 paź', 2, 'Trzy pokoje przy parku', '#2B5C8A', 24, 20],
+      ['sta', '4688', 'Stare Miasto', 'okolice Plant', 3, 74, '2 piętro z 3', 5200, 700, 350, 5200, 0, '1 grudnia', '01.12', 12, '6 dni temu', '27 wrz', 6, 'Trzy pokoje w kamienicy przy Plantach', '#8C2F39', 36, 30]
+    ];
+    const hatch = c => 'repeating-linear-gradient(135deg,' + c + ' 0 2px,transparent 2px 6px)';
+    const all = raw.map((r, i) => {
+      const [id, offer, d, place, rooms, area, floor, rent, adm, media, dep, fee, avail, availShort, min, freshRel, freshDate, days, title, color, x, y] = r;
+      const total = rent + adm + media, first = rent + adm;
+      const pct = v => (v / total * 100).toFixed(1) + '%';
+      const l = {
+        id, offer, nr: '0' + (i + 1), d, dUp: d.toUpperCase(), place, placeUp: place.toUpperCase(), rooms, area, floor, title, color, x, y, days,
+        roomsL: rooms === 1 ? '1 pokój' : rooms + ' pokoje', roomsShort: String(rooms),
+        total: n(total), rent: n(rent), adm: n(adm), media: '~' + n(media), fees: n(adm + media), dep: n(dep),
+        feeL: fee ? n(fee) + ' zł' : 'bez prowizji', first: n(first), moveIn: n(first + dep + fee), nonRef: n(first + fee),
+        avail: avail === 'zaraz' ? 'od zaraz' : 'od ' + avail, availShort: availShort.toUpperCase(), min: 'min. ' + min + ' mies.', minN: min,
+        freshRel, freshDate, fresh: 'Potwierdzono ' + freshRel, freshUp: freshRel.toUpperCase(),
+        perM2: n(Math.round(total / area)),
+        arith: n(rent) + ' najem + ' + n(adm) + ' adm. + ~' + n(media) + ' media',
+        arithShort: n(rent) + ' + ' + n(adm) + ' + ~' + n(media),
+        sa: 'a-' + id, sam: 'am-' + id, sb: 'b-' + id, sbm: 'bm-' + id, sc: 'c-' + id, scm: 'cm-' + id,
+        band: 'background:' + color + ';',
+        tagC: 'position:absolute;left:14px;bottom:14px;padding:6px 12px;border-radius:999px;background:' + color + ';color:#fff;font:700 13px/1 "Public Sans",sans-serif;letter-spacing:.02em;'
+      };
+      l.bSegs = [['NAJEM', l.rent, pct(rent), '#15171C'], ['ADM.', l.adm, pct(adm), '#1E4BD2'], ['MEDIA', l.media, pct(media), null]].map(([k, v, w, c], j) => ({
+        k, v,
+        lab: (j === 2 ? 'flex:1 0 auto;min-width:' + w + ';text-align:right;padding:0 0 6px 8px;' : 'width:' + w + ';padding:0 6px 6px 0;overflow:hidden;') + 'box-sizing:border-box;font:500 11px/1.2 "IBM Plex Mono",monospace;letter-spacing:.04em;color:#4A505B;white-space:nowrap;',
+        tick: 'width:' + w + ';height:8px;box-sizing:border-box;border-left:1px solid #15171C;border-bottom:1px solid #15171C;' + (j === 2 ? 'border-right:1px solid #15171C;' : ''),
+        bar: 'width:' + w + ';height:100%;' + (c ? 'background:' + c + ';' : 'background:' + hatch('#1E4BD2') + ';box-shadow:inset 0 0 0 1px #1E4BD2;')
+      }));
+      l.cSegs = [[pct(rent), 1], [pct(adm), .55], [pct(media), 0]].map(([w, o]) => ({
+        bar: 'width:' + w + ';height:100%;border-radius:5px;' + (o ? 'background:' + color + ';opacity:' + o + ';' : 'background:' + hatch(color) + ';box-shadow:inset 0 0 0 1.5px ' + color + ';')
+      }));
+      return l;
+    });
+    const by = id => all.find(l => l.id === id);
+    const res = ['zab', 'pod', 'kaz'].map((id, i) => {
+      const l = Object.assign({}, by(id)), sel = i === 0, pos = 'left:' + l.x + '%;top:' + l.y + '%;';
+      l.sel = sel;
+      l.aRow = 'display:grid;grid-template-columns:272px minmax(0,1fr);gap:28px;border-bottom:1px solid #D8D0C2;' + (sel ? 'padding:24px 20px;margin:0 -20px;background:#EBE3D6;' : 'padding:24px 0;');
+      l.aArea = 'position:absolute;' + pos + 'width:130px;height:130px;margin:-65px 0 0 -65px;border-radius:50%;' + (sel ? 'background:rgba(166,61,38,.16);border:1.5px solid #A63D26;' : 'background:rgba(27,25,21,.05);border:1.5px dashed #8A8276;');
+      l.aTag = 'position:absolute;' + pos + 'transform:translate(-50%,-50%);padding:7px 11px;font:600 14px/1 "Instrument Sans",sans-serif;white-space:nowrap;' + (sel ? 'background:#A63D26;color:#fff;' : 'background:#F4F0E8;color:#1B1915;border:1px solid #1B1915;');
+      l.bRow = 'display:grid;grid-template-columns:168px minmax(0,1fr);gap:18px;padding:16px 18px;border-bottom:1px solid #D5D9DF;' + (sel ? 'background:#E8EEFC;box-shadow:inset 3px 0 0 #1E4BD2;' : 'background:#fff;');
+      l.bArea = 'position:absolute;' + pos + 'width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;border:1px dashed ' + (sel ? '#1E4BD2;background:rgba(30,75,210,.08);' : '#7A818C;');
+      l.bTag = 'position:absolute;' + pos + 'transform:translate(-50%,-50%);padding:6px 9px;font:600 13px/1 "IBM Plex Sans",sans-serif;white-space:nowrap;' + (sel ? 'background:#1E4BD2;color:#fff;border:1px solid #1E4BD2;' : 'background:#fff;color:#15171C;border:1px solid #15171C;');
+      l.cCard = 'border-radius:20px;overflow:hidden;background:#fff;' + (sel ? 'box-shadow:0 0 0 3px ' + l.color + ';' : 'box-shadow:0 0 0 1px #E6E3DC;');
+      l.cArea = 'position:absolute;' + pos + 'width:200px;height:200px;margin:-100px 0 0 -100px;border-radius:50%;background:' + l.color + ';opacity:' + (sel ? .26 : .14) + ';';
+      l.cTag = 'position:absolute;' + pos + 'transform:translate(-50%,-50%);padding:8px 12px;border-radius:999px;font:700 13.5px/1 "Public Sans",sans-serif;white-space:nowrap;' + (sel ? 'background:' + l.color + ';color:#fff;box-shadow:0 6px 16px rgba(0,0,0,.2);' : 'background:#121212;color:#fff;');
+      l.cName = 'position:absolute;left:' + l.x + '%;top:calc(' + l.y + '% + 34px);transform:translateX(-50%);font:700 13px/1 "Public Sans",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:' + l.color + ';';
+      return l;
+    });
+    const atlasDef = [
+      ['Stare Miasto', 18, '4 900', 'dziś', '#8C2F39', 'grid-column:span 2;grid-row:span 2;', false],
+      ['Kazimierz', 24, '3 640', 'dziś', '#9A5418', 'grid-column:span 2;', true],
+      ['Podgórze', 31, '3 380', 'dziś', '#2F6B4F', 'grid-row:span 2;', true],
+      ['Zabłocie', 16, '3 900', 'dziś', '#5B4A8B', '', true],
+      ['Krowodrza', 27, '3 450', 'wczoraj', '#2B5C8A', 'grid-column:span 2;', false],
+      ['Grzegórzki', 12, '2 950', 'wczoraj', '#6B5E2E', '', false]
+    ];
+    const atlas = atlasDef.map(([name, count, from, fresh, color, span, on]) => ({
+      name, count: count + ' mieszkań', from: 'od ' + from + ' zł łącznie', fresh: 'ostatnie potwierdzenie: ' + fresh, on,
+      mark: on ? 'wybrane ✓' : '',
+      style: 'display:grid;align-content:space-between;text-align:left;padding:18px 20px;border-radius:22px;border:0;cursor:pointer;color:#fff;font-family:"Public Sans",sans-serif;background:' + color + ';' + span + (on ? 'box-shadow:inset 0 0 0 4px rgba(255,255,255,.85);' : '')
+    }));
+    const chips = atlasDef.map(([name, , , , color, , on]) => ({
+      name, on,
+      style: 'height:44px;padding:0 16px;border-radius:999px;font:600 15px/1 "Public Sans",sans-serif;cursor:pointer;white-space:nowrap;' + (on ? 'background:' + color + ';color:#fff;border:1.5px solid ' + color + ';' : 'background:#fff;color:#121212;border:1.5px solid #D6D2C8;')
+    }));
+    const byFresh = all.slice().sort((a, b) => a.days - b.days);
+    const specA = [
+      { k: 'Idea', v: 'Mieszkanie opisane jak w magazynie o mieście. Koszt jest nagłówkiem, nie etykietą w rogu zdjęcia.' },
+      { k: 'Charakter', v: 'Spokojny, dorosły, miejski. Papier, druk, cienkie linie. Kolor tylko jako akcent okolicy i zaznaczenia.' },
+      { k: 'Typografia', v: 'Instrument Serif (nagłówki, sumy ≥ 24 px) + Instrument Sans (UI, składniki, fakty). 2 rodziny, 4 pliki woff2 ok. 110 kB.' },
+      { k: 'Kompozycja', v: 'Asymetria 7/5. Wiersze rozdzielone liniami zamiast kart. Zdjęcia bez zaokrągleń. Duże światło w hero.' },
+      { k: 'Wyszukiwanie', v: 'Zdanie z polami w treści. Te same pola zostają w nagłówku wyników — bez zmiany kontekstu.' },
+      { k: 'Ruch', v: 'Zdanie z hero zwija się w nagłówek wyników (ten sam tekst, mniejszy stopień, 240 ms). Najechanie wiersza podświetla krąg na mapie. Rozbicie kosztu rozwija się wierszami.' },
+      { k: 'Przewaga', v: 'Najsilniej odróżnia się od portali ogłoszeniowych. Koszt staje się bohaterem strony, a zdjęcia dostają miejsce.' },
+      { k: 'Ryzyko', v: 'Serif traci czytelność poniżej 20 px — ceny małe tylko sans. Zdanie trudniej rozszerzyć o kolejne kryteria. Może czytać się jak magazyn zamiast narzędzia.' },
+      { k: 'Złożoność i dostępność', v: 'Niska–średnia. Pola zdania to przyciski z pełną etykietą („Budżet: do 4500 zł. Zmień”). Akcent #A63D26 na papierze 5,6:1; tekst #57514A 6,9:1.' }
+    ];
+    const specB = [
+      { k: 'Idea', v: 'Każde mieszkanie jako arkusz: rzut i kosztorys. Koszt wymiarowany jak na rysunku — pełne = stałe, kreskowane = szacunek, kontur = zwrotne.' },
+      { k: 'Charakter', v: 'Precyzyjny, rzeczowy, inżynierski. Uczciwość przez pomiar, nie przez obietnice.' },
+      { k: 'Typografia', v: 'IBM Plex Sans (UI, sumy) + IBM Plex Mono (etykiety, numery, nagłówki kolumn). Polskie znaki pełne, cyfry tabelaryczne.' },
+      { k: 'Kompozycja', v: 'Widoczna siatka 24 px w hero, ostre narożniki, gęste wiersze, filtry w panelu bocznym, tabela indeksu z zł/m².' },
+      { k: 'Wyszukiwanie', v: 'Klasyczny pasek pól z etykietami. Najszybszy, najłatwiej rozszerzalny, najlepiej znany z portali.' },
+      { k: 'Ruch', v: 'Pasek wymiarowy „rysuje się” od lewej przy wejściu w ofertę (320 ms). Zmiana sortowania przesuwa wiersze. Wiersz ↔ znacznik synchronizowane obrysem.' },
+      { k: 'Przewaga', v: 'Najlepszy do porównywania: tabela, zł/m², stała siatka. Język kosztu działa bez koloru (wzór kreskowania).' },
+      { k: 'Ryzyko', v: 'Chłodny, techniczny — może odstraszać zwykłych najemców. Gęstość na telefonie. Mono z długimi polskimi słowami.' },
+      { k: 'Złożoność i dostępność', v: 'Średnia. Pasek wymiarowy to jeden komponent z proporcjami. Indeks jako prawdziwa <table>. Blueprint #1E4BD2 na bieli 6,9:1.' }
+    ];
+    const specC = [
+      { k: 'Idea', v: 'Zaczynasz od miejsca, nie od formularza. Każda dzielnica ma kolor, który niesie się przez kafelki, karty, mapę i stronę oferty.' },
+      { k: 'Charakter', v: 'Ciepły, miejski, przyjazny. Najbardziej „marka”, najmniej „narzędzie”.' },
+      { k: 'Typografia', v: 'Bricolage Grotesque (nagłówki, sumy, nazwy dzielnic) + Public Sans (UI). Obie z pełną łaciną rozszerzoną.' },
+      { k: 'Kompozycja', v: 'Mozaika dzielnic, pocztówki z kolorową etykietą, duże zaokrąglenia, obszary dzielnic na mapie zamiast pinezek.' },
+      { k: 'Wyszukiwanie', v: 'Najpierw dzielnice (wiele naraz), potem budżet łączny i pokoje. Miasto jako przełącznik w nagłówku.' },
+      { k: 'Ruch', v: 'Kafelek dzielnicy rozszerza się w pasek wyników. Kolor dzielnicy przechodzi z karty na nagłówek oferty (shared element, 280 ms).' },
+      { k: 'Przewaga', v: 'Najbardziej rozpoznawalny i emocjonalny. Naturalnie wspiera strony dzielnic pod SEO i kolejne miasta.' },
+      { k: 'Ryzyko', v: 'Paleta dzielnic do utrzymania per miasto. Kolor może sugerować ocenę dzielnicy. Agregaty („31 mieszkań, od 3 380 zł”) wymagają nowego endpointu.' },
+      { k: 'Złożoność i dostępność', v: 'Średnia–wysoka. Nazwa dzielnicy zawsze tekstem obok koloru. Biały tekst na 6 kolorach ≥ 5,2:1. Chipy jako przełączniki z aria-pressed.' }
+    ];
+    return { all, ft: by('zab'), res, resM: res.slice(0, 2), byFresh, atlas, chips, specA, specB, specC };
+  }
+}
+</script>
+</body>
+</html>

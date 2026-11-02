@@ -45,3 +45,19 @@ a { color: var(--c-brand-700); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* DESIGN-001C candidate: web-only light presentation. Shared DS and semantic
+   status colors remain authoritative; no district colors imply geography. */
+:root:not([data-theme="dark"]) {
+  --c-ink-900: #121212;
+  --c-ink-700: #454545;
+  --c-ink-500: #5a5e66;
+  --c-surface-2: #fbfaf7;
+  --c-surface-3: #f1eee7;
+  --c-line: #e6e3dc;
+  --c-line-strong: #8a877f;
+}
+:root:not([data-theme="dark"]) .btn--primary { background: #121212; color: #fff; }
+:root:not([data-theme="dark"]) .btn--primary:hover { background: #333; }
+:root:not([data-theme="dark"]) .btn--ghost { color: var(--c-ink-900); }
+:root:not([data-theme="dark"]) .input, :root:not([data-theme="dark"]) .select { border-color: var(--c-line-strong); }

@@ -29,8 +29,25 @@ export const pl = {
     signOut: "Wyloguj się",
   },
   home: {
-    heading: "Mieszkania na wynajem z pełnym kosztem miesięcznym",
-    lead: "Widzisz, ile naprawdę zapłacisz co miesiąc i na start — zanim napiszesz do właściciela.",
+    eyebrow: "Kraków · wynajem długoterminowy",
+    heading: "Wybierz okolicę. Albo cały Kraków.",
+    lead: "Przy każdej ofercie: łączny koszt miesięczny, kwota na start i data, kiedy dostępność była ostatnio potwierdzona.",
+    areas: {
+      eyebrow: "Zacznij od okolicy",
+      heading: "Gdzie chcesz zamieszkać?",
+      body: "Wybierz okolicę lub zobacz oferty w całym Krakowie.",
+      empty: "Nie udało się wczytać okolic. Nadal możesz szukać w całym mieście.",
+      all: "Zobacz cały Kraków",
+    },
+    costs: {
+      eyebrow: "Koszty bez zgadywania",
+      heading: "Najpierw suma. Potem szczegóły.",
+      body: "Porównuj oferty według kosztu miesięcznego i kwoty na start. Rozbicie opłat znajdziesz w szczegółach mieszkania.",
+      monthly: "Co miesiąc",
+      monthlyBody: "Najem, opłaty administracyjne i media — z oznaczeniem kwot szacunkowych.",
+      start: "Na start",
+      startBody: "Koszt rozpoczęcia najmu. Kaucję i pozostałe składniki pokazujemy osobno w ofercie.",
+    },
     pillars: {
       fullCost: "Pełny koszt miesięczny i na start",
       fresh: "Oferty potwierdzane jako aktualne",

@@ -1,0 +1,2 @@
+# Preserve founder attachments byte-for-byte, including text line endings.
+originals/** -text

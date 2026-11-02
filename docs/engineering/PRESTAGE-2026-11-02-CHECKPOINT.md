@@ -30,3 +30,10 @@ Last observed preview http://localhost:3001/healthz200 and backend http://127.0.
 Phase1A closed staging can use synthetic verified accounts and disabled external providers. It does not require Phase1B sales, Phase1.5 broad owner/agency OS, Phase2 contracts/payments/deposits or Phase3 short stay. Before calling staging ready: accepted combined mainSHA/green checks, isolated access-restricted host, TLS/separate secrets and database, safe migration and restore rehearsal, then requester-to-provider journey on that actual environment. Hosting and deployment are not yet authorized. External beta/production remainNOTREADY/NOTDEPLOYED; existing security/privacy/operational debts remain, including BARRIER/rollbackBLOCKED.
 
 Working web seeker/provider surfaces exist; admin backend functionality is not a complete admin UI; native iOS/Android apps are not delivered. Preserve this distinction in founder reports.
+
+
+## Later same-day integration authorization — supersedes prior open gates
+
+Founder now authorizes merging ready verified work into main. PR23 merged as f3385f91c1b339bee529b751ab27782c54325c15 (candidate7c67a43, CI41422655013 SUCCESS6/6). PR24 retargeted to main and merged as a44d0b26f42834c9c8f493d54aa0f20edfd9e82b (candidatec7febf7, CI41422708063 SUCCESS6/6). CI dependency audit/canary and restore gates passed. Both old CI blockers resolved without weakening production freshness or removing checks. Local ordered PG93passed; source receipt a2c7d6e is durable.
+
+Design candidate48c2e3c passed CI41422734006 SUCCESS6/6 and was refreshed with accepted main in51f2c89. Frontend tree unchanged; new final CI required for the combined version before PR20 merge. Actual final head/merge and CI are GitHub evidence, not reconstructed from this pre-merge checkpoint. Repository PROJECT-STATUS owns current status. No deployment or automatic acceptance of PR21/22. Preserve remaining design parity work and staging gates; do not restart delivery002 or repeat completed audits.

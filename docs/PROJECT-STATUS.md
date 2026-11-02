@@ -2,7 +2,7 @@
 id: PROJECT-STATUS
 type: status_index
 role: single semantic owner of volatile project status (D-106, 05 §14)
-as_of: 2026-10-25
+as_of: 2026-11-02
 reconciled_through:
   code_and_product: FE-003 merge 98ad3cc09b418784500452a62907be2dd46f9e81 (D-114)
   documentation: HOMIES-DELIVERY-002 integrated package and immutable review archive (D-114)
@@ -20,8 +20,8 @@ latest_code_bearing_main_state:
   main_ci: 40174564874 (exact merge SHA; post-merge acceptance gate)
 repository_head: resolved from Git (origin/main); intentionally not embedded here
 next_task:
-  id: HOMIES-DELIVERY-002
-  status: IMPLEMENTATION INTEGRATED — D-114; documentation/archive reconciliation effective with PR10 merge
+  id: DESIGN-001C / PRESTAGE-CI-001
+  status: BOUNDED CANDIDATES — Draft PR20 and PR23; exact-candidate CI and visual acceptance required; no main merge or staging deployment
 fe003_implementation_authorized: true # prerequisites satisfied; implementation integrated under D-114
 fe_vis_001_implementation_authorized: false
 production_ready: false
@@ -364,3 +364,35 @@ workflow; canonical independent-review evidence and founder authorization remain
 required. Configuration: [main-ruleset.json](engineering/main-ruleset.json).
 Repository visibility remains public. Verified by reading back both the ruleset
 and effective main rules. No deployment occurred.
+
+## 2026-10-30 — DESIGN-001C local presentation candidate
+
+Founder supplied the latest design package and explicitly requested preservation and integration/improvement. Codex owns the bounded web presentation candidate in `codex/design-001c-integration`, based on `4f2fc43457dfc82d07e42ac3418a1b649cbe3fb4`. [Contract](tasks/DESIGN-001C-integration.md), [preserved originals and convergence](design/001c/README.md), [verification](design/001c/VERIFICATION.md).
+
+Archive and neutral presentation integration are locally verified, not merged or accepted as the complete FE-VIS-001 rollout. Source geography/boundaries, district palette and font proposals remain deferred. Candidate CI and founder visual acceptance are pending. Existing main status, IBB-001 and debt remain unchanged; production is NOT READY / NOT DEPLOYED.
+
+## 2026-11-02 — bounded pre-staging repairs in progress
+
+Founder requested gradual gap closure and correction against the supplied Claude Design before a future staging decision. No new PR merge or deployment authorized. HOMIES-DELIVERY-002 remains complete; no renewed foundation audit.
+
+- [Draft PR20](https://github.com/ihorfroliak/homies/pull/20): Home Mapa composition increment, source logo, real district links and cost explanation. Reviewed code candidate `4f33466cbc675d14e93d34715f371c6c51e6c8bb`; documentation successors do not alter its frontend tree. Local lint/typecheck/build and all211 unit tests passed; desktop/mobile real-API smoke recorded. [Evidence and explicit remaining parity gaps](design/001c/2026-11-02-home-fidelity.md), [separate frontend source review](reviews/DESIGN-001C-home-4f33466.md). Full map/font/control/navigation fidelity remains incomplete.
+- [Draft PR23](https://github.com/ihorfroliak/homies/pull/23): exact candidate `f0d163e0cbab1b90493f04480c5224e02391116a` selects PG16 restore clients and pins only the backend CI host to Ubuntu24.04. [Contract](tasks/PRESTAGE-CI-001.md), [separate devops source review](reviews/PRESTAGE-CI-001-f0d163e.md). Initial attempt failed on package availability; fresh CI is required, not inferred from source review. PR20 contains this dependency with ancestry preserved.
+
+These remain candidates until exact current-head checks and acceptance are recorded on their PRs. Local preview: port3001; accepted alpha: port3000; disposable synthetic backend: port8000. No production/readiness promotion. IBB-001, BARRIER / rollback BLOCKED and existing debt stay unchanged. Next bounded backend gap: availability date-range input validation; do not silently broaden into scheduling redesign.
+
+
+## 2026-11-02 — founder-authorized pre-staging integration
+
+Supersedes the earlier same-day candidate/pending-authorization notes above. The founder explicitly instructed: «тоді роби мерж того що вже можна мержити, тобто зливати в головну гілку». This authorizes ready, verified work to merge normally; it does not authorize deployment or blanket integration of unreviewed branches.
+
+| Increment | Accepted candidate / CI | Integration |
+|---|---|---|
+| PRESTAGE-CI-001, PR23 | `7c67a433cb7cff3b3d0767ceef8c7e2e12276f9a`; [41422655013](https://github.com/ihorfroliak/homies/actions/runs/41422655013), SUCCESS6/6 | INTEGRATED, merge `f3385f91c1b339bee529b751ab27782c54325c15` |
+| PRESTAGE-API-001, PR24 | `c7febf715e85cc506479271d1acdf62d1b464e60`; [41422708063](https://github.com/ihorfroliak/homies/actions/runs/41422708063), SUCCESS6/6 | INTEGRATED, merge `a44d0b26f42834c9c8f493d54aa0f20edfd9e82b` |
+| DESIGN-001C bounded presentation, PR20 | `48c2e3c98983ad082e277c416ea1a1ea887e2d2d`; [41422734006](https://github.com/ihorfroliak/homies/actions/runs/41422734006), SUCCESS6/6; refreshed with accepted API repair in `51f2c89e488d6beb10fe9f350df5cf9d9afa97a2` | Merge authorized after refreshed exact-head CI; INTEGRATED when PR20 is merged (actual GitHub merge receipt is authoritative) |
+
+CI continuation repaired timezone fixtures and two security pins, with no application freshness-rule change. [Bounded review and local evidence](reviews/PRESTAGE-CI-001-a2c7d6e.md). API validation returns422 instead of500 for inverted dates; [independent source receipt](reviews/PRESTAGE-API-001-d8a5c26.md). Every original candidate remains in ancestry; no squash, force push or protection bypass.
+
+Main after PR24 is `a44d0b26f42834c9c8f493d54aa0f20edfd9e82b`; subsequent main SHA and post-merge CI are resolved from GitHub. PR21/22 dependency groups remain unaccepted. Existing design parity gaps are explicit in [home fidelity](design/001c/2026-11-02-home-fidelity.md); source archive is available, superseding the earlier claim that DESIGN-001C artifacts are inaccessible. This bounded presentation is not the full FE-VIS-001 rollout.
+
+Next: finish combined CI and PR20 integration, verify resulting main, then continue bounded design/alpha gap closure. Closed Phase1A staging still requires a separately authorized isolated host, access restriction, TLS, secrets, database/restore rehearsal and actual requester/provider journey. IBB-001, existing debt, BARRIER / rollback BLOCKED, NOT READY / NOT DEPLOYED remain unchanged. Native mobile apps and a complete admin UI are not delivered.
