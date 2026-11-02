@@ -24,3 +24,7 @@ Preserve sources and convergence notes in repository docs, outside public assets
 
 ## 2026-10-31 continuation
 Founder requested continued development. Complete delivery of this same bounded candidate through a feature-branch push, Draft PR and exact-candidate CI. Preserve the reviewed implementation; repair any concrete regressions within this scope. No merge, deployment, broader geography decisions or production rollout. The R1 frontend specialist source review is recorded in `docs/reviews/DESIGN-001C-frontend-e9b367c.md`; it is not a substitute for runtime evidence or a high-risk independent audit.
+
+## 2026-11-02 founder-requested fidelity repair
+
+Founder explicitly requested continued bounded repairs before future staging and correction against the supplied Claude Design. The prior candidate captured styling, not the latest Home Mapa composition. This increment adopts its 5/7 desktop hero, headline, source logo and warm search surface, with real area links and the Convergence cost-explanation section. Existing search/auth/engagement behavior remains authoritative. Area links use only public API names/slugs; no invented geometry, counts or minimum prices. The keyboard-accessible area list is a partial implementation, not a claim of completed interactive map parity. Fonts, geographic boundaries and palette remain excluded pending their existing decisions. Same R1 checks apply. No main merge or staging deployment.

@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 
 import { ListingCard } from "@/components/listing/listing-card";
 import { SearchBox } from "@/components/search-box/search-box";
+import { HomeAreas } from "@/components/home-areas";
 import { t } from "@/i18n";
 import { newest, resolvePlace } from "@/search/server";
 
@@ -17,9 +18,17 @@ import styles from "./page.module.css";
 export default function HomePage() {
   return (
     <div className={`container ${styles.hero}`}>
-      <h1 className={styles.title}>{t.home.heading}</h1>
-      <p className={styles.lead}>{t.home.lead}</p>
-      <SearchBox />
+      <div className={styles.intro}>
+        <section className={styles.search} aria-labelledby="home-heading">
+          <p className={styles.eyebrow}>{t.home.eyebrow}</p>
+          <h1 id="home-heading" className={styles.title}>{t.home.heading}</h1>
+          <p className={styles.lead}>{t.home.lead}</p>
+          <SearchBox />
+        </section>
+        <Suspense fallback={<HomeAreas areas={[]} loading />}>
+          <KrakowAreas />
+        </Suspense>
+      </div>
       <ul className={styles.pillars}>
         <li>{t.home.pillars.fullCost}</li>
         <li>{t.home.pillars.fresh}</li>
@@ -28,6 +37,17 @@ export default function HomePage() {
       <Suspense fallback={<RailSkeleton />}>
         <NewestRail />
       </Suspense>
+      <section className={styles.costs} aria-labelledby="koszty">
+        <div>
+          <p className={styles.eyebrow}>{t.home.costs.eyebrow}</p>
+          <h2 id="koszty">{t.home.costs.heading}</h2>
+          <p>{t.home.costs.body}</p>
+        </div>
+        <dl className={styles.costRows}>
+          <div><dt>{t.home.costs.monthly}</dt><dd>{t.home.costs.monthlyBody}</dd></div>
+          <div><dt>{t.home.costs.start}</dt><dd>{t.home.costs.startBody}</dd></div>
+        </dl>
+      </section>
       <section className={styles.owner} aria-labelledby="dla-wlascicieli">
         <h2 id="dla-wlascicieli">{t.addListing.heading}</h2>
         <p>{t.addListing.body}</p>
@@ -36,9 +56,20 @@ export default function HomePage() {
   );
 }
 
+// Share public reference resolution between independently streamed sections.
+const krakow = cache(async () => {
+  try { return await resolvePlace("krakow", undefined); }
+  catch { return null; }
+});
+
+async function KrakowAreas() {
+  const place = await krakow();
+  return <HomeAreas areas={place?.areas ?? []} />;
+}
+
 async function newestInKrakow() {
   try {
-    const place = await resolvePlace("krakow", undefined);
+    const place = await krakow();
     return place?.localityId ? await newest({ localityId: place.localityId }, 6) : [];
   } catch {
     return [];

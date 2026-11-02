@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { t } from "@/i18n";
 import { EngagementNavigation } from "@/engagement/navigation";
+import { BrandMark } from "./brand-mark";
 
 import styles from "./site-header.module.css";
 
@@ -15,7 +16,7 @@ export function SiteHeader() {
     <header className={styles.header}>
       <div className={`container ${styles.inner}`}>
         <Link href="/" className={styles.logo} aria-label={`${t.meta.siteName} — strona główna`}>
-          Homies
+          <BrandMark />Homies
         </Link>
         <nav aria-label={t.a11y.mainNavigation}>
           <ul className={styles.links}>
