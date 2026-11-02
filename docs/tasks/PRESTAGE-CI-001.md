@@ -7,3 +7,7 @@ Bounded R1 operational repair: select PostgreSQL16 pg_dump/pg_restore explicitly
 Evidence: run41221102851 failed SET transaction_timeout with client18.6/server16.4; 2089passed,1failed,9errors,2skipped. Candidate has no backend changes versus base. Acceptance: review workflow failure behavior; fresh exact-SHA CI incl both restore suites and following dependency audit. No skip/ignore workaround.
 
 No merge, deployment, paid providers or shared DB mutation. Draft PR only. CI outcome must be recorded before closure.
+
+## Runtime evidence and runner pin
+
+Initial candidate 5383a75 passed independent source review, but run 41378000102 failed before tests: ubuntu-latest selected Ubuntu 26.04 and apt could not locate postgresql-client-16. Pin only the backend job to ubuntu-24.04; retain explicit client checks and all restore gates. Ubuntu Noble publishes the supported major (https://packages.ubuntu.com/noble/postgresql-client-16); runner reference: https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md (checked 2026-11-02). This changes the disposable CI host only, not application runtime or deployment. Fresh exact-SHA CI is still required.

@@ -21,7 +21,8 @@ concurrency:
 
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    # PG16 clients are available on Noble; ubuntu-latest moved to 26.04.
+    runs-on: ubuntu-24.04
     # CI-03: a real Postgres service so migration/concurrency/DB-guard tests run
     # against the actual engine instead of skipping. Same major version (16) as
     # the app. PostGIS since Schema v1 C5: listings carry a geography column
