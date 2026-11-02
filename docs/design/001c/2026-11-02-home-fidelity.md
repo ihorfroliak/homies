@@ -29,3 +29,8 @@ Draft PR23 selects PostgreSQL16 tools and pins its backend CI host to Ubuntu24.0
 ## Next bounded work
 
 Complete this increment's exact-candidate verification. Then address the audit's inverted availability-date validation gap in a separate backend contract and synthetic regression environment. Preserve existing external-beta debts and staging gates. No new PR merge or staging deployment authorized.
+
+
+## Later same-day disposition
+
+The founder subsequently authorized normal integration of ready verified candidates. PR23 and PR24 are merged; their prior blockers are resolved. PR20 passed six checks at48c2e3c and now includes the accepted API repair; refreshed CI and actual merge receipt govern final integration. Original frontend review remains applicable to the unchanged frontend tree. This supersedes only the earlier pending authorization/work sequence; the fidelity limitations and production/staging boundaries above remain open.
