@@ -50,8 +50,8 @@ jobs:
       # client tools fail the run instead of skipping the drills silently.
       HOMIES_REQUIRE_RESTORE_DRILL: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -174,7 +174,7 @@ jobs:
   image:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build backend image
         run: docker build --build-arg GIT_SHA=${{ github.sha }} -t homies-backend:ci backend
       - name: Image carries its release policy and this build's identity (PR-002)
@@ -209,7 +209,7 @@ jobs:
   secrets:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # gitleaks scans history, not just the tip
       - name: Scan for committed secrets (gitleaks)
@@ -227,7 +227,7 @@ jobs:
     # it claims — and stays silent on the ones it must ignore.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check Prometheus config and rules
         run: |
           docker run --rm -v "$PWD/ops/monitoring:/work" -w /work \
@@ -250,11 +250,11 @@ jobs:
   contracts:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # AGENT-002 checks unchanged inherited agent/hook blobs against its base.
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Delivery policy synthetic checks (AGENT-002)
@@ -264,7 +264,7 @@ jobs:
       # with `npm ci`. `npx --yes <package>` resolved a floating npm graph on
       # every run, so an unrelated upstream publish could fail (or change) the
       # contract check with no change here. @asyncapi/cli 6 requires Node 24.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: npm
@@ -321,13 +321,13 @@ jobs:
       run:
         working-directory: frontend/web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: frontend/web/package-lock.json
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -364,7 +364,7 @@ jobs:
         run: npm run e2e
       - name: Keep E2E traces and the API log on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: web-e2e-traces
           path: |
