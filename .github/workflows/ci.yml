@@ -21,7 +21,8 @@ concurrency:
 
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    # PG16 clients are available on Noble; ubuntu-latest moved to 26.04.
+    runs-on: ubuntu-24.04
     # CI-03: a real Postgres service so migration/concurrency/DB-guard tests run
     # against the actual engine instead of skipping. Same major version (16) as
     # the app. PostGIS since Schema v1 C5: listings carry a geography column
@@ -78,7 +79,19 @@ jobs:
         run: |
           python -VV
           python -c "import sys; assert sys.version_info[:2] == (3, 12), sys.version"
-          command -v pg_dump || sudo apt-get install -y --no-install-recommends postgresql-client-16
+          # PRESTAGE-CI-001: ubuntu-latest may already contain newer clients.
+          # Restore targets PG16, so use PG16 explicitly instead of PATH defaults.
+          if [ ! -x /usr/lib/postgresql/16/bin/pg_dump ] || [ ! -x /usr/lib/postgresql/16/bin/pg_restore ]; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends postgresql-client-16
+          fi
+          export PG_BIN=/usr/lib/postgresql/16/bin
+          export PATH="$PG_BIN:$PATH"
+          for tool in pg_dump pg_restore; do
+            "$PG_BIN/$tool" --version | grep -E '^pg_(dump|restore) \(PostgreSQL\) 16\.'
+          done
+          echo "PG_BIN=$PG_BIN" >> "$GITHUB_ENV"
+          echo "$PG_BIN" >> "$GITHUB_PATH"
           pg_dump --version
           pg_restore --version
           pip freeze | grep -iE '^(fastapi|sqlalchemy|alembic|psycopg|pydantic|pytest)=='
