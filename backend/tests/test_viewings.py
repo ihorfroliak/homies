@@ -597,3 +597,44 @@ def test_a_passed_request_is_left_as_it_is(client, tenant, summer_window, monkey
     client.post(f"/v1/viewings/{viewing['id']}/cancel", headers=auth(tenant))
     mine = client.get("/v1/me/viewings", headers=auth(tenant)).json()
     assert [(v["id"], v["status"]) for v in mine] == [(viewing["id"], "REQUESTED")]
+
+
+@pytest.mark.parametrize("shape", [
+    {"window_type": "WEEKLY", "weekday": 1},
+    {"window_type": "ONE_OFF", "local_date": "2027-07-15"},
+])
+def test_inverted_validity_is_refused_without_persistence(client, owner, listing, shape):
+    body = {**shape, "local_start_time": "10:00", "local_end_time": "11:00",
+            "valid_from": "2027-07-16", "valid_until": "2027-07-15"}
+    endpoint = f"/v1/classifieds/{listing}/viewing-windows"
+    response = client.post(endpoint, json=body, headers=auth(owner))
+    assert response.status_code == 422
+    with TestingSession() as db:
+        assert db.query(ViewingWindow).filter_by(listing_id=listing).count() == 0
+    # A refused input must not leave a failed transaction or poison later writes.
+    body["valid_from"] = "2027-07-15"
+    assert client.post(endpoint, json=body, headers=auth(owner)).status_code == 201
+    with TestingSession() as db:
+        row = db.query(ViewingWindow).filter_by(listing_id=listing).one()
+        assert row.valid_from == row.valid_until == date(2027, 7, 15)
+
+
+@pytest.mark.parametrize("bounds", [
+    {}, {"valid_from": "2027-07-15"}, {"valid_until": "2027-07-15"},
+    {"valid_from": "2027-07-15", "valid_until": "2027-07-15"},
+    {"valid_from": "2027-07-01", "valid_until": "2027-07-31"},
+])
+@pytest.mark.parametrize("shape", [
+    {"window_type": "WEEKLY", "weekday": 1},
+    {"window_type": "ONE_OFF", "local_date": "2027-07-15"},
+])
+def test_validity_bounds_preserve_existing_inclusive_semantics(client, owner, listing, shape, bounds):
+    body = {**shape, **bounds, "local_start_time": "10:00", "local_end_time": "11:00"}
+    response = client.post(f"/v1/classifieds/{listing}/viewing-windows", json=body,
+                           headers=auth(owner))
+    assert response.status_code == 201
+    with TestingSession() as db:
+        row = db.query(ViewingWindow).filter_by(listing_id=listing).one()
+        for field in ("valid_from", "valid_until"):
+            expected = date.fromisoformat(bounds[field]) if field in bounds else None
+            assert getattr(row, field) == expected

@@ -1,0 +1,32 @@
+# Pre-staging checkpoint — 2026-11-02
+
+Historical handoff snapshot, not a replacement for PROJECT-STATUS or live GitHub check results. Founder requests gradual repairs, design fidelity, durable context and an explanation of integration before future Phase1A staging. No new main merge or staging deployment authorized. Do not reopen HOMIES-DELIVERY-002 or repeat foundation audits.
+
+## Integration state
+
+Remote main verified by ls-remote:4f2fc43457dfc82d07e42ac3418a1b649cbe3fb4. IBB-001 remains5abfd7bc6f6b5aa085c8e439ba8fe67c458d1f98. Main contains the accepted delivery002 package. Local branch inventory:85 total;45 tips already ancestors of main;40 tips not ancestors. These counts are not a count of missing features or approval to merge historical branches. Classify/reconcile them before cleanup; delete none on inference.
+
+| Candidate | Exact snapshot | Disposition |
+|---|---|---|
+| PR20, codex/design-001c-integration | 7941c396859dc9a36bb7822ca10bf11f8d5a5be5 | Draft; frontend source review at4f33466, unchanged frontend tree;211localtests/build/lint/types and real browser smoke passed. Web CI passed. Backend CI41379937827:2098passed/1failed/2skipped; investigate21-day cutoff map-count test, not presumed flaky. |
+| PR23, codex/prestage-ci-pg16 | f0d163e0cbab1b90493f04480c5224e02391116a | Draft; source-reviewed PG16 client/Ubuntu24.04 repair; CI41378926059:2099backend tests and10restore drills passed, dependency audit failed; overall CI notgreen. |
+| PRESTAGE-API-001, codex/prestage-window-range | Child of PR23; exact candidate resolved from Git/PR | Two-line validity validator,12new cases; original500 reproduced twice;90viewing/DST tests,ruff,mypy128passed; exact-SHA review/fullCI required. |
+| PR21 | dfe5f7c110ef68868cfad0b9e96b2fc4995475b4 | Dependabot4Actions updates; not accepted. |
+| PR22 | c44c33e1f437bf79291e07359e76a0ae67be8151 | Dependabot27backend updates; not accepted; do not blindly merge the group. |
+
+PR23 ancestry is already incorporated into PR20's feature branch. API repair also descends from PR23. This is feature-branch convergence, not main integration. Candidate review receipts are under docs/reviews on PR20. No new formal backend baseline.
+
+## Known immediate gates
+
+1. Security dependency findings: dnspython2.8.0 GHSA-45c3-73f7-pv4m (fixed2.9.0), msgpack1.2.2 GHSA-j586-36cw-2gc2 (fixed1.2.3), from actual CI. Prepare a minimal compatible repair with tests, not an audit suppression.
+2. Investigate PR20's map cutoff failure at test_search_validation_pg.py:173 (expected2/2/0, got1/1/0); same backend passed in PR23. Evidence is insufficient to label it a product defect or flake.
+3. Finish API candidate review/CI; combine only verified commits and obtain a concrete integration decision. Preserve ancestry and branch protection; merge is separate from deployment.
+4. Design remains partial: source Home Mapa composition and logo integrated, real four-area synthetic data used. Licensed geometry/geography decision, final fonts/palette, synchronized controls and mobile navigation refinement remain. Do not claim1:1parity.
+
+## Local access and staging boundary
+
+Last observed preview http://localhost:3001/healthz200 and backend http://127.0.0.1:8000/readyz200. Preview uses existing disposable homies_alpha_e2e; no reseed or real providers. Main alpha port3000 was not modified. Preview source worktree homies-design-001c; active API repair worktree homies-prestage-ci reused after the CI branch was clean. Do not modify the founder's shared checkout.
+
+Phase1A closed staging can use synthetic verified accounts and disabled external providers. It does not require Phase1B sales, Phase1.5 broad owner/agency OS, Phase2 contracts/payments/deposits or Phase3 short stay. Before calling staging ready: accepted combined mainSHA/green checks, isolated access-restricted host, TLS/separate secrets and database, safe migration and restore rehearsal, then requester-to-provider journey on that actual environment. Hosting and deployment are not yet authorized. External beta/production remainNOTREADY/NOTDEPLOYED; existing security/privacy/operational debts remain, including BARRIER/rollbackBLOCKED.
+
+Working web seeker/provider surfaces exist; admin backend functionality is not a complete admin UI; native iOS/Android apps are not delivered. Preserve this distinction in founder reports.

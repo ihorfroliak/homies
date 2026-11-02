@@ -166,6 +166,8 @@ class WindowIn(BaseModel):
 
     @model_validator(mode="after")
     def shape(self):
+        if self.valid_from is not None and self.valid_until is not None and self.valid_until < self.valid_from:
+            raise ValueError("valid_until must be on or after valid_from")
         if self.local_end_time <= self.local_start_time:
             raise ValueError("local_end_time must be after local_start_time")
         if self.window_type == "WEEKLY" and (self.weekday is None or self.local_date):
