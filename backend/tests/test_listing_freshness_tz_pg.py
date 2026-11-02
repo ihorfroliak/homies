@@ -57,8 +57,15 @@ def zone(request, pg_migrated_engine):
         dbapi_conn.commit()
 
     event.listen(pg_migrated_engine, "checkout", set_zone)
-    yield name
-    event.remove(pg_migrated_engine, "checkout", set_zone)
+    try:
+        yield name
+    finally:
+        event.remove(pg_migrated_engine, "checkout", set_zone)
+        # SET persists past commit/rollback. Retire the test's idle sessions,
+        # so later suites cannot inherit a checkout-dependent TimeZone.
+        pg_migrated_engine.dispose()
+        with pg_migrated_engine.connect() as conn:
+            assert conn.scalar(text("SHOW TimeZone")) == "UTC"
 
 
 def _pin(monkeypatch, instant: datetime):
@@ -213,7 +220,7 @@ def test_a_reminder_cycle_is_one_identity_across_session_zones(
     reminded = []
     for name in (first, second):
         with Session(pg_migrated_engine) as db:
-            db.execute(text(f"SET TIME ZONE '{name}'"))
+            db.execute(text(f"SET LOCAL TIME ZONE '{name}'"))
             reminded.append(freshness.sweep(db, as_of=decision).reminded)
             db.commit()
     assert reminded == [[offer], []], reminded
