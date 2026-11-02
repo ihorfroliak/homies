@@ -2,7 +2,7 @@
 id: PROJECT-STATUS
 type: status_index
 role: single semantic owner of volatile project status (D-106, 05 §14)
-as_of: 2026-10-25
+as_of: 2026-11-02
 reconciled_through:
   code_and_product: FE-003 merge 98ad3cc09b418784500452a62907be2dd46f9e81 (D-114)
   documentation: HOMIES-DELIVERY-002 integrated package and immutable review archive (D-114)
@@ -20,8 +20,8 @@ latest_code_bearing_main_state:
   main_ci: 40174564874 (exact merge SHA; post-merge acceptance gate)
 repository_head: resolved from Git (origin/main); intentionally not embedded here
 next_task:
-  id: HOMIES-DELIVERY-002
-  status: IMPLEMENTATION INTEGRATED — D-114; documentation/archive reconciliation effective with PR10 merge
+  id: DESIGN-001C / PRESTAGE-CI-001
+  status: BOUNDED CANDIDATES — Draft PR20 and PR23; exact-candidate CI and visual acceptance required; no main merge or staging deployment
 fe003_implementation_authorized: true # prerequisites satisfied; implementation integrated under D-114
 fe_vis_001_implementation_authorized: false
 production_ready: false
@@ -370,3 +370,12 @@ and effective main rules. No deployment occurred.
 Founder supplied the latest design package and explicitly requested preservation and integration/improvement. Codex owns the bounded web presentation candidate in `codex/design-001c-integration`, based on `4f2fc43457dfc82d07e42ac3418a1b649cbe3fb4`. [Contract](tasks/DESIGN-001C-integration.md), [preserved originals and convergence](design/001c/README.md), [verification](design/001c/VERIFICATION.md).
 
 Archive and neutral presentation integration are locally verified, not merged or accepted as the complete FE-VIS-001 rollout. Source geography/boundaries, district palette and font proposals remain deferred. Candidate CI and founder visual acceptance are pending. Existing main status, IBB-001 and debt remain unchanged; production is NOT READY / NOT DEPLOYED.
+
+## 2026-11-02 — bounded pre-staging repairs in progress
+
+Founder requested gradual gap closure and correction against the supplied Claude Design before a future staging decision. No new PR merge or deployment authorized. HOMIES-DELIVERY-002 remains complete; no renewed foundation audit.
+
+- [Draft PR20](https://github.com/ihorfroliak/homies/pull/20): Home Mapa composition increment, source logo, real district links and cost explanation. Reviewed code candidate `4f33466cbc675d14e93d34715f371c6c51e6c8bb`; documentation successors do not alter its frontend tree. Local lint/typecheck/build and all211 unit tests passed; desktop/mobile real-API smoke recorded. [Evidence and explicit remaining parity gaps](design/001c/2026-11-02-home-fidelity.md), [separate frontend source review](reviews/DESIGN-001C-home-4f33466.md). Full map/font/control/navigation fidelity remains incomplete.
+- [Draft PR23](https://github.com/ihorfroliak/homies/pull/23): exact candidate `f0d163e0cbab1b90493f04480c5224e02391116a` selects PG16 restore clients and pins only the backend CI host to Ubuntu24.04. [Contract](tasks/PRESTAGE-CI-001.md), [separate devops source review](reviews/PRESTAGE-CI-001-f0d163e.md). Initial attempt failed on package availability; fresh CI is required, not inferred from source review. PR20 contains this dependency with ancestry preserved.
+
+These remain candidates until exact current-head checks and acceptance are recorded on their PRs. Local preview: port3001; accepted alpha: port3000; disposable synthetic backend: port8000. No production/readiness promotion. IBB-001, BARRIER / rollback BLOCKED and existing debt stay unchanged. Next bounded backend gap: availability date-range input validation; do not silently broaden into scheduling redesign.
