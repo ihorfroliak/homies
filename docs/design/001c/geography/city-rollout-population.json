@@ -1,0 +1,73 @@
+{
+  "source": "https://stat.gov.pl/download/gfx/portalinformacyjny/pl/defaultaktualnosci/5468/6/40/1/ludnosc.stan_i_struktura_31.12.2025.zip",
+  "as_of": "2025-12-31",
+  "retrieved": "2026-11-03",
+  "sha256": "9f98514eef93e7da6f95fc190746060bac7e59d2ae25fd17e3abca54b1736d2e",
+  "table": "tabela11.xls",
+  "selection": "Municipality TERYT kind 1, population strictly greater than 300000; not powiat or metro area",
+  "cities": [
+    {
+      "city": "Warszawa",
+      "teryt": "1465011",
+      "population": 1866729,
+      "sheet": "Mazowieckie",
+      "excel_row": 362
+    },
+    {
+      "city": "Kraków",
+      "teryt": "1261011",
+      "population": 816614,
+      "sheet": "Małopolskie",
+      "excel_row": 211
+    },
+    {
+      "city": "Wrocław",
+      "teryt": "0264011",
+      "population": 672601,
+      "sheet": "Dolnośląskie",
+      "excel_row": 205
+    },
+    {
+      "city": "Łódź",
+      "teryt": "1061011",
+      "population": 639890,
+      "sheet": "Łódzkie",
+      "excel_row": 207
+    },
+    {
+      "city": "Poznań",
+      "teryt": "3064011",
+      "population": 534239,
+      "sheet": "Wielkopolskie",
+      "excel_row": 268
+    },
+    {
+      "city": "Gdańsk",
+      "teryt": "2261011",
+      "population": 489328,
+      "sheet": "Pomorskie",
+      "excel_row": 147
+    },
+    {
+      "city": "Szczecin",
+      "teryt": "3262011",
+      "population": 383786,
+      "sheet": "Zachodniopomorskie",
+      "excel_row": 142
+    },
+    {
+      "city": "Lublin",
+      "teryt": "0663011",
+      "population": 326685,
+      "sheet": "Lubelskie",
+      "excel_row": 243
+    },
+    {
+      "city": "Bydgoszcz",
+      "teryt": "0461011",
+      "population": 321100,
+      "sheet": "Kujawsko-pomorskie",
+      "excel_row": 172
+    }
+  ]
+}

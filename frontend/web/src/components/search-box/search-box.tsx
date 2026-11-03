@@ -13,7 +13,7 @@ export function SearchBox() {
     <form role="search" aria-label={t.searchBox.label} method="get" action="/szukaj" className={styles.box}>
       <div className="field">
         <label htmlFor="sb-city">{t.searchBox.city}</label>
-        <input id="sb-city" name="miasto" className="input" list="sb-city-list" autoComplete="off" placeholder={t.searchBox.cityPlaceholder} maxLength={80} />
+        <input id="sb-city" name="miasto" className="input" list="sb-city-list" autoComplete="off" defaultValue="Kraków" placeholder={t.searchBox.cityPlaceholder} maxLength={80} />
         <CitySuggestions inputId="sb-city" listId="sb-city-list" />
       </div>
       <div className="field">

@@ -19,6 +19,7 @@ it("preserves district title text in server HTML before hydration", () => {
 
 it("offers all 18 official districts as named keyboard controls, independently of search reference availability", () => {
   render(<HomeDistrictMap />);
+  fireEvent.click(screen.getByText("Wybierz dzielnicę z listy (18)"));
   const list = screen.getByRole("list", { name: "Dzielnice administracyjne Krakowa" });
   expect(within(list).getAllByRole("button")).toHaveLength(18);
   expect(within(list).getByRole("button", { name: "Mistrzejowice" })).toBeVisible();
@@ -30,6 +31,9 @@ it("offers all 18 official districts as named keyboard controls, independently o
 it("selects by keyboard, announces the district and never fabricates a district search link or count", async () => {
   const user = userEvent.setup();
   render(<HomeDistrictMap />);
+  await user.tab();
+  expect(screen.getByText("Wybierz dzielnicę z listy (18)")).toHaveFocus();
+  await user.keyboard("{Enter}");
   const first = screen.getByRole("button", { name: "Stare Miasto" });
   await user.tab();
   expect(first).toHaveFocus();
@@ -47,6 +51,7 @@ it("selects by keyboard, announces the district and never fabricates a district 
 
 it("pointer selection and native buttons share state, while clicks outside the geometry do not select another district", () => {
   const { container } = render(<HomeDistrictMap />);
+  fireEvent.click(screen.getByText("Wybierz dzielnicę z listy (18)"));
   fireEvent.click(container.querySelector('[data-district="18"]')!);
   expect(screen.getByRole("button", { name: "Nowa Huta" })).toHaveAttribute("aria-pressed", "true");
   expect(screen.getByRole("status")).toHaveTextContent("XVIII · Nowa Huta");

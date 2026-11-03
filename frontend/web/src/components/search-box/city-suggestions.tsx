@@ -10,17 +10,22 @@ export function CitySuggestions({ inputId, listId }: { inputId: string; listId: 
     if (!input) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let controller: AbortController | undefined;
+    let revision = 0;
     const onInput = () => {
       clearTimeout(timer);
+      controller?.abort();
+      const currentRevision = ++revision;
       const q = input.value.trim();
+      setNames([]);
       if (q.length < 2) return setNames([]);
       timer = setTimeout(async () => {
-        controller?.abort();
-        controller = new AbortController();
+        const request = new AbortController();
+        controller = request;
         try {
-          const r = await fetch(`/bff/v1/geo/localities?country=PL&limit=8&q=${encodeURIComponent(q)}`, { signal: controller.signal });
+          const r = await fetch(`/bff/v1/geo/localities?country=PL&limit=8&q=${encodeURIComponent(q)}`, { signal: request.signal });
           if (!r.ok) return;
           const rows = (await r.json()) as { name: string; kind: string }[];
+          if (request.signal.aborted || revision !== currentRevision || input.value.trim() !== q) return;
           setNames([...new Set(rows.filter((l) => l.kind === "CITY").map((l) => l.name))]);
         } catch {
           // suggestions are optional; the form still submits the typed name
@@ -29,6 +34,7 @@ export function CitySuggestions({ inputId, listId }: { inputId: string; listId: 
     };
     input.addEventListener("input", onInput);
     return () => {
+      revision++;
       clearTimeout(timer);
       controller?.abort();
       input.removeEventListener("input", onInput);

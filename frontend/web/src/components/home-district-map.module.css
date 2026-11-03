@@ -1,4 +1,4 @@
-.panel { min-width: 0; background: #f1eee7; color: #121212; padding: clamp(20px, 2.5vw, 32px); border: 1px solid #e6e3dc; border-radius: 28px; }
+.panel { min-width: 0; background: var(--c-surface-3); color: var(--c-ink-900); padding: clamp(20px, 2.5vw, 32px); border: 1px solid var(--c-line); border-radius: 28px; }
 .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .eyebrow { font-size: .6875rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 8px; }
 .header h2 { font-size: clamp(1.5rem, 2.4vw, 2rem); letter-spacing: -.04em; line-height: 1.1; margin: 0; }
@@ -26,14 +26,17 @@
 .selection .selectionTitle { font-family: var(--font-bricolage), system-ui, sans-serif; font-size: 1.25rem; font-weight: 700; margin-bottom: 6px; }
 .legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 8px; list-style: none; padding: 0; margin: 0; }
 .legend li { min-width: 0; }
+.districtList { border-block: 1px solid #d6d2c9; }
+.districtList summary { min-height: 48px; padding: 14px 4px; font-size: .8125rem; font-weight: 700; cursor: pointer; }
+.districtList[open] .legend { padding-bottom: 12px; }
 .legend button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 6px; background: transparent; border: 1px solid transparent; border-radius: 9px; color: #242424; text-align: left; font-size: .75rem; line-height: 1.35; cursor: pointer; overflow-wrap: anywhere; }
 .legend button:hover { background: #fbfaf7; }
 .legend button[aria-pressed="true"] { border-color: #121212; background: #fbfaf7; font-weight: 700; }
 .legend button:focus-visible { outline: 2px solid #121212; outline-offset: 2px; box-shadow: none; }
 .swatch { display: grid; place-items: center; flex: 0 0 32px; height: 28px; border-radius: 6px; background: oklch(.9 .065 var(--district-hue)); font-size: .625rem; font-weight: 700; }
 .check { margin-left: auto; flex: 0 0 12px; }
-.all { display: flex; justify-content: space-between; gap: 12px; align-items: center; min-height: 48px; padding: 14px 18px; margin-top: 16px; background: #121212; color: #fff; border-radius: 12px; text-decoration: none; font-size: .875rem; font-weight: 700; }
-.all:hover { background: #333; }
+.all { display: flex; justify-content: space-between; gap: 12px; align-items: center; min-height: 48px; padding: 14px 18px; margin-top: 16px; background: var(--web-action, #121212); color: #fff; border-radius: 12px; text-decoration: none; font-size: .875rem; font-weight: 700; }
+.all:hover { background: var(--web-action-hover, #333); }
 .source { margin: 12px 0 0; font-size: .6875rem; line-height: 1.5; }
 .source a { color: #454545; text-underline-offset: 3px; }
 @media (max-width: 359px) { .legend { grid-template-columns: 1fr; } }

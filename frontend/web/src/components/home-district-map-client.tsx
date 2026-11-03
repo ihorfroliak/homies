@@ -34,7 +34,9 @@ export function DistrictExplorer({ districts, children }: { districts: District[
         <p className={styles.selectionTitle}>{selected ? `${selected.roman} · ${selected.name}` : t.home.districtMap.choose}</p>
         <p>{selected ? t.home.districtMap.searchPending : t.home.districtMap.legendHint}</p>
       </div>
-      <ul className={styles.legend} aria-label={t.home.districtMap.listLabel}>
+      <details className={styles.districtList}>
+        <summary>{t.home.districtMap.listToggle}</summary>
+        <ul className={styles.legend} aria-label={t.home.districtMap.listLabel}>
         {districts.map((district) => (
           <li key={district.id}>
             <button type="button" aria-pressed={selectedId === district.id} onClick={() => setSelectedId(district.id)} style={{ "--district-hue": district.hue } as CSSProperties}>
@@ -44,7 +46,8 @@ export function DistrictExplorer({ districts, children }: { districts: District[
             </button>
           </li>
         ))}
-      </ul>
+        </ul>
+      </details>
       <Link className={styles.all} href="/wynajem/krakow">{t.home.areas.all}<span aria-hidden="true"> ↗</span></Link>
       <p className={styles.source}><Link href="/zrodla/mapa-krakowa">{t.home.districtMap.source}</Link></p>
     </section>

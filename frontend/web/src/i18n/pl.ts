@@ -27,11 +27,23 @@ export const pl = {
     help: "Pomoc",
     signIn: "Zaloguj się",
     signOut: "Wyloguj się",
+    menu: "Menu",
+    closeMenu: "Zamknij menu",
+  },
+  footer: {
+    description: "Mieszkanie to więcej niż adres. Szukaj miejsca dla siebie, znając koszty i aktualność oferty.",
+    find: "Znajdź mieszkanie",
+    understand: "Warto wiedzieć",
+    krakow: "Wynajem w Krakowie",
+    allPlaces: "Wszystkie lokalizacje",
+    costs: "Jak czytać koszty",
+    mapSource: "Skąd pochodzą granice dzielnic",
+    scope: "Wynajem długoterminowy · Polska",
   },
   home: {
     eyebrow: "Kraków · wynajem długoterminowy",
     heading: "Wybierz okolicę. Albo cały Kraków.",
-    lead: "Przy każdej ofercie: łączny koszt miesięczny, kwota na start i data, kiedy dostępność była ostatnio potwierdzona.",
+    lead: "Porównaj pełny koszt wynajmu. Sprawdź kwotę na start i kiedy dostępność była ostatnio potwierdzona.",
     areas: {
       eyebrow: "Przejdź do ofert",
       heading: "Okolice w wyszukiwarce",
@@ -49,6 +61,7 @@ export const pl = {
       legendHint: "Wybierz dzielnicę, aby zobaczyć jej nazwę i granice.",
       searchPending: "Wyszukiwanie w pełnych granicach tej dzielnicy nie jest jeszcze dostępne. Poniżej mapy znajdziesz dostępne okolice lub oferty z całego miasta.",
       listLabel: "Dzielnice administracyjne Krakowa",
+      listToggle: "Wybierz dzielnicę z listy (18)",
       source: "Granice: Gmina Miejska Kraków · MSIP. Dane i źródło ↗",
     },
     costs: {
