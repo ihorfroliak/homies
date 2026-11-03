@@ -20,8 +20,8 @@ latest_code_bearing_main_state:
   main_ci: 41500457618 success 6/6
 repository_head: resolved from Git (origin/main); intentionally not embedded here
 next_task:
-  id: FE-VIS-001B
-  status: BOUNDED IMPLEMENTATION — founder-selected official Krakow district geometry and original design typography; candidate CI and visual acceptance pending; full-district search not yet supported
+  id: FE-UX-KRK-001 / FE-VIS-001B
+  status: DRAFT PR25 — official districts, warm navigation and on-demand public offers map; exact current-head CI on PR; final map review and founder visual acceptance OPEN
 fe003_implementation_authorized: true # prerequisites satisfied; implementation integrated under D-114
 fe_vis_001_implementation_authorized: false # full legacy scope; bounded FE-VIS-001B authorized by founder 2026-11-03
 production_ready: false
@@ -40,6 +40,30 @@ map; full-district search remains a documented dependency, separate from the
 existing neighbourhood routes. Candidate is not integrated or visually accepted.
 Formal IBB-001, existing debt, BARRIER/rollback BLOCKED and production/deployment
 flags are unchanged. Local accepted alpha stays on main; candidate preview is separate.
+
+**2026-11-03 — UX continuation (supersedes earlier candidate scope above).**
+[Draft PR25](https://github.com/ihorfroliak/homies/pull/25) now includes the
+[FE-UX-KRK-001 contract](tasks/FE-UX-KRK-001.md): warmer surfaces and controls,
+compact header/mobile menu, useful footer, explicit Kraków search defaults,
+stale-suggestion repair and a homepage district/public-offers-map switch.
+Code candidate `e6084756646b1c4854a5e5b53f749b35e6584ec8`; subsequent docs-only
+commits do not change its frontend tree. [UX findings and city sequence](design/001c/2026-11-03-ux-review-UA.md),
+[verification and open gates](reviews/FE-UX-KRK-001-verification.md).
+Local 225 unit tests passed before the narrow BFF-route correction; after it,
+lint/types/build, three focused unit tests and six desktop/mobile navigation
+E2Es passed. Automated browser captures show six public map markers and working
+cards on both sizes, with no page errors or horizontal overflow in that smoke.
+This is not human usability testing or complete design parity.
+
+Separate source review at `f6e5b66` found no concrete P0–P3 findings. The final
+map-switch review is **NOT VERIFIED**: the specialist session reached its usage
+limit. Current exact-head CI is resolved on PR25; earlier CI at `4b0` cannot
+certify this delta. Keep Draft, no acceptance/merge promotion. Street basemap
+G-11, full administrative-district search, no-JS mobile menu and city rollout
+remain open. Kraków first; the official population receipt identifies nine
+municipalities above300k, with Warszawa/Poznań next after pilot acceptance.
+Accepted alpha port3000 stays on main; candidate port3001 uses the preserved
+synthetic backend. No deployment, paid provider, notification, DB or main change.
 
 > **Single owner of volatile status, not of decisions.** This page owns the
 > answer to "where is Homies now?" (05 §14, D-106): baseline, `main` state,

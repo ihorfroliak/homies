@@ -10,19 +10,21 @@ Preserved from the founder's 2026-10-30 handoff. These are non-normative design 
 |---|---|
 | 001C MASTER | Latest navigation/index of design intent; not a replacement backend contract |
 | 001C Dzielnica Product Convergence | Main visual reference for results, listing details, cost hierarchy and engagement |
-| 001C Home Mapa | Preserve; real geography model and licensed boundaries unresolved |
+| 001C Home Mapa | Preserved; official 18-district MSIP geometry candidate per founder 2026-11-03; full-district search remains open |
 | 001B Kierunki / Konwersja FE-003 | Preserve exploration and interaction intentions; use latest 001C when visual proposals differ |
 | 001C Dzielnica | 206-byte empty canvas; do not mistake this for missing content in the full convergence export |
 | Warm canvas, dark primary controls, white cards, location and price hierarchy | Implemented as web-local candidate presentation |
-| Bricolage Grotesque / Public Sans | Proposed; not bundled; system fonts retained, no remote font dependency |
-| 13 district colors | Direction accepted under D-103; complete palette rollout and geography binding are deferred from this bounded candidate |
+| Bricolage Grotesque / Public Sans | Locally bundled candidate with OFL/provenance; no remote font runtime dependency |
+| 13 district colors | Original identity hues retained where names correspond; official 18-district candidate supersedes schematic shapes by founder decision |
 | Prototype cost signature | Preserve visual idea; current server monthly/start totals remain authoritative, no fabricated segments |
 | Prototype slots, messages, logins and provider actions | Reference only; existing integrated FE-003 and BP-11 remain the implementation |
 | Old claims FE-003 is unimplemented | Superseded by integrated baseline; no removal of working features |
-| Home decorative district SVG / exact geographic assumptions | Not presented as a real map |
+| Home decorative district SVG / exact geographic assumptions | Schematic original archived; candidate uses official source polygons, attributed separately |
 | Legacy cleaning, short-stay, ERP and payments material inside ZIP | Archived context only; no Homies Phase 1 scope expansion |
 
 The ZIP also preserves prior design system, seeker/host/admin flows, messages, data-model and content references plus their support assets. Archive completeness is not a claim that all proposed features are implemented or accepted.
 
 ## Review
 A separate local preview at port 3001 uses the existing synthetic alpha backend; port 3000 remains the accepted alpha. Review the presentation before any merge. Main, canonical baseline, production readiness and all existing debt remain unchanged.
+
+Current continuation: [Kraków UX review](2026-11-03-ux-review-UA.md), [verification](../../reviews/FE-UX-KRK-001-verification.md). Volatile acceptance/CI status belongs to PROJECT-STATUS and PR25.
