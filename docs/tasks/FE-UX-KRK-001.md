@@ -50,7 +50,11 @@ Use explicit click/touch/keyboard activation, not hover-only mode changes.
 Reuse the existing public map endpoint, privacy-safe points and lazy map renderer.
 Do not silently widen a failed Kraków lookup to nationwide. Keep incomplete
 map coverage, approximate positions and unavailable street basemap explicit.
-No tile provider activation is authorized; G-11 still applies. A city preview
+G-11 already permits a development-only source. A free, accountless basemap may
+be configured in the isolated local preview after checking attribution and
+network origins; no paid service or beta/production provider decision follows.
+CI and the default application configuration keep the blank/no-network style.
+A city preview
 does not claim to apply unsubmitted search-form filters. Full map search remains
 the existing filtered route; preserve the district design and selection on return.
 

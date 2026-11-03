@@ -54,3 +54,33 @@ Screenshots and browser traces stay in the private local HOMIES-UX-KRK-001
 artifact directory; personal browser chrome is excluded from repository evidence.
 The reproducible synthetic functional tests live in frontend/web/e2e/navigation.spec.ts.
 No main merge, deployment, provider activation, schema change or reseeding.
+
+## Local development basemap follow-up
+
+After the preceding blank-style smoke, the founder's requested street-map
+experience was resolved within existing accepted G-11 (development-only source
+permitted, beta/production selection deferred). The isolated preview compose
+selects OpenFreeMap Positron; source code/default CI remain provider-agnostic
+and do not enable any external tiles by default. Renderer corrections enable MapLibre's source attribution control (previously
+disabled) and reserve space beneath the listing popup for the credits.
+Local visual/network verification follows on the final candidate; do not infer
+it from the earlier blank-style captures.
+
+Primary sources inspected 2026-11-03:
+[service](https://openfreemap.org/), [quick start](https://openfreemap.org/quick_start/),
+[terms](https://openfreemap.org/tos/), [privacy](https://openfreemap.org/privacy/).
+The public service requires no account/API key/payment. Attribution is required;
+the TileJSON supplies OpenFreeMap / OpenMapTiles / OpenStreetMap credits.
+Style, sprites, glyphs and tile endpoints were observed on the single origin
+https://tiles.openfreemap.org, already supported by explicit configured-origin CSP.
+No wildcard or script-origin relaxation. User account data/messages/private
+addresses are never sent to it; normal browser network metadata and requested
+map tiles are visible to the service/CDN. Privacy documentation describes error
+and security-incident logging exceptions; this is not a zero-data or legal
+certification claim. No bulk download, geolocation request or production choice.
+
+Development basemap smoke: six markers per viewport;12 successful map resource
+responses per viewport, zero failed resources/page errors/console errors or
+horizontal overflow. Source credits resolved from TileJSON. Both desktop and
+mobile screenshots were inspected, including an open listing card. No map
+resource request occurred before the explicit homepage map selection.

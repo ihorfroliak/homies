@@ -58,12 +58,14 @@ This is not human usability testing or complete design parity.
 Separate source review at `f6e5b66` found no concrete P0–P3 findings. The final
 map-switch review is **NOT VERIFIED**: the specialist session reached its usage
 limit. Current exact-head CI is resolved on PR25; earlier CI at `4b0` cannot
-certify this delta. Keep Draft, no acceptance/merge promotion. Street basemap
+certify this delta. Keep Draft, no acceptance/merge promotion. Beta/production basemap choice
 G-11, full administrative-district search, no-JS mobile menu and city rollout
 remain open. Kraków first; the official population receipt identifies nine
 municipalities above300k, with Warszawa/Poznań next after pilot acceptance.
 Accepted alpha port3000 stays on main; candidate port3001 uses the preserved
-synthetic backend. No deployment, paid provider, notification, DB or main change.
+synthetic backend. Accepted G-11 permits the isolated preview to use a free
+development-only street basemap with attribution; no default/production provider
+is selected. No deployment, paid provider, notification, DB or main change.
 
 > **Single owner of volatile status, not of decisions.** This page owns the
 > answer to "where is Homies now?" (05 §14, D-106): baseline, `main` state,
