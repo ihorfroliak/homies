@@ -38,7 +38,8 @@ No domain change, fabricated counts, fake routes, reseed or DB modification.
 Local map checks: lint/typecheck PASS; 215 unit tests PASS, including keyboard,
 pointer, shared selection, attribution and unavailable district-routing cases.
 Generator `--check` PASS (18 IDs, every source vertex/ring, deterministic output).
-Production build and exact-SHA specialist review must be recorded after completion.
+Production build PASS. Separate exact-SHA frontend review of `6209fb1` found
+no concrete P0–P3 findings; [receipt](../reviews/FE-VIS-001B-map-6209fb1.md).
 Visual/browser acceptance remains open; automated tests are not a substitute.
 
 Next bounded work: verify source-identified district/address membership and
