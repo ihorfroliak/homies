@@ -1,4 +1,4 @@
-.panel { min-width: 0; padding: clamp(24px, 3vw, 40px); border: 1px solid var(--c-line); border-radius: 28px; background: var(--c-surface-3); display: flex; flex-direction: column; }
+.panel { min-width: 0; padding: clamp(24px, 3vw, 40px); margin-bottom: 32px; border: 1px solid var(--c-line); border-radius: 28px; background: var(--c-surface-3); display: flex; flex-direction: column; }
 .eyebrow { font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .heading h2 { font-size: clamp(1.75rem, 3vw, 2.5rem); letter-spacing: -.04em; line-height: 1.1; margin: 16px 0; }
 .heading p { color: var(--c-ink-700); max-width: 42ch; }

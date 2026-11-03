@@ -16,3 +16,31 @@ Acceptance: lint/types/tests/build; actual desktop/mobile comparison against sou
 Founder selected official districts and exact geography, rather than the13schematic source shapes. Preserve colourful design language, adapt it to the official district dataset. Verify municipal provenance/reuse terms and geometry before bundling. Existing neighbourhoods such as Kazimierz must not silently become equivalent to an administrative district; preserve existing search semantics and resolve routing explicitly. No prototype counts/polygons imported.
 
 Typography local checks: lint/typecheck/build PASS;211unit tests PASS. Visual verification NOT VERIFIED: Windows Computer Use stopped because it could not confidently determine the browser URL. No visual acceptance or full-design completion claim.
+
+## Official-map orientation increment
+
+The municipality's downloadable 18-district dataset is pinned and reproduced
+without simplifying its 23,286 boundary vertices. Provenance, source vintage,
+reuse assessment and deterministic generator are in
+[`../design/001c/geography/README.md`](../design/001c/geography/README.md).
+The supplied design's palette and typography are adapted to these official
+shapes. Same selection state for pointer and native keyboard controls; selected
+name announced; source accessible from the map. No tile provider or address pins.
+
+Evidence identified a real search dependency: existing synthetic GeoArea rows,
+including Stare Miasto, are NEIGHBOURHOOD; the search filter is exact membership,
+not administrative containment. Name equality cannot prove equivalence. This
+increment therefore exposes the full official map as orientation, clearly marks
+full-district search unavailable, and preserves the independently supported
+neighbourhood routes below it. It is not full HM-1 marketplace navigation.
+No domain change, fabricated counts, fake routes, reseed or DB modification.
+
+Local map checks: lint/typecheck PASS; 215 unit tests PASS, including keyboard,
+pointer, shared selection, attribution and unavailable district-routing cases.
+Generator `--check` PASS (18 IDs, every source vertex/ring, deterministic output).
+Production build and exact-SHA specialist review must be recorded after completion.
+Visual/browser acceptance remains open; automated tests are not a substitute.
+
+Next bounded work: verify source-identified district/address membership and
+district-search containment (including Kazimierz inside district I and border
+cases) before enabling official-district result links. Preserve current URLs.
