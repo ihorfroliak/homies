@@ -1,10 +1,21 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it } from "vitest";
+import { renderToString } from "react-dom/server";
 
 import { HomeDistrictMap } from "./home-district-map";
 
 afterEach(cleanup);
+
+it("preserves district title text in server HTML before hydration", () => {
+  const html = renderToString(<HomeDistrictMap />);
+  const parsed = new DOMParser().parseFromString(html, "text/html");
+  const titles = [...parsed.querySelectorAll("svg path title")].map((title) => title.textContent);
+  expect(titles).toHaveLength(18);
+  expect(titles[0]).toBe("I · Stare Miasto");
+  expect(titles[17]).toBe("XVIII · Nowa Huta");
+  expect(titles.every((title) => Boolean(title?.trim()))).toBe(true);
+});
 
 it("offers all 18 official districts as named keyboard controls, independently of search reference availability", () => {
   render(<HomeDistrictMap />);

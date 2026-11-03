@@ -14,7 +14,7 @@ export function HomeDistrictMap() {
         {geometry.districts.map((district) => (
           <g key={district.id} style={{ "--district-hue": district.hue } as CSSProperties}>
             <path data-district={district.id} d={district.path} fillRule="evenodd" className={styles.district}>
-              <title>{district.roman} · {district.name}</title>
+              <title>{`${district.roman} · ${district.name}`}</title>
             </path>
             <text x={district.label[0]} y={district.label[1]} className={styles.number} dominantBaseline="central" textAnchor="middle">{district.roman}</text>
           </g>
