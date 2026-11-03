@@ -46,8 +46,9 @@ flags are unchanged. Local accepted alpha stays on main; candidate preview is se
 [FE-UX-KRK-001 contract](tasks/FE-UX-KRK-001.md): warmer surfaces and controls,
 compact header/mobile menu, useful footer, explicit Kraków search defaults,
 stale-suggestion repair and a homepage district/public-offers-map switch.
-Code candidate `e6084756646b1c4854a5e5b53f749b35e6584ec8`; subsequent docs-only
-commits do not change its frontend tree. [UX findings and city sequence](design/001c/2026-11-03-ux-review-UA.md),
+Base functional candidate `e6084756646b1c4854a5e5b53f749b35e6584ec8`; the
+subsequent attribution control/spacing follow-up is also in PR25. Resolve the
+final exact candidate from Git/PR, not the earlier base-code receipt. [UX findings and city sequence](design/001c/2026-11-03-ux-review-UA.md),
 [verification and open gates](reviews/FE-UX-KRK-001-verification.md).
 Local 225 unit tests passed before the narrow BFF-route correction; after it,
 lint/types/build, three focused unit tests and six desktop/mobile navigation

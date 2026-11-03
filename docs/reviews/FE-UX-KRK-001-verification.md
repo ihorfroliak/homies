@@ -1,6 +1,7 @@
 # FE-UX-KRK-001 — builder verification and open review gate
 
-Code SHA: e6084756646b1c4854a5e5b53f749b35e6584ec8.
+Base UX + route-correction code SHA: e6084756646b1c4854a5e5b53f749b35e6584ec8.
+Attribution follow-up is recorded below; final candidate is the current PR25 SHA.
 Base main: d103a4cf5c966320efe2b13a2fae9b73f601d276.
 Date: 2026-11-03. Draft PR25. This is a builder receipt, not independent acceptance.
 
@@ -84,3 +85,9 @@ responses per viewport, zero failed resources/page errors/console errors or
 horizontal overflow. Source credits resolved from TileJSON. Both desktop and
 mobile screenshots were inspected, including an open listing card. No map
 resource request occurred before the explicit homepage map selection.
+
+Final attribution spacing check found a4px overlap on the390px mobile viewport
+with expanded two-line credits; the popup now reserves64px below it. Rebuilt
+successfully and repeated real street-map capture/geometry assertions on both
+viewports. This small renderer follow-up is still within the open final review
+gate; no broader map behaviour or public-coordinate semantics changed.
