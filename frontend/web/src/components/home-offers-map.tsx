@@ -32,7 +32,7 @@ function PublicMap({ retry }: { retry: () => void }) {
     const controller = new AbortController();
     async function read() {
       const options = { signal: controller.signal, headers: { accept: "application/json" } };
-      const cityResponse = await fetch("/bff/v1/geo/localities/by-slug?country=PL&slug=krakow", options);
+      const cityResponse = await fetch(`/bff/v1/geo/localities?country=PL&limit=8&q=${encodeURIComponent("Kraków")}`, options);
       if (!cityResponse.ok) throw new Error("locality unavailable");
       const cities = await cityResponse.json() as Locality[];
       const city = cities.find((row) => row.kind === "CITY" && row.slug === "krakow");
