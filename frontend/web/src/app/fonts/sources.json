@@ -1,0 +1,30 @@
+[
+  {
+    "file": "BricolageGrotesque.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/bricolagegrotesque/BricolageGrotesque%5Bopsz%2Cwdth%2Cwght%5D.ttf",
+    "git_blob": "9a4ca271ff84357bb8f8830ce71b85ea3571f731",
+    "sha256": "413e7357809ddd12fd80a96a8a396de0e401638d4acd3cb3e37532f0472ac682",
+    "bytes": 408496
+  },
+  {
+    "file": "BricolageGrotesque-OFL.txt",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/bricolagegrotesque/OFL.txt",
+    "git_blob": "a397658a5c4ab27c349964553b7caca61a4346f6",
+    "sha256": "4b5a7d8f37f5602621c8a8d7358a6a2e71317e6c231c661e15aef0275d3e07ba",
+    "bytes": 4403
+  },
+  {
+    "file": "PublicSans.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/publicsans/PublicSans%5Bwght%5D.ttf",
+    "git_blob": "c747e1de8c8deadb6ba852eb9a0a7d893b8bd36f",
+    "sha256": "d75a7dc1a27eb9e336d5b33f55489d2ecb5621bf694d5c43b2415bce2ca830a8",
+    "bytes": 103316
+  },
+  {
+    "file": "PublicSans-OFL.txt",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/publicsans/OFL.txt",
+    "git_blob": "9eef1e9900892e8e971c1e731546f7987241641b",
+    "sha256": "157a9e77f7580246e97c769490e2e977ae94399f9d30f4556015c41fe8c28bac",
+    "bytes": 4390
+  }
+]

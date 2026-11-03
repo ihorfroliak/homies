@@ -3,6 +3,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 body {
+  font-family: var(--font-public-sans), system-ui, sans-serif;
   background: var(--c-surface-2);
   min-height: 100vh;
   display: flex;
@@ -10,6 +11,10 @@ body {
 }
 
 main { flex: 1 0 auto; }
+
+/* Original Home Mapa typography, bundled locally under the OFL. */
+button, input, select, textarea { font-family: inherit; }
+h1, h2, h3 { font-family: var(--font-bricolage), system-ui, sans-serif; font-optical-sizing: auto; }
 
 :focus-visible {
   outline: none;
