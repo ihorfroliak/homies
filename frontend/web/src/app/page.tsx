@@ -5,6 +5,7 @@ import { ListingCard } from "@/components/listing/listing-card";
 import { SearchBox } from "@/components/search-box/search-box";
 import { HomeAreas } from "@/components/home-areas";
 import { HomeDistrictMap } from "@/components/home-district-map";
+import { HomeExplorer } from "@/components/home-explorer";
 import { t } from "@/i18n";
 import { newest, resolvePlace } from "@/search/server";
 
@@ -26,7 +27,7 @@ export default function HomePage() {
           <p className={styles.lead}>{t.home.lead}</p>
           <SearchBox />
         </section>
-        <HomeDistrictMap />
+        <HomeExplorer><HomeDistrictMap /></HomeExplorer>
       </div>
       <Suspense fallback={<HomeAreas areas={[]} loading />}>
         <KrakowAreas />

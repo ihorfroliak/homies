@@ -16,7 +16,7 @@ authority, privacy, quotas, backend search or DB membership semantics.
 Read-only frontend discovery at `110e745` identified:
 
 1. Mobile navigation is a horizontally scrolling row; later account actions can
-   be off-screen. Replace it with a compact labelled native disclosure, preserving
+   be off-screen. Replace it with a compact labelled button-controlled disclosure, preserving
    existing session/capability-driven actions. Founder explicitly requests the
    burger approach here; this supersedes the old bottom-navigation prescription
    for this bounded header. Do not infer authority from the design export alone.
@@ -44,6 +44,15 @@ the supplied design. Record blocked capture honestly; source inspection or web
 research is not a completed visual audit. No conversion/retention uplift claimed.
 
 ## City rollout gates
+
+Founder follow-up 2026-11-03 authorizes a homepage district/offers-map switch.
+Use explicit click/touch/keyboard activation, not hover-only mode changes.
+Reuse the existing public map endpoint, privacy-safe points and lazy map renderer.
+Do not silently widen a failed Kraków lookup to nationwide. Keep incomplete
+map coverage, approximate positions and unavailable street basemap explicit.
+No tile provider activation is authorized; G-11 still applies. A city preview
+does not claim to apply unsubmitted search-form filters. Full map search remains
+the existing filtered route; preserve the district design and selection on return.
 
 Kraków is the design pilot. Use official GUS municipality population with a
 dated snapshot, not metro-area estimates. Warszawa/Poznań are explicitly named

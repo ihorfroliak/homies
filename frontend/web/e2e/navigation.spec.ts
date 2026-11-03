@@ -39,3 +39,23 @@ test("district list expands by keyboard and remains honest about search coverage
   await expect(page.getByRole("status").filter({ hasText: "I · Stare Miasto" })).toContainText("nie jest jeszcze dostępne");
   await expect(page.getByLabel("Miasto", { exact: true })).toHaveValue("Kraków");
 });
+
+test("home switches to the real public map on demand and preserves district choice and form values", async ({ page }) => {
+  test.skip(process.env.E2E_BACKEND !== "1", "needs the disposable seeded backend");
+  const mapRequests: string[] = [];
+  page.on("request", (request) => { if (request.url().includes("/bff/v1/classifieds/map")) mapRequests.push(request.url()); });
+  await page.goto("/");
+  await page.getByText("Wybierz dzielnicę z listy (18)", { exact: true }).click();
+  await page.getByRole("button", { name: "Stare Miasto", exact: true }).click();
+  await page.getByLabel("Maks. koszt miesięczny (zł)").fill("4200");
+  expect(mapRequests).toHaveLength(0);
+  const response = page.waitForResponse((r) => r.url().includes("/bff/v1/classifieds/map") && r.status() === 200);
+  await page.getByRole("button", { name: "Mapa ofert", exact: true }).click();
+  const payload = await (await response).json();
+  expect(payload.total).toBeGreaterThan(0);
+  await expect(page.getByRole("heading", { name: "Mieszkania na mapie Krakowa" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Otwórz mapę z filtrami/ })).toHaveAttribute("href", "/wynajem/krakow?widok=mapa");
+  await page.getByRole("button", { name: "Dzielnice", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Stare Miasto", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Maks. koszt miesięczny (zł)")).toHaveValue("4200");
+});

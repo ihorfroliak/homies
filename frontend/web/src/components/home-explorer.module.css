@@ -1,0 +1,9 @@
+.explorer { min-width: 0; }
+.switcher { display: flex; gap: 4px; padding: 4px; margin-bottom: 12px; border: 1px solid var(--c-line); border-radius: 16px; background: var(--c-surface-3); }
+.switcher button { flex: 1; min-height: 48px; padding: 10px 12px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: var(--c-ink-700); font: inherit; font-size: .875rem; font-weight: 700; cursor: pointer; }
+.switcher button[aria-pressed="true"] { background: var(--c-surface); color: var(--c-ink-900); border-color: var(--c-line); box-shadow: 0 2px 5px #29241f0a; }
+.switcher button:hover { color: var(--c-ink-900); }
+.offers { padding: 20px; border: 1px solid var(--c-line); border-radius: 28px; background: var(--c-surface-3); }
+.offers h2 { margin: 0 0 8px; font-size: 1.5rem; }
+.offers p { font-size: .8125rem; line-height: 1.55; }
+.link { display: inline-flex; align-items: center; min-height: 44px; margin-top: 12px; font-weight: 700; text-underline-offset: 3px; }

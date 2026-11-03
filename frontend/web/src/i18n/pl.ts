@@ -41,6 +41,17 @@ export const pl = {
     scope: "Wynajem długoterminowy · Polska",
   },
   home: {
+    explorer: {
+      label: "Sposób poznawania Krakowa",
+      districts: "Dzielnice",
+      offers: "Mapa ofert",
+      heading: "Mieszkania na mapie Krakowa",
+      preview: "Podgląd ofert z całego miasta. Aby zastosować filtry, przejdź do wyszukiwarki z mapą.",
+      noBasemap: "Podkład ulic nie jest jeszcze skonfigurowany. Punkty pokazują przybliżone położenie ofert.",
+      fullSearch: "Otwórz mapę z filtrami →",
+      retry: "Spróbuj ponownie",
+      empty: "Nie ma teraz ofert do pokazania. Sprawdź listę lub wróć później.",
+    },
     eyebrow: "Kraków · wynajem długoterminowy",
     heading: "Wybierz okolicę. Albo cały Kraków.",
     lead: "Porównaj pełny koszt wynajmu. Sprawdź kwotę na start i kiedy dostępność była ostatnio potwierdzona.",
