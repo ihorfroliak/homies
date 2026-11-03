@@ -76,7 +76,9 @@ export function MapCanvas({ state, points, areaName }: { state: SearchState; poi
       container: container.current,
       style: process.env.NEXT_PUBLIC_MAP_STYLE_URL || BLANK_STYLE,
       bounds: state.bbox ? [[state.bbox[0], state.bbox[1]], [state.bbox[2], state.bbox[3]]] : POLAND,
-      attributionControl: false,
+      // Configured development styles supply attribution through their sources.
+      // Keep it accessible on small maps; a blank style has no source credits.
+      attributionControl: { compact: true },
       dragRotate: false,
       pitchWithRotate: false,
       cooperativeGestures: false,

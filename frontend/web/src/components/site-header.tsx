@@ -3,6 +3,7 @@ import Link from "next/link";
 import { t } from "@/i18n";
 import { EngagementNavigation } from "@/engagement/navigation";
 import { BrandMark } from "./brand-mark";
+import { SiteNavigation } from "./site-navigation";
 
 import styles from "./site-header.module.css";
 
@@ -18,14 +19,12 @@ export function SiteHeader() {
         <Link href="/" className={styles.logo} aria-label={`${t.meta.siteName} — strona główna`}>
           <BrandMark />Homies
         </Link>
-        <nav aria-label={t.a11y.mainNavigation}>
-          <ul className={styles.links}>
+        <SiteNavigation>
             <li>
               <Link href="/wynajem">{t.nav.search}</Link>
             </li>
             <EngagementNavigation />
-          </ul>
-        </nav>
+        </SiteNavigation>
       </div>
     </header>
   );

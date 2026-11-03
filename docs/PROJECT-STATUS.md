@@ -2,7 +2,7 @@
 id: PROJECT-STATUS
 type: status_index
 role: single semantic owner of volatile project status (D-106, 05 §14)
-as_of: 2026-11-02
+as_of: 2026-11-03
 reconciled_through:
   code_and_product: FE-003 merge 98ad3cc09b418784500452a62907be2dd46f9e81 (D-114)
   documentation: HOMIES-DELIVERY-002 integrated package and immutable review archive (D-114)
@@ -13,22 +13,60 @@ last_formal_baseline:
   tag: backend-baseline-001
   status: ACCEPTED
 latest_code_bearing_main_state:
-  implementation_sha: 3f1a3fdbac303edbf09bf5e95678356d96dcc15d
-  what: DEP-001, BP-3, BP-11, BP-9, AGENT-002, BP-4 and FE-003 INTEGRATED
-  merge_sha: 98ad3cc09b418784500452a62907be2dd46f9e81
-  candidate_ci: 40140692791 success 6/6
-  main_ci: 40174564874 (exact merge SHA; post-merge acceptance gate)
+  implementation_sha: 1dc02641fdb0fa7c1b419f3a7703ae98b5175faf
+  what: Delivery-002 plus PR23 CI repair, PR24 viewing date validation and PR20 partial design INTEGRATED
+  merge_sha: d103a4cf5c966320efe2b13a2fae9b73f601d276
+  candidate_ci: 41497008300 success 6/6
+  main_ci: 41500457618 success 6/6
 repository_head: resolved from Git (origin/main); intentionally not embedded here
 next_task:
-  id: DESIGN-001C / PRESTAGE-CI-001
-  status: BOUNDED CANDIDATES — Draft PR20 and PR23; exact-candidate CI and visual acceptance required; no main merge or staging deployment
+  id: FE-UX-KRK-001 / FE-VIS-001B
+  status: DRAFT PR25 — official districts, warm navigation and on-demand public offers map; exact current-head CI on PR; final map review and founder visual acceptance OPEN
 fe003_implementation_authorized: true # prerequisites satisfied; implementation integrated under D-114
-fe_vis_001_implementation_authorized: false
+fe_vis_001_implementation_authorized: false # full legacy scope; bounded FE-VIS-001B authorized by founder 2026-11-03
 production_ready: false
 deployed: false
 ---
 
 # Project status — orientation index
+
+**2026-11-03 — current work.** Main `d103a4c` includes the three authorized
+merges PR23/24/20; final main CI 41500457618 SUCCESS 6/6. The founder requests
+continued faithful interface work from that shared main and explicitly chooses
+official districts/exact geography instead of the prototype's 13 schematic
+areas. [FE-VIS-001B contract](tasks/FE-VIS-001B-home-fidelity.md) bounds the new
+candidate. It adds local design fonts and an official 18-district orientation
+map; full-district search remains a documented dependency, separate from the
+existing neighbourhood routes. Candidate is not integrated or visually accepted.
+Formal IBB-001, existing debt, BARRIER/rollback BLOCKED and production/deployment
+flags are unchanged. Local accepted alpha stays on main; candidate preview is separate.
+
+**2026-11-03 — UX continuation (supersedes earlier candidate scope above).**
+[Draft PR25](https://github.com/ihorfroliak/homies/pull/25) now includes the
+[FE-UX-KRK-001 contract](tasks/FE-UX-KRK-001.md): warmer surfaces and controls,
+compact header/mobile menu, useful footer, explicit Kraków search defaults,
+stale-suggestion repair and a homepage district/public-offers-map switch.
+Base functional candidate `e6084756646b1c4854a5e5b53f749b35e6584ec8`; the
+subsequent attribution control/spacing follow-up is also in PR25. Resolve the
+final exact candidate from Git/PR, not the earlier base-code receipt. [UX findings and city sequence](design/001c/2026-11-03-ux-review-UA.md),
+[verification and open gates](reviews/FE-UX-KRK-001-verification.md).
+Local 225 unit tests passed before the narrow BFF-route correction; after it,
+lint/types/build, three focused unit tests and six desktop/mobile navigation
+E2Es passed. Automated browser captures show six public map markers and working
+cards on both sizes, with no page errors or horizontal overflow in that smoke.
+This is not human usability testing or complete design parity.
+
+Separate source review at `f6e5b66` found no concrete P0–P3 findings. The final
+map-switch review is **NOT VERIFIED**: the specialist session reached its usage
+limit. Current exact-head CI is resolved on PR25; earlier CI at `4b0` cannot
+certify this delta. Keep Draft, no acceptance/merge promotion. Beta/production basemap choice
+G-11, full administrative-district search, no-JS mobile menu and city rollout
+remain open. Kraków first; the official population receipt identifies nine
+municipalities above300k, with Warszawa/Poznań next after pilot acceptance.
+Accepted alpha port3000 stays on main; candidate port3001 uses the preserved
+synthetic backend. Accepted G-11 permits the isolated preview to use a free
+development-only street basemap with attribution; no default/production provider
+is selected. No deployment, paid provider, notification, DB or main change.
 
 > **Single owner of volatile status, not of decisions.** This page owns the
 > answer to "where is Homies now?" (05 §14, D-106): baseline, `main` state,

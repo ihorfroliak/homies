@@ -1,3 +1,4 @@
+import { openNavigation } from "./navigation-helper";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { isAbsolute } from "node:path";
@@ -21,6 +22,7 @@ test("restored report intent rechecks the authorized thread and opens an empty f
   await page.goto("/logowanie");
   // Finish this document's initial session/intent probe before simulating an
   // intent persisted by the preceding interaction and navigating to its thread.
+  await openNavigation(page);
   await expect(page.getByRole("button", { name: "Wyloguj się", exact: true })).toBeVisible();
   await page.evaluate(({ key, message }) => sessionStorage.setItem(key, JSON.stringify({ action: "report", message_id: message, initiator_id: "engagement-status", created_at: Date.now() })), { key: INTENT_KEY, message: f.messages.reportable });
   let reports = 0; page.on("request", request => { if (request.url().endsWith("/bff/v1/reports") && request.method() === "POST") reports++; });

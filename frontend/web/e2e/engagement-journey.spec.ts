@@ -1,3 +1,4 @@
+import { openNavigation } from "./navigation-helper";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { isAbsolute } from "node:path";
@@ -23,7 +24,7 @@ async function credentials(page: Page, account: Account, register = false) {
   await form.getByRole("button", { name: register ? "Utwórz konto" : "Zaloguj się", exact: true }).last().click();
 }
 async function login(page: Page, account: Account) { await page.goto("/logowanie"); await credentials(page, account); await expect(page.getByRole("status").filter({ hasText: "Zalogowano" })).toBeVisible(); }
-async function logout(page: Page) { await page.getByRole("button", { name: "Wyloguj się", exact: true }).click(); await expect(page.getByRole("button", { name: "Wyloguj się", exact: true })).toHaveCount(0); }
+async function logout(page: Page) { await openNavigation(page); await page.getByRole("button", { name: "Wyloguj się", exact: true }).click(); await expect(page.getByRole("button", { name: "Wyloguj się", exact: true })).toHaveCount(0); }
 async function scan(page: Page) { expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations.map(v => v.id)).toEqual([]); }
 async function assertPrivateStorage(page: Page) {
   const stored = await page.evaluate(() => [...Object.values(localStorage), ...Object.values(sessionStorage)].join(" "));

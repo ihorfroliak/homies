@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import localFont from "next/font/local";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
 
@@ -13,6 +14,15 @@ import { SiteHeader } from "@/components/site-header";
 import { t } from "@/i18n";
 import { pageMetadata } from "@/seo";
 
+const publicSans = localFont({
+  src: "./fonts/PublicSans.ttf", variable: "--font-public-sans",
+  weight: "100 900", display: "swap",
+});
+const bricolage = localFont({
+  src: "./fonts/BricolageGrotesque.ttf", variable: "--font-bricolage",
+  weight: "200 800", display: "swap",
+});
+
 export const metadata: Metadata = {
   ...pageMetadata({ page: { kind: "home" } }),
   applicationName: t.meta.siteName,
@@ -22,7 +32,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#0c7d5e",
+  themeColor: "#faf7f0",
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
@@ -30,7 +40,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   // page would ship scripts without the nonce and be blocked in production.
   await connection();
   return (
-    <html lang="pl" data-theme="light">
+    <html lang="pl" data-theme="light" className={`${publicSans.variable} ${bricolage.variable}`}>
       <body>
         <a className="skip-link" href="#tresc">
           {t.a11y.skipToContent}

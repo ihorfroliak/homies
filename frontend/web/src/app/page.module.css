@@ -1,15 +1,15 @@
-.hero { padding-top: 44px; padding-bottom: var(--sp-7); }
+.hero { padding-top: 32px; padding-bottom: var(--sp-7); }
 .intro { display: grid; gap: 32px; margin-bottom: 40px; }
 .search { min-width: 0; }
 .eyebrow { margin: 0 0 24px; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--c-ink-700); }
 @media (min-width: 1024px) { .intro { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 48px; } }
 .title {
-  font-size: clamp(2.75rem, 5.3vw, 4.75rem);
+  font-size: clamp(2.5rem, 4.4vw, 4rem);
   line-height: .98; letter-spacing: -.04em;
   font-weight: 800; color: var(--c-ink-900);
-  max-width: 22ch; margin: 0 0 var(--sp-5); text-wrap: balance;
+  max-width: 22ch; margin: 0 0 24px; text-wrap: balance;
 }
-.lead { font-size: 1.0625rem; line-height: 1.65; color: var(--c-ink-700); max-width: 48ch; margin: 0 0 var(--sp-6); }
+.lead { font-size: 1rem; line-height: 1.6; color: var(--c-ink-700); max-width: 48ch; margin: 0 0 24px; }
 .pillars { display: grid; gap: var(--sp-3); list-style: none; padding: 0; margin: 0; }
 .pillars li {
   padding: var(--sp-3) 0; border-top: 1px solid var(--c-line-strong);

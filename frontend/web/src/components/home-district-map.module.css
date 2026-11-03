@@ -1,0 +1,43 @@
+.panel { min-width: 0; background: var(--c-surface-3); color: var(--c-ink-900); padding: clamp(20px, 2.5vw, 32px); border: 1px solid var(--c-line); border-radius: 28px; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.eyebrow { font-size: .6875rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 8px; }
+.header h2 { font-size: clamp(1.5rem, 2.4vw, 2rem); letter-spacing: -.04em; line-height: 1.1; margin: 0; }
+.badge { border: 1px solid #8a877f; border-radius: 100px; padding: 7px 10px; font-size: .6875rem; white-space: nowrap; }
+.intro { margin: 12px 0 0; font-size: .8125rem; line-height: 1.55; color: #454545; max-width: 58ch; }
+.canvas { margin: 12px -8px 0; }
+.map { display: block; width: 100%; height: auto; overflow: visible; }
+.district { fill: oklch(.9 .065 var(--district-hue)); stroke: #fbfaf7; stroke-width: 1.4; vector-effect: non-scaling-stroke; cursor: pointer; transition: fill 140ms ease; }
+.district:hover { fill: oklch(.79 .09 var(--district-hue)); stroke: #454545; }
+.number { fill: #242424; font-size: 18px; font-weight: 700; pointer-events: none; }
+.north { fill: #454545; font-size: 16px; }
+.canvas[data-selected="1"] [data-district="1"], .canvas[data-selected="2"] [data-district="2"],
+.canvas[data-selected="3"] [data-district="3"], .canvas[data-selected="4"] [data-district="4"],
+.canvas[data-selected="5"] [data-district="5"], .canvas[data-selected="6"] [data-district="6"],
+.canvas[data-selected="7"] [data-district="7"], .canvas[data-selected="8"] [data-district="8"],
+.canvas[data-selected="9"] [data-district="9"], .canvas[data-selected="10"] [data-district="10"],
+.canvas[data-selected="11"] [data-district="11"], .canvas[data-selected="12"] [data-district="12"],
+.canvas[data-selected="13"] [data-district="13"], .canvas[data-selected="14"] [data-district="14"],
+.canvas[data-selected="15"] [data-district="15"], .canvas[data-selected="16"] [data-district="16"],
+.canvas[data-selected="17"] [data-district="17"], .canvas[data-selected="18"] [data-district="18"] {
+  fill: oklch(.79 .09 var(--district-hue)); stroke: #121212; stroke-width: 2.5;
+}
+.selection { background: #fbfaf7; border: 1px solid #d6d2c9; border-radius: 14px; padding: 16px; margin: 12px 0 16px; min-height: 105px; }
+.selection p { margin: 0; font-size: .8125rem; line-height: 1.5; }
+.selection .selectionTitle { font-family: var(--font-bricolage), system-ui, sans-serif; font-size: 1.25rem; font-weight: 700; margin-bottom: 6px; }
+.legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 8px; list-style: none; padding: 0; margin: 0; }
+.legend li { min-width: 0; }
+.districtList { border-block: 1px solid #d6d2c9; }
+.districtList summary { min-height: 48px; padding: 14px 4px; font-size: .8125rem; font-weight: 700; cursor: pointer; }
+.districtList[open] .legend { padding-bottom: 12px; }
+.legend button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 6px; background: transparent; border: 1px solid transparent; border-radius: 9px; color: #242424; text-align: left; font-size: .75rem; line-height: 1.35; cursor: pointer; overflow-wrap: anywhere; }
+.legend button:hover { background: #fbfaf7; }
+.legend button[aria-pressed="true"] { border-color: #121212; background: #fbfaf7; font-weight: 700; }
+.legend button:focus-visible { outline: 2px solid #121212; outline-offset: 2px; box-shadow: none; }
+.swatch { display: grid; place-items: center; flex: 0 0 32px; height: 28px; border-radius: 6px; background: oklch(.9 .065 var(--district-hue)); font-size: .625rem; font-weight: 700; }
+.check { margin-left: auto; flex: 0 0 12px; }
+.all { display: flex; justify-content: space-between; gap: 12px; align-items: center; min-height: 48px; padding: 14px 18px; margin-top: 16px; background: var(--web-action, #121212); color: #fff; border-radius: 12px; text-decoration: none; font-size: .875rem; font-weight: 700; }
+.all:hover { background: var(--web-action-hover, #333); }
+.source { margin: 12px 0 0; font-size: .6875rem; line-height: 1.5; }
+.source a { color: #454545; text-underline-offset: 3px; }
+@media (max-width: 359px) { .legend { grid-template-columns: 1fr; } }
+@media (forced-colors: active) { .district { fill: Canvas; stroke: CanvasText; } .district:hover { fill: Highlight; } .swatch { border: 1px solid CanvasText; } .legend button[aria-pressed="true"] { border: 2px solid Highlight; } }

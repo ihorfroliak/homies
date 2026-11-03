@@ -1,3 +1,4 @@
+import { openNavigation } from "./navigation-helper";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { isAbsolute } from "node:path";
@@ -100,6 +101,7 @@ test.describe("FE-003 viewing lifecycle with real API", () => {
     await page.goto("/ogladania");
     const row = page.locator("article").filter({ has: page.getByRole("status").filter({ hasText: "Bez odpowiedzi — termin minął" }) });
     await expect(row).toHaveCount(1); await expect(row.getByRole("button")).toHaveCount(0);
+    await openNavigation(page);
     await page.getByRole("button", { name: "Wyloguj się", exact: true }).click();
     await expect(page.getByRole("button", { name: "Wyloguj się", exact: true })).toHaveCount(0);
     await login(page, data.accounts.provider); await page.goto("/panel/ogladania");

@@ -4,6 +4,8 @@ import { cache, Suspense } from "react";
 import { ListingCard } from "@/components/listing/listing-card";
 import { SearchBox } from "@/components/search-box/search-box";
 import { HomeAreas } from "@/components/home-areas";
+import { HomeDistrictMap } from "@/components/home-district-map";
+import { HomeExplorer } from "@/components/home-explorer";
 import { t } from "@/i18n";
 import { newest, resolvePlace } from "@/search/server";
 
@@ -25,10 +27,11 @@ export default function HomePage() {
           <p className={styles.lead}>{t.home.lead}</p>
           <SearchBox />
         </section>
-        <Suspense fallback={<HomeAreas areas={[]} loading />}>
-          <KrakowAreas />
-        </Suspense>
+        <HomeExplorer><HomeDistrictMap /></HomeExplorer>
       </div>
+      <Suspense fallback={<HomeAreas areas={[]} loading />}>
+        <KrakowAreas />
+      </Suspense>
       <ul className={styles.pillars}>
         <li>{t.home.pillars.fullCost}</li>
         <li>{t.home.pillars.fresh}</li>

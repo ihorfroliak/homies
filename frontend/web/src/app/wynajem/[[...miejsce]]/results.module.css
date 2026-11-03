@@ -94,7 +94,8 @@
 .pill:hover, .pill:focus-visible { background: var(--c-marker-selected-bg); color: var(--c-marker-selected-fg); }
 .searchHere { position: absolute; top: var(--sp-3); left: 50%; transform: translateX(-50%); z-index: var(--z-map-ui); }
 .mapCard {
-  position: absolute; left: var(--sp-3); right: var(--sp-3); bottom: var(--sp-3); z-index: var(--z-map-ui);
+  /* Leave the source attribution visible beneath an open listing card. */
+  position: absolute; left: var(--sp-3); right: var(--sp-3); bottom: 64px; z-index: var(--z-map-ui);
   max-height: 50%; overflow: auto; padding: var(--sp-3); background: var(--c-surface);
   border-radius: var(--r-lg); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
