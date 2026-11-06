@@ -8,14 +8,14 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { components } from "@/api/schema";
-import { coverOf, monthlyLabel, placeLabel } from "@/components/listing/format";
 import { fmt, formatMoney, plural, t } from "@/i18n";
 import { searchHref, type SearchState } from "@/search/codec";
 
+import { MapCard } from "./map-card";
+import { groupOverlaps } from "./map-groups";
 import styles from "./results.module.css";
 
 type MapPoint = components["schemas"]["MapPoint"];
-type Classified = components["schemas"]["ClassifiedOut"];
 
 /**
  * The map is provider-agnostic and development-only sourced (G-11): with no
@@ -24,9 +24,11 @@ type Classified = components["schemas"]["ClassifiedOut"];
  * tile servers are never used.
  *
  * Points sharing one public grid cell are a STACK ("4 oferty"), never
- * spiderfied into invented positions. A pan or zoom never re-queries silently:
- * "Szukaj w tym obszarze" appears and makes the bbox an explicit, removable
- * filter.
+ * spiderfied into invented positions. Stacks whose pills would overlap at the
+ * current zoom are drawn as one pill at a real member's position (map-groups);
+ * no coordinate moves and zooming in separates them again. A pan or zoom never
+ * re-queries silently: "Szukaj w tym obszarze" appears and makes the bbox an
+ * explicit, removable filter.
  */
 const BLANK_STYLE: StyleSpecification = {
   version: 8,
@@ -35,12 +37,20 @@ const BLANK_STYLE: StyleSpecification = {
 };
 
 const POLAND: [[number, number], [number, number]] = [[14.1, 49.0], [24.2, 54.9]];
+/** Enough to separate neighbouring public cells without implying an exact address. */
+const ZOOM_HERE_MAX = 17;
 
 interface Stack {
   key: string;
   lat: number;
   lon: number;
   points: MapPoint[];
+}
+
+/** What an open card shows: the listings behind the pressed pill. */
+interface Selection {
+  stacks: Stack[];
+  ids: string[];
 }
 
 function stacks(points: MapPoint[]): Stack[] {
@@ -58,14 +68,23 @@ function pillText(p: MapPoint): string {
   return p.monthly_total_estimate !== null ? formatMoney(p.monthly_total_estimate) : p.rent_amount !== null ? formatMoney(p.rent_amount) : "—";
 }
 
+function drawPill(el: HTMLElement, members: Stack[]) {
+  const total = members.reduce((n, s) => n + s.points.length, 0);
+  const label = total > 1 ? plural(t.plural.listings, total) : pillText(members[0]!.points[0]!);
+  el.textContent = label;
+  el.dataset.kind = members.length > 1 ? "nearby" : total > 1 ? "stack" : "price";
+  el.setAttribute("aria-label", members.length > 1 ? fmt(t.map.nearby, { count: label }) : total > 1 ? fmt(t.map.stack, { count: label }) : fmt(t.card.monthly, { amount: label }));
+}
+
 export function MapCanvas({ state, points, areaName }: { state: SearchState; points: MapPoint[]; areaName?: string }) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibre | null>(null);
+  const opener = useRef<HTMLElement | null>(null);
   const router = useRouter();
   const [moved, setMoved] = useState(false);
   // No WebGL: the list is the fallback (decided once, before the map is built).
   const [failed, setFailed] = useState(() => typeof document !== "undefined" && !document.createElement("canvas").getContext("webgl2") && !document.createElement("canvas").getContext("webgl"));
-  const [selected, setSelected] = useState<Stack | null>(null);
+  const [selected, setSelected] = useState<Selection | null>(null);
   const groups = useMemo(() => stacks(points), [points]);
 
   useEffect(() => {
@@ -86,28 +105,93 @@ export function MapCanvas({ state, points, areaName }: { state: SearchState; poi
     mapRef.current = map;
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
     map.on("error", () => setFailed((f) => f || !map.loaded()));
-    const markers: Marker[] = [];
-    for (const group of groups) {
+
+    const entries = groups.map((group) => {
       const el = document.createElement("button");
       el.type = "button";
       el.className = styles.pill ?? "";
-      const label = group.points.length > 1 ? plural(t.plural.listings, group.points.length) : `${pillText(group.points[0]!)}`;
-      el.textContent = label;
-      el.setAttribute("aria-label", group.points.length > 1 ? fmt(t.map.stack, { count: label }) : fmt(t.card.monthly, { amount: label }));
-      el.addEventListener("click", () => setSelected(group));
-      markers.push(new Marker({ element: el, anchor: "bottom" }).setLngLat([group.lon, group.lat]).addTo(map));
+      return { group, el, marker: new Marker({ element: el, anchor: "bottom" }).setLngLat([group.lon, group.lat]).addTo(map) };
+    });
+    const members = new Map<HTMLElement, Stack[]>();
+    const ownerOf = new Map<string, HTMLElement>();
+
+    const regroup = () => {
+      // Measure every stack as itself first: a group's own label must not decide who overlaps.
+      for (const e of entries) {
+        e.el.style.display = "";
+        drawPill(e.el, [e.group]);
+      }
+      const byKey = new Map(entries.map((e) => [e.group.key, e]));
+      const clusters = groupOverlaps(entries.map((e) => {
+        const at = map.project([e.group.lon, e.group.lat]);
+        return { key: e.group.key, x: at.x, y: at.y, w: e.el.offsetWidth, h: e.el.offsetHeight, weight: e.group.points.length };
+      }));
+      members.clear();
+      ownerOf.clear();
+      for (const cluster of clusters) {
+        const shown = byKey.get(cluster.representative)!;
+        const included = cluster.members.map((k) => byKey.get(k)!.group);
+        drawPill(shown.el, included);
+        members.set(shown.el, included);
+        for (const s of included) for (const p of s.points) ownerOf.set(p.id, shown.el);
+        for (const k of cluster.members) if (k !== cluster.representative) byKey.get(k)!.el.style.display = "none";
+      }
+    };
+
+    for (const { el } of entries) {
+      el.addEventListener("click", () => {
+        const included = members.get(el);
+        if (!included) return;
+        opener.current = el;
+        setSelected({ stacks: included, ids: included.flatMap((s) => s.points.map((p) => p.id)) });
+      });
     }
+
     if (!state.bbox && groups.length > 0) {
       const bounds = new LngLatBounds();
       for (const g of groups) bounds.extend([g.lon, g.lat]);
       map.fitBounds(bounds, { padding: 48, maxZoom: 14, duration: 0 });
     }
+    regroup();
+    map.on("zoomend", regroup);
+    map.on("resize", regroup);
+
     const onMove = (e: { originalEvent?: unknown }) => {
       if (e.originalEvent) setMoved(true); // user gestures only, not fitBounds
     };
     map.on("moveend", onMove);
+    map.on("click", (e) => {
+      // A pressed pill also reaches the map as a click: only the empty map closes the card.
+      if (e.originalEvent.target instanceof Element && e.originalEvent.target.closest("button")) return;
+      setSelected(null);
+    });
+
+    // A card under the pointer or keyboard focus marks its pill, so list and map read as one.
+    const results = document.getElementById("wyniki");
+    let active: HTMLElement | undefined;
+    const mark = (id?: string) => {
+      const next = id ? ownerOf.get(id) : undefined;
+      if (next === active) return;
+      if (active) delete active.dataset.active;
+      if (next) next.dataset.active = "true";
+      active = next;
+    };
+    const onCard = (event: Event) => {
+      const card = event.target instanceof Element ? event.target.closest("article") : null;
+      mark(card?.querySelector<HTMLElement>("[data-listing-id]")?.dataset.listingId);
+    };
+    const onLeave = () => mark();
+    results?.addEventListener("mouseover", onCard);
+    results?.addEventListener("focusin", onCard);
+    results?.addEventListener("mouseleave", onLeave);
+    results?.addEventListener("focusout", onLeave);
+
     return () => {
-      for (const m of markers) m.remove();
+      results?.removeEventListener("mouseover", onCard);
+      results?.removeEventListener("focusin", onCard);
+      results?.removeEventListener("mouseleave", onLeave);
+      results?.removeEventListener("focusout", onLeave);
+      for (const e of entries) e.marker.remove();
       map.remove();
       mapRef.current = null;
     };
@@ -119,6 +203,24 @@ export function MapCanvas({ state, points, areaName }: { state: SearchState; poi
     const b = map.getBounds();
     const r = (v: number) => Math.round(v * 1e6) / 1e6;
     router.push(searchHref({ ...state, bbox: [r(b.getWest()), r(b.getSouth()), r(b.getEast()), r(b.getNorth())], page: 1, view: "map" }));
+  };
+
+  // Focus returns to the pill that opened the card, or to the map if a zoom regrouped it away.
+  const closeCard = () => {
+    setSelected(null);
+    const back = opener.current;
+    if (back?.isConnected && back.style.display !== "none") back.focus({ preventScroll: true });
+    else mapRef.current?.getCanvas().focus({ preventScroll: true });
+  };
+
+  const zoomHere = () => {
+    const map = mapRef.current;
+    if (!map || !selected) return;
+    const bounds = new LngLatBounds();
+    for (const s of selected.stacks) bounds.extend([s.lon, s.lat]);
+    map.fitBounds(bounds, { padding: 96, maxZoom: ZOOM_HERE_MAX });
+    setSelected(null);
+    map.getCanvas().focus({ preventScroll: true });
   };
 
   if (failed) {
@@ -138,74 +240,7 @@ export function MapCanvas({ state, points, areaName }: { state: SearchState; poi
           {t.map.searchHere}
         </button>
       ) : null}
-      {selected ? <MapCard stack={selected} onClose={() => setSelected(null)} /> : null}
-    </div>
-  );
-}
-
-/** A stack lists at most this many; the card says so when there are more. */
-const CARD_LIMIT = 10;
-/** Details already read in this page view (bounded), so reopening a stack costs nothing. */
-const details = new Map<string, Classified>();
-function remember(l: Classified) {
-  details.set(l.id, l);
-  if (details.size > 200) details.delete(details.keys().next().value as string);
-}
-
-/** MapPoint has no title or cover (gap G5): the card reads the public detail through the BFF. */
-function MapCard({ stack, onClose }: { stack: Stack; onClose: () => void }) {
-  const [items, setItems] = useState<Classified[] | null>(null);
-  const [error, setError] = useState(false);
-  const close = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    close.current?.focus();
-    const controller = new AbortController();
-    Promise.all(
-      stack.points.slice(0, CARD_LIMIT).map((p) => {
-        const known = details.get(p.id);
-        if (known) return Promise.resolve(known);
-        return fetch(`/bff/v1/classifieds/${encodeURIComponent(p.id)}`, { signal: controller.signal, headers: { accept: "application/json" } })
-          .then((r) => (r.ok ? (r.json() as Promise<Classified>) : null))
-          .then((l) => {
-            if (l) remember(l);
-            return l;
-          });
-      }),
-    )
-      .then((rows) => setItems(rows.filter((r): r is Classified => r !== null)))
-      .catch((e) => {
-        if (!(e instanceof DOMException && e.name === "AbortError")) setError(true);
-      });
-    return () => controller.abort();
-  }, [stack]);
-
-  return (
-    <div className={styles.mapCard} role="dialog" aria-modal="false" aria-label={plural(t.plural.listings, stack.points.length)} onKeyDown={(e) => e.key === "Escape" && onClose()}>
-      <button ref={close} type="button" className="btn btn--ghost" onClick={onClose} aria-label={t.map.close}>
-        ×
-      </button>
-      {error ? <p>{t.errors.unavailable}</p> : null}
-      {!items && !error ? <p role="status">{t.a11y.loading}</p> : null}
-      {stack.points.length > CARD_LIMIT ? <p className="small muted">{fmt(t.map.showingSome, { shown: CARD_LIMIT, total: stack.points.length })}</p> : null}
-      <ul className={styles.mapCardList}>
-        {items?.map((l) => {
-          const cover = coverOf(l);
-          return (
-            <li key={l.id}>
-              {cover ? (
-                // eslint-disable-next-line @next/next/no-img-element -- /v1/media must not go through the optimiser (FE-001 §5)
-                <img src={cover.url} alt="" width={96} height={72} loading="lazy" />
-              ) : null}
-              <div>
-                <p className={styles.mapCardPrice}>{monthlyLabel(l)}</p>
-                <Link href={`/oferta/${l.id}`}>{l.title}</Link>
-                <p className="small muted">{placeLabel(l)}</p>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      {selected ? <MapCard key={selected.ids.join()} ids={selected.ids} nearby={selected.stacks.length > 1} onClose={closeCard} onZoom={selected.stacks.length > 1 ? zoomHere : undefined} /> : null}
     </div>
   );
 }
