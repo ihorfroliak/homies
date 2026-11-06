@@ -23,6 +23,7 @@ export function FilterCount({ formId, segments, localityId, areaId, initialTotal
     const form = document.getElementById(formId) as HTMLFormElement | null;
     if (!form) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let submitted = false;
     const recount = () => {
       clearTimeout(timer);
       timer = setTimeout(async () => {
@@ -51,6 +52,7 @@ export function FilterCount({ formId, segments, localityId, areaId, initialTotal
     };
     // Empty inputs must not reach the URL either.
     const onSubmit = () => {
+      submitted = true;
       for (const el of Array.from(form.elements)) {
         const input = el as HTMLInputElement;
         if (input.name && "value" in input && input.value === "" && input.type !== "checkbox") input.disabled = true;
@@ -58,7 +60,8 @@ export function FilterCount({ formId, segments, localityId, areaId, initialTotal
     };
     // A page restored from the back/forward cache must show what its URL says.
     const onPageShow = (event: PageTransitionEvent) => {
-      if (!event.persisted) return;
+      if (!event.persisted || !submitted) return;
+      submitted = false;
       for (const el of Array.from(form.elements)) (el as HTMLInputElement).disabled = false;
       form.reset();
       setTotal(initialTotal);
