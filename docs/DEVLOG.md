@@ -1461,3 +1461,11 @@ PR10's first final candidate hit a test-only authentication frame-queue race
 the failure; awaiting the registered frame passes, with all original assertions
 and product code unchanged. R1 helper repair: 206/206 local units, typecheck and
 lint passed; new exact-head Linux CI required. Historical failure is retained.
+
+## 2026-11-06 — FE-UX-KRK-002: результати, карта, деталь Кракова
+
+**Зроблено:** стан форм іде за URL (Back/Forward, чипси), фільтри не зсувають панель, близькі маркери групуються на екрані без зміни координат, картка карти доходить до кожної оферти, деталь показує ціну й дію на першому екрані, чесне розрізнення заявки й підтвердженого перегляду, іконка вкладки.
+
+**Вивчено:** `foundation` падав на Edge через відсутню іконку й на базі PR25 теж; CI-браузер цього не бачить, тому додано окремий тест. `loading.tsx` не можна використати: стрімінг перетворив би 404 на 200.
+
+**Далі:** незалежне рев'ю, інтеграція PR25, потім перенаправлення цього PR на main. Деталі: `docs/reviews/FE-UX-KRK-002-verification.md`.

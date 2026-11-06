@@ -32,7 +32,7 @@ only, at 360/390/768/1440 px. "Probe" means a scripted Edge run on the real page
 | 4 | Results | Opening filters pushes List/Map down and leaves half the row empty | Capture 1440 | Desktop panel anchored to toolbar, three-column form | Capture, e2e |
 | 5 | Results | No way back to all of Kraków from a neighbourhood; the area is not an active-filter chip | Source: `activeFilters` excludes it, panel lists areas only | Area chip and "Cały Kraków" link | e2e |
 | 6 | Results | Empty result in map mode on mobile shows a blank map, explanation hidden | Probe: heading not visible at 390 | No map when there are no results | e2e |
-| 7 | Results | Client navigation gives no pending feedback | Source: no pending state, `loading.tsx` not usable (it would turn 404s into 200s) | Link-level pending mark | Unit |
+| 7 | Results | Client navigation gives no pending feedback | Source: no pending state, `loading.tsx` not usable (it would turn 404s into 200s) | Link-level pending mark | e2e with delayed navigation |
 | 8 | Results | Retry link points at the current URL, so it may not refetch | Source: `next/link` to same href | Plain anchor, full reload | Source + manual |
 | 9 | Results mobile | Controls take five rows; List/Map scrolls away | Capture 390 | Compact toolbar; floating List/Map as in 001C | Capture |
 | 10 | Cards | Save button adds a separate row; cards very long on mobile (6568 px for 10) | Capture 390 | Save in card header, shorter photo | Capture |
@@ -47,6 +47,7 @@ only, at 360/390/768/1440 px. "Probe" means a scripted Edge run on the real page
 | 19 | Detail | A pending request is labelled "umówione oglądanie" | Source: `seeViewing` used for REQUESTED and CONFIRMED | Status from the server; neutral link wording | Unit |
 | 20 | Detail | Costs rendered twice in the DOM, one hidden by width | Source: `mobileCosts` + aside | One cost section | e2e (one visible) |
 | 21 | Header | Mobile menu is unavailable without JavaScript | Review note in PR25 | Noscript links; inert button hidden | e2e no-JS |
+| 22 | All pages | Browser asks for a missing `/favicon.ico`: 404 and console error | CDP on the base SHA; `foundation` fails there on Edge | Declare an icon from the brand mark | e2e |
 
 ## Map decision
 
@@ -73,7 +74,10 @@ derive server totals; no blurred neighbourhood zone, because no geometry is
 available and an invented shape would imply a location. Area colours identify a
 place and are not a rating; unknown areas use the neutral band.
 
-## Verification required
+## Verification
+
+Results and open gates: [builder receipt](../reviews/FE-UX-KRK-002-verification.md).
+Required:
 
 Lint, typecheck, unit, production build, targeted e2e with axe, real captures at
 360/390/768/1440, real backend on a disposable database, CI on the final exact SHA.
