@@ -32,6 +32,18 @@ function SortForm() {
   );
 }
 
+function LateAutoSubmit({ hydrated }: { hydrated: boolean }) {
+  return (
+    <form data-testid="form">
+      <select id="s" defaultValue="a" aria-label="sort">
+        <option value="a">a</option>
+        <option value="b">b</option>
+      </select>
+      {hydrated ? <AutoSubmit selectId="s" /> : null}
+    </form>
+  );
+}
+
 function Filters() {
   return (
     <form id="f" data-testid="form">
@@ -59,6 +71,24 @@ it("sort: an ordinary pageshow changes nothing", () => {
   select.value = "b";
   pageshow(false);
   expect(select.value).toBe("b");
+});
+
+// Not synthetic: the listener attaches on hydration, so a choice made earlier fired no event it could hear.
+it("sort: a choice made before hydration still applies", () => {
+  const submit = vi.spyOn(HTMLFormElement.prototype, "requestSubmit").mockImplementation(() => undefined);
+  const { rerender } = render(<LateAutoSubmit hydrated={false} />);
+  screen.getByLabelText<HTMLSelectElement>("sort").value = "b";
+  rerender(<LateAutoSubmit hydrated />);
+  expect(submit).toHaveBeenCalledTimes(1);
+  submit.mockRestore();
+});
+
+it("sort: hydrating an untouched select submits nothing", () => {
+  const submit = vi.spyOn(HTMLFormElement.prototype, "requestSubmit").mockImplementation(() => undefined);
+  const { rerender } = render(<LateAutoSubmit hydrated={false} />);
+  rerender(<LateAutoSubmit hydrated />);
+  expect(submit).not.toHaveBeenCalled();
+  submit.mockRestore();
 });
 
 it("filters: restoring a submitted form re-enables its fields and returns them and the count to the URL", async () => {

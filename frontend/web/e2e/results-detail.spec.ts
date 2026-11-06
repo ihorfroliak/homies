@@ -44,6 +44,13 @@ test("Back after changing the sort shows the sort the URL says", async ({ page }
   await expect(page.locator("#sort")).toHaveValue("najtansze");
 });
 
+test("a sort chosen as soon as the page appears still applies, hydrated or not", async ({ page }) => {
+  await page.goto("/wynajem/krakow", { waitUntil: "commit" });
+  await page.locator("#sort").selectOption("najtansze");
+  await expect(page).toHaveURL(/sort=najtansze/, { timeout: 10_000 });
+  await expect(page.locator("#sort")).toHaveValue("najtansze");
+});
+
 test("Back after applying a filter empties the field the URL no longer holds", async ({ page }) => {
   await page.goto("/wynajem/krakow");
   await page.getByText("Filtry", { exact: true }).click();
@@ -83,13 +90,13 @@ test("the neighbourhood is a visible constraint with a way back to the whole cit
   await expect(page).toHaveURL(/\/wynajem\/krakow\?pokoje_od=1$/);
 });
 
-test("the filter panel closes on Escape, returns focus and leaves the controls in place", async ({ page }, info) => {
+test("the filter panel closes on Escape, returns focus and leaves the controls in place", async ({ page }) => {
   await page.goto("/wynajem/krakow?widok=mapa");
   const summary = page.locator("#filtry-panel summary");
   const sortBefore = await page.locator("#sort").boundingBox();
   await summary.click();
   await expect(page.getByLabel("Pokoje (od)")).toBeVisible();
-  if (info.project.name === "desktop") {
+  if (page.viewportSize()!.width >= 768) {
     // Floating over the results: opening it does not move the toolbar.
     expect((await page.locator("#sort").boundingBox())?.y).toBe(sortBefore?.y);
     await expect(page.getByRole("link", { name: "Mapa", exact: true })).toBeVisible();
@@ -598,15 +605,15 @@ test("a listing opened from the saved list returns to the saved list", async ({ 
   await expect(page).toHaveURL(/\/zapisane$/);
 });
 
-test("the listing's first screen carries the identity, the price and the action", async ({ page }, info) => {
+test("the listing's first screen carries the identity, the price and the action", async ({ page }) => {
   await page.goto("/wynajem/krakow?sort=najdrozsze");
   await page.locator("#wyniki article h3 a").first().click();
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.locator("section").filter({ has: page.getByRole("heading", { name: "Koszty", exact: true }) }).filter({ visible: true })).toHaveCount(1);
   const viewing = page.getByRole("button", { name: "Umów oglądanie" }).filter({ visible: true });
   await expect(viewing).toHaveCount(1);
-  const height = page.viewportSize()!.height;
-  if (info.project.name === "desktop") {
+  const { width, height } = page.viewportSize()!;
+  if (width >= 1024) {
     await page.setViewportSize({ width: 1440, height: 1000 });
     expect((await viewing.boundingBox())!.y + (await viewing.boundingBox())!.height).toBeLessThan(1000);
     expect((await page.getByRole("heading", { name: "Koszty", exact: true }).boundingBox())!.y).toBeLessThan(1000);
