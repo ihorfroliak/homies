@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,7 +7,9 @@ import { cache } from "react";
 import { ApiError } from "@/api/errors";
 import { errorMessage } from "@/api/messages";
 import { ListingViewTracker } from "@/analytics/trackers";
-import { coverOf, freshnessLabel, monthlyLabel, moveInLabel, placeLabel } from "@/components/listing/format";
+import { areaTone } from "@/components/listing/area-tone";
+import { BackToResults } from "@/components/listing/back-to-results";
+import { coverOf, factsLine, freshnessLabel, monthlyLabel, moveInLabel, placeLabel } from "@/components/listing/format";
 import { fmt, plural, t } from "@/i18n";
 import { listing as fetchListing, type Classified } from "@/search/server";
 import { pageMetadata } from "@/seo";
@@ -14,6 +17,8 @@ import { pageMetadata } from "@/seo";
 import styles from "./detail.module.css";
 import { CostBreakdown } from "@/engagement/cost-breakdown";
 import { DetailEngagement } from "@/engagement/detail";
+import { SaveButton } from "@/engagement/saved";
+import { searchHref } from "@/search/codec";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -65,27 +70,42 @@ export default async function ListingPage({ params }: Props) {
   const photos = cover ? [cover, ...l.media.filter((m) => m.id !== cover.id)] : [];
   const f = l.facts;
   const backHref = l.place?.locality?.slug ? `/wynajem/${l.place.locality.slug}` : "/wynajem";
+  const tone = areaTone(l.place?.geo_area?.slug);
+  const areaHref = l.place?.locality?.slug && l.place.geo_area?.slug ? searchHref({ sort: "newest", page: 1, view: "list", city: l.place.locality.slug, area: l.place.geo_area.slug }) : undefined;
 
   return (
     <article className={`container ${styles.page}`}>
-      <p>
-        <Link href={backHref}>← {t.detail.back}</Link>
+      <p className={styles.back}>
+        <BackToResults fallback={backHref} />
       </p>
 
-      <header className={styles.header}>
-        <h1 className={styles.title}>{l.title}</h1>
-        <p className={styles.place}>{placeLabel(l)}</p>
-        {freshness ? <p className={styles.fresh}>{freshness}</p> : null}
+      <header className={`${styles.hero} ${cover ? "" : styles.heroPlain}`}>
+        <div className={styles.band} style={tone ? ({ "--band": tone } as CSSProperties) : undefined}>
+          <p className={styles.place}>{placeLabel(l)}</p>
+          <h1 className={styles.title}>{l.title}</h1>
+          {factsLine(l).length > 0 ? <p className={styles.bandFacts}>{factsLine(l).join(" · ")}</p> : null}
+          {freshness ? <p className={styles.fresh}>{freshness}</p> : null}
+        </div>
+        {cover ? (
+          <div className={styles.cover}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- /v1/media must not go through the optimiser (FE-001 §5) */}
+            <img src={cover.url} alt={fmt(t.detail.photoOf, { n: 1, total: photos.length })} width={cover.width_px ?? 800} height={cover.height_px ?? 600} loading="eager" decoding="async" />
+          </div>
+        ) : null}
+        {/* Below 1024 px the action dock carries save. */}
+        <div className={styles.heroSave}>
+          <SaveButton listingId={l.id} title={l.title} surface="rail" />
+        </div>
       </header>
-      <div className={styles.mobileCosts}><CostBreakdown listing={l} /></div>
 
-      {photos.length > 0 ? (
-        <section aria-label={t.detail.photos} className={styles.gallery}>
+      {photos.length > 1 ? (
+        // A keyboard user scrolls this strip through its focus stop.
+        <section aria-label={t.detail.photos} className={styles.gallery} tabIndex={0}>
           <ul>
-            {photos.map((m, i) => (
+            {photos.slice(1).map((m, i) => (
               <li key={m.id}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- /v1/media must not go through the optimiser (FE-001 §5) */}
-                <img src={m.url} alt={fmt(t.detail.photoOf, { n: i + 1, total: photos.length })} width={m.width_px ?? 800} height={m.height_px ?? 600} loading={i === 0 ? "eager" : "lazy"} decoding="async" />
+                <img src={m.url} alt={fmt(t.detail.photoOf, { n: i + 2, total: photos.length })} width={m.width_px ?? 800} height={m.height_px ?? 600} loading="lazy" decoding="async" />
               </li>
             ))}
           </ul>
@@ -94,6 +114,8 @@ export default async function ListingPage({ params }: Props) {
 
       <div className={styles.columns}>
         <div className={styles.main}>
+          <CostBreakdown listing={l} />
+
           <section aria-labelledby="o-mieszkaniu" className={styles.section}>
             <h2 id="o-mieszkaniu">{t.detail.facts}</h2>
             <dl className={styles.facts}>
@@ -123,11 +145,11 @@ export default async function ListingPage({ params }: Props) {
             <h2 id="lokalizacja">{t.detail.location}</h2>
             <p>{placeLabel(l)}</p>
             <p className="small muted">{t.map.approximate}</p>
+            {areaHref && l.place?.geo_area ? <p><Link href={areaHref}>{fmt(t.detail.areaLink, { area: l.place.geo_area.name })}</Link></p> : null}
           </section>
         </div>
 
-        <aside className={styles.aside} aria-label="Koszty i kontakt">
-          <CostBreakdown listing={l} />
+        <aside className={styles.aside} aria-label={t.detail.railRegion}>
           <DetailEngagement listing={{ id: l.id, title: l.title, contact_mode: l.contact_mode, monthly_total_estimate: l.monthly_total_estimate, utilities_basis: l.utilities_basis, currency: l.currency }} />
         </aside>
       </div>

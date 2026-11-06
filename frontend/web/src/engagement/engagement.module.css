@@ -18,7 +18,11 @@
 .card p { overflow-wrap: anywhere; white-space: pre-wrap; }
 .save { position: relative; z-index: 2; }
 .split { display: grid; gap: var(--sp-5); }
-.rail { display: grid; gap: var(--sp-3); }
+.rail { display: grid; gap: var(--sp-3); padding: var(--sp-5); border: 1px solid var(--c-line-strong); border-radius: 20px; background: var(--c-surface); }
+.rail h2 { margin: 0; font-size: var(--fs-h2); color: var(--c-ink-900); }
+.rail > p { margin: 0; }
+.viewingStatus { display: grid; gap: var(--sp-1); margin: 0; padding: var(--sp-3); border-radius: var(--r-md); font-size: var(--fs-small); background: var(--c-warning-bg); color: var(--c-warning-fg); }
+.viewingStatus[data-status="CONFIRMED"] { background: var(--c-confirmed-bg); color: var(--c-confirmed-fg); }
 .dock { display: none; }
 .slots { display: grid; gap: var(--sp-3); }
 .slots label { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 44px; padding: var(--sp-2); }
@@ -38,6 +42,7 @@
   .rail { display: none; }
   .dock { position: fixed; z-index: var(--z-sticky); inset: auto 0 0; display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; justify-content: center; padding: var(--sp-3); padding-bottom: max(var(--sp-3), env(safe-area-inset-bottom)); border-top: 1px solid var(--c-line-strong); background: var(--c-surface); }
   .dock[hidden] { display: none; }
+  .dock .viewingStatus { flex: 1 0 100%; padding: var(--sp-2) var(--sp-3); }
   .detail { padding-bottom: 160px; scroll-margin-bottom: 160px; }
   .costMobile { display: block; }
 }
