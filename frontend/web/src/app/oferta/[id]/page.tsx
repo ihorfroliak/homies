@@ -59,9 +59,10 @@ export default async function ListingPage({ params }: Props) {
       <div className="container state" role="alert">
         <h1>{t.errors.genericTitle}</h1>
         <p>{errorMessage(l)}</p>
-        <Link className="btn btn--primary" href={`/oferta/${id}`}>
+        {/* A full load: a client link to the current URL would not refetch. */}
+        <a className="btn btn--primary" href={`/oferta/${id}`}>
           {t.errors.retry}
-        </Link>
+        </a>
       </div>
     );
   }
