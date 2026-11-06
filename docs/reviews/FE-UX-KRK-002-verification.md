@@ -25,19 +25,27 @@ cannot catch this class of defect through the console.
 
 ## Local run (real API, PostGIS, disposable database, Edge, production build)
 
-Whole suite at `f98229a`: non-engagement specs 96 passed, 6 skipped; engagement specs
-54 passed on a freshly recreated database and manifest. The six skips are per-width or
-per-project cases covered by the other project. An earlier run failed
-`engagement-boundaries` on mobile because of this task: the test helper read the menu
-button before hydration. The helper now waits for hydration and the spec passes. A run
-with a stale manifest failed 54 engagement tests; that was the environment, and the seed
-said so. The workstation restarted at 2026-11-06 04:05; the founder then authorized
-starting Docker Desktop. Only this task's `krk002-*` containers were recreated.
+Whole suite on the final application code, fresh database and manifest: 156 passed,
+6 skipped, 0 failed. The six skips are per-width or per-project cases covered by the
+other project. Unit: 240/240 at 15 % CPU. Lint, typecheck and production build pass.
 
-The large-stack test was added after that run and passed on both projects; CI runs the
-whole suite on the final SHA. Captures at 360/390/768/1440 px from the final code against
-a fresh database: no horizontal overflow, no console or page errors, no overlapping pills
-(one pair at 360 px before). Base SHA comparison: 1 console 404 at first load, 0 now.
+Failures met on the way, kept for the record: `engagement-boundaries` on mobile, because
+the test helper read the menu button before hydration (helper now waits); 54 engagement
+tests with a stale manifest (environment, the seed said so); `engagement-journey` once,
+because a new test's user shortened to the same display name it looks for (test data).
+
+Captures at 360/390/768/1440 px from the final code against a fresh database: no horizontal
+overflow, no console or page errors, no overlapping pills (one pair at 360 px before).
+
+Error states, with this task's API container stopped and restarted on the real preview:
+results and map keep filters in the URL and offer retry; listing shows its own state; a
+place not yet resolved reaches the error boundary (HTTP 500). All three retries recover
+once the API is back. A viewing request and a confirmed viewing were read on the listing
+page from the real API on both projects, including the schedule's time zone.
+
+The workstation restarted at 2026-11-06 04:05; the founder then authorized starting Docker
+Desktop. Only this task's `krk002-*` containers were recreated or stopped. The founder's
+alpha and PR25 preview containers stayed stopped and were not started.
 
 ## What the tests claim
 
@@ -50,6 +58,8 @@ a fresh database: no horizontal overflow, no console or page errors, no overlapp
 | Filters, sort, view through Back/Forward and back link | Sequence through a listing on both projects | e2e, CI |
 | Only internal results paths used | Unit refusals; tampered session storage in the browser | Unit, e2e |
 | Direct open without a search | New tab with no stored results gets the city link | e2e |
+| Request versus confirmed viewing | Label, time zone and link from real API state; no "umówione" | e2e, unit |
+| Retry after failure | API stopped and restarted on the preview | Real probe, unit for the boundary; not in CI |
 
 ## Not verified
 

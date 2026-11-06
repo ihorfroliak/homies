@@ -33,7 +33,7 @@ only, at 360/390/768/1440 px. "Probe" means a scripted Edge run on the real page
 | 5 | Results | No way back to all of Kraków from a neighbourhood; the area is not an active-filter chip | Source: `activeFilters` excludes it, panel lists areas only | Area chip and "Cały Kraków" link | e2e |
 | 6 | Results | Empty result in map mode on mobile shows a blank map, explanation hidden | Probe: heading not visible at 390 | No map when there are no results | e2e |
 | 7 | Results | Client navigation gives no pending feedback | Source: no pending state, `loading.tsx` not usable (it would turn 404s into 200s) | Link-level pending mark | e2e with delayed navigation |
-| 8 | Results | Retry link points at the current URL, so it may not refetch | Source: `next/link` to same href | Plain anchor, full reload | Source + manual |
+| 8 | Results | Retry link points at the current URL, so it may not refetch | Source: `next/link` to same href | Plain anchor, full reload | Real probe: API stopped, restarted, retry recovers |
 | 9 | Results mobile | Controls take five rows; List/Map scrolls away | Capture 390 | Compact toolbar; floating List/Map as in 001C | Capture |
 | 10 | Cards | Save button adds a separate row; cards very long on mobile (6568 px for 10) | Capture 390 | Save in card header, shorter photo | Capture |
 | 11 | Map split | Prices wrap inside narrow cards at 1440; map notes have large gaps | Capture 1440 | 001C proportions, wider container, tight notes | Capture |
@@ -47,6 +47,8 @@ only, at 360/390/768/1440 px. "Probe" means a scripted Edge run on the real page
 | 19 | Detail | A pending request is labelled "umówione oglądanie" | Source: `seeViewing` used for REQUESTED and CONFIRMED | Status from the server; neutral link wording | Unit |
 | 20 | Detail | Costs rendered twice in the DOM, one hidden by width | Source: `mobileCosts` + aside | One cost section | e2e (one visible) |
 | 21 | Header | Mobile menu is unavailable without JavaScript | Review note in PR25 | Noscript links; inert button hidden | e2e no-JS |
+| 23 | Detail | Retry is a client link to the current URL, same as 8 | Source; real probe after fix | Plain anchor, full reload | Real probe |
+| 24 | Error boundary | Retry calls `reset()` only, which by Next's documented behaviour does not ask the server again | Source; no before-measurement | `router.refresh()` with `reset()` | Unit; real probe after fix |
 | 22 | All pages | Browser asks for a missing `/favicon.ico`: 404 and console error | CDP on the base SHA; `foundation` fails there on Edge | Declare an icon from the brand mark | e2e |
 
 ## Map decision
