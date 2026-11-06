@@ -56,6 +56,7 @@ describe("safeReturnPath", () => {
     ["non-canonical parameter order", "/wynajem/krakow?widok=mapa&koszt_do=5000"],
     ["empty query", "/wynajem/krakow?"],
     ["too long", `/wynajem/krakow?koszt_do=5000${"&koszt_do=1".repeat(300)}`],
+    ["too long but otherwise canonical", `/wynajem/${"a".repeat(3000)}`],
   ])("refuses %s", (_name, bad) => {
     expect(safeReturnPath(bad)).toBeUndefined();
   });

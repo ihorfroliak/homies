@@ -45,7 +45,6 @@ export function MapCard({ ids, nearby, onClose, onZoom }: { ids: string[]; nearb
         if (reads.current.has(id)) return;
         try {
           const response = await fetch(`/bff/v1/classifieds/${encodeURIComponent(id)}`, { signal: controller.signal, headers: { accept: "application/json" } });
-          if (controller.signal.aborted) return;
           if (response.status === 404) reads.current.set(id, "gone");
           else if (response.ok) reads.current.set(id, { listing: (await response.json()) as Classified });
         } catch {

@@ -42,6 +42,12 @@ describe("groupOverlaps", () => {
     expect(groupOverlaps([box("a", 0, 0), box("b", 70, 0), box("c", 140, 0)])).toHaveLength(1);
   });
 
+  it("keeps both neighbours of one marker in its group", () => {
+    const groups = groupOverlaps([box("hub", 70, 0), box("left", 0, 0), box("right", 140, 0)]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.members.sort()).toEqual(["hub", "left", "right"]);
+  });
+
   it("does not group markers that only share a column or a row", () => {
     expect(groupOverlaps([box("a", 0, 0), box("b", 0, 40)])).toHaveLength(2);
     expect(groupOverlaps([box("a", 0, 0), box("b", 90, 0)])).toHaveLength(2);

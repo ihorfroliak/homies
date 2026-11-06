@@ -91,3 +91,14 @@ it("filters: an ordinary pageshow changes nothing", async () => {
   pageshow(false);
   expect(rooms.value).toBe("4");
 });
+
+it("filters: an ordinary pageshow after submitting changes nothing either", async () => {
+  render(<Filters />);
+  const rooms = screen.getByLabelText<HTMLInputElement>("rooms");
+  await userEvent.type(rooms, "4");
+  const form = screen.getByTestId<HTMLFormElement>("form");
+  form.addEventListener("submit", (event) => event.preventDefault());
+  act(() => void form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  pageshow(false);
+  expect(rooms.value).toBe("4");
+});
