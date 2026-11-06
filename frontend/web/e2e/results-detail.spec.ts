@@ -239,6 +239,30 @@ test("grouping moves no point, splits no stack and leaves every listing reachabl
   expect([...reached].sort()).toEqual(points.map((p) => p.id).sort());
 });
 
+test("a stack above ten pages through its listings on real data", async ({ page }) => {
+  test.skip(process.env.E2E_ENGAGEMENT !== "1", "the large same-cell stack comes from the engagement fixtures");
+  await page.goto("/wynajem/lublin?widok=mapa");
+  await pillRects(page);
+  const stack = page.locator('.maplibregl-marker[data-kind="stack"]').first();
+  const total = Number((await stack.textContent())?.match(/\d+/)?.[0]);
+  expect(total).toBeGreaterThan(10);
+  await stack.click({ force: true });
+  const card = page.getByRole("dialog");
+  const links = card.getByRole("link");
+  await expect(links).toHaveCount(10);
+  const more = card.getByRole("button", { name: /Pokaż kolejne/ });
+  await expect(more).toContainText(`z ${total}`);
+  while (await more.count()) {
+    const before = await links.count();
+    await more.click();
+    await expect.poll(() => links.count()).toBeGreaterThan(before);
+    await expect(links.nth(before)).toBeFocused();
+  }
+  const hrefs = await links.evaluateAll((all) => all.map((a) => a.getAttribute("href")));
+  expect(new Set(hrefs).size).toBe(hrefs.length);
+  expect(hrefs.length).toBeGreaterThan(10);
+});
+
 test("a resize regroups the pills without losing or overlapping any", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto("/wynajem/krakow?widok=mapa");

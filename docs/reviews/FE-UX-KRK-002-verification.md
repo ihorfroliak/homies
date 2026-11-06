@@ -23,21 +23,21 @@ After the fix the same CDP probe shows no 4xx, no console error and one icon lin
 requires the declared icon to answer 200 with an SVG type, because CI's browser
 cannot catch this class of defect through the console.
 
-## Executed before Docker stopped (real API, PostGIS, disposable database)
+## Local run (real API, PostGIS, disposable database, Edge, production build)
 
-Edge channel, production build, synthetic seed: seeker, navigation, foundation, budget,
-engagement and the new spec. Whole suite on the commit before the last test additions:
-139 passed, 6 skipped, 1 failed. The failure was `engagement-boundaries` on mobile,
-caused by this task: the test helper read the menu button before hydration. The helper
-now waits for hydration; that spec was not re-run with a backend afterwards. Local
-captures at 360/390/768/1440 px: no horizontal overflow; overlapping pills 1 at 360 px
-before, 0 after. The last toolbar change for mobile map mode is covered by e2e only;
-"after" captures predate it.
+Whole suite at `f98229a`: non-engagement specs 96 passed, 6 skipped; engagement specs
+54 passed on a freshly recreated database and manifest. The six skips are per-width or
+per-project cases covered by the other project. An earlier run failed
+`engagement-boundaries` on mobile because of this task: the test helper read the menu
+button before hydration. The helper now waits for hydration and the spec passes. A run
+with a stale manifest failed 54 engagement tests; that was the environment, and the seed
+said so. The workstation restarted at 2026-11-06 04:05; the founder then authorized
+starting Docker Desktop. Only this task's `krk002-*` containers were recreated.
 
-The workstation restarted at 2026-11-06 04:05 and Docker Desktop did not return. It was
-deliberately not started by the builder, since it hosts the founder's alpha and PR25
-preview. Tests added after that point need the API and run for the first time in CI:
-grouping integrity, resize, Back/Forward through a listing, tampered stored path.
+The large-stack test was added after that run and passed on both projects; CI runs the
+whole suite on the final SHA. Captures at 360/390/768/1440 px from the final code against
+a fresh database: no horizontal overflow, no console or page errors, no overlapping pills
+(one pair at 360 px before). Base SHA comparison: 1 console 404 at first load, 0 now.
 
 ## What the tests claim
 
@@ -45,7 +45,7 @@ grouping integrity, resize, Back/Forward through a listing, tampered stored path
 |---|---|---|
 | Every listing reachable; stacks whole; no point moved | Each public cell has one marker on its own coordinates; opening all visible pills reaches all API points exactly once; a stack card equals its cell | e2e, CI |
 | No overlap at 360/390 px | Rectangle geometry on real markers | e2e |
-| Above 10 in one stack | Paging with focus move and failure notice | Unit only: the seed has no such stack |
+| Above 10 in one stack | Real Lublin fixture stack pages to more than 10 distinct listings with focus on the first new one; exact totals and failure notice in unit tests | e2e, unit |
 | Zoom, resize, focus return | Group zooms apart; resize regroups with the same total; focus back on opener | e2e |
 | Filters, sort, view through Back/Forward and back link | Sequence through a listing on both projects | e2e, CI |
 | Only internal results paths used | Unit refusals; tampered session storage in the browser | Unit, e2e |
@@ -59,5 +59,6 @@ has no utilities basis, so pills cannot show "ok."/"od". After a back link the l
 returns to the top; browser Back restores position. No conversion or retention claim.
 
 `src/growth.test.ts` (file unchanged by this task) timed out at 5000 ms in full local
-unit runs with the workstation CPU at 100 % after restart, and passed 6/6 in isolation.
-It is not treated as flaky-by-definition: CI on the final SHA decides.
+unit runs while the workstation CPU was at 100 % after the restart. It passed 6/6 alone
+and 239/239 in the full suite at 15 % CPU, so the cause is load on a 2000-iteration test.
+The test was not changed.
