@@ -1,8 +1,26 @@
 import { describe, expect, it } from "vitest";
 
-import { groupOverlaps, type MarkerBox } from "./map-groups";
+import { groupOverlaps, selectionStillValid, type MarkerBox } from "./map-groups";
 
 const box = (key: string, x: number, y: number, weight = 1): MarkerBox => ({ key, x, y, w: 80, h: 28, weight });
+
+describe("selectionStillValid", () => {
+  const groups = [{ representative: "a", members: ["a", "b"] }, { representative: "c", members: ["c"] }];
+
+  it("keeps a selection that is exactly a current group, in any order", () => {
+    expect(selectionStillValid(["a", "b"], groups)).toBe(true);
+    expect(selectionStillValid(["b", "a"], groups)).toBe(true);
+    expect(selectionStillValid(["c"], groups)).toBe(true);
+  });
+
+  it("drops a selection that split, merged into something larger or no longer exists", () => {
+    expect(selectionStillValid(["a"], groups)).toBe(false);
+    expect(selectionStillValid(["a", "c"], groups)).toBe(false);
+    expect(selectionStillValid(["a", "b", "c"], groups)).toBe(false);
+    expect(selectionStillValid(["x"], groups)).toBe(false);
+    expect(selectionStillValid([], groups)).toBe(false);
+  });
+});
 
 describe("groupOverlaps", () => {
   it("leaves separate markers alone", () => {

@@ -46,6 +46,46 @@ test.use({ trace: "off", screenshot: "off", video: "off" });
 test.describe("FE-003 viewing lifecycle with real API", () => {
   test.skip(process.env.E2E_ENGAGEMENT !== "1", "Requires disposable engagement fixtures");
 
+  for (const [listingKey, status, label, slotIndex] of [["approval", "REQUESTED", "Prośba wysłana — czeka na potwierdzenie", 2], ["instant", "CONFIRMED", "Oglądanie potwierdzone", 2]] as const) {
+    test(`listing page shows no guessed hour for a ${status} viewing while its zone is unknown`, async ({ page, baseURL }, info) => {
+      const listing = (fixtures(info).listings as unknown as Record<string, string>)[listingKey]!;
+      const unique = randomUUID();
+      const headers = { origin: baseURL!, "x-homies-csrf": "1" };
+      expect((await page.request.post("/bff/auth/register", { headers, data: { email: `zone-${unique}@example.com`, password: `Fictional-${unique}!`, full_name: "Tester Strefy" } })).status()).toBe(200);
+      const open = await (await page.request.get(`/bff/v1/classifieds/${listing}/viewing-slots?days=14`)).json() as { slots: string[]; timezone: string };
+      expect(open.slots.length).toBeGreaterThan(slotIndex);
+      const startsAt = open.slots[slotIndex]!;
+      const created = await page.request.post(`/bff/v1/classifieds/${listing}/viewings`, { headers, data: { starts_at: startsAt, attendee_count: 1, note: null } });
+      expect(created.status()).toBe(201);
+      const local = new Intl.DateTimeFormat("pl-PL", { timeZone: open.timezone, hour: "2-digit", minute: "2-digit" }).format(new Date(startsAt));
+      const status_ = page.getByText(label, { exact: true }).filter({ visible: true }).locator("xpath=..");
+
+      // Delayed zone: the status is there, an hour is not.
+      let release: () => void = () => undefined;
+      const held = new Promise<void>((resolve) => { release = resolve; });
+      await page.route(/\/viewing-slots\?days=1$/, async (route) => { await held; await route.continue().catch(() => undefined); });
+      await page.goto(`/oferta/${listing}`);
+      await expect(status_).toBeVisible();
+      await expect(status_).not.toContainText("UTC");
+      await expect(status_).not.toContainText(/\d{1,2}:\d{2}/);
+      release();
+      await expect(status_).toContainText(local);
+      await expect(status_).toContainText(open.timezone);
+      await page.unroute(/\/viewing-slots\?days=1$/);
+
+      // Failed zone: still no guess; retry recovers from the real API.
+      await page.route(/\/viewing-slots\?days=1$/, (route) => route.fulfill({ status: 503, contentType: "application/json", body: "{}" }));
+      await page.goto(`/oferta/${listing}`);
+      await expect(status_).toBeVisible();
+      await expect(status_).toContainText("Nie udało się ustalić godziny");
+      await expect(status_).not.toContainText("UTC");
+      await expect(status_).not.toContainText(/\d{1,2}:\d{2}/);
+      await page.unroute(/\/viewing-slots\?days=1$/);
+      await status_.getByRole("button", { name: "Spróbuj ponownie" }).click();
+      await expect(status_).toContainText(local);
+    });
+  }
+
   for (const [listingKey, status, label] of [["approval", "REQUESTED", "Prośba wysłana — czeka na potwierdzenie"], ["instant", "CONFIRMED", "Oglądanie potwierdzone"]] as const) {
     test(`listing page labels a ${status} viewing from the server state`, async ({ page, baseURL }, info) => {
       const listing = (fixtures(info).listings as unknown as Record<string, string>)[listingKey]!;

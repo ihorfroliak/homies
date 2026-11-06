@@ -263,6 +263,130 @@ test("a stack above ten pages through its listings on real data", async ({ page 
   expect(hrefs.length).toBeGreaterThan(10);
 });
 
+/** UX-R3: the open card must describe the map as it is now. */
+async function openGroup(page: Page) {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto("/wynajem/krakow?widok=mapa");
+  await pillRects(page);
+  const group = page.locator('.maplibregl-marker[data-kind="nearby"]').first();
+  await expect(group).toBeAttached();
+  return group;
+}
+const zoomIn = (page: Page) => page.getByRole("button", { name: "Zoom in" });
+const zoomOut = (page: Page) => page.getByRole("button", { name: "Zoom out" });
+const settle = (page: Page) => page.waitForTimeout(700);
+
+test("zooming a group apart closes its card; zooming back regroups", async ({ page }) => {
+  const group = await openGroup(page);
+  const before = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>(".maplibregl-marker")].map((el) => el.dataset.cell).sort());
+  await group.click({ force: true });
+  const card = page.getByRole("dialog", { name: /w pobliżu/ });
+  await expect(card).toBeVisible();
+  for (let i = 0; i < 4 && (await page.locator('.maplibregl-marker[data-kind="nearby"]').count()) > 0; i++) {
+    await zoomIn(page).click();
+    await settle(page);
+  }
+  await expect(page.locator('.maplibregl-marker[data-kind="nearby"]')).toHaveCount(0);
+  // The group no longer exists, so a card naming it must not remain.
+  await expect(card).toHaveCount(0);
+  for (let i = 0; i < 4 && (await page.locator('.maplibregl-marker[data-kind="nearby"]').count()) === 0; i++) {
+    await zoomOut(page).click();
+    await settle(page);
+  }
+  await expect(page.locator('.maplibregl-marker[data-kind="nearby"]').first()).toBeAttached();
+  const after = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>(".maplibregl-marker")].map((el) => el.dataset.cell).sort());
+  expect(after).toEqual(before); // same public cells throughout
+});
+
+test("a card whose group survives a zoom stays open with its focus", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/wynajem/krakow?widok=mapa");
+  await pillRects(page);
+  const stack = page.locator('.maplibregl-marker[data-kind="stack"]').first();
+  await stack.click({ force: true });
+  const card = page.getByRole("dialog", { name: /w tym miejscu/ });
+  await expect(card).toBeVisible();
+  await zoomIn(page).click();
+  await settle(page);
+  await expect(card).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+});
+
+test("a resize that dissolves the open group closes the card and focus lands on a real pill", async ({ page }) => {
+  const group = await openGroup(page);
+  await group.focus();
+  await page.keyboard.press("Enter");
+  const card = page.getByRole("dialog", { name: /w pobliżu/ });
+  await expect(card.getByRole("button", { name: "Zamknij" })).toBeFocused();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await expect(card).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => document.activeElement?.closest(".maplibregl-marker, .maplibregl-canvas") !== null)).toBe(true);
+});
+
+test("a privacy stack stays one card and is never split by zooming", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/wynajem/krakow?widok=mapa");
+  await pillRects(page);
+  const stack = page.locator('.maplibregl-marker[data-kind="stack"]').first();
+  const cell = await stack.getAttribute("data-cell");
+  const label = await stack.textContent();
+  for (let i = 0; i < 5; i++) {
+    await zoomIn(page).click();
+    await settle(page);
+  }
+  const same = page.locator(`.maplibregl-marker[data-cell="${cell}"]`);
+  await expect(same).toHaveCount(1);
+  await expect(same).toHaveText(label!);
+});
+
+/** UX-R4: a reopened card reads again; BFF answers are injected to change or fail deterministically. */
+test("reopening a card shows the current price, and a removed or failing listing is said, not remembered", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/wynajem/krakow?widok=mapa");
+  await pillRects(page);
+  const pill = page.locator('.maplibregl-marker[data-kind="price"]').first();
+  const card = page.getByRole("dialog");
+  let reads = 0;
+  let answer: "real" | "changed" | "gone" | "down" = "real";
+  await page.route(/\/bff\/v1\/classifieds\/[0-9a-f-]{36}$/, async (route) => {
+    reads++;
+    if (answer === "gone") return route.fulfill({ status: 404, contentType: "application/json", body: "{}" });
+    if (answer === "down") return route.fulfill({ status: 503, contentType: "application/json", body: "{}" });
+    const response = await route.fetch();
+    const body = await response.json() as Record<string, unknown>;
+    if (answer === "changed") body.monthly_total_estimate = 123400;
+    return route.fulfill({ response, json: body });
+  });
+  await pill.click({ force: true });
+  await expect(card.getByRole("link")).toHaveCount(1);
+  const original = await card.locator("p").first().textContent();
+  await card.getByRole("button", { name: "Zamknij" }).click();
+  expect(reads).toBe(1);
+
+  answer = "changed";
+  await pill.click({ force: true });
+  await expect(card).toContainText("1 234");
+  expect(reads).toBe(2);
+  await card.getByRole("button", { name: "Zamknij" }).click();
+
+  answer = "down";
+  await pill.click({ force: true });
+  await expect(card).toContainText("Nie udało się wczytać");
+  await expect(card.getByRole("link")).toHaveCount(0); // no remembered price passed off as current
+  await expect(card).not.toContainText("1 234");
+  await expect(card).not.toContainText(original!);
+  answer = "real";
+  await card.getByRole("button", { name: "Spróbuj ponownie" }).click();
+  await expect(card.getByRole("link")).toHaveCount(1);
+  await card.getByRole("button", { name: "Zamknij" }).click();
+
+  answer = "gone";
+  await pill.click({ force: true });
+  await expect(card).toContainText("nie jest już dostępna");
+  await expect(card.getByRole("link")).toHaveCount(0);
+  await expect(card.getByRole("button", { name: "Spróbuj ponownie" })).toHaveCount(0);
+});
+
 test("a resize regroups the pills without losing or overlapping any", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto("/wynajem/krakow?widok=mapa");
@@ -330,7 +454,8 @@ test("the listing's back link keeps the filters and view, and survives no stored
   await expect(page.getByRole("link", { name: /Usuń filtr: Koszt do 5/ })).toBeVisible();
   const fresh = await context.newPage(); // a new tab has no results of its own
   await fresh.goto(listing);
-  await expect(fresh.getByRole("link", { name: "Wróć do wyników" })).toHaveAttribute("href", "/wynajem/krakow");
+  await expect(fresh.getByRole("link", { name: "Wszystkie oferty: Kraków" })).toHaveAttribute("href", "/wynajem/krakow");
+  await expect(fresh.getByRole("link", { name: "Wróć do wyników" })).toHaveCount(0);
   await fresh.close();
 });
 
@@ -372,11 +497,79 @@ test("a tampered stored path never becomes the back link", async ({ page }) => {
   await page.goto("/wynajem/krakow");
   await page.locator("#wyniki article h3 a").first().click();
   await expect(page).toHaveURL(/\/oferta\//);
-  for (const bad of ["https://example.com/wynajem", "//example.com/wynajem", "/wiadomosci", "javascript:alert(1)"]) {
-    await page.evaluate((value) => sessionStorage.setItem("homies.search.last-results", value), bad);
+  const listing = page.url().split("/").at(-1)!;
+  const origin = new URL(page.url()).origin;
+  for (const bad of [
+    "https://example.com/wynajem", "//example.com/wynajem", "/wynajem//example.com", "javascript:alert(1)", "/wiadomosci",
+    "/wynajem/%2f%2fexample.com", "/wynajem/%252f%252fexample.com", "/wynajem\\..\\oferta", "/wynajem/%5c%5cexample.com",
+    "/wynajem/../oferta/1", "/wynajem/%2e%2e/oferta/1", "/wynajem/\uff0fexample.com", "/wynajem/krakow?redirect=https://example.com",
+  ]) {
+    await page.evaluate(([value, id]) => sessionStorage.setItem("homies.search.listing-origin", JSON.stringify({ listing: id, path: value })), [bad, listing]);
     await page.reload();
-    await expect(page.getByRole("link", { name: "Wróć do wyników" })).toHaveAttribute("href", "/wynajem/krakow");
+    const back = page.getByRole("link", { name: /Wszystkie oferty/ });
+    await expect(back, bad).toHaveAttribute("href", "/wynajem/krakow");
+    await expect(page.getByRole("link", { name: "Wróć do wyników" }), bad).toHaveCount(0);
   }
+  // What the browser and Next's Link actually do with the fallback: same origin, real results.
+  await page.getByRole("link", { name: /Wszystkie oferty/ }).click();
+  await expect(page).toHaveURL(`${origin}/wynajem/krakow`);
+});
+
+test("a listing opened directly never claims the search from another city", async ({ page }) => {
+  await page.goto("/wynajem/warszawa");
+  const warsaw = page.locator("#wyniki article h3 a").first();
+  await expect(warsaw).toBeVisible();
+  const krakow = await page.request.get("/bff/v1/geo/localities?country=PL&limit=8&q=Krak%C3%B3w");
+  const city = ((await krakow.json()) as { id: string; slug: string; kind: string }[]).find((row) => row.kind === "CITY" && row.slug === "krakow")!;
+  const listing = ((await (await page.request.get(`/bff/v1/classifieds?locality_id=${city.id}&limit=1`)).json()) as { items: { id: string }[] }).items[0]!.id;
+  await page.goto(`/oferta/${listing}`);
+  await expect(page.getByRole("link", { name: "Wróć do wyników" })).toHaveCount(0);
+  const back = page.getByRole("link", { name: "Wszystkie oferty: Kraków" });
+  await expect(back).toHaveAttribute("href", "/wynajem/krakow");
+});
+
+test("a listing's origin belongs to that listing: the search only returns for the one opened from it", async ({ page }) => {
+  await page.goto("/wynajem/krakow?koszt_do=6000&sort=najtansze");
+  const first = page.locator("#wyniki article h3 a").first();
+  await first.click();
+  await expect(page).toHaveURL(/\/oferta\//);
+  await expect(page.getByRole("link", { name: "Wróć do wyników" })).toHaveAttribute("href", "/wynajem/krakow?koszt_do=6000&sort=najtansze");
+  await page.reload();
+  await expect(page.getByRole("link", { name: "Wróć do wyników" })).toHaveAttribute("href", "/wynajem/krakow?koszt_do=6000&sort=najtansze");
+  await page.getByRole("link", { name: "Wróć do wyników" }).click();
+  await expect(page.locator("#sort")).toHaveValue("najtansze");
+  // Another listing reached without a card: no claim.
+  const other = await page.locator("#wyniki article h3 a").nth(1).getAttribute("href");
+  await page.goto(other!);
+  await expect(page.getByRole("link", { name: "Wróć do wyników" })).toHaveCount(0);
+});
+
+test("opening a listing from the home page offers its city, not an earlier search", async ({ page }) => {
+  await page.goto("/wynajem/warszawa");
+  await page.locator("#wyniki article").first().waitFor();
+  await page.goto("/");
+  await page.locator("article h3 a").first().click();
+  await expect(page).toHaveURL(/\/oferta\//);
+  await expect(page.getByRole("link", { name: "Wróć do wyników" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Wszystkie oferty: Kraków" })).toBeVisible();
+});
+
+/** Fixture accounts are only needed for the saved list. */
+test("a listing opened from the saved list returns to the saved list", async ({ page, baseURL }) => {
+  const unique = crypto.randomUUID();
+  const headers = { origin: baseURL!, "x-homies-csrf": "1" };
+  expect((await page.request.post("/bff/auth/register", { headers, data: { email: `origin-${unique}@example.com`, password: `Fictional-${unique}!`, full_name: "Tester Powrotu" } })).status()).toBe(200);
+  await page.goto("/wynajem/krakow");
+  const firstCard = page.locator("#wyniki article").first();
+  await firstCard.getByRole("button", { name: /^Zapisz/ }).click();
+  await expect(firstCard.getByRole("button", { name: /Zapisane|Usuń/ })).toBeVisible();
+  await page.goto("/zapisane");
+  await page.locator("article h3 a").first().click();
+  await expect(page).toHaveURL(/\/oferta\//);
+  const back = page.getByRole("link", { name: "Wróć do zapisanych" });
+  await expect(back).toHaveAttribute("href", "/zapisane");
+  await back.click();
+  await expect(page).toHaveURL(/\/zapisane$/);
 });
 
 test("the listing's first screen carries the identity, the price and the action", async ({ page }, info) => {
