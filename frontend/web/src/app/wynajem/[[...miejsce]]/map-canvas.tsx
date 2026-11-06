@@ -110,6 +110,7 @@ export function MapCanvas({ state, points, areaName }: { state: SearchState; poi
       const el = document.createElement("button");
       el.type = "button";
       el.className = styles.pill ?? "";
+      el.dataset.cell = group.key;
       return { group, el, marker: new Marker({ element: el, anchor: "bottom" }).setLngLat([group.lon, group.lat]).addTo(map) };
     });
     const members = new Map<HTMLElement, Stack[]>();

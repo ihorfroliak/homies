@@ -197,6 +197,66 @@ test("a pill group opens all its listings, zooms apart and returns focus", async
   expect(await page.evaluate(() => document.querySelectorAll(".maplibregl-marker").length)).toBe(originalPosition);
 });
 
+/** The server's public points for the seeded Kraków search, read the way the page reads them. */
+async function publicPoints(page: Page) {
+  const cities = (await (await page.request.get("/bff/v1/geo/localities?country=PL&limit=8&q=Krak%C3%B3w")).json()) as { id: string; slug: string; kind: string }[];
+  const city = cities.find((row) => row.kind === "CITY" && row.slug === "krakow");
+  expect(city).toBeTruthy();
+  const map = await page.request.get(`/bff/v1/classifieds/map?locality_id=${city!.id}`);
+  expect(map.status()).toBe(200);
+  return ((await map.json()) as { points: { id: string; latitude: number; longitude: number }[] }).points;
+}
+
+test("grouping moves no point, splits no stack and leaves every listing reachable", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto("/wynajem/krakow?widok=mapa");
+  await pillRects(page);
+  const points = await publicPoints(page);
+  const cells = new Map<string, string[]>();
+  for (const p of points) {
+    const key = `${p.latitude.toFixed(5)},${p.longitude.toFixed(5)}`;
+    cells.set(key, [...(cells.get(key) ?? []), p.id]);
+  }
+  // Every public cell has exactly one marker on its own coordinates, shown or grouped away.
+  const drawn = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>(".maplibregl-marker")].map((el) => el.dataset.cell));
+  expect([...drawn].sort()).toEqual([...cells.keys()].sort());
+  // Opening every visible pill reaches every public listing exactly once.
+  const reached: string[] = [];
+  const visible = page.locator(".maplibregl-marker").filter({ visible: true });
+  for (let i = 0; i < (await visible.count()); i++) {
+    const pill = visible.nth(i);
+    const kind = await pill.getAttribute("data-kind");
+    const cell = await pill.getAttribute("data-cell");
+    await pill.click({ force: true });
+    const card = page.getByRole("dialog");
+    await expect(card.locator("[role=status]")).toHaveCount(0);
+    const hrefs = await card.getByRole("link").evaluateAll((links) => links.map((a) => a.getAttribute("href")!.replace("/oferta/", "")));
+    if (kind === "stack") expect([...hrefs].sort()).toEqual([...cells.get(cell!)!].sort()); // a privacy stack stays whole
+    reached.push(...hrefs);
+    await card.getByRole("button", { name: "Zamknij" }).click();
+    await expect(card).toHaveCount(0);
+  }
+  expect([...reached].sort()).toEqual(points.map((p) => p.id).sort());
+});
+
+test("a resize regroups the pills without losing or overlapping any", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto("/wynajem/krakow?widok=mapa");
+  await pillRects(page);
+  const count = (texts: string[]) => texts.reduce((n, t) => n + (/ofert/.test(t) ? Number(t.match(/\d+/)?.[0]) : 1), 0);
+  const narrow = await pillRects(page);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await expect.poll(async () => (await pillRects(page)).length).toBeGreaterThanOrEqual(narrow.length);
+  const wide = await pillRects(page);
+  expect(count(wide.map((r) => r.text))).toBe(count(narrow.map((r) => r.text)));
+  for (let i = 0; i < wide.length; i++) {
+    for (let j = i + 1; j < wide.length; j++) {
+      const [a, b] = [wide[i]!, wide[j]!];
+      expect(a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom, `${a.text} / ${b.text}`).toBe(false);
+    }
+  }
+});
+
 test("the map card is keyboard operable, returns focus and keeps the source credits visible", async ({ page }) => {
   await page.goto("/wynajem/krakow?widok=mapa");
   await pillRects(page);
@@ -250,6 +310,51 @@ test("the listing's back link keeps the filters and view, and survives no stored
   await fresh.close();
 });
 
+test("Back and Forward between results and a listing keep filters, sort and view", async ({ page }, info) => {
+  const search = "/wynajem/krakow?koszt_do=6000&sort=najtansze&widok=mapa";
+  await page.goto(search);
+  await pillRects(page);
+  await page.goto("/wynajem/krakow?koszt_do=6000&sort=najtansze");
+  await page.getByRole("navigation", { name: "Widok wyników" }).getByRole("link", { name: "Mapa" }).click();
+  await expect(page).toHaveURL(/widok=mapa/);
+  await pillRects(page);
+  if (info.project.name === "desktop") {
+    await page.locator("#wyniki article h3 a").first().click();
+  } else {
+    await page.locator(".maplibregl-marker").filter({ visible: true }).first().click({ force: true });
+    await page.getByRole("dialog").getByRole("link").first().click();
+  }
+  await expect(page).toHaveURL(/\/oferta\//);
+  const listing = page.url();
+  const back = page.getByRole("link", { name: "Wróć do wyników" });
+  await expect(back).toHaveAttribute("href", /koszt_do=6000/);
+  await expect(back).toHaveAttribute("href", /sort=najtansze/);
+  await expect(back).toHaveAttribute("href", /widok=mapa/);
+  await page.goBack();
+  await expect(page).toHaveURL(/koszt_do=6000/);
+  await expect(page).toHaveURL(/sort=najtansze/);
+  await expect(page).toHaveURL(/widok=mapa/);
+  await expect(page.locator("#sort")).toHaveValue("najtansze");
+  await expect(page.getByRole("navigation", { name: "Widok wyników" }).getByRole("link", { name: "Mapa" })).toHaveAttribute("aria-current", "page");
+  await page.goForward();
+  await expect(page).toHaveURL(listing);
+  await back.click();
+  await expect(page).toHaveURL(/koszt_do=6000/);
+  await expect(page).toHaveURL(/widok=mapa/);
+  await expect(page.locator("#sort")).toHaveValue("najtansze");
+});
+
+test("a tampered stored path never becomes the back link", async ({ page }) => {
+  await page.goto("/wynajem/krakow");
+  await page.locator("#wyniki article h3 a").first().click();
+  await expect(page).toHaveURL(/\/oferta\//);
+  for (const bad of ["https://example.com/wynajem", "//example.com/wynajem", "/wiadomosci", "javascript:alert(1)"]) {
+    await page.evaluate((value) => sessionStorage.setItem("homies.search.last-results", value), bad);
+    await page.reload();
+    await expect(page.getByRole("link", { name: "Wróć do wyników" })).toHaveAttribute("href", "/wynajem/krakow");
+  }
+});
+
 test("the listing's first screen carries the identity, the price and the action", async ({ page }, info) => {
   await page.goto("/wynajem/krakow?sort=najdrozsze");
   await page.locator("#wyniki article h3 a").first().click();
@@ -283,7 +388,7 @@ test("the listing's actions ask for login and come back to the same listing", as
   await page.getByRole("button", { name: "Napisz", exact: true }).filter({ visible: true }).first().click();
   await expect(page.getByRole("dialog").last()).toBeVisible();
   await expect(page.getByLabel("E-mail").filter({ visible: true }).first()).toBeVisible();
-  expect(page.url()).toBe(listing);
+  await expect(page).toHaveURL(listing);
 });
 
 test("every list width keeps long Polish labels inside the page", async ({ page }) => {
