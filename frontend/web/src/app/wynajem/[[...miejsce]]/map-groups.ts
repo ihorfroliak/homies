@@ -18,6 +18,12 @@ function intersect(a: MarkerBox, b: MarkerBox, gap: number): boolean {
   return Math.abs(a.x - b.x) < (a.w + b.w) / 2 + gap && a.y - a.h < b.y + gap && b.y - b.h < a.y + gap;
 }
 
+/** A selection stays valid only while it is exactly one current group: not a part of one, not several. */
+export function selectionStillValid(selected: readonly string[], groups: readonly MarkerGroup[]): boolean {
+  const wanted = new Set(selected);
+  return groups.some((group) => group.members.length === wanted.size && group.members.every((key) => wanted.has(key)));
+}
+
 /**
  * Groups markers whose rectangles touch at the current zoom, transitively. This
  * only decides what is drawn: no coordinate changes, and the group is drawn at a

@@ -5,14 +5,14 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { getVersion, LngLatBounds, Map as MapLibre, Marker, NavigationControl, setWorkerUrl, type StyleSpecification } from "maplibre-gl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { components } from "@/api/schema";
 import { fmt, formatMoney, plural, t } from "@/i18n";
 import { searchHref, type SearchState } from "@/search/codec";
 
 import { MapCard } from "./map-card";
-import { groupOverlaps } from "./map-groups";
+import { groupOverlaps, selectionStillValid } from "./map-groups";
 import styles from "./results.module.css";
 
 type MapPoint = components["schemas"]["MapPoint"];
@@ -80,12 +80,18 @@ export function MapCanvas({ state, points, areaName }: { state: SearchState; poi
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibre | null>(null);
   const opener = useRef<HTMLElement | null>(null);
+  const openSelection = useRef<Selection | null>(null);
   const router = useRouter();
   const [moved, setMoved] = useState(false);
   // No WebGL: the list is the fallback (decided once, before the map is built).
   const [failed, setFailed] = useState(() => typeof document !== "undefined" && !document.createElement("canvas").getContext("webgl2") && !document.createElement("canvas").getContext("webgl"));
   const [selected, setSelected] = useState<Selection | null>(null);
   const groups = useMemo(() => stacks(points), [points]);
+  // Map events run outside React and must read the card that is open right now.
+  const select = useCallback((next: Selection | null) => {
+    openSelection.current = next;
+    setSelected(next);
+  }, []);
 
   useEffect(() => {
     if (!container.current || failed) return;
@@ -137,6 +143,17 @@ export function MapCanvas({ state, points, areaName }: { state: SearchState; poi
         for (const s of included) for (const p of s.points) ownerOf.set(p.id, shown.el);
         for (const k of cluster.members) if (k !== cluster.representative) byKey.get(k)!.el.style.display = "none";
       }
+      // A card names a group. If zoom or resize dissolved that group, the card goes too,
+      // and focus held inside it moves to the pill now showing its first listing.
+      const open = openSelection.current;
+      if (open && !selectionStillValid(open.stacks.map((s) => s.key), clusters)) {
+        const focusInCard = document.activeElement?.closest('[role="dialog"]')?.parentElement === container.current?.parentElement;
+        select(null);
+        if (focusInCard) {
+          const holder = clusters.find((c) => c.members.includes(open.stacks[0]!.key));
+          (holder ? byKey.get(holder.representative)!.el : map.getCanvas()).focus({ preventScroll: true });
+        }
+      }
     };
 
     for (const { el } of entries) {
@@ -144,7 +161,7 @@ export function MapCanvas({ state, points, areaName }: { state: SearchState; poi
         const included = members.get(el);
         if (!included) return;
         opener.current = el;
-        setSelected({ stacks: included, ids: included.flatMap((s) => s.points.map((p) => p.id)) });
+        select({ stacks: included, ids: included.flatMap((s) => s.points.map((p) => p.id)) });
       });
     }
 
@@ -164,7 +181,7 @@ export function MapCanvas({ state, points, areaName }: { state: SearchState; poi
     map.on("click", (e) => {
       // A pressed pill also reaches the map as a click: only the empty map closes the card.
       if (e.originalEvent.target instanceof Element && e.originalEvent.target.closest("button")) return;
-      setSelected(null);
+      select(null);
     });
 
     // A card under the pointer or keyboard focus marks its pill, so list and map read as one.
@@ -196,7 +213,7 @@ export function MapCanvas({ state, points, areaName }: { state: SearchState; poi
       map.remove();
       mapRef.current = null;
     };
-  }, [groups, state.bbox, failed]);
+  }, [groups, state.bbox, failed, select]);
 
   const searchHere = () => {
     const map = mapRef.current;
@@ -208,7 +225,7 @@ export function MapCanvas({ state, points, areaName }: { state: SearchState; poi
 
   // Focus returns to the pill that opened the card, or to the map if a zoom regrouped it away.
   const closeCard = () => {
-    setSelected(null);
+    select(null);
     const back = opener.current;
     if (back?.isConnected && back.style.display !== "none") back.focus({ preventScroll: true });
     else mapRef.current?.getCanvas().focus({ preventScroll: true });
@@ -220,7 +237,7 @@ export function MapCanvas({ state, points, areaName }: { state: SearchState; poi
     const bounds = new LngLatBounds();
     for (const s of selected.stacks) bounds.extend([s.lon, s.lat]);
     map.fitBounds(bounds, { padding: 96, maxZoom: ZOOM_HERE_MAX });
-    setSelected(null);
+    select(null);
     map.getCanvas().focus({ preventScroll: true });
   };
 
