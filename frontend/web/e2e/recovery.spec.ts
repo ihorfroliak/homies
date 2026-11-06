@@ -97,7 +97,7 @@ for (const [name, mode] of [["503", "503"], ["429", "429"], ["a timeout", "hang"
   test(`a listing recovers after ${name}`, async ({ page }) => {
     fault = { match: /^\/v1\/classifieds\/[^/?]+$/, mode };
     await page.goto(`${base}/oferta/${listingId}`);
-    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: "Spróbuj ponownie" })).toBeVisible();
     await noLeak(page);
     fault = null;
     await retry(page).click();

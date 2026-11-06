@@ -312,15 +312,38 @@ test("a card whose group survives a zoom stays open with its focus", async ({ pa
   await expect(page.getByRole("dialog")).toHaveCount(1);
 });
 
-test("a resize that dissolves the open group closes the card and focus lands on a real pill", async ({ page }) => {
+test("a group dissolved while focus is inside its card moves focus to a real pill", async ({ page }, info) => {
+  test.skip(info.project.name !== "desktop", "needs a wheel: keyboard focus stays in the card while the map zooms");
   const group = await openGroup(page);
   await group.focus();
   await page.keyboard.press("Enter");
   const card = page.getByRole("dialog", { name: /w pobliżu/ });
   await expect(card.getByRole("button", { name: "Zamknij" })).toBeFocused();
-  await page.setViewportSize({ width: 1440, height: 1000 });
+  const box = (await page.locator(".maplibregl-map").boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + 60);
+  for (let i = 0; i < 12 && (await card.count()) > 0; i++) {
+    await page.mouse.wheel(0, -500);
+    await settle(page);
+  }
   await expect(card).toHaveCount(0);
-  await expect.poll(() => page.evaluate(() => document.activeElement?.closest(".maplibregl-marker, .maplibregl-canvas") !== null)).toBe(true);
+  await expect.poll(() => page.evaluate(() => document.activeElement?.closest(".maplibregl-marker") !== null)).toBe(true);
+});
+
+test("a resize keeps the card only while its group still exists on the map", async ({ page }) => {
+  const group = await openGroup(page);
+  await group.focus();
+  await page.keyboard.press("Enter");
+  const card = page.getByRole("dialog", { name: /w pobliżu/ });
+  await expect(card).toBeVisible();
+  const members = await card.getByRole("heading").textContent();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await settle(page);
+  // Same zoom, same pixel distances: the group exists, so the card rightly stays and still names it.
+  await expect(page.locator('.maplibregl-marker[data-kind="nearby"]').filter({ visible: true })).toHaveCount(1);
+  await expect(card.getByRole("heading")).toHaveText(members!);
+  await page.keyboard.press("Escape");
+  await expect(card).toHaveCount(0);
+  await expect(group).toBeFocused();
 });
 
 test("a privacy stack stays one card and is never split by zooming", async ({ page }) => {
@@ -559,10 +582,13 @@ test("a listing opened from the saved list returns to the saved list", async ({ 
   const unique = crypto.randomUUID();
   const headers = { origin: baseURL!, "x-homies-csrf": "1" };
   expect((await page.request.post("/bff/auth/register", { headers, data: { email: `origin-${unique}@example.com`, password: `Fictional-${unique}!`, full_name: "Tester Powrotu" } })).status()).toBe(200);
+  const session = page.waitForResponse((response) => response.url().endsWith("/bff/auth/session"));
   await page.goto("/wynajem/krakow");
+  expect(((await (await session).json()) as { authenticated: boolean }).authenticated).toBe(true);
   const firstCard = page.locator("#wyniki article").first();
+  await expect(firstCard.getByRole("button", { name: /^Zapisz/ })).toBeEnabled();
   await firstCard.getByRole("button", { name: /^Zapisz/ }).click();
-  await expect(firstCard.getByRole("button", { name: /Zapisane|Usuń/ })).toBeVisible();
+  await expect(firstCard.getByRole("button", { name: /Usuń z zapisanych/ })).toHaveAttribute("aria-pressed", "true");
   await page.goto("/zapisane");
   await page.locator("article h3 a").first().click();
   await expect(page).toHaveURL(/\/oferta\//);
