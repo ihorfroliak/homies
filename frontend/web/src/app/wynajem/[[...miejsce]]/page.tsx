@@ -14,7 +14,9 @@ import { pageMetadata } from "@/seo";
 
 import { Chips } from "./chips";
 import { FilterPanel } from "./filter-panel";
+import { LinkPending } from "./link-pending";
 import { MapSection } from "./map-section";
+import { RememberResults } from "./remember-results";
 import styles from "./results.module.css";
 import { SortForm } from "./sort-form";
 import { chipLabel } from "./labels";
@@ -70,7 +72,7 @@ export default async function ResultsPage(props: Props) {
   const error: ApiError | undefined = search.error;
   const dropped = [...loaded.dropped, ...search.refused];
   let map: MapPage | undefined;
-  if (state.view === "map" && page) map = await mapPage(state, ids).catch(() => undefined);
+  if (state.view === "map" && page && page.total > 0) map = await mapPage(state, ids).catch(() => undefined);
   const relax = page && page.total === 0 ? await relaxations(state, ids).catch(() => []) : [];
   const filters = activeFilters(state);
   const searchId = crypto.randomUUID();
@@ -80,15 +82,21 @@ export default async function ResultsPage(props: Props) {
   for (const [key, value] of Object.entries(api)) for (const part of Array.isArray(value) ? value : [value]) savedQuery.append(key, String(part));
   const dimensions = Object.keys(api).filter((k) => k !== "country_code" && k !== "sort");
   const band = state.monthlyMax ?? state.monthlyMin;
+  // With nothing to draw, the map would only hide the explanation and its way out.
+  const showMap = state.view === "map" && page?.total !== 0;
 
   return (
-    <div className={`container ${styles.page}`}>
+    <div className={`container ${styles.page} ${state.view === "map" ? styles.pageMap : ""}`}>
+      <RememberResults href={searchHref(state)} />
       <header className={styles.header}>
-        <h1 className={styles.title}>{heading(place)}</h1>
-        <p className={styles.count} aria-live="polite">
-          {page ? plural(t.plural.listingsFound, page.total) : error ? "" : t.results.searching}
-        </p>
-        {!place.locality ? <p className="muted">{t.results.preSearch}</p> : null}
+        <div className={styles.headerText}>
+          <h1 className={styles.title}>{heading(place)}</h1>
+          <p className={styles.count} aria-live="polite">
+            {page ? plural(t.plural.listingsFound, page.total) : error ? "" : t.results.searching}
+          </p>
+          {!place.locality ? <p className="muted">{t.results.preSearch}</p> : null}
+        </div>
+        <SaveSearchButton query={savedQuery.toString()} />
       </header>
 
       {dropped.length > 0 ? (
@@ -98,31 +106,35 @@ export default async function ResultsPage(props: Props) {
       ) : null}
 
       <div className={styles.toolbar}>
-        <FilterPanel state={state} place={place} total={page?.total} />
-        <SortForm state={state} />
-        <SaveSearchButton query={savedQuery.toString()} />
+        {/* Keyed by the URL: after a client navigation the panel shows that URL's values and count. */}
+        <FilterPanel key={searchHref(state)} state={state} place={place} total={page?.total} />
+        <SortForm key={`sort:${searchHref(state)}`} state={state} />
         <nav aria-label={t.results.viewSwitch} className={styles.views}>
           <Link href={searchHref({ ...state, view: "list", page: 1 })} aria-current={state.view === "list" ? "page" : undefined} className={styles.view}>
             {t.results.list}
+            <LinkPending />
           </Link>
           <Link href={searchHref({ ...state, view: "map", page: 1 })} aria-current={state.view === "map" ? "page" : undefined} className={styles.view}>
             {t.results.map}
+            <LinkPending />
           </Link>
         </nav>
       </div>
 
-      {filters.length > 0 ? <Chips state={state} labels={Object.fromEntries(filters.map((f) => [f, chipLabel(f, state)]))} /> : null}
+      {filters.length > 0 || place.area ? <Chips state={state} areaName={place.area?.name} labels={Object.fromEntries(filters.map((f) => [f, chipLabel(f, state)]))} /> : null}
+      {showMap ? <a className={styles.skipToMap} href="#mapa">{t.map.skipToMap}</a> : null}
 
       {error ? (
         <div className="alert alert--danger" role="alert">
-          <p>{errorMessage(error)}</p>
-          <Link className="btn btn--secondary" href={searchHref(state)}>
+          <p>{errorMessage(error)} {t.results.retryHint}</p>
+          {/* A full load: a client link to the current URL would not refetch. */}
+          <a className="btn btn--secondary" href={searchHref(state)}>
             {t.errors.retry}
-          </Link>
+          </a>
         </div>
       ) : null}
 
-      <div className={state.view === "map" ? styles.split : undefined}>
+      <div className={showMap ? styles.split : undefined}>
         {page ? (
           <section id="wyniki" aria-label={t.results.resultsRegion} className={styles.results}>
             {page.total === 0 ? (
@@ -153,7 +165,7 @@ export default async function ResultsPage(props: Props) {
             {page.total > 0 ? <Pagination state={state} lastPage={lastPage} total={page.total} /> : null}
           </section>
         ) : null}
-        {state.view === "map" ? <MapSection state={state} place={place} initial={map} /> : null}
+        {showMap ? <MapSection state={state} place={place} initial={map} /> : null}
       </div>
 
       {page ? (
@@ -185,6 +197,7 @@ function Pagination({ state, lastPage, total }: { state: SearchState; lastPage: 
       {hasMore ? (
         <Link className="btn btn--secondary" href={searchHref({ ...state, page: state.page + 1 })}>
           {t.results.showMore}
+          <LinkPending />
         </Link>
       ) : null}
       {capped ? <p className="muted">{t.results.narrow}</p> : null}
