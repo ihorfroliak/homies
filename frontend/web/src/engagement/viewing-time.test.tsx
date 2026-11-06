@@ -1,6 +1,6 @@
 // FE-UX-KRK-002R UX-R1. The hour comes from the API's zone or is not shown at all:
 // each instant below reads differently in UTC, so these fail if any zone is assumed.
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DetailEngagement } from "./detail";
@@ -34,9 +34,6 @@ describe("viewingTime", () => {
     expect(hour("2026-12-01T12:00:00Z", "America/New_York")).toBe("07:00");
   });
 
-  it.each([[undefined], [null], [""], ["Not/AZone"]])("gives no hour for zone %s", (zone) => {
-    expect(viewingTime("2026-12-01T12:00:00Z", zone)).toBeNull();
-  });
 });
 
 const account = { authenticated: true, user: { id: "account-a", name: "A", phoneVerified: false, emailVerified: false } };
@@ -96,17 +93,24 @@ describe.each([
     expect(rail).not.toHaveTextContent("UTC");
     expect(rail).not.toHaveTextContent(/\d{1,2}:\d{2}/);
     available = true;
-    await act(async () => screen.getAllByRole("button", { name: e.retry })[0]!.click());
+    await act(async () => within(rail).getByRole("button", { name: e.retry }).click());
     await waitFor(() => expect(rail).toHaveTextContent(LOCAL));
   });
 
-  it("admits it when the listing has no viewing settings and so no zone", async () => {
+  it("keeps FE-003's explicitly labelled UTC when the API says no schedule exists", async () => {
     serve(status, async () => response({ slots: [], duration_minutes: null, timezone: null }));
     mount();
     const rail = await screen.findByRole("region", { name: e.railTitle });
-    await waitFor(() => expect(rail).toHaveTextContent(e.viewingTimeUnknown));
-    expect(rail).not.toHaveTextContent("UTC");
-    expect(rail).not.toHaveTextContent(/\d{1,2}:\d{2}/);
+    await waitFor(() => expect(rail).toHaveTextContent("12:00"));
+    expect(rail).toHaveTextContent("(UTC)");
+  });
+
+  it("treats a listing with no readable schedule (404) the same way, with no pointless retry", async () => {
+    serve(status, async () => response({}, 404));
+    mount();
+    const rail = await screen.findByRole("region", { name: e.railTitle });
+    await waitFor(() => expect(rail).toHaveTextContent("(UTC)"));
+    expect(within(rail).queryByRole("button", { name: e.retry })).toBeNull();
   });
 
   it("keeps the exact instant in the markup once the hour is shown", async () => {

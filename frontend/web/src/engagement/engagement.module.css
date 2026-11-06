@@ -22,6 +22,7 @@
 .rail h2 { margin: 0; font-size: var(--fs-h2); color: var(--c-ink-900); }
 .rail > p { margin: 0; }
 .viewingStatus { display: grid; gap: var(--sp-1); margin: 0; padding: var(--sp-3); border-radius: var(--r-md); font-size: var(--fs-small); background: var(--c-warning-bg); color: var(--c-warning-fg); }
+.textButton { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; min-height: 24px; }
 .viewingStatus[data-status="CONFIRMED"] { background: var(--c-confirmed-bg); color: var(--c-confirmed-fg); }
 .dock { display: none; }
 .slots { display: grid; gap: var(--sp-3); }

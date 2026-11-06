@@ -9,9 +9,9 @@ import { ContactReveal } from "./contact";
 import { e } from "./copy";
 import { SaveButton } from "./saved";
 import { useSession } from "./session";
-import { ViewingPicker } from "./viewings";
+import { ViewingPicker, ViewingWhen } from "./viewings";
 import { Modal, styles, useResource } from "./ui";
-import { viewingLabels, viewingTime } from "./viewing-model";
+import { viewingLabels } from "./viewing-model";
 import type { Schema } from "./api";
 
 export function DetailEngagement({ listing }: { listing: Pick<Listing, "id" | "title" | "contact_mode" | "monthly_total_estimate" | "utilities_basis" | "currency"> }) {
@@ -35,7 +35,7 @@ export function DetailEngagement({ listing }: { listing: Pick<Listing, "id" | "t
   const booking = viewing ? <Link className="btn btn--primary" href="/ogladania">{e.seeViewing}</Link> : <button className="btn btn--primary" disabled={restricted} onClick={() => setSurface("viewing")}>{e.viewing}</button>;
   const phone = listing.contact_mode === "phone" && <button className="btn" disabled={restricted} onClick={() => void open("phone")}>{e.reveal}</button>;
   // REQUESTED and CONFIRMED read differently: only the server's state may say a viewing is arranged.
-  const status = viewing && <p className={styles.viewingStatus} data-status={viewing.status}><strong>{viewingLabels[viewing.status]}</strong><span>{viewingTime(viewing.starts_at, schedule.data?.timezone)}</span></p>;
+  const status = viewing && <p className={styles.viewingStatus} data-status={viewing.status}><strong>{viewingLabels[viewing.status]}</strong><span><ViewingWhen instant={viewing.starts_at} schedule={schedule} /></span></p>;
   return <>
     <section className={styles.rail} aria-labelledby="obejrzyj"><h2 id="obejrzyj">{e.railTitle}</h2>{status ?? <p className={styles.muted}>{e.railHint}</p>}{booking}{message}{phone}{restricted && <p role="status">{e.conversationUnavailable}</p>}</section>
     <section className={styles.dock} aria-label={e.listingActions} hidden={keyboard || Boolean(surface)}>{status}<strong>{monthlyLabel(listing)}</strong>{booking}<SaveButton listingId={listing.id} title={listing.title} surface="dock" /><button className="btn" onClick={() => setSurface("more")}>{e.more}</button></section>
