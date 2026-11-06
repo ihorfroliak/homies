@@ -438,3 +438,7 @@ Next: finish combined CI and PR20 integration, verify resulting main, then conti
 ## 2026-11-06 — FE-UX-KRK-002 candidate
 
 Results, results map and listing detail on top of Draft PR25 (`6c6bb0237112653b37b71769d0a5fdc0d0f1fcba`), which remains unintegrated with its review gate open. Branch `claude/FE-UX-KRK-002-search-detail`; Draft PR depends on PR25. [Contract](tasks/FE-UX-KRK-002.md), [builder receipt](reviews/FE-UX-KRK-002-verification.md). Exact SHA and CI are recorded on the PR. Independent review OPEN. No backend, schema, authorization or API change. No merge, staging or deployment; NOT READY / NOT DEPLOYED unchanged.
+
+## 2026-11-06 — FE-UX-KRK-002R remediation branch
+
+Branch `claude/FE-UX-KRK-002R-hardening` on top of Draft PR26 (`353324acb3d7784a4f798f5eaa400dbef30ea136`), which stays unchanged during its exact-SHA review. No additional PR. [Contract](tasks/FE-UX-KRK-002R.md), [builder receipt](reviews/FE-UX-KRK-002R-verification.md). Independent review OPEN. No backend, schema, API or authorization change. No merge or deployment; NOT READY / NOT DEPLOYED unchanged.
