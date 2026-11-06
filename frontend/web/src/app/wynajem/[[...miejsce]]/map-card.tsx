@@ -10,25 +10,26 @@ import { fmt, plural, t } from "@/i18n";
 import styles from "./results.module.css";
 
 type Classified = components["schemas"]["ClassifiedOut"];
+type Read = { listing: Classified } | "gone";
 
 /** How many listings one step of the card reads; the "next" button asks for another step. */
 export const CARD_STEP = 10;
-/** Details already read in this page view (bounded), so reopening a stack costs nothing. */
-const details = new Map<string, Classified>();
-function remember(l: Classified) {
-  details.set(l.id, l);
-  if (details.size > 200) details.delete(details.keys().next().value as string);
-}
 
 /**
  * MapPoint has no title or cover (gap G5): the card reads the public detail
  * through the BFF. Every listing behind a marker stays reachable: a large stack
- * pages through its members and a failed read is said, never silently dropped.
+ * pages through its members, and a removed listing or a failed read is said, never
+ * silently dropped.
+ *
+ * Each opened card reads afresh, because it shows prices: a remembered answer would
+ * pass an old price off as current, and no freshness rule exists to bound one. What
+ * is read lives only as long as the card, so paging and retry read each listing once.
  */
 export function MapCard({ ids, nearby, onClose, onZoom }: { ids: string[]; nearby: boolean; onClose: () => void; onZoom?: () => void }) {
   const [limit, setLimit] = useState(CARD_STEP);
   const [attempt, setAttempt] = useState(0);
-  const [loaded, setLoaded] = useState<{ limit: number; attempt: number; items: Classified[] } | null>(null);
+  const [loaded, setLoaded] = useState<{ limit: number; attempt: number; items: Classified[]; gone: number; failed: number } | null>(null);
+  const reads = useRef(new Map<string, Read>());
   const close = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLUListElement>(null);
   const focusFrom = useRef<number | null>(null);
@@ -38,29 +39,35 @@ export function MapCard({ ids, nearby, onClose, onZoom }: { ids: string[]; nearb
 
   useEffect(() => {
     const controller = new AbortController();
+    const wanted = ids.slice(0, limit);
     void Promise.all(
-      ids.slice(0, limit).map(async (id) => {
-        const known = details.get(id);
-        if (known) return known;
+      wanted.map(async (id) => {
+        if (reads.current.has(id)) return;
         try {
           const response = await fetch(`/bff/v1/classifieds/${encodeURIComponent(id)}`, { signal: controller.signal, headers: { accept: "application/json" } });
-          if (!response.ok) return null;
-          const listing = (await response.json()) as Classified;
-          remember(listing);
-          return listing;
+          if (controller.signal.aborted) return;
+          if (response.status === 404) reads.current.set(id, "gone");
+          else if (response.ok) reads.current.set(id, { listing: (await response.json()) as Classified });
         } catch {
-          return null;
+          /* Left unread: counted as failed below and offered a retry. */
         }
       }),
-    ).then((rows) => {
-      if (!controller.signal.aborted) setLoaded({ limit, attempt, items: rows.filter((r): r is Classified => r !== null) });
+    ).then(() => {
+      if (controller.signal.aborted) return;
+      const results = wanted.map((id) => reads.current.get(id));
+      setLoaded({
+        limit,
+        attempt,
+        items: results.flatMap((r) => (r && r !== "gone" ? [r.listing] : [])),
+        gone: results.filter((r) => r === "gone").length,
+        failed: results.filter((r) => r === undefined).length,
+      });
     });
     return () => controller.abort();
   }, [ids, limit, attempt]);
 
   const current = loaded?.limit === limit && loaded.attempt === attempt ? loaded : null;
   const items = current?.items ?? loaded?.items ?? [];
-  const missing = current ? Math.min(limit, ids.length) - current.items.length : 0;
 
   // After the "next" button the control may disappear: focus moves to the first new listing.
   useEffect(() => {
@@ -97,9 +104,14 @@ export function MapCard({ ids, nearby, onClose, onZoom }: { ids: string[]; nearb
           );
         })}
       </ul>
-      {missing > 0 ? (
+      {current && current.gone > 0 ? (
         <p role="status" className="small">
-          {fmt(t.map.someFailed, { count: plural(t.plural.listings, missing) })}{" "}
+          {current.gone === 1 ? t.map.oneGone : fmt(t.map.someGone, { count: plural(t.plural.listings, current.gone) })}
+        </p>
+      ) : null}
+      {current && current.failed > 0 ? (
+        <p role="status" className="small">
+          {fmt(t.map.someFailed, { count: plural(t.plural.listings, current.failed) })}{" "}
           <button type="button" className={styles.textButton} onClick={() => setAttempt((a) => a + 1)}>
             {t.errors.retry}
           </button>
