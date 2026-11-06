@@ -77,7 +77,7 @@ export default async function ListingPage({ params }: Props) {
   return (
     <article className={`container ${styles.page}`}>
       <p className={styles.back}>
-        <BackToResults fallback={backHref} />
+        <BackToResults listingId={l.id} fallback={backHref} fallbackLabel={l.place?.locality?.name ? fmt(t.detail.backCity, { city: l.place.locality.name }) : t.detail.backAll} />
       </p>
 
       <header className={`${styles.hero} ${cover ? "" : styles.heroPlain}`}>

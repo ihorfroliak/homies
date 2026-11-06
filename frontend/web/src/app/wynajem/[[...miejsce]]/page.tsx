@@ -16,7 +16,6 @@ import { Chips } from "./chips";
 import { FilterPanel } from "./filter-panel";
 import { LinkPending } from "./link-pending";
 import { MapSection } from "./map-section";
-import { RememberResults } from "./remember-results";
 import styles from "./results.module.css";
 import { SortForm } from "./sort-form";
 import { chipLabel } from "./labels";
@@ -87,7 +86,6 @@ export default async function ResultsPage(props: Props) {
 
   return (
     <div className={`container ${styles.page} ${state.view === "map" ? styles.pageMap : ""}`}>
-      <RememberResults href={searchHref(state)} />
       <header className={styles.header}>
         <div className={styles.headerText}>
           <h1 className={styles.title}>{heading(place)}</h1>

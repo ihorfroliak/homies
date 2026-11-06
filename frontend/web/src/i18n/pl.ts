@@ -210,6 +210,8 @@ export const pl = {
     nearby: "{count} w pobliżu",
     showNext: "Pokaż kolejne (widać {shown} z {total})",
     someFailed: "Nie udało się wczytać: {count}.",
+    oneGone: "Ta oferta nie jest już dostępna.",
+    someGone: "Już niedostępne: {count}.",
     zoomHere: "Przybliż mapę tutaj",
     skipToMap: "Przejdź do mapy",
     approximate: "Lokalizacja przybliżona — dokładny adres zna tylko właściciel.",
@@ -219,6 +221,9 @@ export const pl = {
   },
   detail: {
     back: "Wróć do wyników",
+    backSaved: "Wróć do zapisanych",
+    backCity: "Wszystkie oferty: {city}",
+    backAll: "Wszystkie oferty",
     railRegion: "Oglądanie i kontakt",
     areaLink: "Inne oferty: {area}",
     photos: "Zdjęcia",
