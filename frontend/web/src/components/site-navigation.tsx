@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { t } from "@/i18n";
 
@@ -8,8 +8,12 @@ import styles from "./site-header.module.css";
 
 /** One set of links/session actions across breakpoints; ordinary site navigation,
  * not an ARIA application menu. Opening authentication keeps its initiator mounted. */
+const noSubscription = () => () => undefined;
+
 export function SiteNavigation({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  // Hidden until hydrated, with its space kept: a button that cannot work is never offered.
+  const hydrated = useSyncExternalStore(noSubscription, () => true, () => false);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
 
@@ -33,7 +37,7 @@ export function SiteNavigation({ children }: { children: ReactNode }) {
         trigger.current?.focus();
       }
     }}>
-      <button ref={trigger} type="button" className={styles.menuButton} aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen((previous) => !previous)}>
+      <button ref={trigger} type="button" className={styles.menuButton} data-ready={hydrated} aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen((previous) => !previous)}>
         {open ? t.nav.closeMenu : t.nav.menu}
       </button>
       <nav id="site-navigation" className={styles.nav} aria-label={t.a11y.mainNavigation} onClick={(event) => {

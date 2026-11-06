@@ -434,3 +434,7 @@ CI continuation repaired timezone fixtures and two security pins, with no applic
 Main after PR24 is `a44d0b26f42834c9c8f493d54aa0f20edfd9e82b`; subsequent main SHA and post-merge CI are resolved from GitHub. PR21/22 dependency groups remain unaccepted. Existing design parity gaps are explicit in [home fidelity](design/001c/2026-11-02-home-fidelity.md); source archive is available, superseding the earlier claim that DESIGN-001C artifacts are inaccessible. This bounded presentation is not the full FE-VIS-001 rollout.
 
 Next: finish combined CI and PR20 integration, verify resulting main, then continue bounded design/alpha gap closure. Closed Phase1A staging still requires a separately authorized isolated host, access restriction, TLS, secrets, database/restore rehearsal and actual requester/provider journey. IBB-001, existing debt, BARRIER / rollback BLOCKED, NOT READY / NOT DEPLOYED remain unchanged. Native mobile apps and a complete admin UI are not delivered.
+
+## 2026-11-06 — FE-UX-KRK-002 candidate
+
+Results, results map and listing detail on top of Draft PR25 (`6c6bb0237112653b37b71769d0a5fdc0d0f1fcba`), which remains unintegrated with its review gate open. Branch `claude/FE-UX-KRK-002-search-detail`; Draft PR depends on PR25. [Contract](tasks/FE-UX-KRK-002.md), [builder receipt](reviews/FE-UX-KRK-002-verification.md). Exact SHA and CI are recorded on the PR. Independent review OPEN. No backend, schema, authorization or API change. No merge, staging or deployment; NOT READY / NOT DEPLOYED unchanged.

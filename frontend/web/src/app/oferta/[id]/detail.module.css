@@ -1,56 +1,75 @@
 .page { padding-top: var(--sp-4); padding-bottom: var(--sp-6); }
-.mobileCosts { display: none; }
-@media (max-width:1023px) {
-  .mobileCosts { display: block; margin-bottom: var(--sp-4); }
-  .aside > .costs { display: none; }
-  .page { padding-bottom: 200px; }
-  .page :is(button, a, input, textarea) { scroll-margin-bottom: 200px; }
+.back { margin: 0 0 var(--sp-3); font-weight: 600; }
+.back a { color: var(--c-ink-900); text-decoration: none; }
+.back a:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+/* Hero (001C): the identity band in the area colour, then the photo. Neutral without a designed colour. */
+.hero { position: relative; display: grid; border-radius: 22px; overflow: hidden; margin-bottom: var(--sp-5); background: var(--c-surface-3); }
+.band { --band: #29241f; display: grid; align-content: end; gap: var(--sp-2); padding: var(--sp-5); background: var(--band); color: #fff; min-width: 0; }
+.band p { margin: 0; }
+.place { font-size: .8125rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; overflow-wrap: anywhere; }
+.title { margin: 0; font-size: clamp(1.75rem, 3.4vw, 3rem); line-height: 1.02; font-weight: 800; letter-spacing: -.03em; color: inherit; text-wrap: balance; overflow-wrap: anywhere; }
+.bandFacts { font-weight: 600; }
+.fresh { font-size: var(--fs-small); }
+.cover { min-width: 0; background: var(--c-surface-3); aspect-ratio: 16 / 10; }
+.cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.heroSave { position: absolute; top: var(--sp-3); right: var(--sp-3); max-width: calc(100% - 2 * var(--sp-3)); display: none; }
+.heroSave :global(.btn) { background: var(--c-surface); border-color: var(--c-line-strong); box-shadow: 0 1px 4px #29241f33; }
+.heroSave :global(.btn)[aria-pressed="true"] { background: var(--c-ink-900); border-color: var(--c-ink-900); color: #fff; }
+@media (min-width: 1024px) {
+  .hero { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); min-height: 300px; max-height: 400px; border-radius: 28px; }
+  .hero.heroPlain { grid-template-columns: minmax(0, 1fr); }
+  .band { padding: var(--sp-6, 32px); }
+  .cover { aspect-ratio: auto; max-height: 400px; }
+  .heroSave { display: block; }
+  /* Without a photo the save action sits on the band: it needs its own dark-on-light surface already set above. */
 }
 
-.header { margin-bottom: var(--sp-4); }
-.title { font-size: var(--fs-h1); line-height: var(--lh-h1); color: var(--c-ink-900); margin: 0 0 var(--sp-1); }
-.place { margin: 0; color: var(--c-ink-700); }
-.fresh { margin: var(--sp-2) 0 0; color: var(--c-fresh-fg); font-weight: 600; font-size: var(--fs-small); }
-
-.gallery ul {
-  display: grid; grid-auto-flow: column; grid-auto-columns: 100%; gap: var(--sp-2);
-  overflow-x: auto; scroll-snap-type: x mandatory; list-style: none; padding: 0; margin: 0 0 var(--sp-5);
-}
+.gallery { margin: 0 0 var(--sp-5); overflow-x: auto; scroll-snap-type: x proximity; border-radius: var(--r-lg); }
+.gallery ul { display: grid; grid-auto-flow: column; grid-auto-columns: min(78%, 360px); gap: var(--sp-2); list-style: none; padding: 0; margin: 0; }
 .gallery li { scroll-snap-align: start; }
 .gallery img { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--r-lg); display: block; background: var(--c-surface-3); }
-@media (min-width: 768px) { .gallery ul { grid-auto-columns: 60%; } }
 
 .columns { display: grid; gap: var(--sp-5); }
-@media (min-width: 1024px) { .columns { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; } .aside { position: sticky; top: 72px; } }
+@media (min-width: 1024px) {
+  .columns { grid-template-columns: minmax(0, 1fr) 360px; gap: var(--sp-6, 32px); align-items: start; }
+  .aside { position: sticky; top: 88px; }
+}
+.main { min-width: 0; display: grid; gap: var(--sp-5); }
 
-.section { margin-bottom: var(--sp-5); }
-.section h2, .costs h2, .contact h2 { font-size: var(--fs-h2); margin: 0 0 var(--sp-3); color: var(--c-ink-900); }
+.section { padding-bottom: var(--sp-5); border-bottom: 1px solid var(--c-line); }
+.section:last-child { border-bottom: 0; padding-bottom: 0; }
+.section h2, .costs h2 { font-size: var(--fs-h2); margin: 0 0 var(--sp-3); color: var(--c-ink-900); }
+.section > p:last-child { margin-bottom: 0; }
 
-.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3) var(--sp-4); margin: 0; }
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-4); margin: 0; }
+@media (min-width: 620px) { .facts { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1200px) { .facts { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .facts dt { font-size: var(--fs-small); color: var(--c-ink-500); }
-.facts dd { margin: 0; color: var(--c-ink-900); font-weight: 600; }
+.facts dd { margin: 0; color: var(--c-ink-900); font-weight: 600; overflow-wrap: anywhere; }
 
-.description { white-space: pre-line; color: var(--c-ink-700); }
+.description { white-space: pre-line; color: var(--c-ink-700); overflow-wrap: anywhere; max-width: 68ch; margin-top: 0; }
+.aside { display: grid; gap: var(--sp-4); min-width: 0; }
 
-.aside { display: grid; gap: var(--sp-4); }
-.costs, .contact { background: var(--c-surface); border: var(--bw, 1px) solid var(--c-line); border-radius: var(--r-lg); padding: var(--sp-4); }
-.total { font-size: var(--fs-price-lg); font-weight: 700; color: var(--c-ink-900); margin: 0 0 var(--sp-3); }
-.breakdown { margin: 0 0 var(--sp-2); display: grid; gap: var(--sp-2); }
-.breakdown div { display: flex; justify-content: space-between; gap: var(--sp-3); }
+/* Costs (001C): the monthly sum and its parts first, the move-in amount beside it. */
+.costGrid { display: grid; gap: var(--sp-3); }
+@media (min-width: 768px) { .costGrid { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); } }
+.costMonthly, .costStart { display: grid; align-content: start; gap: var(--sp-3); min-width: 0; padding: var(--sp-5); border-radius: 20px; overflow-wrap: anywhere; }
+.costMonthly p, .costStart p { margin: 0; }
+.costMonthly { background: var(--c-surface-3); }
+.costStart { background: var(--c-surface); border: 1px solid var(--c-line-strong); }
+.total { font-size: clamp(1.625rem, 3vw, 2.125rem); line-height: 1.1; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; color: var(--c-ink-900); }
+.costBar { height: 8px; }
+.breakdown { margin: 0; display: grid; gap: var(--sp-2); }
+.breakdown div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 var(--sp-3); }
 .breakdown dt { color: var(--c-ink-700); }
-.breakdown dd { margin: 0; color: var(--c-ink-900); text-align: right; }
-.strong { border-top: var(--bw, 1px) solid var(--c-line); padding-top: var(--sp-2); font-weight: 700; }
+.breakdown dd { margin: 0 0 0 auto; color: var(--c-ink-900); text-align: right; font-variant-numeric: tabular-nums; }
+.strong { border-top: 1px solid var(--c-line-strong); padding-top: var(--sp-2); font-weight: 700; }
+.costStart .strong { border-top: 0; padding-top: 0; align-items: baseline; }
+.costStart .strong dd { font-size: clamp(1.375rem, 2.4vw, 1.75rem); font-weight: 800; letter-spacing: -.02em; }
 
-/* 001C: hierarchy and surfaces only; every amount still comes from the API. */
-.page { padding-top: var(--sp-6); }
-.header { margin-bottom: var(--sp-5); }
-.title { font-size: clamp(1.75rem, 3.2vw, 2.5rem); font-weight: 800; letter-spacing: -.035em; max-width: 32ch; }
-.place { margin-top: var(--sp-3); font-weight: 600; }
-.section { padding-block: var(--sp-4); border-bottom: 1px solid var(--c-line); }
-.facts { gap: var(--sp-5); }
-.costs, .contact { padding: var(--sp-5); border-radius: 20px; }
-.total { font-size: 1.875rem; font-weight: 800; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
-.breakdown { gap: var(--sp-3); }
-.breakdown div { flex-wrap: wrap; }
-.breakdown dd { margin-left: auto; font-variant-numeric: tabular-nums; }
-.strong { padding-top: var(--sp-4); }
+/* Below 1024 px the fixed action dock must never cover the page, footer included. */
+@media (max-width: 1023px) {
+  :global(body):has(.page) { padding-bottom: 148px; }
+  .page :is(button, a, input, textarea) { scroll-margin-bottom: 160px; }
+}

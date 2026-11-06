@@ -46,6 +46,28 @@ test.use({ trace: "off", screenshot: "off", video: "off" });
 test.describe("FE-003 viewing lifecycle with real API", () => {
   test.skip(process.env.E2E_ENGAGEMENT !== "1", "Requires disposable engagement fixtures");
 
+  for (const [listingKey, status, label] of [["approval", "REQUESTED", "Prośba wysłana — czeka na potwierdzenie"], ["instant", "CONFIRMED", "Oglądanie potwierdzone"]] as const) {
+    test(`listing page labels a ${status} viewing from the server state`, async ({ page, baseURL }, info) => {
+      const listing = (fixtures(info).listings as unknown as Record<string, string>)[listingKey]!;
+      const unique = randomUUID();
+      const headers = { origin: baseURL!, "x-homies-csrf": "1" };
+      expect((await page.request.post("/bff/auth/register", { headers, data: { email: `status-${unique}@example.com`, password: `Fictional-${unique}!`, full_name: "Tester Statusu" } })).status()).toBe(200);
+      const open = await (await page.request.get(`/bff/v1/classifieds/${listing}/viewing-slots?days=14`)).json() as { slots: string[]; timezone: string };
+      expect(open.slots.length).toBeGreaterThan(2);
+      // A slot the other parallel scenarios do not take: they use the first and last.
+      const created = await page.request.post(`/bff/v1/classifieds/${listing}/viewings`, { headers, data: { starts_at: open.slots[1], attendee_count: 1, note: null } });
+      expect(created.status()).toBe(201);
+      expect((await created.json() as { status: string }).status).toBe(status);
+      await page.goto(`/oferta/${listing}`);
+      const shown = page.getByText(label, { exact: true }).filter({ visible: true });
+      await expect(shown).toHaveCount(1);
+      await expect(page.getByText(open.timezone).filter({ visible: true })).toHaveCount(1);
+      await expect(page.getByText(/umówion/i).filter({ visible: true })).toHaveCount(0);
+      await expect(page.getByRole("link", { name: "Zobacz moje oglądanie", exact: true }).filter({ visible: true })).toHaveAttribute("href", "/ogladania");
+      await expect(page.getByRole("button", { name: "Umów oglądanie", exact: true }).filter({ visible: true })).toHaveCount(0);
+    });
+  }
+
   for (const lostResponse of [false, true]) {
     test(`instant booking ${lostResponse ? "reconciles a response lost after commit without a second POST" : "shows the committed CONFIRMED state"}`, async ({ page, baseURL }, info) => {
       const data = fixtures(info); const unique = randomUUID();

@@ -4,6 +4,8 @@ import { SaveButton } from "@/engagement/saved";
 import type { components } from "@/api/schema";
 import { fmt, formatMoney, t } from "@/i18n";
 
+import { areaTone } from "./area-tone";
+import { CostBar } from "./cost-bar";
 import { coverOf, factsLine, freshnessLabel, monthlyLabel, moveInLabel, placeLabel } from "./format";
 import styles from "./listing-card.module.css";
 
@@ -13,13 +15,15 @@ type Classified = components["schemas"]["ClassifiedOut"];
  * ListingCard (DESIGN-001 §5.2). The whole card is one link (the title), so
  * keyboard and screen-reader users get one stop per listing. Photos are plain
  * lazy <img> with explicit size (no image optimiser on /v1/media, FE-001 §5).
- * FE-003 provides the real save action, separate from the card link.
+ * FE-003 provides the real save action, separate from the card link; it sits on
+ * the photo so it costs the card no height.
  */
 export function ListingCard({ listing, position, priority = false }: { listing: Classified; position?: number; priority?: boolean }) {
   const cover = coverOf(listing);
   const facts = factsLine(listing);
   const freshness = freshnessLabel(listing);
   const href = `/oferta/${listing.id}`;
+  const tone = areaTone(listing.place?.geo_area?.slug);
   return (
     <article className={styles.card}>
       <div className={styles.media}>
@@ -31,20 +35,24 @@ export function ListingCard({ listing, position, priority = false }: { listing: 
         )}
       </div>
       <div className={styles.body}>
-        <p className={styles.area}>{placeLabel(listing)}</p>
+        <p className={styles.area}>
+          {tone ? <span className={styles.dot} style={{ background: tone }} aria-hidden="true" /> : null}
+          {placeLabel(listing)}
+        </p>
         <p className={styles.price}>{monthlyLabel(listing)}</p>
+        <CostBar listing={listing} className={styles.bar} />
         <p className={styles.secondary}>{fmt(t.card.rentAndMoveIn, { rent: formatMoney(listing.rent_amount), moveIn: formatMoney(listing.move_in_total) })}</p>
         <h3 className={styles.title}>
           <Link href={href} className={styles.link} data-listing-id={listing.id} data-position={position}>
             {listing.title}
           </Link>
         </h3>
-
-        {facts.length > 0 ? <p className={styles.meta}>{facts.join(" · ")}</p> : null}
-        <p className={styles.meta}>{moveInLabel(listing)}</p>
+        <p className={styles.meta}>{[...facts, moveInLabel(listing)].join(" · ")}</p>
         {freshness ? <p className={styles.fresh}>{freshness}</p> : null}
       </div>
-      <SaveButton listingId={listing.id} title={listing.title} />
+      <div className={styles.save}>
+        <SaveButton listingId={listing.id} title={listing.title} />
+      </div>
     </article>
   );
 }

@@ -16,7 +16,7 @@ export function SortForm({ state }: { state: SearchState }) {
   const [path, query = ""] = href.split("?");
   const hidden = [...new URLSearchParams(query)];
   return (
-    <form method="get" action={path} className={styles.sort}>
+    <form method="get" action={path} className={styles.sort} autoComplete="off">
       {hidden.map(([k, v]) => (
         <input key={k} type="hidden" name={k} value={v} />
       ))}

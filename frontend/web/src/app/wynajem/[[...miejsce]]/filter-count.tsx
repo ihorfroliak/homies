@@ -56,17 +56,26 @@ export function FilterCount({ formId, segments, localityId, areaId, initialTotal
         if (input.name && "value" in input && input.value === "" && input.type !== "checkbox") input.disabled = true;
       }
     };
+    // A page restored from the back/forward cache must show what its URL says.
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return;
+      for (const el of Array.from(form.elements)) (el as HTMLInputElement).disabled = false;
+      form.reset();
+      setTotal(initialTotal);
+    };
+    window.addEventListener("pageshow", onPageShow);
     form.addEventListener("input", recount);
     form.addEventListener("change", recount);
     form.addEventListener("submit", onSubmit);
     return () => {
       clearTimeout(timer);
       abort.current?.abort();
+      window.removeEventListener("pageshow", onPageShow);
       form.removeEventListener("input", recount);
       form.removeEventListener("change", recount);
       form.removeEventListener("submit", onSubmit);
     };
-  }, [formId, segments, localityId, areaId]);
+  }, [formId, segments, localityId, areaId, initialTotal]);
 
   const label = total === undefined ? t.filters.apply : fmt(t.filters.showCount, { count: plural(t.plural.listings, total) });
   return (

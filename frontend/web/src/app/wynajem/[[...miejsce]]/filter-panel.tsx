@@ -4,6 +4,7 @@ import { fmt, t } from "@/i18n";
 import { activeFilters, searchHref, type SearchState } from "@/search/codec";
 import type { ResolvedPlace } from "@/search/server";
 
+import { DismissDetails } from "./dismiss-details";
 import { FilterCount } from "./filter-count";
 import styles from "./results.module.css";
 
@@ -21,12 +22,19 @@ export function FilterPanel({ state, place, total }: { state: SearchState; place
   const count = activeFilters(state).length;
   const path = searchHref({ sort: "newest", page: 1, view: "list", city: state.city, area: state.area });
   return (
-    <details className={styles.filters}>
-      <summary className="btn btn--secondary">{count > 0 ? fmt(t.results.filtersCount, { n: count }) : t.results.filters}</summary>
+    <details id="filtry-panel" className={styles.filters}>
+      <summary className={`btn btn--secondary ${styles.filterSummary}`}>{count > 0 ? fmt(t.results.filtersCount, { n: count }) : t.results.filters}</summary>
+      <DismissDetails detailsId="filtry-panel" />
       <div className={styles.filterBody}>
         {place.locality && place.areas.length > 0 ? (
-          <nav aria-label={place.locality.name} className={styles.areaLinks}>
+          <nav aria-label={`${t.results.areas}: ${place.locality.name}`} className={styles.areaLinks}>
+            <p className={styles.areaHeading}>{t.results.areas}</p>
             <ul>
+              <li>
+                <Link href={searchHref({ ...state, area: undefined, page: 1, bbox: undefined })} aria-current={place.areaId ? undefined : "page"}>
+                  {t.results.wholeCity}
+                </Link>
+              </li>
               {place.areas.map((a) => (
                 <li key={a.id}>
                   <Link href={searchHref({ ...state, city: state.city, area: a.slug ?? undefined, page: 1, bbox: undefined })} aria-current={a.id === place.areaId ? "page" : undefined}>
@@ -37,7 +45,7 @@ export function FilterPanel({ state, place, total }: { state: SearchState; place
             </ul>
           </nav>
         ) : null}
-        <form method="get" action={path} id="filtry" className={styles.filterForm}>
+        <form method="get" action={path} id="filtry" className={styles.filterForm} autoComplete="off">
           {state.sort !== "newest" ? <input type="hidden" name="sort" value={{ price_asc: "najtansze", price_desc: "najdrozsze", size_desc: "najwieksze", available_soonest: "najwczesniej" }[state.sort]} /> : null}
           {state.view === "map" ? <input type="hidden" name="widok" value="mapa" /> : null}
           {state.bbox ? <input type="hidden" name="mapa" value={state.bbox.join(",")} /> : null}

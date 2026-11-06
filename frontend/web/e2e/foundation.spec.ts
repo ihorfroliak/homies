@@ -44,6 +44,15 @@ test("no CSP violation and no console error on load", async ({ page }) => {
   expect(problems).toEqual([]);
 });
 
+test("the tab icon is declared and served, so browsers do not fall back to a missing favicon", async ({ page, request }) => {
+  await page.goto("/");
+  const href = await page.locator('link[rel~="icon"]').first().getAttribute("href");
+  expect(href).toBeTruthy();
+  const icon = await request.get(href!);
+  expect(icon.status()).toBe(200);
+  expect(icon.headers()["content-type"]).toContain("image/svg+xml");
+});
+
 test("unknown pages answer 404 with a way forward", async ({ page }) => {
   const response = await page.goto("/to-nie-istnieje");
   expect(response!.status()).toBe(404);

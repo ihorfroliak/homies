@@ -32,6 +32,16 @@ it.each(['ARCHIVED','CLOSED'])('permits a new conversation when only an old %s c
  fetchMock.mockImplementation(async path=>{if(path==='/bff/auth/session')return response(account);if(path==='/bff/v1/conversations')return response([{id:'old-thread',listing_id:'listing-1',my_side:'tenant',status,created_at:'2026-01-01T00:00:00Z'}]);if(String(path).includes('saved-listings'))return response({items:[],total:0,limit:100,offset:0});return response([])});
  render(<EngagementProvider><Identity/><SavedProvider><DetailEngagement listing={{id:'listing-1',title:'Synthetic',contact_mode:'messages',monthly_total_estimate:100000,utilities_basis:'INCLUDED',currency:'PLN'}}/></SavedProvider></EngagementProvider>);await waitFor(()=>expect(screen.getByLabelText('identity')).toHaveTextContent('account-a'));await act(async()=>{await Promise.resolve()});expect(screen.queryByRole('link',{name:e.continueThread})).not.toBeInTheDocument();expect(screen.getByRole('button',{name:e.message})).toBeInTheDocument();
 });
+it.each([['REQUESTED','Prośba wysłana — czeka na potwierdzenie'],['CONFIRMED','Oglądanie potwierdzone']])('labels a %s viewing by its server state, never as arranged before it is',async(status,label)=>{
+ fetchMock.mockImplementation(async path=>{if(path==='/bff/auth/session')return response(account);if(path==='/bff/v1/me/viewings')return response([{id:'viewing-1',listing_id:'listing-1',status,starts_at:'2099-12-01T12:00:00Z'}]);if(String(path).includes('viewing-slots'))return response({slots:[],duration_minutes:30,timezone:'Europe/Warsaw'});return response([])});
+ render(<EngagementProvider><SavedProvider><DetailEngagement listing={{id:'listing-1',title:'Synthetic',contact_mode:'messages',monthly_total_estimate:100000,utilities_basis:'INCLUDED',currency:'PLN'}}/></SavedProvider></EngagementProvider>);
+ const rail=await screen.findByRole('region',{name:e.railTitle});
+ await waitFor(()=>expect(rail).toHaveTextContent(label));
+ await waitFor(()=>expect(rail).toHaveTextContent('Europe/Warsaw'));
+ expect(rail).not.toHaveTextContent(status==='REQUESTED'?'potwierdzone':'czeka na potwierdzenie');
+ expect(screen.queryByText(/umówione/i)).toBeNull();
+ expect(screen.getAllByRole('link',{name:e.seeViewing})[0]).toHaveAttribute('href','/ogladania');
+});
 it('explains that owner other_costs prose is excluded from authoritative totals',()=>{
  render(<CostBreakdown listing={{rent_amount:100,admin_fee:0,utilities_amount:0,utilities_basis:'INCLUDED',parking_fee:0,monthly_total_estimate:200,deposit_amount:0,move_in_total:300,currency:'PLN',other_costs:'Synthetic description'}}/>);expect(screen.getByText(/Synthetic description/)).toHaveTextContent(/nie wliczon/i);
 });

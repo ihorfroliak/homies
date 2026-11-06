@@ -8,8 +8,16 @@ export function AutoSubmit({ selectId }: { selectId: string }) {
     const select = document.getElementById(selectId) as HTMLSelectElement | null;
     if (!select) return;
     const onChange = () => select.form?.requestSubmit();
+    // A page restored from the back/forward cache must show what its URL says.
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) select.form?.reset();
+    };
     select.addEventListener("change", onChange);
-    return () => select.removeEventListener("change", onChange);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      select.removeEventListener("change", onChange);
+      window.removeEventListener("pageshow", onPageShow);
+    };
   }, [selectId]);
   return null;
 }

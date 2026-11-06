@@ -5,17 +5,24 @@
   border-radius: 18px;
 }
 .card:focus-within { box-shadow: var(--focus-ring); }
-.media { aspect-ratio: 4 / 3; background: var(--c-surface-3); display: grid; place-items: center; overflow: hidden; border-radius: 10px; }
+.media { aspect-ratio: 16 / 10; background: var(--c-surface-3); display: grid; place-items: center; overflow: hidden; border-radius: 10px; }
 .media img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .noPhoto { color: var(--c-ink-500); font-size: var(--fs-small); }
-.body { display: flex; flex-direction: column; gap: 6px; padding: var(--sp-4) 6px; flex: 1; min-width: 0; }
-.area { margin: 0 0 var(--sp-1); color: var(--c-ink-700); font-size: .75rem; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; overflow-wrap: anywhere; }
-.price { margin: 0; font-size: clamp(1.375rem, 2vw, 1.6875rem); line-height: 1.2; letter-spacing: -.035em; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--c-ink-900); }
-.secondary { margin: 0; font-size: var(--fs-small); color: var(--c-ink-500); }
-.title { margin: var(--sp-2) 0 0; font-size: var(--fs-h3); line-height: var(--lh-h3); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.body { display: flex; flex-direction: column; gap: 4px; padding: var(--sp-3) 6px var(--sp-2); flex: 1; min-width: 0; }
+.area { display: flex; align-items: center; gap: 6px; margin: 0 0 2px; color: var(--c-ink-700); font-size: .75rem; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; overflow-wrap: anywhere; }
+.dot { flex: none; width: 9px; height: 9px; border-radius: 50%; }
+.price { margin: 0; font-size: clamp(1.3125rem, 1.8vw, 1.5625rem); line-height: 1.2; letter-spacing: -.03em; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--c-ink-900); }
+.bar { max-width: 220px; margin-block: 2px; }
+.secondary { margin: 0; font-size: var(--fs-small); color: var(--c-ink-500); font-variant-numeric: tabular-nums; }
+.title { margin: var(--sp-1) 0 0; font-size: var(--fs-h3); line-height: var(--lh-h3); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .link { color: var(--c-ink-900); text-decoration: none; }
+.link:hover { text-decoration: underline; text-underline-offset: 3px; }
 /* Keep the real title link and save action as separate keyboard stops. */
 .link::after { content: ""; position: absolute; inset: 0; border-radius: 18px; }
 .link:focus-visible { box-shadow: none; }
 .meta { margin: 0; font-size: var(--fs-small); color: var(--c-ink-700); }
-.fresh { margin: var(--sp-2) 0 0; font-size: var(--fs-caption); color: var(--c-fresh-fg); font-weight: 600; }
+.fresh { margin: 2px 0 0; font-size: var(--fs-caption); color: var(--c-fresh-fg); font-weight: 600; }
+/* On the photo; the wrapper keeps long save errors inside the card. */
+.save { position: absolute; top: 18px; right: 18px; max-width: calc(100% - 36px); display: grid; justify-items: end; gap: var(--sp-1); }
+.save :global(.btn) { min-height: 40px; padding-inline: var(--sp-3); background: var(--c-surface); border-color: var(--c-line-strong); box-shadow: 0 1px 4px #29241f33; }
+.save :global(.btn)[aria-pressed="true"] { background: var(--c-ink-900); border-color: var(--c-ink-900); color: #fff; }
