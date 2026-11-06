@@ -26,6 +26,14 @@ export function SiteHeader() {
             <EngagementNavigation />
         </SiteNavigation>
       </div>
+      <noscript>
+        <nav className={styles.noScriptNav} aria-label={t.nav.noScript}>
+          <ul>
+            <li><Link href="/wynajem">{t.nav.search}</Link></li>
+            <li><Link href="/wynajem/krakow">{t.nav.krakow}</Link></li>
+          </ul>
+        </nav>
+      </noscript>
     </header>
   );
 }
