@@ -86,6 +86,39 @@ test.describe("FE-003 viewing lifecycle with real API", () => {
     });
   }
 
+  test("viewing list names no guessed hour on its actions while the zone is unknown", async ({ page, baseURL }, info) => {
+    const listing = fixtures(info).listings.instant;
+    const unique = randomUUID();
+    const headers = { origin: baseURL!, "x-homies-csrf": "1" };
+    expect((await page.request.post("/bff/auth/register", { headers, data: { email: `name-${unique}@example.com`, password: `Fictional-${unique}!`, full_name: "Tester Nazwy" } })).status()).toBe(200);
+    const open = await (await page.request.get(`/bff/v1/classifieds/${listing}/viewing-slots?days=14`)).json() as { slots: string[]; timezone: string };
+    expect(open.slots.length).toBeGreaterThan(3);
+    const startsAt = open.slots[3]!;
+    expect((await page.request.post(`/bff/v1/classifieds/${listing}/viewings`, { headers, data: { starts_at: startsAt, attendee_count: 1, note: null } })).status()).toBe(201);
+    const local = new Intl.DateTimeFormat("pl-PL", { timeZone: open.timezone, hour: "2-digit", minute: "2-digit" }).format(new Date(startsAt));
+    const cancel = page.locator("article").getByRole("button", { name: /^Odwołaj/ });
+    const zone = /\/viewing-slots$/;
+
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    await page.route(zone, async (route) => { await held; await route.continue().catch(() => undefined); });
+    await page.goto("/ogladania");
+    await expect(cancel).toHaveAttribute("aria-label", /Wczytujemy godzinę/);
+    expect(await cancel.getAttribute("aria-label")).not.toMatch(/\d{1,2}:\d{2}|UTC/);
+    release();
+    await expect(cancel).toHaveAttribute("aria-label", new RegExp(local));
+    await page.unroute(zone);
+
+    await page.route(zone, (route) => route.fulfill({ status: 503, contentType: "application/json", body: "{}" }));
+    await page.goto("/ogladania");
+    await expect(cancel).toHaveAttribute("aria-label", /Nie udało się ustalić godziny/);
+    expect(await cancel.getAttribute("aria-label")).not.toMatch(/\d{1,2}:\d{2}|UTC/);
+    await page.unroute(zone);
+    await page.locator("article").getByRole("button", { name: "Spróbuj ponownie" }).click();
+    await expect(cancel).toHaveAttribute("aria-label", new RegExp(local));
+    expect(await cancel.getAttribute("aria-label")).toContain(open.timezone);
+  });
+
   for (const [listingKey, status, label] of [["approval", "REQUESTED", "Prośba wysłana — czeka na potwierdzenie"], ["instant", "CONFIRMED", "Oglądanie potwierdzone"]] as const) {
     test(`listing page labels a ${status} viewing from the server state`, async ({ page, baseURL }, info) => {
       const listing = (fixtures(info).listings as unknown as Record<string, string>)[listingKey]!;

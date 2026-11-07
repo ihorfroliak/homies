@@ -417,6 +417,51 @@ test("reopening a card shows the current price, and a removed or failing listing
   await expect(card.getByRole("button", { name: "Spróbuj ponownie" })).toHaveCount(0);
 });
 
+test("paging into a last page with nothing to show keeps focus inside the card", async ({ page }) => {
+  test.skip(process.env.E2E_ENGAGEMENT !== "1", "the large same-cell stack comes from the engagement fixtures");
+  await page.goto("/wynajem/lublin?widok=mapa");
+  await pillRects(page);
+  const stack = page.locator('.maplibregl-marker[data-kind="stack"]').first();
+  const total = Number((await stack.textContent())?.match(/\d+/)?.[0]);
+  expect(total).toBeGreaterThan(10);
+  for (const status of [503, 404]) {
+    // Reads after the first page are refused; the first page comes from the real API.
+    let reads = 0;
+    let refuse = true;
+    const route = /\/bff\/v1\/classifieds\/[0-9a-f-]{36}$/;
+    await page.route(route, async (r) => {
+      reads++;
+      if (refuse && reads > 10) return r.fulfill({ status, contentType: "application/json", body: "{}" });
+      return r.continue();
+    });
+    await stack.click({ force: true });
+    const card = page.getByRole("dialog");
+    await expect(card.getByRole("link")).toHaveCount(10);
+    let more = card.getByRole("button", { name: /Pokaż kolejne/ });
+    while (await more.count()) {
+      await more.focus();
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(300);
+      more = card.getByRole("button", { name: /Pokaż kolejne/ });
+    }
+    const inCard = await page.evaluate(() => document.activeElement?.closest('[role="dialog"]') !== null);
+    expect(inCard, `focus after ${status}`).toBe(true);
+    if (status === 503) {
+      const retry = card.getByRole("button", { name: "Spróbuj ponownie" });
+      await expect(retry).toBeFocused();
+      refuse = false;
+      await page.keyboard.press("Enter");
+      await expect(card.getByRole("link")).toHaveCount(total);
+      await expect(card.getByRole("link").nth(10)).toBeFocused();
+    } else {
+      await expect(card.getByRole("button", { name: "Zamknij" })).toBeFocused();
+    }
+    await page.keyboard.press("Escape");
+    await expect(card).toHaveCount(0);
+    await page.unroute(route);
+  }
+});
+
 test("a resize regroups the pills without losing or overlapping any", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto("/wynajem/krakow?widok=mapa");

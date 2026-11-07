@@ -4,6 +4,7 @@ import { act, cleanup, render, screen, waitFor, within } from "@testing-library/
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DetailEngagement } from "./detail";
+import { ViewingRow } from "./viewings";
 import { e } from "./copy";
 import { SavedProvider } from "./saved";
 import { EngagementProvider } from "./session";
@@ -118,6 +119,61 @@ describe.each([
     mount();
     const rail = await screen.findByRole("region", { name: e.railTitle });
     await waitFor(() => expect(rail.querySelector("time")).toHaveAttribute("datetime", STARTS));
+  });
+});
+
+describe("accessible names of viewing actions follow the same rule as the visible time (F-02)", () => {
+  const row = { id: "viewing-1", listing_id: "listing-1", status: "REQUESTED", starts_at: STARTS, ends_at: STARTS, attendee_count: 1, requester_display_name: "Requester", requester_note: null };
+  function serveRow(slots: () => Promise<Response>) {
+    fetchMock.mockImplementation(async (path) => {
+      if (path === "/bff/auth/session") return response(account);
+      if (String(path).includes("viewing-slots")) return slots();
+      if (String(path).includes("/v1/classifieds/")) return response({ title: "Synthetic" });
+      return response([]);
+    });
+  }
+  const mountRow = (provider: boolean) => render(<EngagementProvider><SavedProvider><ViewingRow viewing={row as never} provider={provider} reload={() => undefined} /></SavedProvider></EngagementProvider>);
+  const names = (provider: boolean) => (provider ? [e.confirm, e.decline, e.cancelViewing] : [e.cancelViewing]);
+  const actionButton = (name: string) => screen.getByRole("button", { name: new RegExp(`^${name}`) });
+
+  describe.each([[true, "provider"], [false, "requester"]])("%s (%s)", (provider) => {
+    it("names no hour while the zone loads, then the local hour", async () => {
+      let release: (value: Response) => void = () => undefined;
+      serveRow(() => new Promise((resolve) => { release = resolve; }));
+      mountRow(provider);
+      await screen.findByText(e.viewingTimeLoading);
+      for (const name of names(provider)) {
+        expect(actionButton(name).getAttribute("aria-label")).toBe(`${name}: ${e.viewingTimeLoading}`);
+      }
+      await act(async () => release(response({ slots: [], duration_minutes: 30, timezone: WARSAW })));
+      await waitFor(() => expect(actionButton(e.cancelViewing).getAttribute("aria-label")).toContain(LOCAL));
+      expect(actionButton(e.cancelViewing).getAttribute("aria-label")).toContain(WARSAW);
+      expect(actionButton(e.cancelViewing).getAttribute("aria-label")).not.toContain("UTC");
+    });
+
+    it("names no hour when the zone read fails, and recovers on retry", async () => {
+      let available = false;
+      serveRow(async () => (available ? response({ slots: [], duration_minutes: 30, timezone: WARSAW }) : response({}, 503)));
+      mountRow(provider);
+      await screen.findByText(new RegExp(e.viewingTimeUnknown));
+      for (const name of names(provider)) {
+        const label = actionButton(name).getAttribute("aria-label")!;
+        expect(label).toBe(`${name}: ${e.viewingTimeUnknown}`);
+        expect(label).not.toMatch(/\d{1,2}:\d{2}|UTC/);
+      }
+      available = true;
+      await act(async () => screen.getByRole("button", { name: e.retry }).click());
+      await waitFor(() => expect(actionButton(e.cancelViewing).getAttribute("aria-label")).toContain(LOCAL));
+    });
+
+    it.each([
+      ["timezone: null", () => response({ slots: [], duration_minutes: null, timezone: null })],
+      ["404", () => response({}, 404)],
+    ])("keeps the labelled UTC fallback when no schedule exists (%s)", async (_name, answer) => {
+      serveRow(async () => answer());
+      mountRow(provider);
+      await waitFor(() => expect(actionButton(e.cancelViewing).getAttribute("aria-label")).toContain("12:00 (UTC)"));
+    });
   });
 });
 

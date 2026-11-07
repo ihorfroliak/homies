@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -18,6 +18,122 @@ afterEach(() => vi.unstubAllGlobals());
 
 // The module caches details across tests; unique ids keep each case honest.
 const idsFor = (prefix: string, n: number) => Array.from({ length: n }, (_, i) => `${prefix}-${i}`);
+
+describe("MapCard focus after paging and retry (F-01)", () => {
+  const answer = (rule: (id: string) => number) =>
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const id = decodeURIComponent(String(url).split("/").pop()!);
+      const status = rule(id);
+      return status === 200 ? new Response(JSON.stringify(listing(id)), { status }) : new Response("{}", { status });
+    });
+  const lastPage = () => (id: string) => Number(id.split("-").pop()) >= CARD_STEP;
+  const next = () => userEvent.click(screen.getByRole("button", { name: /Pokaż kolejne/ }));
+
+  it("moves to Retry when the whole last page fails", async () => {
+    const ids = idsFor("all503", CARD_STEP + 2);
+    answer((id) => (lastPage()(id) ? 503 : 200));
+    render(<MapCard ids={ids} nearby={false} onClose={() => undefined} />);
+    await screen.findByRole("link", { name: "Oferta all503-0" });
+    await next();
+    const retry = await screen.findByRole("button", { name: "Spróbuj ponownie" });
+    await waitFor(() => expect(document.activeElement).toBe(retry));
+  });
+
+  it("moves to the close button when the whole last page is gone", async () => {
+    const ids = idsFor("all404", CARD_STEP + 2);
+    answer((id) => (lastPage()(id) ? 404 : 200));
+    render(<MapCard ids={ids} nearby={false} onClose={() => undefined} />);
+    await screen.findByRole("link", { name: "Oferta all404-0" });
+    await next();
+    await screen.findByText(/Już niedostępne/);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Zamknij" })));
+  });
+
+  it("prefers a real new listing when the last page is mixed", async () => {
+    const ids = idsFor("mixed", CARD_STEP + 3);
+    answer((id) => (id === `mixed-${CARD_STEP}` ? 404 : id === `mixed-${CARD_STEP + 1}` ? 503 : 200));
+    render(<MapCard ids={ids} nearby={false} onClose={() => undefined} />);
+    await screen.findByRole("link", { name: "Oferta mixed-0" });
+    await next();
+    const added = await screen.findByRole("link", { name: `Oferta mixed-${CARD_STEP + 2}` });
+    await waitFor(() => expect(document.activeElement).toBe(added));
+  });
+
+  it("moves to Retry when a page is mixed but only unreadable and gone", async () => {
+    const ids = idsFor("nolink", CARD_STEP + 2);
+    answer((id) => (id === `nolink-${CARD_STEP}` ? 404 : id === `nolink-${CARD_STEP + 1}` ? 503 : 200));
+    render(<MapCard ids={ids} nearby={false} onClose={() => undefined} />);
+    await screen.findByRole("link", { name: "Oferta nolink-0" });
+    await next();
+    const retry = await screen.findByRole("button", { name: "Spróbuj ponownie" });
+    await waitFor(() => expect(document.activeElement).toBe(retry));
+  });
+
+  it("a successful retry lands on the listing it recovered", async () => {
+    const ids = idsFor("retryok", CARD_STEP + 1);
+    let down = true;
+    answer((id) => (down && id === `retryok-${CARD_STEP}` ? 503 : 200));
+    render(<MapCard ids={ids} nearby={false} onClose={() => undefined} />);
+    await screen.findByRole("link", { name: "Oferta retryok-0" });
+    await next();
+    const retry = await screen.findByRole("button", { name: "Spróbuj ponownie" });
+    down = false;
+    await userEvent.click(retry);
+    const recovered = await screen.findByRole("link", { name: `Oferta retryok-${CARD_STEP}` });
+    await waitFor(() => expect(document.activeElement).toBe(recovered));
+  });
+
+  it("a failed retry keeps focus on Retry, also while it waits", async () => {
+    const ids = idsFor("retrybad", CARD_STEP + 1);
+    answer((id) => (id === `retrybad-${CARD_STEP}` ? 503 : 200));
+    render(<MapCard ids={ids} nearby={false} onClose={() => undefined} />);
+    await screen.findByRole("link", { name: "Oferta retrybad-0" });
+    await next();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Spróbuj ponownie" })));
+    let release: (value: Response) => void = () => undefined;
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+    await userEvent.click(screen.getByRole("button", { name: "Spróbuj ponownie" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Spróbuj ponownie" }));
+    await act(async () => release(new Response("{}", { status: 503 })));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Spróbuj ponownie" })));
+  });
+
+  it("keeps focus on the paging control while the last page loads", async () => {
+    const ids = idsFor("waiting", CARD_STEP + 1);
+    let release: (value: Response) => void = () => undefined;
+    answer(() => 200);
+    render(<MapCard ids={ids} nearby={false} onClose={() => undefined} />);
+    await screen.findByRole("link", { name: "Oferta waiting-0" });
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+    await next();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: /Pokaż kolejne/ }));
+    await act(async () => release(new Response(JSON.stringify(listing(`waiting-${CARD_STEP}`)), { status: 200 })));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("link", { name: `Oferta waiting-${CARD_STEP}` })));
+  });
+});
+
+describe("MapCard superseded reads (F-03)", () => {
+  it("an old read finishing after the next page loaded does not take that page away", async () => {
+    const ids = idsFor("race", CARD_STEP + 1);
+    const held: ((value: Response) => void)[] = [];
+    // The first page hangs and, like any late response, ignores the abort.
+    vi.mocked(fetch).mockImplementation((url) => new Promise((resolve) => {
+      held.push(() => resolve(new Response(JSON.stringify(listing(decodeURIComponent(String(url).split("/").pop()!))), { status: 200 })));
+    }));
+    render(<MapCard ids={ids} nearby={false} onClose={() => undefined} />);
+    await waitFor(() => expect(held).toHaveLength(CARD_STEP));
+    const oldReads = held.splice(0);
+    vi.mocked(fetch).mockImplementation(async (url) => new Response(JSON.stringify(listing(decodeURIComponent(String(url).split("/").pop()!))), { status: 200 }));
+    await userEvent.click(screen.getByRole("button", { name: /Pokaż kolejne/ }));
+    await screen.findByRole("link", { name: `Oferta race-${CARD_STEP}` });
+    await act(async () => {
+      for (const finish of oldReads) finish(new Response());
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(screen.getAllByRole("link")).toHaveLength(ids.length);
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+});
 
 describe("MapCard freshness", () => {
   it("reads again on every open, so a changed price is shown", async () => {
