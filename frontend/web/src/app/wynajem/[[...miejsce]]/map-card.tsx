@@ -32,7 +32,9 @@ export function MapCard({ ids, nearby, onClose, onZoom }: { ids: string[]; nearb
   const reads = useRef(new Map<string, Read>());
   const close = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLUListElement>(null);
-  const focusFrom = useRef<number | null>(null);
+  const retry = useRef<HTMLButtonElement>(null);
+  const more = useRef<HTMLButtonElement>(null);
+  const shownBefore = useRef<Set<string> | null>(null);
   const headingId = useId();
 
   useEffect(() => close.current?.focus(), []);
@@ -66,13 +68,24 @@ export function MapCard({ ids, nearby, onClose, onZoom }: { ids: string[]; nearb
   }, [ids, limit, attempt]);
 
   const current = loaded?.limit === limit && loaded.attempt === attempt ? loaded : null;
-  const items = current?.items ?? loaded?.items ?? [];
+  // While a read is in flight the card keeps showing the last result, controls included,
+  // so the one the user just pressed stays in place and keeps focus.
+  const shown = current ?? loaded;
+  const items = shown?.items ?? [];
+  const shownLimit = shown?.limit ?? limit;
+  const askForMore = () => {
+    shownBefore.current = new Set(items.map((l) => l.id));
+  };
 
-  // After the "next" button the control may disappear: focus moves to the first new listing.
+  // The control just pressed may be gone once the read ends: focus moves to the first
+  // listing it added or, when it added none, to the next thing worth doing in this card.
   useEffect(() => {
-    if (!current || focusFrom.current === null) return;
-    list.current?.querySelectorAll("a")[focusFrom.current]?.focus();
-    focusFrom.current = null;
+    if (!current || !shownBefore.current) return;
+    const before = shownBefore.current;
+    shownBefore.current = null;
+    const added = current.items.findIndex((l) => !before.has(l.id));
+    const link = added >= 0 ? list.current?.querySelectorAll("a")[added] : undefined;
+    (link ?? retry.current ?? more.current ?? close.current)?.focus();
   }, [current]);
 
   const count = plural(t.plural.listings, ids.length);
@@ -103,31 +116,41 @@ export function MapCard({ ids, nearby, onClose, onZoom }: { ids: string[]; nearb
           );
         })}
       </ul>
-      {current && current.gone > 0 ? (
+      {shown && shown.gone > 0 ? (
         <p role="status" className="small">
-          {current.gone === 1 ? t.map.oneGone : fmt(t.map.someGone, { count: plural(t.plural.listings, current.gone) })}
+          {shown.gone === 1 ? t.map.oneGone : fmt(t.map.someGone, { count: plural(t.plural.listings, shown.gone) })}
         </p>
       ) : null}
-      {current && current.failed > 0 ? (
+      {shown && shown.failed > 0 ? (
         <p role="status" className="small">
-          {fmt(t.map.someFailed, { count: plural(t.plural.listings, current.failed) })}{" "}
-          <button type="button" className={styles.textButton} onClick={() => setAttempt((a) => a + 1)}>
+          {fmt(t.map.someFailed, { count: plural(t.plural.listings, shown.failed) })}{" "}
+          <button
+            ref={retry}
+            type="button"
+            className={styles.textButton}
+            onClick={() => {
+              askForMore();
+              setAttempt((a) => a + 1);
+            }}
+          >
             {t.errors.retry}
           </button>
         </p>
       ) : null}
-      {ids.length > limit || onZoom ? (
+      {ids.length > shownLimit || onZoom ? (
         <div className={styles.mapCardActions}>
-          {ids.length > limit ? (
+          {ids.length > shownLimit ? (
             <button
+              ref={more}
               type="button"
               className="btn btn--secondary"
+              aria-busy={!current}
               onClick={() => {
-                focusFrom.current = items.length;
+                askForMore();
                 setLimit((n) => n + CARD_STEP);
               }}
             >
-              {fmt(t.map.showNext, { shown: limit, total: ids.length })}
+              {fmt(t.map.showNext, { shown: shownLimit, total: ids.length })}
             </button>
           ) : null}
           {onZoom ? (
