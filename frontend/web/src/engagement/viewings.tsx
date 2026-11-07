@@ -10,14 +10,24 @@ import { RequireSession, useSession } from "./session";
 import { Empty, ErrorNotice, Modal, styles, useCountdown, useResource } from "./ui";
 import { slotGroups, viewingActions, viewingLabel, viewingLabels, viewingTime } from "./viewing-model";
 
+type Schedule = { data?: { timezone?: string | null }; error?: unknown; loading: boolean; reload: () => void };
+/** The API answered: with a schedule, or that none exists. Anything else leaves the zone unknown. */
+function scheduleSettled(schedule: Schedule): boolean {
+  return Boolean(schedule.data) || (schedule.error instanceof ApiError && schedule.error.status === 404);
+}
+/** The same rule as ViewingWhen, for accessible names: what the eye is not told, a screen reader is not told. */
+function viewingWhenText(instant: string, schedule: Schedule): string {
+  if (scheduleSettled(schedule)) return viewingTime(instant, schedule.data?.timezone);
+  return schedule.loading ? e.viewingTimeLoading : e.viewingTimeUnknown;
+}
+
 /**
  * A viewing's date and hour, in the zone from the API. While the schedule is unread
  * or its read failed the zone is merely unknown, so no hour is shown. Only when the API
  * says no schedule exists does the explicit UTC fallback of FE-003 apply.
  */
-export function ViewingWhen({ instant, schedule }: { instant: string; schedule: { data?: { timezone?: string | null }; error?: unknown; loading: boolean; reload: () => void } }) {
-  const noSchedule = schedule.error instanceof ApiError && schedule.error.status === 404;
-  if (schedule.data || noSchedule) return <time dateTime={instant}>{viewingTime(instant, schedule.data?.timezone)}</time>;
+export function ViewingWhen({ instant, schedule }: { instant: string; schedule: Schedule }) {
+  if (scheduleSettled(schedule)) return <time dateTime={instant}>{viewingTime(instant, schedule.data?.timezone)}</time>;
   if (schedule.loading) return <span aria-busy="true">{e.viewingTimeLoading}</span>;
   return <span>{e.viewingTimeUnknown} <button type="button" className={styles.textButton} onClick={schedule.reload}>{e.retry}</button></span>;
 }
@@ -117,5 +127,5 @@ export function ViewingRow({ viewing, provider = false, reload }: { viewing: Vie
   }
   if (gone) return <p role="status">{e.noAccess}</p>;
   const names: Record<string, string> = { confirm: e.confirm, decline: e.decline, cancel: e.cancelViewing, COMPLETED: e.complete, NO_SHOW: e.noShow };
-  return <article className={styles.card}><h3>{listing.data?.title ?? e.unavailable}</h3><p><ViewingWhen instant={viewing.starts_at} schedule={schedule} /></p><p role="status">● {viewingLabel(viewing, now)}</p>{provider && "requester_display_name" in viewing && <><p>{viewing.requester_display_name || e.requester}</p><p>{viewing.attendee_count} · {e.attendees}</p><p>{viewing.requester_note}</p></>}<ErrorNotice error={error} /><div className={styles.actions}>{actions.map(action => <button key={action} className="btn" aria-label={`${names[action]}: ${viewingTime(viewing.starts_at, schedule.data?.timezone)}`} disabled={pending || wait > 0} onClick={() => action === "cancel" ? setCancel(true) : void act(action)}>{names[action]}</button>)}{viewing.status === "DECLINED" && !provider && <Link href={`/oferta/${viewing.listing_id}`}>{e.chooseOther}</Link>}</div>{cancel && <Modal title={e.cancelConfirm} onClose={() => setCancel(false)}><button className="btn" onClick={() => void act("cancel")}>{e.cancelViewing}</button><button className="btn" onClick={() => setCancel(false)}>{e.cancel}</button></Modal>}</article>;
+  return <article className={styles.card}><h3>{listing.data?.title ?? e.unavailable}</h3><p><ViewingWhen instant={viewing.starts_at} schedule={schedule} /></p><p role="status">● {viewingLabel(viewing, now)}</p>{provider && "requester_display_name" in viewing && <><p>{viewing.requester_display_name || e.requester}</p><p>{viewing.attendee_count} · {e.attendees}</p><p>{viewing.requester_note}</p></>}<ErrorNotice error={error} /><div className={styles.actions}>{actions.map(action => <button key={action} className="btn" aria-label={`${names[action]}: ${viewingWhenText(viewing.starts_at, schedule)}`} disabled={pending || wait > 0} onClick={() => action === "cancel" ? setCancel(true) : void act(action)}>{names[action]}</button>)}{viewing.status === "DECLINED" && !provider && <Link href={`/oferta/${viewing.listing_id}`}>{e.chooseOther}</Link>}</div>{cancel && <Modal title={e.cancelConfirm} onClose={() => setCancel(false)}><button className="btn" onClick={() => void act("cancel")}>{e.cancelViewing}</button><button className="btn" onClick={() => setCancel(false)}>{e.cancel}</button></Modal>}</article>;
 }
