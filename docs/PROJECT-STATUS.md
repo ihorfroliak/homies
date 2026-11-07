@@ -442,3 +442,7 @@ Results, results map and listing detail on top of Draft PR25 (`6c6bb0237112653b3
 ## 2026-11-06 — FE-UX-KRK-002R remediation branch
 
 Branch `claude/FE-UX-KRK-002R-hardening` on top of Draft PR26 (`353324acb3d7784a4f798f5eaa400dbef30ea136`), which stays unchanged during its exact-SHA review. No additional PR. [Contract](tasks/FE-UX-KRK-002R.md), [builder receipt](reviews/FE-UX-KRK-002R-verification.md). Independent review OPEN. No backend, schema, API or authorization change. No merge or deployment; NOT READY / NOT DEPLOYED unchanged.
+
+## 2026-11-07 — FE-UX-KRK-002R repair after review
+
+Independent review of `77f07ec`: [REQUEST_CHANGES](reviews/2026-11-07-fe-ux-krk-002r-codex-review.md). F-01, F-02, F-03 repaired on the same branch; narrow review of the new SHA OPEN. PR26 still at `353324a`, no additional PR, PR25 gate separate. No backend, schema, API or authorization change. No merge or deployment; NOT READY / NOT DEPLOYED unchanged.

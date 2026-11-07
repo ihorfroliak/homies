@@ -17,3 +17,10 @@ does not typecheck, because the unit tests import what the fixes add.
 Recorded decisions kept: API-returned time zone is authoritative and Warsaw is never hard-coded
 (handoff C-7); FE-003's explicit UTC fallback applies when no schedule exists. Results:
 [receipt](../reviews/FE-UX-KRK-002R-verification.md).
+
+## Repair after review (2026-11-07)
+
+Review of `77f07ec`: [REQUEST_CHANGES](../reviews/2026-11-07-fe-ux-krk-002r-codex-review.md) with
+F-01 (focus after a last page that adds no listing), F-02 (accessible names of viewing actions) and
+F-03 (test gap and a wrong mutation claim). Same scope and risk class; no new canonical decision.
+Failing regressions committed first (`94aeb1f`), fixes `f8c53fb` and `25fc884`.
